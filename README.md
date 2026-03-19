@@ -12,6 +12,12 @@
 - Visualization: Grafana
 - Vulnerability Scan: Trivy
 
+## 참고 문서
+
+- `docs/FUNCTIONAL_SPEC.md`: 기능 정의서 원문
+- `docs/IMPLEMENTATION_ROADMAP.md`: 기능 정의서 기준 구현 로드맵
+- `docs/DEPLOYMENT.md`: 서버 배포/운영/트러블슈팅 가이드
+
 ## 1. 배포 목표
 
 - 공개 주소: `http://mori.rmstudio.co.kr:37854`
@@ -76,6 +82,10 @@ GitHub Actions가 아래 순서로 동작하도록 구성했습니다.
 
 `.env.example` 기준으로 실제 `.env`를 작성해야 합니다.
 
+현재 기본 Grafana 관리자 비밀번호는 요청값에 맞춰 `1234`로 설정되어 있습니다.
+단, Grafana 볼륨이 이미 생성된 뒤에는 `.env` 값을 바꿔도 기존 비밀번호가 유지될 수 있으므로,
+로그인이 안 되면 `docs/DEPLOYMENT.md`의 Grafana 트러블슈팅 절차를 먼저 확인하세요.
+
 반드시 변경해야 하는 값:
 
 - `GRAFANA_ADMIN_PASSWORD`
@@ -120,11 +130,14 @@ GitHub Actions가 아래 순서로 동작하도록 구성했습니다.
 
 또한 Wazuh Dashboard의 설정 마운트 충돌 가능성을 제거하도록 compose를 보정했습니다.
 Wazuh 인증서 마운트도 디렉터리 방식으로 보정해 파일/디렉터리 마운트 꼬임 가능성을 낮췄습니다.
+Grafana에는 Loki 데이터소스와 starter overview dashboard 프로비저닝을 추가했습니다.
 
 ## 10. 운영 메모
 
 - 현재 공개 서비스는 Grafana만 노출합니다.
 - Zabbix / FleetDM / Wazuh Dashboard는 localhost 바인딩으로 제한했습니다.
+- Grafana admin 기본값은 `admin / 1234`입니다.
+- Grafana 로그인 실패는 대부분 기존 `grafana-data` 볼륨에 남아 있는 초기 비밀번호 때문입니다.
 - Wazuh 기본 예제 계정은 공식 예시 기본값(`SecretPassword`)을 사용 중입니다.
 - Wazuh 비밀번호를 변경하려면 `config/wazuh_indexer/internal_users.yml`의 해시와 관련 설정을 함께 수정해야 합니다.
 - Trivy 스캔은 필요 시 profile로 실행합니다.

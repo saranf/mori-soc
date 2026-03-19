@@ -25,6 +25,10 @@ sudo sysctl -w vm.max_map_count=262144
 
 `.env.example`을 기준으로 `.env`를 작성합니다.
 
+현재 Grafana 기본 로그인 값은 `admin / 1234`입니다.
+다만 첫 기동 시 생성된 `grafana-data` 볼륨에 이전 비밀번호가 남아 있으면,
+`.env` 값을 변경해도 바로 로그인 비밀번호가 바뀌지 않습니다.
+
 필수 변경값:
 
 - `GRAFANA_ADMIN_PASSWORD`
@@ -53,7 +57,38 @@ docker compose ps
 기존에 인증서 생성 전에 `docker compose up`을 먼저 실행했다면,
 `config/wazuh_indexer_ssl_certs` 내부 경로가 디렉터리로 잘못 생성될 수 있으므로 위처럼 초기화 후 다시 생성하는 것을 권장합니다.
 
-### 5. GitHub Actions 시크릿
+### 5. Grafana 로그인 안 될 때
+
+가장 흔한 원인은 아래 3가지입니다.
+
+- 서버 `.env`의 `GRAFANA_ADMIN_PASSWORD`가 기대값과 다름
+- GitHub Secret `DEPLOY_ENV_FILE`에 이전 값이 남아 있음
+- 기존 `grafana-data` 볼륨에 예전 admin 비밀번호가 저장되어 있음
+
+먼저 실제 적용값을 확인합니다.
+
+```bash
+cd /backup/rmstudio/mori
+grep '^GRAFANA_ADMIN_' .env
+docker compose ps grafana
+```
+
+비밀번호를 안전하게 현재 컨테이너 기준으로 재설정하려면:
+
+```bash
+cd /backup/rmstudio/mori
+docker compose exec grafana grafana cli admin reset-admin-password 1234
+docker compose restart grafana
+```
+
+이후 아래 계정으로 다시 로그인합니다.
+
+- ID: `admin`
+- PW: `1234`
+
+그래도 안 되면 GitHub Actions에 등록한 `DEPLOY_ENV_FILE` 내용도 같이 확인해야 합니다.
+
+### 6. GitHub Actions 시크릿
 
 다음 시크릿을 저장소에 추가하세요.
 
@@ -66,7 +101,7 @@ docker compose ps
 
 `DEPLOY_ENV_FILE`에는 서버에서 사용할 `.env` 전체 내용을 멀티라인 그대로 넣으면 됩니다.
 
-### 6. GitHub Actions 배포 동작
+### 7. GitHub Actions 배포 동작
 
 워크플로우는 다음 순서로 동작합니다.
 
@@ -77,9 +112,10 @@ docker compose ps
 5. `docker compose pull`
 6. `docker compose up -d --remove-orphans`
 
-### 7. 운영 메모
+### 8. 운영 메모
 
 - 현재 공개 포트는 Grafana만 사용합니다.
+- 수동 실행 시에는 `docker-compose` 대신 `docker compose` 사용을 권장합니다.
 - Wazuh 기본 계정 해시는 공식 예제 기본값(`SecretPassword`) 기준입니다.
 - Wazuh 기본 비밀번호를 변경하려면 `config/wazuh_indexer/internal_users.yml` 해시와 관련 설정을 함께 수정해야 합니다.
 - Trivy 점검은 필요 시 아래처럼 실행합니다.

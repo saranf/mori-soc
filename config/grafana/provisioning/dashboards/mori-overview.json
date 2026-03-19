@@ -1,0 +1,49 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "type": "text",
+      "title": "Security Overview",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "options": {
+        "mode": "markdown",
+        "content": "# MORI SOC-lite\n\n- Public entry: `http://mori.rmstudio.co.kr:37854`\n- Infrastructure Monitoring: Zabbix\n- Endpoint Security: FleetDM\n- Log Management: Loki + Fluent Bit\n- Security Event Detection: Wazuh\n- Vulnerability Scan: Trivy\n\n이 대시보드는 starter dashboard이며, 기능 정의서 기준 KPI 패널은 이후 단계에서 확장합니다."
+      }
+    },
+    {
+      "type": "logs",
+      "title": "Recent Host Logs",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 8},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "{job=\"fluent-bit\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["mori", "soc-lite", "starter"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "MORI Security Overview",
+  "version": 1
+}
