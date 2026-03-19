@@ -20,6 +20,7 @@
 - `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`: PC/단말 Zabbix Agent Active 등록 가이드
 - `docs/TRIVY_USAGE.md`: Trivy 파일시스템/이미지 스캔 가이드
 - `docs/DEPLOYMENT.md`: 서버 배포/운영/트러블슈팅 가이드
+- `docs/FLEET_MACBOOK_ENROLLMENT_AND_TEST.md`: Fleet macOS 등록/검증/대시보드 확인 문서
 
 ## 1. 배포 목표
 
@@ -74,6 +75,7 @@
 - `docs/SECURITY_CONTROL_MAPPING.md`: 보안 통제 매핑 문서
 - `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`: Zabbix Agent 온보딩 문서
 - `docs/TRIVY_USAGE.md`: Trivy 활용 가이드
+- `docs/FLEET_MACBOOK_ENROLLMENT_AND_TEST.md`: Fleet macOS 등록/검증/대시보드 확인 문서
 - `.github/workflows/deploy.yml`: GitHub Actions 배포 워크플로우
 - `docs/DEPLOYMENT.md`: 서버 준비 및 운영 가이드
 - `config/zabbix_agent/zabbix_agent2.active.example.conf`: Active Agent 예시 설정

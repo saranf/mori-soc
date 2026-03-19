@@ -1,28 +1,218 @@
 {
   "annotations": {"list": []},
   "editable": true,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "links": [],
   "panels": [
     {
       "type": "text",
-      "title": "Security Overview",
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "title": "MORI SOC Overview",
+      "gridPos": {"h": 7, "w": 24, "x": 0, "y": 0},
       "options": {
         "mode": "markdown",
-        "content": "# MORI SOC-lite\n\n- Main Portal: `http://mori.rmstudio.co.kr:37854`\n- Grafana: `http://mori.rmstudio.co.kr:13000`\n- Zabbix Web: `http://mori.rmstudio.co.kr:18081`\n- Endpoint Security: FleetDM\n- Log Management: Loki + Fluent Bit\n- Security Event Detection: Wazuh\n- Vulnerability Scan: Trivy\n\n이 대시보드는 starter dashboard이며, 기능 정의서 기준 KPI 패널은 이후 단계에서 확장합니다."
+        "content": "# MORI SOC-lite\n\n- Main Portal: `http://mori.rmstudio.co.kr:37854`\n- Grafana: `http://mori.rmstudio.co.kr:13000`\n- FleetDM: `http://mori.rmstudio.co.kr:1337`\n- Zabbix Web: `http://mori.rmstudio.co.kr:18081`\n- Wazuh Dashboard: `https://127.0.0.1:8443`\n\n이 MVP 대시보드는 **Loki + Fleet 로그 기반 한눈 보드**입니다.\n맥북 등록 후 Fleet에서 Live query 1회를 실행하면 아래 패널이 바로 살아납니다."
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Host log events (15m)",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 7},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "sum(count_over_time({job=\"fluent-bit\"}[15m]))",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 1},
+              {"color": "red", "value": 500}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fleet status events (15m)",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 7},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "sum(count_over_time({job=\"fleetdm\",log_type=\"status\"}[15m]))",
+          "queryType": "range",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null},
+              {"color": "green", "value": 1},
+              {"color": "orange", "value": 20}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fleet result events (15m)",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 7},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "sum(count_over_time({job=\"fleetdm\",log_type=\"result\"}[15m]))",
+          "queryType": "range",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "gray", "value": null},
+              {"color": "green", "value": 1},
+              {"color": "orange", "value": 20}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fleet signal healthy?",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 7},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "sum(count_over_time({job=\"fleetdm\"}[15m]))",
+          "queryType": "range",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [
+            {"options": {"0": {"text": "No recent signal"}}, "type": "value"}
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Security telemetry volume",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 11},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "sum(count_over_time({job=\"fluent-bit\"}[5m]))",
+          "legendFormat": "host logs",
+          "queryType": "range",
+          "refId": "E"
+        },
+        {
+          "expr": "sum(count_over_time({job=\"fleetdm\",log_type=\"status\"}[5m]))",
+          "legendFormat": "fleet status",
+          "queryType": "range",
+          "refId": "F"
+        },
+        {
+          "expr": "sum(count_over_time({job=\"fleetdm\",log_type=\"result\"}[5m]))",
+          "legendFormat": "fleet results",
+          "queryType": "range",
+          "refId": "G"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisCenteredZero": false,
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "stacking": {"group": "A", "mode": "none"}
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "single", "sort": "none"}
       }
     },
     {
       "type": "logs",
-      "title": "Recent Host Logs",
-      "gridPos": {"h": 12, "w": 12, "x": 0, "y": 8},
+      "title": "Recent host logs",
+      "gridPos": {"h": 12, "w": 8, "x": 0, "y": 19},
       "datasource": {"type": "loki", "uid": "loki"},
       "targets": [
         {
           "expr": "{job=\"fluent-bit\"}",
           "queryType": "range",
-          "refId": "A"
+          "refId": "H"
         }
       ],
       "options": {
@@ -38,14 +228,14 @@
     },
     {
       "type": "logs",
-      "title": "Fleet Status Logs",
-      "gridPos": {"h": 12, "w": 12, "x": 12, "y": 8},
+      "title": "Fleet status logs",
+      "gridPos": {"h": 12, "w": 8, "x": 8, "y": 19},
       "datasource": {"type": "loki", "uid": "loki"},
       "targets": [
         {
           "expr": "{job=\"fleetdm\",log_type=\"status\"}",
           "queryType": "range",
-          "refId": "B"
+          "refId": "I"
         }
       ],
       "options": {
@@ -61,14 +251,14 @@
     },
     {
       "type": "logs",
-      "title": "Fleet osquery Results",
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 20},
+      "title": "Fleet osquery results",
+      "gridPos": {"h": 12, "w": 8, "x": 16, "y": 19},
       "datasource": {"type": "loki", "uid": "loki"},
       "targets": [
         {
           "expr": "{job=\"fleetdm\",log_type=\"result\"}",
           "queryType": "range",
-          "refId": "C"
+          "refId": "J"
         }
       ],
       "options": {
@@ -86,10 +276,10 @@
   "refresh": "30s",
   "schemaVersion": 39,
   "style": "dark",
-  "tags": ["mori", "soc-lite", "starter"],
+  "tags": ["mori", "soc-lite", "overview", "loki", "fleet"],
   "templating": {"list": []},
   "time": {"from": "now-6h", "to": "now"},
   "timezone": "browser",
-  "title": "MORI Security Overview",
-  "version": 2
+  "title": "MORI SOC Overview",
+  "version": 3
 }
