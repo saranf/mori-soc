@@ -68,7 +68,7 @@ GitHub Actions가 아래 순서로 동작하도록 구성했습니다.
 2. 서버 경로 `/backup/rmstudio/mori` 생성 확인
 3. `rsync`로 코드 동기화
 4. GitHub Secret의 `.env` 내용을 서버에 업로드
-5. Wazuh 인증서가 없으면 최초 1회 생성
+5. Wazuh 인증서 디렉터리 준비 후 최초 1회 인증서 생성
 6. `docker compose pull`
 7. `docker compose up -d --remove-orphans`
 
@@ -119,6 +119,7 @@ GitHub Actions가 아래 순서로 동작하도록 구성했습니다.
 - `docker compose -f generate-indexer-certs.yml config` 통과
 
 또한 Wazuh Dashboard의 설정 마운트 충돌 가능성을 제거하도록 compose를 보정했습니다.
+Wazuh 인증서 마운트도 디렉터리 방식으로 보정해 파일/디렉터리 마운트 꼬임 가능성을 낮췄습니다.
 
 ## 10. 운영 메모
 

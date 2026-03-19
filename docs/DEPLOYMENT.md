@@ -43,10 +43,15 @@ openssl rand -base64 32
 ### 4. 최초 실행
 
 ```bash
+rm -rf config/wazuh_indexer_ssl_certs
+mkdir -p config/wazuh_indexer_ssl_certs
 docker compose -f generate-indexer-certs.yml run --rm generator
 docker compose up -d
 docker compose ps
 ```
+
+기존에 인증서 생성 전에 `docker compose up`을 먼저 실행했다면,
+`config/wazuh_indexer_ssl_certs` 내부 경로가 디렉터리로 잘못 생성될 수 있으므로 위처럼 초기화 후 다시 생성하는 것을 권장합니다.
 
 ### 5. GitHub Actions 시크릿
 
