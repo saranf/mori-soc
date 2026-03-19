@@ -2,7 +2,7 @@
 
 ## 1. 목적
 
-이 문서는 `docs/FUNCTIONAL_SPEC.md`의 요구사항을 현재 저장소 구현과 연결하고,
+이 문서는 `docs/FUNCTIONAL_SPEC.md`와 `docs/SECURITY_CONTROL_MAPPING.md`의 요구사항을 현재 저장소 구현과 연결하고,
 다음 개발 단계를 정의하기 위한 운영/개발 기준 문서입니다.
 
 ## 2. 기능 모듈 매핑
@@ -24,6 +24,7 @@
 - Grafana Loki 데이터소스 프로비저닝
 - Grafana starter overview dashboard 프로비저닝
 - Trivy profile 실행 구조 반영
+- Security Control Mapping 문서 추가
 
 ## 4. 기능 정의서 기준 우선 구현 순서
 

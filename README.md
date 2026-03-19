@@ -15,7 +15,10 @@
 ## 참고 문서
 
 - `docs/FUNCTIONAL_SPEC.md`: 기능 정의서 원문
+- `docs/SECURITY_CONTROL_MAPPING.md`: 보안 통제(Security Controls) 매핑 문서
 - `docs/IMPLEMENTATION_ROADMAP.md`: 기능 정의서 기준 구현 로드맵
+- `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`: PC/단말 Zabbix Agent Active 등록 가이드
+- `docs/TRIVY_USAGE.md`: Trivy 파일시스템/이미지 스캔 가이드
 - `docs/DEPLOYMENT.md`: 서버 배포/운영/트러블슈팅 가이드
 
 ## 1. 배포 목표
@@ -68,9 +71,15 @@
 - `docker-compose.yml`: 전체 SOC-lite 스택 구성
 - `.env.example`: 배포용 환경변수 예시
 - `generate-indexer-certs.yml`: Wazuh 인증서 생성용 compose 파일
+- `docs/SECURITY_CONTROL_MAPPING.md`: 보안 통제 매핑 문서
+- `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`: Zabbix Agent 온보딩 문서
+- `docs/TRIVY_USAGE.md`: Trivy 활용 가이드
 - `.github/workflows/deploy.yml`: GitHub Actions 배포 워크플로우
 - `docs/DEPLOYMENT.md`: 서버 준비 및 운영 가이드
+- `config/zabbix_agent/zabbix_agent2.active.example.conf`: Active Agent 예시 설정
 - `config/portal/index.html`: 메인 포털 페이지
+- `scripts/trivy-fs-scan.sh`: 파일시스템 취약점 스캔 스크립트
+- `scripts/trivy-image-scan.sh`: 이미지 취약점 스캔 스크립트
 - `config/*`: 각 서비스별 설정 파일
 
 ## 5. 배포 방식
@@ -148,6 +157,7 @@ Grafana에는 Loki 데이터소스와 starter overview dashboard 프로비저닝
 - FleetDM / Wazuh Dashboard는 localhost 바인딩으로 제한했습니다.
 - 메인 포털(`37854`)에서 Grafana(`13000`)와 Zabbix(`18081`)로 이동할 수 있습니다.
 - Zabbix 알람/트리거 조정은 Web UI를 통해 운영할 수 있습니다.
+- Zabbix Web 초기 기본 계정은 공식 문서 기준 `Admin / zabbix`이며 현재 compose에서 별도 변경하지 않았습니다.
 - Grafana admin 기본값은 `admin / 1234`입니다.
 - Grafana 로그인 실패는 대부분 기존 `grafana-data` 볼륨에 남아 있는 초기 비밀번호 때문입니다.
 - Wazuh 기본 예제 계정은 공식 예시 기본값(`SecretPassword`)을 사용 중입니다.
@@ -186,9 +196,11 @@ Grafana에는 Loki 데이터소스와 starter overview dashboard 프로비저닝
 
 - 메인 포털 접속: `http://mori.rmstudio.co.kr:37854`
 - 접속: `http://mori.rmstudio.co.kr:18081`
+- 기본 계정: `Admin / zabbix`
 - 확인 항목:
   - 메인 포털에서 Zabbix 링크 이동 가능
   - 로그인 화면 노출
+  - 초기 계정으로 로그인 가능한지 확인
   - Zabbix 서버 연결 오류가 없는지 확인
   - 향후 트리거/알람 조정용 UI로 접근 가능한지 확인
 
@@ -210,19 +222,32 @@ Grafana Explore에서 Loki로 아래 쿼리를 실행합니다.
 
 현재 두 서비스는 외부 공개하지 않고 내부 운영용으로 유지합니다.
 
-### 6) 취약점 스캔 테스트
+### 6) Zabbix Agent PC 온보딩 테스트
+
+- 가이드 문서: `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`
+- 예시 설정: `config/zabbix_agent/zabbix_agent2.active.example.conf`
+- 확인 항목:
+  - 내 PC에서 `mori.rmstudio.co.kr:10051` outbound 연결 가능
+  - Zabbix Web에 Host 등록 가능
+  - `Latest data`에서 CPU/Memory/Disk 항목 수집 확인
+
+### 7) 취약점 스캔 테스트
 
 - `docker compose --profile scanner run --rm trivy`
+- `./scripts/trivy-fs-scan.sh .`
+- `./scripts/trivy-image-scan.sh grafana/grafana-oss:11.5.2`
 
 정상 기준:
 
 - Trivy가 실행되고 결과 테이블이 출력됨
+- `reports/trivy/` 아래에 리포트가 저장됨
 
-### 7) 운영 테스트 체크리스트
+### 8) 운영 테스트 체크리스트
 
 - 메인 포털 접속 가능
 - Grafana 로그인 가능
 - Zabbix Web UI 접속 가능
+- 내 PC 또는 테스트 단말 Zabbix Agent 데이터 수집 가능
 - Loki 로그 조회 가능
 - Trivy 실행 가능
 - Wazuh/Fleet 내부 포트 접속 가능

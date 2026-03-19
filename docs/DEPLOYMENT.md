@@ -30,6 +30,9 @@ sudo sysctl -w vm.max_map_count=262144
 다만 첫 기동 시 생성된 `grafana-data` 볼륨에 이전 비밀번호가 남아 있으면,
 `.env` 값을 변경해도 바로 로그인 비밀번호가 바뀌지 않습니다.
 
+현재 Zabbix Web 초기 로그인 값은 공식 문서 기준 `Admin / zabbix`이며,
+현재 compose에서는 Zabbix 프런트엔드 관리자 계정을 별도로 오버라이드하지 않습니다.
+
 포트 구성은 아래 기준입니다.
 
 - `PUBLIC_PORT=37854` → 메인 포털
@@ -95,7 +98,47 @@ docker compose restart grafana
 
 그래도 안 되면 GitHub Actions에 등록한 `DEPLOY_ENV_FILE` 내용도 같이 확인해야 합니다.
 
-### 6. GitHub Actions 시크릿
+### 6. Zabbix 초기 로그인
+
+Zabbix Web 초기 로그인은 아래 계정을 사용합니다.
+
+- ID: `Admin`
+- PW: `zabbix`
+
+현재 `docker-compose.yml`은 Zabbix DB 연결 정보만 설정하며,
+Zabbix 프런트엔드 관리자 기본 계정은 변경하지 않습니다.
+
+초기 로그인 후에는 비밀번호를 즉시 변경하는 것을 권장합니다.
+
+### 7. Zabbix Agent Active 등록
+
+개인 PC나 테스트 단말을 연결할 때는 **Active Agent 방식**을 권장합니다.
+
+- Zabbix Server: `mori.rmstudio.co.kr:10051`
+- 설정 예시: `config/zabbix_agent/zabbix_agent2.active.example.conf`
+- 상세 가이드: `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`
+
+핵심 설정값:
+
+- `Server=mori.rmstudio.co.kr`
+- `ServerActive=mori.rmstudio.co.kr:10051`
+- `Hostname=<Zabbix Host name과 동일>`
+- `HostMetadata=windows|linux|macos`
+
+### 8. Trivy 활용
+
+빠른 점검은 아래 두 방식 중 하나로 진행하면 됩니다.
+
+```bash
+docker compose --profile scanner run --rm trivy
+./scripts/trivy-fs-scan.sh .
+./scripts/trivy-image-scan.sh grafana/grafana-oss:11.5.2
+```
+
+리포트는 `reports/trivy/` 아래에 저장됩니다.
+상세 사용법은 `docs/TRIVY_USAGE.md`를 참고하세요.
+
+### 9. GitHub Actions 시크릿
 
 다음 시크릿을 저장소에 추가하세요.
 
@@ -108,7 +151,7 @@ docker compose restart grafana
 
 `DEPLOY_ENV_FILE`에는 서버에서 사용할 `.env` 전체 내용을 멀티라인 그대로 넣으면 됩니다.
 
-### 7. GitHub Actions 배포 동작
+### 10. GitHub Actions 배포 동작
 
 워크플로우는 다음 순서로 동작합니다.
 
@@ -119,11 +162,12 @@ docker compose restart grafana
 5. `docker compose pull`
 6. `docker compose up -d --remove-orphans`
 
-### 8. 운영 메모
+### 11. 운영 메모
 
 - 현재 공개 포트는 Main Portal, Grafana, Zabbix Web입니다.
 - 메인 포털에서 운영자가 Grafana/Zabbix로 이동하는 구조입니다.
 - Zabbix 알람/트리거 운영은 Web UI를 통해 직접 조정할 수 있습니다.
+- Zabbix 단말 연결은 Active Agent 방식을 기본 권장합니다.
 - 수동 실행 시에는 `docker-compose` 대신 `docker compose` 사용을 권장합니다.
 - Wazuh 기본 계정 해시는 공식 예제 기본값(`SecretPassword`) 기준입니다.
 - Wazuh 기본 비밀번호를 변경하려면 `config/wazuh_indexer/internal_users.yml` 해시와 관련 설정을 함께 수정해야 합니다.
