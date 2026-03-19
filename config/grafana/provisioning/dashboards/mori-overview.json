@@ -10,7 +10,7 @@
       "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
       "options": {
         "mode": "markdown",
-        "content": "# MORI SOC-lite\n\n- Public entry: `http://mori.rmstudio.co.kr:37854`\n- Infrastructure Monitoring: Zabbix\n- Endpoint Security: FleetDM\n- Log Management: Loki + Fluent Bit\n- Security Event Detection: Wazuh\n- Vulnerability Scan: Trivy\n\n이 대시보드는 starter dashboard이며, 기능 정의서 기준 KPI 패널은 이후 단계에서 확장합니다."
+        "content": "# MORI SOC-lite\n\n- Main Portal: `http://mori.rmstudio.co.kr:37854`\n- Grafana: `http://mori.rmstudio.co.kr:13000`\n- Zabbix Web: `http://mori.rmstudio.co.kr:18081`\n- Endpoint Security: FleetDM\n- Log Management: Loki + Fluent Bit\n- Security Event Detection: Wazuh\n- Vulnerability Scan: Trivy\n\n이 대시보드는 starter dashboard이며, 기능 정의서 기준 KPI 패널은 이후 단계에서 확장합니다."
       }
     },
     {

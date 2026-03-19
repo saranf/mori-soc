@@ -21,16 +21,21 @@
 ## 1. 배포 목표
 
 - 공개 주소: `http://mori.rmstudio.co.kr:37854`
+- Grafana 주소: `http://mori.rmstudio.co.kr:13000`
+- Zabbix 주소: `http://mori.rmstudio.co.kr:18081`
 - 배포 경로: `/backup/rmstudio/mori`
 - 배포 방식: GitHub Actions + SSH
 - 실행 방식: `docker compose`
 
-현재 외부 공개 진입점은 **Grafana**입니다.
+현재 외부 공개 진입점은 **메인 포털**이며,
+포털에서 Grafana와 Zabbix 운영 UI로 이동하는 구조입니다.
 
 ## 2. 현재 구성된 서비스
 
 ### Public Entry
-- `Grafana` (`37854`)
+- `Main Portal` (`37854`)
+- `Grafana` (`13000`)
+- `Zabbix Web` (`18081`, 기본값)
 
 ### Internal Services
 - `Loki`: 중앙 로그 저장소
@@ -43,11 +48,12 @@
 ## 3. 포트 구성
 
 - Public
-  - `37854` → Grafana
+  - `37854` → Main Portal
+  - `13000` → Grafana
+  - `18081` → Zabbix Web
 
 - Internal / localhost only
-- `127.0.0.1:18081` → Zabbix Web
-  - `127.0.0.1:1337` → FleetDM
+- `127.0.0.1:1337` → FleetDM
   - `127.0.0.1:8443` → Wazuh Dashboard
 
 - Service ports
@@ -64,6 +70,7 @@
 - `generate-indexer-certs.yml`: Wazuh 인증서 생성용 compose 파일
 - `.github/workflows/deploy.yml`: GitHub Actions 배포 워크플로우
 - `docs/DEPLOYMENT.md`: 서버 준비 및 운영 가이드
+- `config/portal/index.html`: 메인 포털 페이지
 - `config/*`: 각 서비스별 설정 파일
 
 ## 5. 배포 방식
@@ -85,6 +92,8 @@ GitHub Actions가 아래 순서로 동작하도록 구성했습니다.
 현재 기본 Grafana 관리자 비밀번호는 요청값에 맞춰 `1234`로 설정되어 있습니다.
 단, Grafana 볼륨이 이미 생성된 뒤에는 `.env` 값을 바꿔도 기존 비밀번호가 유지될 수 있으므로,
 로그인이 안 되면 `docs/DEPLOYMENT.md`의 Grafana 트러블슈팅 절차를 먼저 확인하세요.
+
+메인 포털은 `PUBLIC_PORT`, Grafana는 `GRAFANA_PORT`, Grafana URL 표시는 `GRAFANA_URL`을 사용합니다.
 
 반드시 변경해야 하는 값:
 
@@ -131,20 +140,97 @@ GitHub Actions가 아래 순서로 동작하도록 구성했습니다.
 또한 Wazuh Dashboard의 설정 마운트 충돌 가능성을 제거하도록 compose를 보정했습니다.
 Wazuh 인증서 마운트도 디렉터리 방식으로 보정해 파일/디렉터리 마운트 꼬임 가능성을 낮췄습니다.
 Grafana에는 Loki 데이터소스와 starter overview dashboard 프로비저닝을 추가했습니다.
+메인 포털 페이지도 추가해 37854 포트에서 운영 UI 동선을 제공하도록 구성했습니다.
 
 ## 10. 운영 메모
 
-- 현재 공개 서비스는 Grafana만 노출합니다.
-- Zabbix / FleetDM / Wazuh Dashboard는 localhost 바인딩으로 제한했습니다.
+- 현재 공개 서비스는 Main Portal, Grafana, Zabbix Web입니다.
+- FleetDM / Wazuh Dashboard는 localhost 바인딩으로 제한했습니다.
+- 메인 포털(`37854`)에서 Grafana(`13000`)와 Zabbix(`18081`)로 이동할 수 있습니다.
+- Zabbix 알람/트리거 조정은 Web UI를 통해 운영할 수 있습니다.
 - Grafana admin 기본값은 `admin / 1234`입니다.
 - Grafana 로그인 실패는 대부분 기존 `grafana-data` 볼륨에 남아 있는 초기 비밀번호 때문입니다.
 - Wazuh 기본 예제 계정은 공식 예시 기본값(`SecretPassword`)을 사용 중입니다.
 - Wazuh 비밀번호를 변경하려면 `config/wazuh_indexer/internal_users.yml`의 해시와 관련 설정을 함께 수정해야 합니다.
 - Trivy 스캔은 필요 시 profile로 실행합니다.
 
-## 11. 다음 작업 후보
+## 11. 어떻게 테스트하면 되는지
+
+배포 후 아래 순서로 최소 기능 테스트를 진행하면 됩니다.
+
+### 1) 컨테이너 상태 확인
+
+- `docker compose ps`
+- `docker compose logs grafana --tail=50`
+- `docker compose logs zabbix-web --tail=50`
+
+정상 기준:
+
+- 주요 컨테이너가 `Up` 상태
+- Grafana / Zabbix Web 로그에 치명 오류가 없음
+
+### 2) Grafana 로그인 테스트
+
+- 메인 포털 접속: `http://mori.rmstudio.co.kr:37854`
+- Grafana 접속: `http://mori.rmstudio.co.kr:13000`
+- 계정: `admin / 1234`
+- 확인 항목:
+  - 메인 포털에서 Grafana 링크 이동 가능
+  - 로그인 성공
+  - `MORI Security Overview` 대시보드 표시
+  - Explore에서 Loki 데이터소스 선택 가능
+
+로그인이 안 되면 `docs/DEPLOYMENT.md`의 Grafana 비밀번호 리셋 절차를 수행합니다.
+
+### 3) Zabbix Web UI 테스트
+
+- 메인 포털 접속: `http://mori.rmstudio.co.kr:37854`
+- 접속: `http://mori.rmstudio.co.kr:18081`
+- 확인 항목:
+  - 메인 포털에서 Zabbix 링크 이동 가능
+  - 로그인 화면 노출
+  - Zabbix 서버 연결 오류가 없는지 확인
+  - 향후 트리거/알람 조정용 UI로 접근 가능한지 확인
+
+### 4) Loki 로그 수집 테스트
+
+Grafana Explore에서 Loki로 아래 쿼리를 실행합니다.
+
+- `{job="fluent-bit"}`
+
+정상 기준:
+
+- 호스트 로그가 조회됨
+- 새 로그가 시간 흐름에 따라 계속 유입됨
+
+### 5) Wazuh / Fleet 접속 테스트
+
+- FleetDM: 서버에서 `http://127.0.0.1:1337`
+- Wazuh Dashboard: 서버에서 `https://127.0.0.1:8443`
+
+현재 두 서비스는 외부 공개하지 않고 내부 운영용으로 유지합니다.
+
+### 6) 취약점 스캔 테스트
+
+- `docker compose --profile scanner run --rm trivy`
+
+정상 기준:
+
+- Trivy가 실행되고 결과 테이블이 출력됨
+
+### 7) 운영 테스트 체크리스트
+
+- 메인 포털 접속 가능
+- Grafana 로그인 가능
+- Zabbix Web UI 접속 가능
+- Loki 로그 조회 가능
+- Trivy 실행 가능
+- Wazuh/Fleet 내부 포트 접속 가능
+
+## 12. 다음 작업 후보
 
 - Grafana 대시보드/프로비저닝 고도화
+- Zabbix 템플릿/API 자동화 또는 통합 운영 UI 설계
 - HTTPS 리버스 프록시(Nginx/Caddy) 추가
 - Wazuh/Fleet 초기 운영 설정 보강
 - 실제 서버 기동 후 헬스체크 및 초기 로그인 검증

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MORI SOC-lite Portal</title>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0b1220; color: #e5e7eb; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 48px 20px; }
+    h1 { margin-bottom: 8px; }
+    p { color: #cbd5e1; line-height: 1.6; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 28px; }
+    .card { background: #111827; border: 1px solid #334155; border-radius: 14px; padding: 20px; }
+    .card h2 { margin-top: 0; font-size: 20px; }
+    .button { display: inline-block; margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: #2563eb; color: white; text-decoration: none; font-weight: 600; }
+    .muted { font-size: 14px; color: #94a3b8; }
+    code { background: #1e293b; padding: 2px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>MORI SOC-lite Main Portal</h1>
+    <p>보안 가시성 운영 포털입니다. 여기서 Grafana 대시보드와 Zabbix 관리 UI로 이동할 수 있습니다.</p>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Grafana</h2>
+        <p>로그 조회, Loki Explore, 보안 현황 대시보드 확인.</p>
+        <a id="grafana-link" class="button" href="#">Grafana 열기</a>
+        <div class="muted">기본 포트: <code>13000</code></div>
+      </div>
+
+      <div class="card">
+        <h2>Zabbix Web</h2>
+        <p>호스트, 트리거, 알람, 템플릿을 세밀하게 조정하는 운영 UI.</p>
+        <a id="zabbix-link" class="button" href="#">Zabbix 열기</a>
+        <div class="muted">기본 포트: <code>18081</code></div>
+      </div>
+
+      <div class="card">
+        <h2>Internal Services</h2>
+        <p>FleetDM과 Wazuh Dashboard는 현재 외부에 공개하지 않고 서버 내부 포트로만 운영합니다.</p>
+        <div class="muted">FleetDM: <code>127.0.0.1:1337</code></div>
+        <div class="muted">Wazuh: <code>127.0.0.1:8443</code></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const base = `${window.location.protocol}//${window.location.hostname}`;
+    document.getElementById('grafana-link').href = `${base}:13000`;
+    document.getElementById('zabbix-link').href = `${base}:18081`;
+  </script>
+</body>
+</html>

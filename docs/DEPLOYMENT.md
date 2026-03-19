@@ -3,10 +3,11 @@
 ### 1. 공개 진입점
 
 - 메인 URL: `http://mori.rmstudio.co.kr:37854`
-- 공개 서비스: `Grafana`
+- 메인 포털: `http://mori.rmstudio.co.kr:37854`
+- Grafana: `http://mori.rmstudio.co.kr:13000`
+- 공개 관리 UI: `http://mori.rmstudio.co.kr:18081` (`Zabbix Web`)
 - 내부/로컬 관리 포트
-- `127.0.0.1:18081` → Zabbix Web
-  - `127.0.0.1:1337` → FleetDM
+- `127.0.0.1:1337` → FleetDM
   - `127.0.0.1:8443` → Wazuh Dashboard
 
 ### 2. 서버 사전 준비
@@ -28,6 +29,12 @@ sudo sysctl -w vm.max_map_count=262144
 현재 Grafana 기본 로그인 값은 `admin / 1234`입니다.
 다만 첫 기동 시 생성된 `grafana-data` 볼륨에 이전 비밀번호가 남아 있으면,
 `.env` 값을 변경해도 바로 로그인 비밀번호가 바뀌지 않습니다.
+
+포트 구성은 아래 기준입니다.
+
+- `PUBLIC_PORT=37854` → 메인 포털
+- `GRAFANA_PORT=13000` → Grafana
+- `ZABBIX_WEB_PORT=18081` → Zabbix Web
 
 필수 변경값:
 
@@ -114,7 +121,9 @@ docker compose restart grafana
 
 ### 8. 운영 메모
 
-- 현재 공개 포트는 Grafana만 사용합니다.
+- 현재 공개 포트는 Main Portal, Grafana, Zabbix Web입니다.
+- 메인 포털에서 운영자가 Grafana/Zabbix로 이동하는 구조입니다.
+- Zabbix 알람/트리거 운영은 Web UI를 통해 직접 조정할 수 있습니다.
 - 수동 실행 시에는 `docker-compose` 대신 `docker compose` 사용을 권장합니다.
 - Wazuh 기본 계정 해시는 공식 예제 기본값(`SecretPassword`) 기준입니다.
 - Wazuh 기본 비밀번호를 변경하려면 `config/wazuh_indexer/internal_users.yml` 해시와 관련 설정을 함께 수정해야 합니다.
