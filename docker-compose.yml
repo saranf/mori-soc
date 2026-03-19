@@ -44,6 +44,7 @@ services:
     volumes:
       - ./config/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
       - /var/log:/host/var/log:ro
+      - fleet-logs:/fleet-logs:ro
     networks: [soc]
 
   postgres:

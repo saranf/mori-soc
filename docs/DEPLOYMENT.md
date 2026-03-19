@@ -138,7 +138,32 @@ docker compose --profile scanner run --rm trivy
 리포트는 `reports/trivy/` 아래에 저장됩니다.
 상세 사용법은 `docs/TRIVY_USAGE.md`를 참고하세요.
 
-### 9. GitHub Actions 시크릿
+### 9. FleetDM 결과를 Grafana에서 보기
+
+현재 구성은 Fleet가 아래 파일에 osquery 로그를 기록하고,
+Fluent Bit가 이를 Loki로 전송한 뒤 Grafana starter dashboard에서 조회하는 방식입니다.
+
+- Fleet status: `/logs/osqueryd.status.log`
+- Fleet results: `/logs/osqueryd.results.log`
+
+Grafana Explore의 Loki 쿼리 예시:
+
+```logql
+{job="fleetdm", log_type="status"}
+{job="fleetdm", log_type="result"}
+```
+
+기본 대시보드 패널:
+
+- `Fleet Status Logs`
+- `Fleet osquery Results`
+
+주의:
+
+- Fleet 로그는 단말 등록만으로 항상 바로 쌓이지 않을 수 있습니다.
+- Live query 실행, policy 점검, query pack 실행 등 실제 osquery 활동이 있어야 결과 로그가 보입니다.
+
+### 10. GitHub Actions 시크릿
 
 다음 시크릿을 저장소에 추가하세요.
 
@@ -151,7 +176,7 @@ docker compose --profile scanner run --rm trivy
 
 `DEPLOY_ENV_FILE`에는 서버에서 사용할 `.env` 전체 내용을 멀티라인 그대로 넣으면 됩니다.
 
-### 10. GitHub Actions 배포 동작
+### 11. GitHub Actions 배포 동작
 
 워크플로우는 다음 순서로 동작합니다.
 
@@ -162,12 +187,13 @@ docker compose --profile scanner run --rm trivy
 5. `docker compose pull`
 6. `docker compose up -d --remove-orphans`
 
-### 11. 운영 메모
+### 12. 운영 메모
 
 - 현재 공개 포트는 Main Portal, Grafana, Zabbix Web입니다.
 - 메인 포털에서 운영자가 Grafana/Zabbix로 이동하는 구조입니다.
 - Zabbix 알람/트리거 운영은 Web UI를 통해 직접 조정할 수 있습니다.
 - Zabbix 단말 연결은 Active Agent 방식을 기본 권장합니다.
+- FleetDM osquery 결과는 Loki를 통해 Grafana에서 로그 형태로 확인할 수 있습니다.
 - 수동 실행 시에는 `docker-compose` 대신 `docker compose` 사용을 권장합니다.
 - Wazuh 기본 계정 해시는 공식 예제 기본값(`SecretPassword`) 기준입니다.
 - Wazuh 기본 비밀번호를 변경하려면 `config/wazuh_indexer/internal_users.yml` 해시와 관련 설정을 함께 수정해야 합니다.

@@ -222,6 +222,19 @@ Grafana Explore에서 Loki로 아래 쿼리를 실행합니다.
 
 현재 두 서비스는 외부 공개하지 않고 내부 운영용으로 유지합니다.
 
+FleetDM 테스트 결과를 Grafana에서 보려면, Fleet에 단말을 등록하고 live query 또는 policy/query pack이 실제로 실행되어
+`/logs/osqueryd.status.log`, `/logs/osqueryd.results.log`에 로그가 쌓여야 합니다.
+
+Grafana Explore에서 Loki로 아래 쿼리를 확인합니다.
+
+- Fleet status 로그: `{job="fleetdm", log_type="status"}`
+- Fleet result 로그: `{job="fleetdm", log_type="result"}`
+
+Starter dashboard에도 아래 패널이 표시됩니다.
+
+- `Fleet Status Logs`
+- `Fleet osquery Results`
+
 ### 6) Zabbix Agent PC 온보딩 테스트
 
 - 가이드 문서: `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`
@@ -249,6 +262,7 @@ Grafana Explore에서 Loki로 아래 쿼리를 실행합니다.
 - Zabbix Web UI 접속 가능
 - 내 PC 또는 테스트 단말 Zabbix Agent 데이터 수집 가능
 - Loki 로그 조회 가능
+- FleetDM osquery 결과가 Grafana에서 조회 가능
 - Trivy 실행 가능
 - Wazuh/Fleet 내부 포트 접속 가능
 

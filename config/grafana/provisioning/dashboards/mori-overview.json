@@ -16,13 +16,59 @@
     {
       "type": "logs",
       "title": "Recent Host Logs",
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 8},
+      "gridPos": {"h": 12, "w": 12, "x": 0, "y": 8},
       "datasource": {"type": "loki", "uid": "loki"},
       "targets": [
         {
           "expr": "{job=\"fluent-bit\"}",
           "queryType": "range",
           "refId": "A"
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      }
+    },
+    {
+      "type": "logs",
+      "title": "Fleet Status Logs",
+      "gridPos": {"h": 12, "w": 12, "x": 12, "y": 8},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "{job=\"fleetdm\",log_type=\"status\"}",
+          "queryType": "range",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      }
+    },
+    {
+      "type": "logs",
+      "title": "Fleet osquery Results",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 20},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "{job=\"fleetdm\",log_type=\"result\"}",
+          "queryType": "range",
+          "refId": "C"
         }
       ],
       "options": {
@@ -45,5 +91,5 @@
   "time": {"from": "now-6h", "to": "now"},
   "timezone": "browser",
   "title": "MORI Security Overview",
-  "version": 1
+  "version": 2
 }
