@@ -5,7 +5,7 @@
 - 메인 URL: `http://mori.rmstudio.co.kr:37854`
 - 공개 서비스: `Grafana`
 - 내부/로컬 관리 포트
-  - `127.0.0.1:8080` → Zabbix Web
+- `127.0.0.1:18081` → Zabbix Web
   - `127.0.0.1:1337` → FleetDM
   - `127.0.0.1:8443` → Wazuh Dashboard
 
