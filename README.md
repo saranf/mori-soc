@@ -54,9 +54,9 @@
   - `37854` → Main Portal
   - `13000` → Grafana
   - `18081` → Zabbix Web
+  - `1337` → FleetDM
 
 - Internal / localhost only
-- `127.0.0.1:1337` → FleetDM
   - `127.0.0.1:8443` → Wazuh Dashboard
 
 - Service ports
@@ -153,12 +153,13 @@ Grafana에는 Loki 데이터소스와 starter overview dashboard 프로비저닝
 
 ## 10. 운영 메모
 
-- 현재 공개 서비스는 Main Portal, Grafana, Zabbix Web입니다.
-- FleetDM / Wazuh Dashboard는 localhost 바인딩으로 제한했습니다.
-- 메인 포털(`37854`)에서 Grafana(`13000`)와 Zabbix(`18081`)로 이동할 수 있습니다.
+- 현재 공개 서비스는 Main Portal, Grafana, Zabbix Web, FleetDM입니다.
+- Wazuh Dashboard는 localhost 바인딩으로 제한했습니다.
+- 메인 포털(`37854`)에서 Grafana(`13000`), Zabbix(`18081`), FleetDM(`1337`)으로 이동할 수 있습니다.
 - Zabbix 알람/트리거 조정은 Web UI를 통해 운영할 수 있습니다.
 - Zabbix Web 초기 기본 계정은 공식 문서 기준 `Admin / zabbix`이며 현재 compose에서 별도 변경하지 않았습니다.
 - Grafana admin 기본값은 `admin / 1234`입니다.
+- FleetDM은 현재 HTTP(`1337`)로 공개되어 있으므로 운영 환경에서는 리버스 프록시/TLS 적용을 권장합니다.
 - Grafana 로그인 실패는 대부분 기존 `grafana-data` 볼륨에 남아 있는 초기 비밀번호 때문입니다.
 - Wazuh 기본 예제 계정은 공식 예시 기본값(`SecretPassword`)을 사용 중입니다.
 - Wazuh 비밀번호를 변경하려면 `config/wazuh_indexer/internal_users.yml`의 해시와 관련 설정을 함께 수정해야 합니다.
@@ -217,10 +218,10 @@ Grafana Explore에서 Loki로 아래 쿼리를 실행합니다.
 
 ### 5) Wazuh / Fleet 접속 테스트
 
-- FleetDM: 서버에서 `http://127.0.0.1:1337`
+- FleetDM: 외부/브라우저에서 `http://mori.rmstudio.co.kr:1337`
 - Wazuh Dashboard: 서버에서 `https://127.0.0.1:8443`
 
-현재 두 서비스는 외부 공개하지 않고 내부 운영용으로 유지합니다.
+FleetDM은 외부 공개 상태이며, Wazuh Dashboard만 내부 운영용으로 유지합니다.
 
 FleetDM 테스트 결과를 Grafana에서 보려면, Fleet에 단말을 등록하고 live query 또는 policy/query pack이 실제로 실행되어
 `/logs/osqueryd.status.log`, `/logs/osqueryd.results.log`에 로그가 쌓여야 합니다.

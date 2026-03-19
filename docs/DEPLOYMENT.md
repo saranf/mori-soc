@@ -5,9 +5,9 @@
 - 메인 URL: `http://mori.rmstudio.co.kr:37854`
 - 메인 포털: `http://mori.rmstudio.co.kr:37854`
 - Grafana: `http://mori.rmstudio.co.kr:13000`
+- FleetDM: `http://mori.rmstudio.co.kr:1337`
 - 공개 관리 UI: `http://mori.rmstudio.co.kr:18081` (`Zabbix Web`)
 - 내부/로컬 관리 포트
-- `127.0.0.1:1337` → FleetDM
   - `127.0.0.1:8443` → Wazuh Dashboard
 
 ### 2. 서버 사전 준비
@@ -142,6 +142,9 @@ docker compose --profile scanner run --rm trivy
 
 현재 구성은 Fleet가 아래 파일에 osquery 로그를 기록하고,
 Fluent Bit가 이를 Loki로 전송한 뒤 Grafana starter dashboard에서 조회하는 방식입니다.
+
+Fleet UI는 외부에서 `http://mori.rmstudio.co.kr:1337` 로 접속할 수 있으며,
+단말 등록은 `Hosts -> Add hosts -> macOS` 순서로 진행합니다.
 
 - Fleet status: `/logs/osqueryd.status.log`
 - Fleet results: `/logs/osqueryd.results.log`

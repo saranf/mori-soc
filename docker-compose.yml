@@ -167,7 +167,7 @@ services:
       FLEET_VULNERABILITIES_DATABASES_PATH: /vulndb
       FLEET_VULNERABILITIES_PERIODICITY: 1h
     ports:
-      - "127.0.0.1:${FLEET_PORT:-1337}:1337"
+      - "${FLEET_PORT:-1337}:1337"
     volumes:
       - fleet-data:/fleet
       - fleet-logs:/logs
