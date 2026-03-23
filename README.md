@@ -26,6 +26,9 @@
 - 초기에는 **non-agent core**, 이후 조사 보조용 **limited agent**를 제한적으로 추가
 
 상세 설계와 단계별 구현 계획은 `docs/SECURITY_DATA_QUERY_PLATFORM.md`를 참고하세요.
+Phase 1 입력 소스/스키마/질의 초안은 `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md`에 정리합니다.
+Phase 1 논리 테이블 설계 초안은 `docs/PHASE1_LOGICAL_SCHEMA.md`에 정리합니다.
+Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리합니다.
 
 ## 참고 문서
 
@@ -33,6 +36,9 @@
 - `docs/SECURITY_CONTROL_MAPPING.md`: 보안 통제(Security Controls) 매핑 문서
 - `docs/IMPLEMENTATION_ROADMAP.md`: 기능 정의서 기준 구현 로드맵
 - `docs/SECURITY_DATA_QUERY_PLATFORM.md`: 데이터 중심 보안 질의 플랫폼 설계 및 단계별 구현 계획
+- `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md`: Phase 1 입력 소스 명세, 공통 스키마 초안, 1차 질의 카탈로그
+- `docs/PHASE1_LOGICAL_SCHEMA.md`: Phase 1 논리 스키마, 테이블 관계, 인덱스 초안
+- `schema/001_phase1_initial.sql`: Phase 1 Postgres 초기 DDL 초안
 - `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`: PC/단말 Zabbix Agent Active 등록 가이드
 - `docs/TRIVY_USAGE.md`: Trivy 파일시스템/이미지 스캔 가이드
 - `docs/DEPLOYMENT.md`: 서버 배포/운영/트러블슈팅 가이드
@@ -90,6 +96,11 @@
 - `generate-indexer-certs.yml`: Wazuh 인증서 생성용 compose 파일
 - `docs/SECURITY_CONTROL_MAPPING.md`: 보안 통제 매핑 문서
 - `docs/SECURITY_DATA_QUERY_PLATFORM.md`: 데이터 중심 보안 질의 플랫폼 설계 문서
+- `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md`: Phase 1 입력 소스/스키마/질의 명세 문서
+- `docs/PHASE1_LOGICAL_SCHEMA.md`: Phase 1 논리 테이블/관계 설계 문서
+- `schema/001_phase1_initial.sql`: Phase 1 초기 SQL 스키마 파일
+- `src/mori_soc/*`: Phase 1 Python 구현 골격(모델, collector 계약, API 계약, 질의 카탈로그)
+- `tests/*`: Phase 1 collector / query service / ingestion 단위 테스트
 - `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`: Zabbix Agent 온보딩 문서
 - `docs/TRIVY_USAGE.md`: Trivy 활용 가이드
 - `docs/FLEET_MACBOOK_ENROLLMENT_AND_TEST.md`: Fleet macOS 등록/검증/대시보드 확인 문서
@@ -249,6 +260,36 @@ Grafana Explore에서 Loki로 아래 쿼리를 확인합니다.
 
 - Fleet status 로그: `{job="fleetdm", log_type="status"}`
 - Fleet result 로그: `{job="fleetdm", log_type="result"}`
+
+## 12. 집에서 이어서 작업할 때 사용할 프롬프트
+
+다른 장소에서 이 저장소 작업을 다시 이어갈 때는,
+현재 목표와 읽어야 할 파일, 그리고 바로 다음 작업 범위를 한 번에 적어주면 가장 빠르게 이어집니다.
+
+### 짧은 버전
+
+- `이 저장소는 MORI SOC-lite이고 지금은 Security Data Query Platform Phase 1 구현 중이야.`
+- `README, docs/SECURITY_DATA_QUERY_PLATFORM.md, docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md, docs/PHASE1_LOGICAL_SCHEMA.md를 먼저 읽고 현재 상태를 요약해줘.`
+- `그 다음 src/mori_soc와 tests를 보고 마지막 구현 다음 단계부터 코드와 테스트까지 이어서 진행해줘.`
+
+### 추천 시작 프롬프트
+
+- `이 저장소는 MORI SOC-lite이며, 현재 목표는 FleetDM/Wazuh/Zabbix/host log를 수집·정규화해서 자연어로 조회할 수 있는 Security Data Query Platform을 만드는 것이다. 지금은 Phase 1(Data Collection/Normalization Core) 구현 중이다. 먼저 README, docs/SECURITY_DATA_QUERY_PLATFORM.md, docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md, docs/PHASE1_LOGICAL_SCHEMA.md, schema/001_phase1_initial.sql, src/mori_soc, tests를 읽고 현재 구현 상태를 요약해줘. 그 다음 아직 구현되지 않은 다음 단계 하나를 제안하고 바로 구현과 테스트까지 진행해줘.`
+
+### 같이 적으면 좋은 추가 정보
+
+- 이번에 하고 싶은 범위
+  - 예: `Fleet collector 고도화`, `repository 추가`, `Wazuh collector 시작`
+- 이번 턴 목표
+  - 예: `코드 작성 + unit test 통과까지`
+- 실행 허용 범위
+  - 예: `safe한 unit test는 바로 실행해도 됨`
+
+### 예시
+
+- `Phase 1 계속하자. 이번에는 src/mori_soc 기준으로 Wazuh alert collector stub와 테스트를 추가해줘. 변경 후 unit test까지 실행해줘.`
+
+이렇게 시작하면 이전 대화가 길더라도 저장소 상태 기준으로 맥락을 빠르게 복원할 수 있습니다.
 
 Starter dashboard에도 아래 패널이 표시됩니다.
 

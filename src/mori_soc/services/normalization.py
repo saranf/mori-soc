@@ -1,0 +1,113 @@
+from __future__ import annotations
+
+import hashlib
+from dataclasses import dataclass, field
+
+from mori_soc.collectors.base import NormalizedEnvelope
+from mori_soc.models import Host, HostAlias, HostObservation, QueryResult
+
+
+@dataclass(slots=True)
+class EnvelopeEntityMapper:
+    alias_map: dict[str, str] = field(default_factory=dict)
+
+    def register_alias(self, alias: str, host_id: str) -> None:
+        self.alias_map[alias] = host_id
+
+    def map_envelope(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
+        if envelope.entity_type == "host_observation":
+            return self._map_host_observation(envelope)
+        if envelope.entity_type == "query_result":
+            return self._map_query_result(envelope)
+        raise ValueError(f"Unsupported envelope entity_type: {envelope.entity_type}")
+
+    def _map_host_observation(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
+        normalized = envelope.normalized
+        alias = self._string_value(normalized.get("host_id"))
+        host_id = self._resolve_host_id(alias, fallback=f"host-{envelope.entity_id}")
+        hostname = alias or host_id
+        records: list[object] = [
+            Host(
+                host_id=host_id,
+                hostname=hostname,
+                status="online",
+                first_seen_at=envelope.observed_at,
+                last_seen_at=envelope.observed_at,
+            )
+        ]
+        if alias:
+            records.append(self._build_alias(host_id, alias, envelope.source, "source_alias", envelope.observed_at))
+        records.append(
+            HostObservation(
+                observation_id=envelope.entity_id,
+                source=envelope.source,
+                host_id=host_id,
+                observation_type=self._string_value(normalized.get("observation_type")) or "status",
+                metric_name=self._string_value(normalized.get("metric_name")) or "unknown_metric",
+                observed_at=envelope.observed_at,
+                metric_value=self._string_value(normalized.get("metric_value")),
+                severity=self._string_value(normalized.get("severity")),
+                raw_ref=envelope.raw_ref,
+                raw_payload=envelope.raw_payload,
+            )
+        )
+        return tuple(records)
+
+    def _map_query_result(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
+        normalized = envelope.normalized
+        alias = self._string_value(normalized.get("host_id"))
+        host_id = self._resolve_host_id(alias, fallback=f"host-{envelope.entity_id}")
+        result_json = normalized.get("result_json") if isinstance(normalized.get("result_json"), dict) else {}
+        hostname = self._string_value(result_json.get("hostname")) or alias
+        platform = self._string_value(result_json.get("platform"))
+        records: list[object] = []
+        if hostname:
+            records.append(
+                Host(
+                    host_id=host_id,
+                    hostname=hostname,
+                    platform=platform,
+                    status="online",
+                    first_seen_at=envelope.observed_at,
+                    last_seen_at=envelope.observed_at,
+                )
+            )
+        if alias:
+            records.append(self._build_alias(host_id, alias, envelope.source, "source_alias", envelope.observed_at))
+        records.append(
+            QueryResult(
+                query_result_id=envelope.entity_id,
+                host_id=host_id,
+                observed_at=envelope.observed_at,
+                result_json=result_json,
+                source=envelope.source,
+                query_name=self._string_value(normalized.get("query_name")),
+                query_text=self._string_value(normalized.get("query_text")),
+                raw_ref=envelope.raw_ref,
+            )
+        )
+        return tuple(records)
+
+    def _resolve_host_id(self, alias: str | None, fallback: str) -> str:
+        if alias and alias in self.alias_map:
+            return self.alias_map[alias]
+        if alias:
+            self.alias_map[alias] = alias
+            return alias
+        return fallback
+
+    def _build_alias(self, host_id: str, alias: str, source: str, alias_type: str, observed_at):
+        digest = hashlib.sha1(f"{host_id}|{source}|{alias_type}|{alias}".encode("utf-8")).hexdigest()
+        return HostAlias(
+            alias_id=f"alias-{digest[:16]}",
+            host_id=host_id,
+            source=source,
+            alias_type=alias_type,
+            alias_value=alias,
+            is_primary=True,
+            first_seen_at=observed_at,
+            last_seen_at=observed_at,
+        )
+
+    def _string_value(self, value: object) -> str | None:
+        return value if isinstance(value, str) and value else None

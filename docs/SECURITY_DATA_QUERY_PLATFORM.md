@@ -209,3 +209,5 @@
 4. 첫 번째 조회 기능부터 순차 구현
 
 현재 문서 기준으로 다음 실제 구현 대상은 **Phase 1 세부 설계**입니다.
+세부 초안은 `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md`에서 관리합니다.
+논리 테이블 설계 초안은 `docs/PHASE1_LOGICAL_SCHEMA.md`에서 이어집니다.
