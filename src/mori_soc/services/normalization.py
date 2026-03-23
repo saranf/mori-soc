@@ -4,7 +4,7 @@ import hashlib
 from dataclasses import dataclass, field
 
 from mori_soc.collectors.base import NormalizedEnvelope
-from mori_soc.models import Host, HostAlias, HostObservation, QueryResult
+from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, Vulnerability
 
 
 @dataclass(slots=True)
@@ -19,6 +19,10 @@ class EnvelopeEntityMapper:
             return self._map_host_observation(envelope)
         if envelope.entity_type == "query_result":
             return self._map_query_result(envelope)
+        if envelope.entity_type == "alert":
+            return self._map_alert(envelope)
+        if envelope.entity_type == "vulnerability":
+            return self._map_vulnerability(envelope)
         raise ValueError(f"Unsupported envelope entity_type: {envelope.entity_type}")
 
     def _map_host_observation(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
@@ -108,6 +112,86 @@ class EnvelopeEntityMapper:
             first_seen_at=observed_at,
             last_seen_at=observed_at,
         )
+
+    def _map_alert(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
+        normalized = envelope.normalized
+        alias = self._string_value(normalized.get("host_id"))
+        host_id: str | None = None
+        records: list[object] = []
+
+        if alias:
+            host_id = self._resolve_host_id(alias, fallback=alias)
+            hostname = self._string_value(normalized.get("hostname")) or alias
+            primary_ip = self._string_value(normalized.get("primary_ip"))
+            records.append(
+                Host(
+                    host_id=host_id,
+                    hostname=hostname,
+                    primary_ip=primary_ip,
+                    status="online",
+                    first_seen_at=envelope.observed_at,
+                    last_seen_at=envelope.observed_at,
+                )
+            )
+            records.append(
+                self._build_alias(host_id, alias, envelope.source, "source_alias", envelope.observed_at)
+            )
+
+        records.append(
+            Alert(
+                alert_id=envelope.entity_id,
+                source=envelope.source,  # type: ignore[arg-type]
+                host_id=host_id,
+                source_event_id=self._string_value(normalized.get("source_event_id")),
+                severity=self._string_value(normalized.get("severity")) or "info",  # type: ignore[arg-type]
+                original_severity=self._string_value(normalized.get("original_severity")),
+                rule_name=self._string_value(normalized.get("rule_name")),
+                rule_id=self._string_value(normalized.get("rule_id")),
+                message=self._string_value(normalized.get("message")) or "alert",
+                observed_at=envelope.observed_at,
+                raw_ref=envelope.raw_ref,
+                raw_payload=envelope.raw_payload,
+            )
+        )
+        return tuple(records)
+
+    def _map_vulnerability(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
+        normalized = envelope.normalized
+        alias = self._string_value(normalized.get("host_id"))
+        host_id = self._resolve_host_id(alias, fallback=f"host-{envelope.entity_id}")
+        records: list[object] = []
+
+        if alias:
+            hostname = self._string_value(normalized.get("hostname")) or alias
+            records.append(
+                Host(
+                    host_id=host_id,
+                    hostname=hostname,
+                    status="online",
+                    first_seen_at=envelope.observed_at,
+                    last_seen_at=envelope.observed_at,
+                )
+            )
+            records.append(
+                self._build_alias(host_id, alias, envelope.source, "source_alias", envelope.observed_at)
+            )
+
+        records.append(
+            Vulnerability(
+                vuln_id=envelope.entity_id,
+                host_id=host_id,
+                source="fleet",
+                cve=self._string_value(normalized.get("cve")),
+                severity=self._string_value(normalized.get("severity")) or "info",  # type: ignore[arg-type]
+                package_name=self._string_value(normalized.get("package_name")),
+                installed_version=self._string_value(normalized.get("installed_version")),
+                fixed_version=self._string_value(normalized.get("fixed_version")),
+                detected_at=envelope.observed_at,
+                raw_ref=envelope.raw_ref,
+                raw_payload=envelope.raw_payload,
+            )
+        )
+        return tuple(records)
 
     def _string_value(self, value: object) -> str | None:
         return value if isinstance(value, str) and value else None

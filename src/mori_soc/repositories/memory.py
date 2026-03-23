@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import TYPE_CHECKING
 
 from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, Vulnerability
 
 from .base import BaseRepository, RepositorySnapshot
+
+if TYPE_CHECKING:
+    from mori_soc.services.risk_score import RiskScoreCalculator
 
 
 class InMemoryRepository(BaseRepository):
@@ -47,6 +51,24 @@ class InMemoryRepository(BaseRepository):
             observations=list(self._observations.values()),
         )
 
+    def apply_risk_scores(self, scores: dict[str, int]) -> None:
+        """호스트별 위험 점수를 직접 갱신한다.
+
+        RiskScoreCalculator.recalculate_hosts() 결과를 적용하거나
+        scores dict를 직접 전달해서 host.risk_score를 업데이트한다.
+        """
+        for host_id, score in scores.items():
+            if host_id in self._hosts:
+                self._hosts[host_id] = replace(self._hosts[host_id], risk_score=score)
+
+    def recalculate_risk_scores(self, calculator: RiskScoreCalculator) -> dict[str, int]:
+        """RiskScoreCalculator를 사용해 모든 호스트 위험 점수를 재계산하고 저장한다."""
+        snapshot = self.snapshot()
+        updated = calculator.recalculate_hosts(snapshot.hosts, snapshot.alerts, snapshot.vulnerabilities)
+        scores = {h.host_id: h.risk_score for h in updated}
+        self.apply_risk_scores(scores)
+        return scores
+
     def to_query_store(self):
         from mori_soc.services.query_service import InMemoryQueryStore
 
@@ -57,6 +79,7 @@ class InMemoryRepository(BaseRepository):
             vulnerabilities=snapshot.vulnerabilities,
             query_results=snapshot.query_results,
             observations=snapshot.observations,
+            host_aliases=snapshot.host_aliases,
         )
 
     def _save_host(self, incoming: Host) -> None:

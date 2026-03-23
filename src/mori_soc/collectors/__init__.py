@@ -2,5 +2,14 @@
 
 from .base import BaseCollector, CollectorRecord, NormalizedEnvelope
 from .fleet_logs import FleetLogCollector
+from .wazuh_alerts import WazuhAlertCollector
+from .zabbix_events import ZabbixEventCollector
 
-__all__ = ["BaseCollector", "CollectorRecord", "NormalizedEnvelope", "FleetLogCollector"]
+__all__ = [
+    "BaseCollector",
+    "CollectorRecord",
+    "NormalizedEnvelope",
+    "FleetLogCollector",
+    "WazuhAlertCollector",
+    "ZabbixEventCollector",
+]

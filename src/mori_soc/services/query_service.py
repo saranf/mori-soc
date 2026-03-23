@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from mori_soc.api.contracts import EvidenceRef, QueryRequest, QueryResponse
-from mori_soc.models import Alert, Host, HostObservation, QueryResult, Vulnerability
+from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, Vulnerability
 
 from .query_catalog import get_template_query
 
@@ -17,6 +17,7 @@ class InMemoryQueryStore:
     vulnerabilities: list[Vulnerability] = field(default_factory=list)
     query_results: list[QueryResult] = field(default_factory=list)
     observations: list[HostObservation] = field(default_factory=list)
+    host_aliases: list[HostAlias] = field(default_factory=list)
 
 
 class QueryService:
@@ -43,6 +44,20 @@ class QueryService:
             return self._host_timeline(request, template.query_id)
         if template.intent == "fleet_checkin_gap":
             return self._fleet_checkin_gap(request, template.query_id)
+        if template.intent == "host_wazuh_alerts":
+            return self._host_wazuh_alerts(request, template.query_id)
+        if template.intent == "host_fleet_queries":
+            return self._host_fleet_queries(request, template.query_id)
+        if template.intent == "new_high_vulns":
+            return self._new_high_vulns(request, template.query_id)
+        if template.intent == "risky_hosts":
+            return self._risky_hosts(request, template.query_id)
+        if template.intent == "unmapped_assets":
+            return self._unmapped_assets(request, template.query_id)
+        if template.intent == "login_failure_spike":
+            return self._login_failure_spike(request, template.query_id)
+        if template.intent == "collection_errors":
+            return self._collection_errors(request, template.query_id)
 
         return QueryResponse(
             summary=f"Intent recognized but not implemented: {template.intent}",
@@ -159,6 +174,197 @@ class QueryService:
             filters=self._filters(request),
             evidence=evidence,
             meta={"query_id": query_id, "count": len(stale_hosts)},
+        )
+
+    def _host_wazuh_alerts(self, request: QueryRequest, query_id: str) -> QueryResponse:
+        host_id = self._resolve_host_id(request)
+        since = self._since(request.scope.time_range)
+        if host_id is None:
+            return QueryResponse(
+                summary="host_wazuh_alerts 질의에는 host_id 또는 hostname이 필요합니다.",
+                filters=self._filters(request),
+                evidence=[],
+                meta={"query_id": query_id, "count": 0},
+            )
+        alerts = [
+            a for a in self.store.alerts
+            if a.host_id == host_id and a.source == "wazuh" and a.observed_at >= since
+        ]
+        alerts = sorted(alerts, key=lambda a: a.observed_at, reverse=True)
+        evidence = [
+            EvidenceRef(source=a.source, record_id=a.alert_id, raw_ref=a.raw_ref, summary=a.message)
+            for a in alerts[:10]
+        ]
+        return QueryResponse(
+            summary=f"호스트 {host_id}의 최근 {request.scope.time_range} Wazuh 경보는 {len(alerts)}건입니다.",
+            filters=self._filters(request),
+            evidence=evidence,
+            meta={"query_id": query_id, "count": len(alerts), "host_id": host_id},
+        )
+
+    def _host_fleet_queries(self, request: QueryRequest, query_id: str) -> QueryResponse:
+        host_id = self._resolve_host_id(request)
+        since = self._since(request.scope.time_range)
+        if host_id is None:
+            return QueryResponse(
+                summary="host_fleet_queries 질의에는 host_id 또는 hostname이 필요합니다.",
+                filters=self._filters(request),
+                evidence=[],
+                meta={"query_id": query_id, "count": 0},
+            )
+        results = [
+            r for r in self.store.query_results
+            if r.host_id == host_id and r.source == "fleet" and r.observed_at >= since
+        ]
+        results = sorted(results, key=lambda r: r.observed_at, reverse=True)
+        evidence = [
+            EvidenceRef(source=r.source, record_id=r.query_result_id, raw_ref=r.raw_ref, summary=r.query_name or "fleet_query")
+            for r in results[:10]
+        ]
+        return QueryResponse(
+            summary=f"호스트 {host_id}의 최근 {request.scope.time_range} Fleet query 결과는 {len(results)}건입니다.",
+            filters=self._filters(request),
+            evidence=evidence,
+            meta={"query_id": query_id, "count": len(results), "host_id": host_id},
+        )
+
+    def _new_high_vulns(self, request: QueryRequest, query_id: str) -> QueryResponse:
+        since = self._since(request.scope.time_range)
+        high_severities = {"critical", "high"}
+        vulns = [
+            v for v in self.store.vulnerabilities
+            if v.severity in high_severities and v.detected_at >= since
+        ]
+        vulns = sorted(vulns, key=lambda v: v.detected_at, reverse=True)
+        hostnames = {h.host_id: h.hostname for h in self.store.hosts}
+        evidence = [
+            EvidenceRef(
+                source=v.source,
+                record_id=v.vuln_id,
+                raw_ref=v.raw_ref,
+                summary=f"{hostnames.get(v.host_id, v.host_id)} / {v.cve or 'no-cve'} ({v.severity})",
+            )
+            for v in vulns[:10]
+        ]
+        return QueryResponse(
+            summary=f"최근 {request.scope.time_range} 새로 탐지된 high 이상 취약점은 {len(vulns)}건입니다.",
+            filters=self._filters(request),
+            evidence=evidence,
+            meta={"query_id": query_id, "count": len(vulns)},
+        )
+
+    def _risky_hosts(self, request: QueryRequest, query_id: str) -> QueryResponse:
+        since = self._since(request.scope.time_range)
+        alert_counts: dict[str, int] = defaultdict(int)
+        for alert in self.store.alerts:
+            if alert.observed_at >= since and alert.severity in {"critical", "high"} and alert.host_id:
+                alert_counts[alert.host_id] += 1
+        unstable_statuses = {"offline", "unknown"}
+        risky = [
+            h for h in self.store.hosts
+            if alert_counts[h.host_id] > 0 or h.status in unstable_statuses
+        ]
+        risky = sorted(risky, key=lambda h: (alert_counts[h.host_id], h.risk_score), reverse=True)
+        evidence = [
+            EvidenceRef(
+                source="hosts",
+                record_id=h.host_id,
+                raw_ref=None,
+                summary=f"{h.hostname} (alerts:{alert_counts[h.host_id]}, status:{h.status}, risk:{h.risk_score})",
+            )
+            for h in risky[:10]
+        ]
+        return QueryResponse(
+            summary=f"경보가 많거나 상태가 불안정한 호스트는 {len(risky)}대입니다.",
+            filters=self._filters(request),
+            evidence=evidence,
+            meta={"query_id": query_id, "count": len(risky)},
+        )
+
+    def _unmapped_assets(self, request: QueryRequest, query_id: str) -> QueryResponse:
+        sources_per_host: dict[str, set[str]] = defaultdict(set)
+        for alias in self.store.host_aliases:
+            sources_per_host[alias.host_id].add(alias.source)
+        target_sources = {"fleet", "wazuh", "zabbix"}
+        unmapped = [
+            h for h in self.store.hosts
+            if not target_sources.issubset(sources_per_host[h.host_id])
+        ]
+        evidence = [
+            EvidenceRef(
+                source="hosts",
+                record_id=h.host_id,
+                raw_ref=None,
+                summary=f"{h.hostname} (매핑된 소스: {', '.join(sorted(sources_per_host[h.host_id])) or '없음'})",
+            )
+            for h in unmapped[:10]
+        ]
+        return QueryResponse(
+            summary=f"Fleet/Wazuh/Zabbix 중 하나라도 매핑되지 않은 자산은 {len(unmapped)}대입니다.",
+            filters=self._filters(request),
+            evidence=evidence,
+            meta={"query_id": query_id, "count": len(unmapped)},
+        )
+
+    def _login_failure_spike(self, request: QueryRequest, query_id: str) -> QueryResponse:
+        since = self._since(request.scope.time_range)
+        login_keywords = {"login", "authentication", "auth", "logon", "pam", "sshd", "failed"}
+        failure_alerts = [
+            a for a in self.store.alerts
+            if a.observed_at >= since
+            and any(kw in (a.rule_name or "").lower() or kw in a.message.lower() for kw in login_keywords)
+        ]
+        host_counts: dict[str, int] = defaultdict(int)
+        for a in failure_alerts:
+            if a.host_id:
+                host_counts[a.host_id] += 1
+        ranked = sorted(host_counts.items(), key=lambda x: x[1], reverse=True)
+        hostnames = {h.host_id: h.hostname for h in self.store.hosts}
+        evidence = [
+            EvidenceRef(source="alerts", record_id=host_id, raw_ref=None,
+                        summary=f"{hostnames.get(host_id, host_id)}: {count}건")
+            for host_id, count in ranked[:10]
+        ]
+        top = ", ".join(f"{hostnames.get(hid, hid)}({cnt})" for hid, cnt in ranked[:3]) or "없음"
+        return QueryResponse(
+            summary=f"최근 {request.scope.time_range} 로그인 실패가 많은 호스트는 {top} 입니다.",
+            filters=self._filters(request),
+            evidence=evidence,
+            meta={"query_id": query_id, "count": len(ranked)},
+        )
+
+    def _collection_errors(self, request: QueryRequest, query_id: str) -> QueryResponse:
+        since = self._since(request.scope.time_range)
+        error_keywords = {"error", "fail", "timeout", "unreachable", "unavailable"}
+        error_obs = [
+            o for o in self.store.observations
+            if o.observed_at >= since
+            and any(kw in (o.observation_type or "").lower() or kw in (o.metric_name or "").lower() for kw in error_keywords)
+        ]
+        error_alerts = [
+            a for a in self.store.alerts
+            if a.observed_at >= since
+            and any(kw in (a.rule_name or "").lower() for kw in error_keywords)
+        ]
+        host_counts: dict[str, int] = defaultdict(int)
+        for o in error_obs:
+            host_counts[o.host_id] += 1
+        for a in error_alerts:
+            if a.host_id:
+                host_counts[a.host_id] += 1
+        ranked = sorted(host_counts.items(), key=lambda x: x[1], reverse=True)
+        hostnames = {h.host_id: h.hostname for h in self.store.hosts}
+        evidence = [
+            EvidenceRef(source="observations", record_id=host_id, raw_ref=None,
+                        summary=f"{hostnames.get(host_id, host_id)}: {count}건")
+            for host_id, count in ranked[:10]
+        ]
+        top = ", ".join(f"{hostnames.get(hid, hid)}({cnt})" for hid, cnt in ranked[:3]) or "없음"
+        return QueryResponse(
+            summary=f"최근 {request.scope.time_range} 수집 오류가 반복된 호스트는 {top} 입니다.",
+            filters=self._filters(request),
+            evidence=evidence,
+            meta={"query_id": query_id, "count": len(ranked)},
         )
 
     def _since(self, time_range: str) -> datetime:

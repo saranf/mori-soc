@@ -30,6 +30,69 @@ Phase 1 입력 소스/스키마/질의 초안은 `docs/PHASE1_INPUT_SOURCES_AND_
 Phase 1 논리 테이블 설계 초안은 `docs/PHASE1_LOGICAL_SCHEMA.md`에 정리합니다.
 Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리합니다.
 
+---
+
+## Security Data Query Platform — 단계별 진행 현황
+
+### ✅ Phase 1: 데이터 수집/정규화 코어 — **완료**
+
+`src/mori_soc/` 아래에 Python 라이브러리로 구현되었습니다.
+현재는 **인메모리 레이어**로 동작하며, 실제 DB/API 연결 없이 로직 검증이 가능합니다.
+
+| 구성 요소 | 모듈 | 내용 |
+|---|---|---|
+| **데이터 모델** | `models/entities.py` | Host, HostAlias, Alert, Vulnerability, HostObservation, QueryResult |
+| **Fleet 수집기** | `collectors/fleet_logs.py` | osquery status/result 로그 파싱, NormalizedEnvelope 생성 |
+| **Wazuh 수집기** | `collectors/wazuh_alerts.py` | Wazuh 4.x alert JSON 파싱, level → severity 변환 |
+| **Zabbix 수집기** | `collectors/zabbix_events.py` | trigger 이벤트 → alert, item 값 → host_observation |
+| **정규화/엔터티 매핑** | `services/normalization.py` | EnvelopeEntityMapper — host 자동 생성, HostAlias 등록 |
+| **수집 인제스천** | `services/ingestion.py` | CollectorIngestionService — 수집기 → 저장소 흐름 |
+| **Risk Score 계산기** | `services/risk_score.py` | alert/vuln 심각도 가중치 기반 점수 산출 |
+| **질의 카탈로그** | `services/query_catalog.py` | 12개 질의 인텐트 정의 |
+| **질의 서비스** | `services/query_service.py` | 12개 인텐트 핸들러, 근거(evidence) 기반 응답 |
+| **논리 뷰 집계** | `services/views.py` | latest_host_status_view, host_risk_summary_view, host_timeline_view |
+| **인메모리 저장소** | `repositories/memory.py` | InMemoryRepository, InMemoryQueryStore |
+| **API 계약** | `api/contracts.py` | QueryRequest, QueryResponse, EvidenceRef, QueryScope |
+| **단위 테스트** | `tests/test_query_service.py` | 20+ 테스트 케이스 (질의 1~12 + 뷰 3개) |
+
+**12개 질의 인텐트:**
+
+| # | intent | 설명 |
+|---|---|---|
+| 1 | `alert_summary` | 지난 N시간 high/critical 경보 요약 |
+| 2 | `offline_hosts` | 현재 오프라인/unknown 호스트 |
+| 3 | `fleet_checkin_gap` | Fleet 체크인 누락 호스트 |
+| 4 | `top_vulnerable_hosts` | 취약점 상위 호스트 Top N |
+| 5 | `host_timeline` | 특정 호스트 타임라인 (alert+query+obs 병합) |
+| 6 | `host_wazuh_alerts` | 특정 호스트 Wazuh 경보만 조회 |
+| 7 | `host_fleet_queries` | 특정 호스트 Fleet 쿼리 결과 조회 |
+| 8 | `new_high_vulns` | 최근 신규 high+ 취약점 |
+| 9 | `risky_hosts` | 경보 多 + offline/unknown 호스트 |
+| 10 | `unmapped_assets` | Fleet/Wazuh/Zabbix 미매핑 자산 |
+| 11 | `login_failure_spike` | 로그인 실패 급증 호스트 |
+| 12 | `collection_errors` | 수집 오류 반복 호스트 |
+
+### 🔲 Phase 2: 관제 질의 엔진 — **미착수**
+
+다음에 구현해야 할 내용입니다.
+
+| 항목 | 내용 |
+|---|---|
+| **FastAPI HTTP 서버** | `POST /query` 엔드포인트, QueryRequest → QueryResponse |
+| **PostgresRepository** | InMemoryRepository를 Postgres로 교체, `schema/001_phase1_initial.sql` 적용 |
+| **자연어 → Intent 변환** | 입력 문장을 intent + filter로 파싱하는 경량 변환기 |
+| **Dockerfile** | `mori-soc` Python 서비스용 컨테이너 이미지 |
+| **docker-compose.yml 추가** | `mori-api` 서비스 + 전용 `soc-postgres` DB 항목 |
+| **실시간 수집 연동** | Wazuh/Fleet/Zabbix API 폴링 또는 webhook 수신 |
+
+### 🔲 Phase 3: 제한형 조사 에이전트 — **미착수**
+
+- host/user/ip 기준 다단계 pivot
+- 여러 소스 cross-check
+- 조사형 질문 지원 + 다음 확인 포인트 추천
+
+---
+
 ## 참고 문서
 
 - `docs/FUNCTIONAL_SPEC.md`: 기능 정의서 원문
@@ -99,8 +162,19 @@ Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리�
 - `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md`: Phase 1 입력 소스/스키마/질의 명세 문서
 - `docs/PHASE1_LOGICAL_SCHEMA.md`: Phase 1 논리 테이블/관계 설계 문서
 - `schema/001_phase1_initial.sql`: Phase 1 초기 SQL 스키마 파일
-- `src/mori_soc/*`: Phase 1 Python 구현 골격(모델, collector 계약, API 계약, 질의 카탈로그)
-- `tests/*`: Phase 1 collector / query service / ingestion 단위 테스트
+- `src/mori_soc/models/entities.py`: Host, HostAlias, Alert, Vulnerability, HostObservation, QueryResult 엔터티
+- `src/mori_soc/collectors/fleet_logs.py`: Fleet osquery log 수집기
+- `src/mori_soc/collectors/wazuh_alerts.py`: Wazuh 4.x alert 수집기
+- `src/mori_soc/collectors/zabbix_events.py`: Zabbix trigger/item 수집기
+- `src/mori_soc/services/normalization.py`: 수집 엔벨로프 → 엔터티 매핑 (EnvelopeEntityMapper)
+- `src/mori_soc/services/ingestion.py`: 수집기 인제스천 서비스
+- `src/mori_soc/services/risk_score.py`: Risk Score 계산기 (alert/vuln 가중치 기반)
+- `src/mori_soc/services/query_catalog.py`: Phase 1 질의 카탈로그 (12개 인텐트)
+- `src/mori_soc/services/query_service.py`: 인텐트 핸들러 + 근거(evidence) 기반 응답
+- `src/mori_soc/services/views.py`: 논리 뷰 집계 (latest_host_status, host_risk_summary, host_timeline)
+- `src/mori_soc/repositories/memory.py`: InMemoryRepository / InMemoryQueryStore
+- `src/mori_soc/api/contracts.py`: QueryRequest, QueryResponse, EvidenceRef, QueryScope
+- `tests/test_query_service.py`: 20+ 단위 테스트 (질의 1~12 + 뷰 3개)
 - `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`: Zabbix Agent 온보딩 문서
 - `docs/TRIVY_USAGE.md`: Trivy 활용 가이드
 - `docs/FLEET_MACBOOK_ENROLLMENT_AND_TEST.md`: Fleet macOS 등록/검증/대시보드 확인 문서
@@ -261,35 +335,41 @@ Grafana Explore에서 Loki로 아래 쿼리를 확인합니다.
 - Fleet status 로그: `{job="fleetdm", log_type="status"}`
 - Fleet result 로그: `{job="fleetdm", log_type="result"}`
 
-## 12. 집에서 이어서 작업할 때 사용할 프롬프트
+## 12. 이어서 작업할 때 사용할 프롬프트
 
 다른 장소에서 이 저장소 작업을 다시 이어갈 때는,
 현재 목표와 읽어야 할 파일, 그리고 바로 다음 작업 범위를 한 번에 적어주면 가장 빠르게 이어집니다.
 
+### 현재 상태 (Phase 1 완료 / Phase 2 미착수)
+
+- Phase 1 (데이터 수집/정규화 코어) — **완료**
+  - `src/mori_soc/` : 수집기, 정규화, 질의 서비스, 뷰 집계, 인메모리 저장소
+  - `tests/test_query_service.py` : 20+ 단위 테스트
+- Phase 2 (관제 질의 엔진) — **미착수**
+  - FastAPI HTTP 서버, PostgresRepository, Dockerfile, docker-compose 항목 추가 필요
+
+### Phase 2 시작 프롬프트 (추천)
+
+```
+이 저장소는 MORI SOC-lite이며, Security Data Query Platform을 단계별로 구현 중이다.
+README의 "Security Data Query Platform — 단계별 진행 현황" 섹션과
+docs/SECURITY_DATA_QUERY_PLATFORM.md, docs/PHASE1_LOGICAL_SCHEMA.md,
+schema/001_phase1_initial.sql, src/mori_soc/를 읽고 현재 상태를 확인해줘.
+Phase 1(데이터 수집/정규화 코어)은 완료되어 있다.
+Phase 2(관제 질의 엔진)를 시작해줘: FastAPI HTTP 서버 → PostgresRepository → Dockerfile → docker-compose 항목 순서로.
+```
+
 ### 짧은 버전
 
-- `이 저장소는 MORI SOC-lite이고 지금은 Security Data Query Platform Phase 1 구현 중이야.`
-- `README, docs/SECURITY_DATA_QUERY_PLATFORM.md, docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md, docs/PHASE1_LOGICAL_SCHEMA.md를 먼저 읽고 현재 상태를 요약해줘.`
-- `그 다음 src/mori_soc와 tests를 보고 마지막 구현 다음 단계부터 코드와 테스트까지 이어서 진행해줘.`
-
-### 추천 시작 프롬프트
-
-- `이 저장소는 MORI SOC-lite이며, 현재 목표는 FleetDM/Wazuh/Zabbix/host log를 수집·정규화해서 자연어로 조회할 수 있는 Security Data Query Platform을 만드는 것이다. 지금은 Phase 1(Data Collection/Normalization Core) 구현 중이다. 먼저 README, docs/SECURITY_DATA_QUERY_PLATFORM.md, docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md, docs/PHASE1_LOGICAL_SCHEMA.md, schema/001_phase1_initial.sql, src/mori_soc, tests를 읽고 현재 구현 상태를 요약해줘. 그 다음 아직 구현되지 않은 다음 단계 하나를 제안하고 바로 구현과 테스트까지 진행해줘.`
+```
+이 저장소 MORI SOC-lite에서 Phase 2 시작해줘.
+README 상단 현황 섹션, src/mori_soc, schema/001_phase1_initial.sql 읽고 바로 이어서.
+```
 
 ### 같이 적으면 좋은 추가 정보
 
-- 이번에 하고 싶은 범위
-  - 예: `Fleet collector 고도화`, `repository 추가`, `Wazuh collector 시작`
-- 이번 턴 목표
-  - 예: `코드 작성 + unit test 통과까지`
-- 실행 허용 범위
-  - 예: `safe한 unit test는 바로 실행해도 됨`
-
-### 예시
-
-- `Phase 1 계속하자. 이번에는 src/mori_soc 기준으로 Wazuh alert collector stub와 테스트를 추가해줘. 변경 후 unit test까지 실행해줘.`
-
-이렇게 시작하면 이전 대화가 길더라도 저장소 상태 기준으로 맥락을 빠르게 복원할 수 있습니다.
+- 이번에 하고 싶은 범위 (예: `FastAPI 서버만`, `Postgres 연결까지`, `Docker까지`)
+- 실행 허용 범위 (예: `unit test는 바로 실행해도 됨`)
 
 Starter dashboard에도 아래 패널이 표시됩니다.
 
@@ -327,15 +407,24 @@ Starter dashboard에도 아래 패널이 표시됩니다.
 - Trivy 실행 가능
 - Wazuh/Fleet 내부 포트 접속 가능
 
-## 12. 다음 작업 후보
+## 13. 다음 작업 후보
+
+### Security Data Query Platform (Phase 2)
+
+1. **FastAPI HTTP 서버** — `src/mori_soc/api/server.py` 생성, `POST /query` 엔드포인트
+2. **PostgresRepository** — `src/mori_soc/repositories/postgres.py`, `schema/001_phase1_initial.sql` 적용
+3. **Dockerfile** — `mori-soc` Python 서비스 컨테이너 이미지
+4. **docker-compose.yml** — `mori-api` + `soc-postgres` 서비스 항목 추가
+5. **자연어 → Intent 변환기** — 입력 문장을 intent + filter로 파싱하는 경량 규칙/LLM 기반 변환기
+
+### 인프라 운영
 
 - Grafana 대시보드/프로비저닝 고도화
-- Zabbix 템플릿/API 자동화 또는 통합 운영 UI 설계
 - HTTPS 리버스 프록시(Nginx/Caddy) 추가
 - Wazuh/Fleet 초기 운영 설정 보강
-- 실제 서버 기동 후 헬스체크 및 초기 로그인 검증
 
 ---
 
-이 저장소는 **초기 배포 스캐폴드와 자동화 기반**까지 정리된 상태이며,
-실서비스 운영 전에는 서버 리소스, 인증서, 초기 계정/비밀번호 정책에 맞춘 추가 보완이 필요합니다.
+이 저장소는 **초기 배포 스캐폴드 + Phase 1 데이터 처리 로직**까지 정리된 상태입니다.
+실서비스 배포를 위해서는 Phase 2(HTTP API + DB 연결 + Docker화)가 필요하며,
+그 전에는 서버 리소스, 인증서, 초기 계정/비밀번호 정책에 맞춘 추가 보완도 필요합니다.
