@@ -12,11 +12,27 @@
 - Visualization: Grafana
 - Vulnerability Scan: Trivy
 
+## 프로젝트 확장 방향
+
+이 저장소의 다음 목표는 단순 배포 스캐폴드를 넘어,
+**관제 운영자가 보안 데이터를 모으고, 묻고, 근거와 함께 답을 받는 Security Data Query Platform** 으로 확장하는 것입니다.
+
+핵심 방향은 아래와 같습니다.
+
+- FleetDM / Wazuh / Zabbix / 호스트 로그를 한 곳으로 수집
+- 호스트 / 사용자 / IP / 프로세스 / 경보 / 취약점을 공통 모델로 정규화
+- 자연어 질문을 구조화된 질의로 변환해 관제 데이터를 조회
+- 답변은 항상 로그/이벤트/자산 정보 등 **근거 기반**으로 반환
+- 초기에는 **non-agent core**, 이후 조사 보조용 **limited agent**를 제한적으로 추가
+
+상세 설계와 단계별 구현 계획은 `docs/SECURITY_DATA_QUERY_PLATFORM.md`를 참고하세요.
+
 ## 참고 문서
 
 - `docs/FUNCTIONAL_SPEC.md`: 기능 정의서 원문
 - `docs/SECURITY_CONTROL_MAPPING.md`: 보안 통제(Security Controls) 매핑 문서
 - `docs/IMPLEMENTATION_ROADMAP.md`: 기능 정의서 기준 구현 로드맵
+- `docs/SECURITY_DATA_QUERY_PLATFORM.md`: 데이터 중심 보안 질의 플랫폼 설계 및 단계별 구현 계획
 - `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`: PC/단말 Zabbix Agent Active 등록 가이드
 - `docs/TRIVY_USAGE.md`: Trivy 파일시스템/이미지 스캔 가이드
 - `docs/DEPLOYMENT.md`: 서버 배포/운영/트러블슈팅 가이드
@@ -73,6 +89,7 @@
 - `.env.example`: 배포용 환경변수 예시
 - `generate-indexer-certs.yml`: Wazuh 인증서 생성용 compose 파일
 - `docs/SECURITY_CONTROL_MAPPING.md`: 보안 통제 매핑 문서
+- `docs/SECURITY_DATA_QUERY_PLATFORM.md`: 데이터 중심 보안 질의 플랫폼 설계 문서
 - `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`: Zabbix Agent 온보딩 문서
 - `docs/TRIVY_USAGE.md`: Trivy 활용 가이드
 - `docs/FLEET_MACBOOK_ENROLLMENT_AND_TEST.md`: Fleet macOS 등록/검증/대시보드 확인 문서
