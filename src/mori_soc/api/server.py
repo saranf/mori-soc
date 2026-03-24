@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import base64
 import json
 import os
+from urllib.parse import quote as _url_quote
 from collections import Counter
 from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
@@ -371,6 +371,7 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     default_preferences_json = json.dumps(DEFAULT_USER_DASHBOARD_PREFERENCES, ensure_ascii=False)
     card_labels_json = json.dumps(USER_DASHBOARD_CARD_LABELS, ensure_ascii=False)
     section_labels_json = json.dumps(USER_DASHBOARD_SECTION_LABELS, ensure_ascii=False)
+    nlq_guide_examples_json = json.dumps(list(QUERY_GUIDE_EXAMPLES), ensure_ascii=False)
     html = """<!doctype html>
 <html lang=\"ko\">
 <head>
@@ -478,13 +479,13 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
         <section class=\"card\" id=\"nlq_section\">
           <h2>자연어 질의 (NLQ)</h2>
-          <div class=\"subtext\">자연스럽게 질문하거나 아래 예시 형식으로 입력하면 더 정확하게 해석합니다.</div>
+          <div class=\"subtext\">자연스럽게 질문하거나 아래 예시 형식으로 입력하면 더 정확하게 해석합니다. <a href=\"#\" id=\"nlq_guide_link\" style=\"color:#7dd3fc;\">질의 가이드 보기 ↗</a></div>
           <textarea id=\"nlq_textarea\" rows=\"3\" style=\"width:100%;box-sizing:border-box;background:#0b1220;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:10px;font-size:14px;resize:vertical;\" placeholder=\"예: 오프라인 호스트 보여줘 / 최근 24시간 wazuh high alert 요약\"></textarea>
           <div id=\"nlq_interpret_result\" style=\"margin:8px 0;color:#7dd3fc;font-size:13px;\"></div>
           <div style=\"display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;\">
             <button type=\"button\" id=\"nlq_interpret_btn\" style=\"padding:8px 16px;background:#0f172a;color:#cfe3ff;border:1px solid #334155;border-radius:999px;cursor:pointer;\">Interpret</button>
             <button type=\"button\" id=\"nlq_run_btn\" style=\"padding:8px 16px;background:#1d4ed8;color:#fff;border:none;border-radius:999px;cursor:pointer;\">Run Query</button>
-            <button type=\"button\" id=\"nlq_csv_btn\" style=\"padding:8px 16px;background:#0f172a;color:#cfe3ff;border:1px solid #334155;border-radius:999px;cursor:pointer;\" disabled>Download CSV</button>
+            <button type=\"button\" id=\"nlq_csv_btn\" style=\"display:none;padding:8px 16px;background:#0f172a;color:#cfe3ff;border:1px solid #334155;border-radius:999px;cursor:pointer;\">Download CSV</button>
           </div>
           <div id=\"nlq_result_area\" style=\"margin-top:12px;\"></div>
         </section>
@@ -515,10 +516,22 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     </div>
   </dialog>
 
+  <dialog id=\"nlq_guide_modal\">
+    <div class=\"guide-dialog\">
+      <div class=\"guide-dialog-head\">
+        <h3>질의 가이드</h3>
+        <form method=\"dialog\"><button type=\"submit\" style=\"padding:6px 16px;background:#0f172a;color:#cfe3ff;border:1px solid #334155;border-radius:999px;cursor:pointer;\">닫기</button></form>
+      </div>
+      <div class=\"guide-dialog-copy\">아래 예시를 클릭하면 입력창에 바로 채워집니다.</div>
+    </div>
+    <div class=\"dialog-body\" id=\"nlq_guide_list\" style=\"display:flex;flex-wrap:wrap;gap:8px;padding:16px;\"></div>
+  </dialog>
+
   <script>
     const defaultPreferences = __USER_DASHBOARD_PREFS_JSON__;
     const cardLabels = __CARD_LABELS_JSON__;
     const sectionLabels = __SECTION_LABELS_JSON__;
+    const nlqGuideExamples = __NLQ_GUIDE_EXAMPLES__;
     const overviewCardsEl = document.getElementById('overview_cards');
     const sourceCoverageEl = document.getElementById('source_coverage');
     const latestStatusEl = document.getElementById('latest_status');
@@ -529,6 +542,8 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const overviewModalTitleEl = document.getElementById('overview_modal_title');
     const overviewModalCopyEl = document.getElementById('overview_modal_copy');
     const overviewModalBodyEl = document.getElementById('overview_modal_body');
+    const nlqGuideModalEl = document.getElementById('nlq_guide_modal');
+    const nlqGuideListEl = document.getElementById('nlq_guide_list');
     let userPreferences = JSON.parse(JSON.stringify(defaultPreferences));
     let dashboardDetails = {};
 
@@ -756,6 +771,25 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       if (!modal.open) modal.showModal();
     }
 
+    // --- NLQ guide modal ---
+    function openNlqGuideModal() {
+      nlqGuideListEl.innerHTML = nlqGuideExamples.map((ex, idx) =>
+        `<button type=\"button\" class=\"nlq-guide-chip\" data-idx=\"${idx}\" style=\"padding:8px 14px;background:#0f172a;color:#cfe3ff;border:1px solid #334155;border-radius:999px;cursor:pointer;font-size:13px;\">${escapeHtml(ex)}</button>`
+      ).join('');
+      if (typeof nlqGuideModalEl.showModal === 'function') nlqGuideModalEl.showModal();
+      else nlqGuideModalEl.setAttribute('open', 'open');
+    }
+    nlqGuideListEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.nlq-guide-chip');
+      if (!btn) return;
+      const idx = Number(btn.dataset.idx);
+      nlqTextarea.value = nlqGuideExamples[idx] || '';
+      lastInterpretedPayload = null;
+      nlqInterpretResult.textContent = '';
+      if (nlqGuideModalEl.open) nlqGuideModalEl.close();
+    });
+    document.getElementById('nlq_guide_link').addEventListener('click', (e) => { e.preventDefault(); openNlqGuideModal(); });
+
     // --- NLQ section ---
     const nlqTextarea = document.getElementById('nlq_textarea');
     const nlqInterpretBtn = document.getElementById('nlq_interpret_btn');
@@ -775,7 +809,7 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         if (!res.ok) { nlqInterpretResult.textContent = `오류: ${data.detail || res.status}`; return; }
         lastInterpretedPayload = { intent: data.intent, scope: data.scope || {time_range:'24h'}, filters: data.filters || {} };
         nlqInterpretResult.textContent = `해석 결과: ${data.intent} (${data.recognized ? '인식됨' : '유사 매칭'})${data.warnings?.length ? ' ⚠ ' + data.warnings.join(', ') : ''}`;
-        nlqCsvBtn.disabled = false;
+        if (!data.recognized) { openNlqGuideModal(); }
       } catch (err) { nlqInterpretResult.textContent = `오류: ${err.message}`; }
     });
 
@@ -820,10 +854,10 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       if (!evidence.length) {
         nlqResultArea.textContent = '';
         showInfoModal('결과 없음', '조건에 맞는 데이터가 없습니다.');
-        nlqCsvBtn.disabled = true;
+        nlqCsvBtn.style.display = 'none';
         return;
       }
-      nlqCsvBtn.disabled = false;
+      nlqCsvBtn.style.display = '';
       nlqResultArea.innerHTML = `<pre style=\"background:#0b1220;border:1px solid #233046;border-radius:8px;padding:12px;overflow:auto;font-size:12px;color:#e5e7eb;max-height:320px;\">${escapeHtml(JSON.stringify(result, null, 2))}</pre>`;
     });
 
@@ -882,6 +916,7 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         .replace("__USER_DASHBOARD_PREFS_JSON__", default_preferences_json)
         .replace("__CARD_LABELS_JSON__", card_labels_json)
         .replace("__SECTION_LABELS_JSON__", section_labels_json)
+        .replace("__NLQ_GUIDE_EXAMPLES__", nlq_guide_examples_json)
     )
 
 
@@ -1986,8 +2021,8 @@ def _grafana_explore_url(host_id: str | None, raw_ref: str | None = None) -> str
         ],
         "range": {"from": "now-6h", "to": "now"},
     }
-    encoded = base64.urlsafe_b64encode(json.dumps(explore_state, separators=(",", ":")).encode()).decode()
-    return f"{GRAFANA_BASE_URL}/explore?left={encoded}"
+    encoded = _url_quote(json.dumps(explore_state, separators=(",", ":")), safe="")
+    return f"{GRAFANA_BASE_URL}/explore?orgId=1&left={encoded}"
 
 
 def _recent_activity(store: InMemoryQueryStore, limit: int = 10) -> list[dict[str, Any]]:
