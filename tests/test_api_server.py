@@ -13,6 +13,7 @@ from mori_soc.api.server import (
     create_query_service_from_env,
     interpret_query_text,
     render_query_console_html,
+    render_user_dashboard_html,
 )
 from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, SourceSync, Vulnerability
 from mori_soc.services.query_service import InMemoryQueryStore, QueryService
@@ -59,14 +60,19 @@ class QueryRequestBuilderTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 create_query_service_from_env()
 
-    def test_render_query_console_html_contains_expected_links(self) -> None:
+    def test_render_query_console_html_contains_expected_admin_features(self) -> None:
         html = render_query_console_html()
-        self.assertIn("MORI Security Dashboard", html)
-        self.assertIn("/docs", html)
+        self.assertIn("MORI Admin Console", html)
+        self.assertIn("http://mori.rmstudio.co.kr:37854/", html)
         self.assertIn("/query", html)
         self.assertIn("/query?format=csv", html)
         self.assertIn("/interpret", html)
         self.assertIn("/dashboard/summary", html)
+        self.assertIn("/dashboard/preferences", html)
+        self.assertIn("Open User Dashboard", html)
+        self.assertIn("User Dashboard Controls", html)
+        self.assertIn("Natural Language Query", html)
+        self.assertIn("Structured Query Builder", html)
         self.assertIn("Query Guide", html)
         self.assertIn("오프라인 호스트 보여줘", html)
         self.assertIn(DEFAULT_UI_PAYLOAD["intent"], html)
@@ -75,6 +81,18 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertIn("queryMode = 'natural'", html)
         self.assertIn("extractFilename", html)
         self.assertIn("downloadTextFile", html)
+
+    def test_render_user_dashboard_html_hides_query_console_controls(self) -> None:
+        html = render_user_dashboard_html()
+        self.assertIn("MORI Security Dashboard", html)
+        self.assertIn("http://mori.rmstudio.co.kr:37854/", html)
+        self.assertIn("/dashboard/summary", html)
+        self.assertIn("/dashboard/preferences", html)
+        self.assertIn("overview_modal", html)
+        self.assertNotIn("Natural Language Query", html)
+        self.assertNotIn("Structured Query Builder", html)
+        self.assertNotIn("User Dashboard Controls", html)
+        self.assertNotIn("Open User Dashboard", html)
 
     def test_interpret_query_text_returns_structured_request(self) -> None:
         interpretation = interpret_query_text("최근 24시간 wazuh high alert 요약")
@@ -220,6 +238,13 @@ class FastAPIAppTests(unittest.TestCase):
         response = self.client.get("/ui")
         self.assertEqual(response.status_code, 200)
         self.assertIn("MORI Security Dashboard", response.text)
+        self.assertNotIn("Natural Language Query", response.text)
+
+    def test_admin_endpoint(self) -> None:
+        response = self.client.get("/admin")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("MORI Admin Console", response.text)
+        self.assertIn("User Dashboard Controls", response.text)
 
     def test_root_redirects_to_ui(self) -> None:
         response = self.client.get("/", follow_redirects=False)
@@ -231,6 +256,39 @@ class FastAPIAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("overview", response.json())
         self.assertIn("overview_details", response.json())
+
+    def test_dashboard_preferences_get_and_update(self) -> None:
+        response = self.client.get("/dashboard/preferences")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["docs_url"], "http://mori.rmstudio.co.kr:37854/")
+        self.assertIn("user_dashboard", payload)
+        self.assertIn("cards", payload["user_dashboard"])
+        self.assertIn("sections", payload["user_dashboard"])
+
+        update_response = self.client.post(
+            "/dashboard/preferences",
+            json={
+                "docs_url": "http://mori.rmstudio.co.kr:37854/guide",
+                "user_dashboard": {
+                    "cards": {"ingested_records": True},
+                    "sections": {"source_coverage": True},
+                },
+            },
+        )
+        self.assertEqual(update_response.status_code, 200)
+        updated = update_response.json()
+        self.assertEqual(updated["docs_url"], "http://mori.rmstudio.co.kr:37854/guide")
+        self.assertTrue(updated["user_dashboard"]["cards"]["ingested_records"])
+        self.assertTrue(updated["user_dashboard"]["sections"]["source_coverage"])
+
+    def test_dashboard_preferences_reject_unknown_key(self) -> None:
+        response = self.client.post(
+            "/dashboard/preferences",
+            json={"user_dashboard": {"cards": {"not_a_real_card": True}}},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("unknown user dashboard cards key", response.json()["detail"])
 
     def test_interpret_endpoint_returns_guide_metadata(self) -> None:
         response = self.client.post("/interpret", json={"text": "안녕하세요 오늘 뭐가 좋을까요"})

@@ -30,6 +30,40 @@ DEFAULT_UI_PAYLOAD = {
     "filters": {},
 }
 
+DOCS_PORTAL_URL = os.getenv("MORI_DOCS_PORTAL_URL", "http://mori.rmstudio.co.kr:37854/")
+USER_DASHBOARD_CARD_LABELS = {
+    "total_hosts": "Total Hosts",
+    "offline_hosts": "Offline Hosts",
+    "alerts_24h": "High Alerts 24h",
+    "critical_vulns": "Critical Vulns",
+    "sources_reporting": "Sources Reporting",
+    "sources_healthy": "Healthy Collectors",
+    "ingested_records": "Ingested Records",
+}
+USER_DASHBOARD_SECTION_LABELS = {
+    "source_coverage": "Source Coverage",
+    "latest_status": "Latest Host Status",
+    "risk_summary": "Risk Summary",
+    "recent_activity": "Recent Activity",
+}
+DEFAULT_USER_DASHBOARD_PREFERENCES = {
+    "cards": {
+        "total_hosts": True,
+        "offline_hosts": True,
+        "alerts_24h": True,
+        "critical_vulns": True,
+        "sources_reporting": False,
+        "sources_healthy": False,
+        "ingested_records": False,
+    },
+    "sections": {
+        "source_coverage": False,
+        "latest_status": True,
+        "risk_summary": True,
+        "recent_activity": True,
+    },
+}
+
 
 def create_query_service(store: InMemoryQueryStore | None = None) -> QueryService:
     return QueryService(store or InMemoryQueryStore())
@@ -138,6 +172,78 @@ def build_dashboard_payload(service: QueryService) -> dict[str, Any]:
     }
 
 
+def _default_dashboard_preferences() -> dict[str, Any]:
+    return {
+        "docs_url": DOCS_PORTAL_URL,
+        "user_dashboard": {
+            "cards": dict(DEFAULT_USER_DASHBOARD_PREFERENCES["cards"]),
+            "sections": dict(DEFAULT_USER_DASHBOARD_PREFERENCES["sections"]),
+        },
+    }
+
+
+def _dashboard_preferences_response(preferences: Mapping[str, Any]) -> dict[str, Any]:
+    docs_url = preferences.get("docs_url") if isinstance(preferences.get("docs_url"), str) else DOCS_PORTAL_URL
+    user_dashboard = preferences.get("user_dashboard") if isinstance(preferences.get("user_dashboard"), Mapping) else {}
+    cards = user_dashboard.get("cards") if isinstance(user_dashboard.get("cards"), Mapping) else {}
+    sections = user_dashboard.get("sections") if isinstance(user_dashboard.get("sections"), Mapping) else {}
+    return {
+        "docs_url": docs_url,
+        "user_dashboard": {
+            "cards": {
+                key: bool(cards.get(key, DEFAULT_USER_DASHBOARD_PREFERENCES["cards"][key]))
+                for key in USER_DASHBOARD_CARD_LABELS
+            },
+            "sections": {
+                key: bool(sections.get(key, DEFAULT_USER_DASHBOARD_PREFERENCES["sections"][key]))
+                for key in USER_DASHBOARD_SECTION_LABELS
+            },
+        },
+        "card_labels": dict(USER_DASHBOARD_CARD_LABELS),
+        "section_labels": dict(USER_DASHBOARD_SECTION_LABELS),
+    }
+
+
+def _merge_dashboard_preferences(current: Mapping[str, Any], payload: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(payload, Mapping):
+        raise ValueError("dashboard preferences payload must be an object")
+
+    merged = _dashboard_preferences_response(current)
+    if "docs_url" in payload:
+        docs_url = payload.get("docs_url")
+        if not isinstance(docs_url, str) or not docs_url.strip():
+            raise ValueError("docs_url must be a non-empty string")
+        merged["docs_url"] = docs_url.strip()
+
+    user_dashboard = payload.get("user_dashboard")
+    if user_dashboard is not None:
+        if not isinstance(user_dashboard, Mapping):
+            raise ValueError("user_dashboard must be an object")
+        for group_name, labels in (
+            ("cards", USER_DASHBOARD_CARD_LABELS),
+            ("sections", USER_DASHBOARD_SECTION_LABELS),
+        ):
+            group_payload = user_dashboard.get(group_name)
+            if group_payload is None:
+                continue
+            if not isinstance(group_payload, Mapping):
+                raise ValueError(f"user_dashboard.{group_name} must be an object")
+            for key, value in group_payload.items():
+                if key not in labels:
+                    raise ValueError(f"unknown user dashboard {group_name} key: {key}")
+                if not isinstance(value, bool):
+                    raise ValueError(f"user_dashboard.{group_name}.{key} must be a boolean")
+                merged["user_dashboard"][group_name][key] = value
+
+    return {
+        "docs_url": merged["docs_url"],
+        "user_dashboard": {
+            "cards": dict(merged["user_dashboard"]["cards"]),
+            "sections": dict(merged["user_dashboard"]["sections"]),
+        },
+    }
+
+
 def create_app(service: QueryService | None = None, service_factory=None) -> Any:
     if FastAPI is None or HTTPException is None:
         raise RuntimeError(
@@ -145,6 +251,7 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
         )
 
     app = FastAPI(title="MORI SOC Query API", version="0.1.0")
+    dashboard_preferences = _default_dashboard_preferences()
 
     def get_query_service() -> QueryService:
         if service is not None:
@@ -159,7 +266,11 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
 
     @app.get("/ui", include_in_schema=False, response_class=HTMLResponse)
     def ui() -> str:
-        return render_query_console_html()
+        return render_user_dashboard_html(dashboard_preferences["docs_url"])
+
+    @app.get("/admin", include_in_schema=False, response_class=HTMLResponse)
+    def admin() -> str:
+        return render_query_console_html(dashboard_preferences["docs_url"])
 
     @app.get("/health")
     def health() -> dict[str, Any]:
@@ -195,6 +306,19 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
             return build_dashboard_payload(get_query_service())
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"dashboard summary unavailable: {exc}") from exc
+
+    @app.get("/dashboard/preferences")
+    def dashboard_preferences_get() -> dict[str, Any]:
+        return _dashboard_preferences_response(dashboard_preferences)
+
+    @app.post("/dashboard/preferences")
+    def dashboard_preferences_update(payload: dict[str, Any]) -> dict[str, Any]:
+        nonlocal dashboard_preferences
+        try:
+            dashboard_preferences = _merge_dashboard_preferences(dashboard_preferences, payload)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return _dashboard_preferences_response(dashboard_preferences)
 
     @app.post("/query")
     def query(payload: dict[str, Any], format: str = "json") -> Any:
@@ -242,10 +366,421 @@ def _query_csv_filename(intent: str) -> str:
     return f"mori-query-{safe_intent}-{timestamp}.csv"
 
 
-def render_query_console_html() -> str:
+def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
+    default_preferences_json = json.dumps(DEFAULT_USER_DASHBOARD_PREFERENCES, ensure_ascii=False)
+    card_labels_json = json.dumps(USER_DASHBOARD_CARD_LABELS, ensure_ascii=False)
+    section_labels_json = json.dumps(USER_DASHBOARD_SECTION_LABELS, ensure_ascii=False)
+    html = """<!doctype html>
+<html lang=\"ko\">
+<head>
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <title>MORI Security Dashboard</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0b1220; color: #e5e7eb; }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 20px 48px; }
+    .hero { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+    .hero h1 { margin: 0 0 8px; font-size: 32px; }
+    .hero p { margin: 0; color: #94a3b8; max-width: 860px; line-height: 1.5; }
+    .links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .links a, .top-actions button { display: inline-flex; align-items: center; justify-content: center; color: #cfe3ff; text-decoration: none; border: 1px solid #334155; padding: 8px 12px; border-radius: 999px; background: #0f172a; }
+    .top-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .metrics { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 16px; }
+    .layout { display: grid; gap: 16px; }
+    .stack { display: grid; gap: 16px; }
+    .card { background: linear-gradient(180deg, #101827 0%, #0f172a 100%); border: 1px solid #233046; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
+    .metric-card { cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
+    .metric-card:hover { transform: translateY(-1px); border-color: #38bdf8; }
+    .metric-card:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
+    .metric-label { color: #94a3b8; font-size: 13px; margin-bottom: 8px; }
+    .metric-value { font-size: 28px; font-weight: 800; }
+    .metric-sub { margin-top: 6px; color: #7dd3fc; font-size: 13px; }
+    .card h2 { margin: 0 0 12px; font-size: 18px; }
+    .subtext { color: #94a3b8; font-size: 13px; margin-bottom: 12px; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #1f2937; vertical-align: top; }
+    th { color: #94a3b8; font-weight: 600; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .badge.online { background: rgba(34, 197, 94, 0.12); color: #86efac; }
+    .badge.offline { background: rgba(248, 113, 113, 0.12); color: #fca5a5; }
+    .badge.unknown { background: rgba(250, 204, 21, 0.12); color: #fde68a; }
+    .coverage { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .coverage-item { background: #0b1220; border: 1px solid #223148; border-radius: 14px; padding: 14px; }
+    .coverage-item strong { display: block; font-size: 22px; margin-top: 8px; }
+    .list { display: grid; gap: 10px; }
+    .list-item { border: 1px solid #1f2937; border-radius: 12px; padding: 12px; background: #0b1220; }
+    .list-item .top { display: flex; gap: 12px; justify-content: space-between; margin-bottom: 6px; }
+    .list-item .meta { color: #94a3b8; font-size: 12px; }
+    .status-line, .empty { color: #94a3b8; font-size: 14px; }
+    .hidden { display: none !important; }
+    dialog { border: 1px solid #334155; border-radius: 18px; padding: 0; background: #0f172a; color: #e5e7eb; width: min(760px, calc(100vw - 32px)); }
+    dialog::backdrop { background: rgba(2, 6, 23, 0.74); }
+    .guide-dialog { padding: 20px; }
+    .guide-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .guide-dialog-head h3 { margin: 0; font-size: 20px; }
+    .guide-dialog-copy { color: #94a3b8; font-size: 14px; line-height: 1.5; }
+    .dialog-body { padding: 0 20px 20px; max-height: 60vh; overflow: auto; }
+    @media (max-width: 960px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .coverage { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .hero { flex-direction: column; }
+      .metrics, .coverage { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class=\"wrap\">
+    <section class=\"hero\">
+      <div>
+        <h1>MORI Security Dashboard</h1>
+        <p>사용자에게 필요한 보안 현황과 조치 우선순위를 빠르게 보여주는 대시보드입니다. 상세한 수집 데이터는 운영자 화면에서 더 깊게 확인하고, 어떤 정보를 사용자 화면에 노출할지 운영자가 제어할 수 있습니다.</p>
+        <div class=\"links\">
+          <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\">운영 문서 / 포털</a>
+        </div>
+      </div>
+      <div class=\"top-actions\">
+        <button id=\"refresh_dashboard\" type=\"button\">Refresh Dashboard</button>
+      </div>
+    </section>
+
+    <section class=\"metrics\" id=\"overview_cards\"></section>
+
+    <div class=\"layout\">
+      <div class=\"stack\">
+        <section class=\"card\" id=\"source_coverage_section\">
+          <h2>Source Coverage</h2>
+          <div class=\"subtext\">운영자가 노출을 허용한 경우에만 source 상태를 표시합니다.</div>
+          <div class=\"coverage\" id=\"source_coverage\"></div>
+        </section>
+
+        <section class=\"card\" id=\"latest_status_section\">
+          <h2>Latest Host Status</h2>
+          <div class=\"subtext\">조치가 필요한 offline / unknown 호스트를 우선 확인합니다.</div>
+          <div class=\"table-wrap\" id=\"latest_status\"></div>
+        </section>
+
+        <section class=\"card\" id=\"risk_summary_section\">
+          <h2>Risk Summary</h2>
+          <div class=\"subtext\">alert, 취약점, 상태를 기준으로 우선 대응 대상을 확인합니다.</div>
+          <div class=\"table-wrap\" id=\"risk_summary\"></div>
+        </section>
+
+        <section class=\"card\" id=\"recent_activity_section\">
+          <h2>Recent Activity</h2>
+          <div class=\"subtext\">운영자가 허용한 범위에서 최근 이벤트와 관측값을 보여줍니다.</div>
+          <div class=\"list\" id=\"recent_activity\"></div>
+        </section>
+      </div>
+    </div>
+
+    <div class=\"status-line\" id=\"dashboard_status\">dashboard loading...</div>
+  </div>
+
+  <dialog id=\"overview_modal\">
+    <div class=\"guide-dialog\">
+      <div class=\"guide-dialog-head\">
+        <h3 id=\"overview_modal_title\">Overview Details</h3>
+        <form method=\"dialog\"><button type=\"submit\">닫기</button></form>
+      </div>
+      <div class=\"guide-dialog-copy\" id=\"overview_modal_copy\">선택한 카드의 상세 목록입니다.</div>
+    </div>
+    <div class=\"dialog-body\" id=\"overview_modal_body\"></div>
+  </dialog>
+
+  <script>
+    const defaultPreferences = __USER_DASHBOARD_PREFS_JSON__;
+    const cardLabels = __CARD_LABELS_JSON__;
+    const sectionLabels = __SECTION_LABELS_JSON__;
+    const overviewCardsEl = document.getElementById('overview_cards');
+    const sourceCoverageEl = document.getElementById('source_coverage');
+    const latestStatusEl = document.getElementById('latest_status');
+    const riskSummaryEl = document.getElementById('risk_summary');
+    const recentActivityEl = document.getElementById('recent_activity');
+    const dashboardStatusEl = document.getElementById('dashboard_status');
+    const overviewModalEl = document.getElementById('overview_modal');
+    const overviewModalTitleEl = document.getElementById('overview_modal_title');
+    const overviewModalCopyEl = document.getElementById('overview_modal_copy');
+    const overviewModalBodyEl = document.getElementById('overview_modal_body');
+    let userPreferences = JSON.parse(JSON.stringify(defaultPreferences));
+    let dashboardDetails = {};
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function formatTime(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toLocaleString('ko-KR', { hour12: false });
+    }
+
+    function setSectionVisible(key, visible) {
+      const element = document.getElementById(`${key}_section`);
+      if (!element) return;
+      element.classList.toggle('hidden', !visible);
+    }
+
+    function applyUserPreferences() {
+      const sections = userPreferences.sections || {};
+      Object.keys(sectionLabels).forEach((key) => setSectionVisible(key, sections[key] !== false));
+    }
+
+    function openOverviewModal(title, description, bodyHtml) {
+      overviewModalTitleEl.textContent = title;
+      overviewModalCopyEl.textContent = description;
+      overviewModalBodyEl.innerHTML = bodyHtml;
+      if (overviewModalEl.open) return;
+      if (typeof overviewModalEl.showModal === 'function') {
+        overviewModalEl.showModal();
+        return;
+      }
+      overviewModalEl.setAttribute('open', 'open');
+    }
+
+    function renderDetailTable(columns, items, emptyText) {
+      if (!items.length) return `<div class=\"empty\">${escapeHtml(emptyText)}</div>`;
+      return `
+        <div class=\"table-wrap\">
+          <table>
+            <thead><tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${items.map((item) => `<tr>${columns.map((column) => `<td>${column.render(item)}</td>`).join('')}</tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderStatusDetailTable(items) {
+      return renderDetailTable([
+        { label: 'Host', render: (item) => `<strong>${escapeHtml(item.hostname)}</strong><br /><span class=\"subtext\">${escapeHtml(item.host_id)}</span>` },
+        { label: 'Status', render: (item) => `<span class=\"badge ${escapeHtml(item.status)}\">${escapeHtml(item.status)}</span>` },
+        { label: 'Risk', render: (item) => escapeHtml(item.risk_score) },
+        { label: 'Last Seen', render: (item) => escapeHtml(formatTime(item.last_seen_at)) },
+      ], items, '표시할 호스트가 없습니다.');
+    }
+
+    function renderAlertDetailTable(items) {
+      return renderDetailTable([
+        { label: 'Time', render: (item) => escapeHtml(formatTime(item.observed_at)) },
+        { label: 'Host', render: (item) => `<strong>${escapeHtml(item.hostname || '-')}</strong><br /><span class=\"subtext\">${escapeHtml(item.host_id || '-')}</span>` },
+        { label: 'Source', render: (item) => escapeHtml(item.source) },
+        { label: 'Severity', render: (item) => escapeHtml(item.severity) },
+        { label: 'Message', render: (item) => escapeHtml(item.message) },
+      ], items, '최근 24시간 high / critical alert가 없습니다.');
+    }
+
+    function renderVulnerabilityDetailTable(items) {
+      return renderDetailTable([
+        { label: 'Detected', render: (item) => escapeHtml(formatTime(item.detected_at)) },
+        { label: 'Host', render: (item) => `<strong>${escapeHtml(item.hostname || item.host_id)}</strong><br /><span class=\"subtext\">${escapeHtml(item.host_id)}</span>` },
+        { label: 'Source', render: (item) => escapeHtml(item.source) },
+        { label: 'CVE', render: (item) => escapeHtml(item.cve || '-') },
+        { label: 'Package', render: (item) => escapeHtml(item.package_name || '-') },
+      ], items, 'critical 취약점이 없습니다.');
+    }
+
+    function renderSourceDetailTable(items) {
+      return renderDetailTable([
+        { label: 'Source', render: (item) => escapeHtml(item.source) },
+        { label: 'Hosts', render: (item) => escapeHtml(item.host_count) },
+        { label: 'Status', render: (item) => escapeHtml(item.status) },
+        { label: 'Last Sync', render: (item) => escapeHtml(formatTime(item.last_sync_at)) },
+      ], items, '표시할 source 상태가 없습니다.');
+    }
+
+    function renderIngestedDetailTable(items) {
+      return renderDetailTable([
+        { label: 'Entity', render: (item) => escapeHtml(item.entity_type) },
+        { label: 'Count', render: (item) => escapeHtml(item.count) },
+      ], items, '수집된 레코드가 없습니다.');
+    }
+
+    function showOverviewDetail(key) {
+      const items = Array.isArray(dashboardDetails[key]) ? dashboardDetails[key] : [];
+      const renderers = {
+        total_hosts: [renderStatusDetailTable, '현재 알려진 전체 호스트 목록입니다.'],
+        offline_hosts: [renderStatusDetailTable, '즉시 확인이 필요한 offline 호스트 목록입니다.'],
+        alerts_24h: [renderAlertDetailTable, '최근 24시간 high / critical alert 목록입니다.'],
+        critical_vulns: [renderVulnerabilityDetailTable, '현재 critical 취약점 목록입니다.'],
+        sources_reporting: [renderSourceDetailTable, '호스트를 보고 중인 source 목록입니다.'],
+        sources_healthy: [renderSourceDetailTable, '최근 sync가 success인 collector 목록입니다.'],
+        ingested_records: [renderIngestedDetailTable, '저장된 엔터티 타입별 레코드 수입니다.'],
+      };
+      const [renderer, description] = renderers[key] || [renderIngestedDetailTable, '선택한 카드의 상세 데이터입니다.'];
+      openOverviewModal(cardLabels[key] || key, description, renderer(items));
+    }
+
+    function renderOverview(overview) {
+      const cards = [
+        ['total_hosts', overview.total_hosts, `${overview.online_hosts} online / ${overview.unknown_hosts} unknown`],
+        ['offline_hosts', overview.offline_hosts, '즉시 확인 대상'],
+        ['alerts_24h', overview.alerts_24h, 'high + critical'],
+        ['critical_vulns', overview.critical_vulns, `high ${overview.high_vulns}`],
+        ['sources_reporting', overview.sources_reporting, 'fleet / wazuh / zabbix / trivy / host_log'],
+        ['sources_healthy', overview.sources_healthy, '최근 sync success 기준'],
+        ['ingested_records', overview.ingested_records, 'alerts + vulns + queries + observations'],
+      ].filter(([key]) => (userPreferences.cards || {})[key] !== false);
+      if (!cards.length) {
+        overviewCardsEl.innerHTML = '<div class=\"empty\">운영자가 공개한 요약 카드가 없습니다.</div>';
+        return;
+      }
+      overviewCardsEl.innerHTML = cards.map(([key, value, sub]) => `
+        <section class=\"card metric-card\" role=\"button\" tabindex=\"0\" data-overview-key=\"${escapeHtml(key)}\">
+          <div class=\"metric-label\">${escapeHtml(cardLabels[key] || key)}</div>
+          <div class=\"metric-value\">${escapeHtml(value)}</div>
+          <div class=\"metric-sub\">${escapeHtml(sub)}</div>
+        </section>
+      `).join('');
+      overviewCardsEl.querySelectorAll('[data-overview-key]').forEach((card) => {
+        const open = () => showOverviewDetail(card.dataset.overviewKey || '');
+        card.addEventListener('click', open);
+        card.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            open();
+          }
+        });
+      });
+    }
+
+    function renderSourceCoverage(items) {
+      if (!items.length) {
+        sourceCoverageEl.innerHTML = '<div class=\"empty\">아직 연결된 source alias가 없습니다.</div>';
+        return;
+      }
+      const statusToBadge = { success: 'online', error: 'offline', running: 'unknown', unknown: 'unknown' };
+      sourceCoverageEl.innerHTML = items.map((item) => `
+        <div class=\"coverage-item\">
+          <div class=\"metric-label\">${escapeHtml(item.source.toUpperCase())}</div>
+          <strong>${escapeHtml(item.host_count)}</strong>
+          <div class=\"metric-sub\">호스트 · <span class=\"badge ${escapeHtml(statusToBadge[item.status] || 'unknown')}\">${escapeHtml(item.status)}</span></div>
+          <div class=\"metric-sub\">last sync: ${escapeHtml(formatTime(item.last_sync_at))}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderLatestStatus(items) {
+      if (!items.length) {
+        latestStatusEl.innerHTML = '<div class=\"empty\">아직 호스트 데이터가 없습니다.</div>';
+        return;
+      }
+      latestStatusEl.innerHTML = `
+        <table>
+          <thead><tr><th>Host</th><th>Status</th><th>Risk</th><th>Last Seen</th></tr></thead>
+          <tbody>${items.map((item) => `
+            <tr>
+              <td><strong>${escapeHtml(item.hostname)}</strong><br /><span class=\"subtext\">${escapeHtml(item.host_id)}</span></td>
+              <td><span class=\"badge ${escapeHtml(item.status)}\">${escapeHtml(item.status)}</span></td>
+              <td>${escapeHtml(item.risk_score)}</td>
+              <td>${escapeHtml(formatTime(item.last_seen_at))}</td>
+            </tr>`).join('')}</tbody>
+        </table>`;
+    }
+
+    function renderRiskSummary(items) {
+      if (!items.length) {
+        riskSummaryEl.innerHTML = '<div class=\"empty\">아직 위험 요약 데이터가 없습니다.</div>';
+        return;
+      }
+      riskSummaryEl.innerHTML = `
+        <table>
+          <thead><tr><th>Host</th><th>Risk</th><th>Alerts 24h</th><th>Critical</th><th>High</th><th>Vulns</th></tr></thead>
+          <tbody>${items.map((item) => `
+            <tr>
+              <td><strong>${escapeHtml(item.hostname)}</strong><br /><span class=\"subtext\">${escapeHtml(item.host_id)}</span></td>
+              <td>${escapeHtml(item.risk_score)}</td>
+              <td>${escapeHtml(item.alert_count_24h)}</td>
+              <td>${escapeHtml(item.critical_alert_count_24h)}</td>
+              <td>${escapeHtml(item.high_alert_count_24h)}</td>
+              <td>${escapeHtml(item.vuln_count)} (C:${escapeHtml(item.critical_vuln_count)} / H:${escapeHtml(item.high_vuln_count)})</td>
+            </tr>`).join('')}</tbody>
+        </table>`;
+    }
+
+    function renderRecentActivity(items) {
+      if (!items.length) {
+        recentActivityEl.innerHTML = '<div class=\"empty\">아직 최근 활동 데이터가 없습니다.</div>';
+        return;
+      }
+      recentActivityEl.innerHTML = items.map((item) => `
+        <div class=\"list-item\">
+          <div class=\"top\"><strong>${escapeHtml(item.summary)}</strong><span class=\"meta\">${escapeHtml(formatTime(item.observed_at))}</span></div>
+          <div class=\"meta\">${escapeHtml(item.entity_type)} · ${escapeHtml(item.source)} · ${escapeHtml(item.host_id || '-')}</div>
+        </div>`).join('');
+    }
+
+    async function loadPreferences() {
+      try {
+        const response = await fetch('/dashboard/preferences');
+        const data = await response.json();
+        if (response.ok && data.user_dashboard) {
+          userPreferences = data.user_dashboard;
+        }
+      } catch (error) {
+        dashboardStatusEl.textContent = `preferences load failed: ${error.message}`;
+      }
+      applyUserPreferences();
+    }
+
+    async function loadDashboard() {
+      dashboardStatusEl.textContent = 'dashboard loading...';
+      try {
+        const response = await fetch('/dashboard/summary');
+        const data = await response.json();
+        if (!response.ok) {
+          dashboardStatusEl.textContent = `dashboard load failed: HTTP ${response.status}`;
+          return;
+        }
+        dashboardDetails = data.overview_details || {};
+        renderOverview(data.overview || {});
+        renderSourceCoverage(data.source_coverage || []);
+        renderLatestStatus(data.latest_status || []);
+        renderRiskSummary(data.risk_summary || []);
+        renderRecentActivity(data.recent_activity || []);
+        applyUserPreferences();
+        dashboardStatusEl.textContent = `dashboard updated at ${formatTime(data.generated_at)}`;
+      } catch (error) {
+        dashboardStatusEl.textContent = `dashboard load failed: ${error.message}`;
+      }
+    }
+
+    document.getElementById('refresh_dashboard').addEventListener('click', loadDashboard);
+
+    async function initialize() {
+      await loadPreferences();
+      await loadDashboard();
+    }
+
+    initialize();
+  </script>
+</body>
+</html>"""
+    return (
+        html.replace("__DOCS_PORTAL_URL__", docs_url)
+        .replace("__USER_DASHBOARD_PREFS_JSON__", default_preferences_json)
+        .replace("__CARD_LABELS_JSON__", card_labels_json)
+        .replace("__SECTION_LABELS_JSON__", section_labels_json)
+    )
+
+
+def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     payload_json = json.dumps(DEFAULT_UI_PAYLOAD, indent=2, ensure_ascii=False)
     default_payload_json = json.dumps(DEFAULT_UI_PAYLOAD, ensure_ascii=False)
     guide_examples_json = json.dumps(list(QUERY_GUIDE_EXAMPLES), ensure_ascii=False)
+    default_preferences_json = json.dumps(DEFAULT_USER_DASHBOARD_PREFERENCES, ensure_ascii=False)
+    card_labels_json = json.dumps(USER_DASHBOARD_CARD_LABELS, ensure_ascii=False)
+    section_labels_json = json.dumps(USER_DASHBOARD_SECTION_LABELS, ensure_ascii=False)
     html = """<!doctype html>
 <html lang=\"ko\">
 <head>
@@ -298,12 +833,16 @@ def render_query_console_html() -> str:
     button.secondary { background: #334155; }
     button.ghost { background: #172033; border: 1px solid #334155; }
     .actions { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .actions a, .top-actions a { display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid #334155; background: #172033; color: #e5e7eb; padding: 10px 12px; text-decoration: none; font-weight: 700; }
     .quick-actions { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .status-line { color: #94a3b8; font-size: 13px; margin-top: 8px; }
     .mono { font-family: ui-monospace, SFMono-Regular, monospace; }
     .top-actions button, .guide-chips button, .guide-list button { width: auto; }
     .guide-chips, .guide-list { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
     .chip { padding: 8px 12px; border-radius: 999px; }
+    .toggle-grid { display: grid; gap: 8px; }
+    .toggle-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid #223148; border-radius: 12px; background: #0b1220; }
+    .toggle-item input { width: auto; margin: 0; }
     .guide-banner { margin-top: 12px; border-radius: 12px; padding: 12px; border: 1px solid #334155; background: #111827; }
     .guide-banner strong { display: block; margin-bottom: 6px; }
     .guide-banner.need-guide { border-color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
@@ -330,16 +869,17 @@ def render_query_console_html() -> str:
   <div class=\"wrap\">
     <section class=\"hero\">
       <div>
-        <h1>MORI Security Dashboard</h1>
-        <p>Fleet · Wazuh · Zabbix · Trivy 데이터를 공통 모델로 묶어 상태/위험/최근 활동을 한눈에 보고, 같은 화면에서 자연어 질의까지 바로 실행하는 운영 대시보드입니다.</p>
+        <h1>MORI Admin Console</h1>
+        <p>사용자용 대시보드에 노출할 정보 범위를 운영자가 통제하고, 더 상세한 수집 데이터와 자연어/구조화 질의를 함께 다루는 운영 콘솔입니다.</p>
         <div class=\"links\">
-          <a href=\"/docs\" target=\"_blank\" rel=\"noreferrer\">Swagger Docs</a>
-          <a href=\"/catalog\" target=\"_blank\" rel=\"noreferrer\">Query Catalog JSON</a>
+          <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\">운영 문서 / 포털</a>
           <a href=\"/health\" target=\"_blank\" rel=\"noreferrer\">Health JSON</a>
           <a href=\"/dashboard/summary\" target=\"_blank\" rel=\"noreferrer\">Dashboard JSON</a>
+          <a href=\"/catalog\" target=\"_blank\" rel=\"noreferrer\">Query Catalog JSON</a>
         </div>
       </div>
       <div class=\"top-actions\">
+        <a href=\"/ui\">Open User Dashboard</a>
         <button id=\"query_guide\" class=\"ghost\">Query Guide</button>
         <button id=\"refresh_dashboard\" class=\"ghost\">Refresh Dashboard</button>
       </div>
@@ -376,6 +916,28 @@ def render_query_console_html() -> str:
       </div>
 
       <aside class=\"stack\">
+        <section class=\"card\">
+          <h2>User Dashboard Controls</h2>
+          <div class=\"subtext\">`18000/ui` 에서 사용자에게 보이는 카드와 섹션을 제어합니다. 현재 설정은 애플리케이션 메모리에 저장되므로 프로세스 재시작 시 초기값으로 돌아갑니다.</div>
+          <div class=\"row\">
+            <label for=\"docs_portal_url\">문서 / 포털 URL</label>
+            <input id=\"docs_portal_url\" value=\"__DOCS_PORTAL_URL__\" />
+          </div>
+          <div class=\"row\">
+            <label>User Overview Cards</label>
+            <div class=\"toggle-grid\" id=\"user_dashboard_cards\"></div>
+          </div>
+          <div class=\"row\">
+            <label>User Sections</label>
+            <div class=\"toggle-grid\" id=\"user_dashboard_sections\"></div>
+          </div>
+          <div class=\"actions\">
+            <button id=\"save_dashboard_preferences\">Save User View</button>
+            <a href=\"/ui\">Open User View</a>
+          </div>
+          <div class=\"status-line\" id=\"dashboard_preferences_status\">user dashboard settings loading...</div>
+        </section>
+
         <section class=\"card\">
           <h2>Quick Actions</h2>
           <div class=\"subtext\">자주 쓰는 질의를 클릭하면 아래 폼에 바로 채워집니다.</div>
@@ -501,7 +1063,15 @@ def render_query_console_html() -> str:
     const overviewModalTitleEl = document.getElementById('overview_modal_title');
     const overviewModalCopyEl = document.getElementById('overview_modal_copy');
     const overviewModalBodyEl = document.getElementById('overview_modal_body');
+    const docsPortalUrlEl = document.getElementById('docs_portal_url');
+    const userDashboardCardsEl = document.getElementById('user_dashboard_cards');
+    const userDashboardSectionsEl = document.getElementById('user_dashboard_sections');
+    const dashboardPreferencesStatusEl = document.getElementById('dashboard_preferences_status');
+    const defaultUserDashboardPreferences = __USER_DASHBOARD_PREFS_JSON__;
+    const userDashboardCardLabels = __CARD_LABELS_JSON__;
+    const userDashboardSectionLabels = __SECTION_LABELS_JSON__;
     let dashboardDetails = {};
+    let userDashboardPreferences = JSON.parse(JSON.stringify(defaultUserDashboardPreferences));
     let queryMode = 'natural';
 
     function escapeHtml(value) {
@@ -518,6 +1088,72 @@ def render_query_console_html() -> str:
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return value;
       return date.toLocaleString('ko-KR', { hour12: false });
+    }
+
+    function renderPreferenceGroup(container, labels, values, prefix) {
+      container.innerHTML = Object.entries(labels).map(([key, label]) => `
+        <label class=\"toggle-item\" for=\"${prefix}_${escapeHtml(key)}\">
+          <span>${escapeHtml(label)}</span>
+          <input type=\"checkbox\" id=\"${prefix}_${escapeHtml(key)}\" data-pref-key=\"${escapeHtml(key)}\" ${values[key] !== false ? 'checked' : ''} />
+        </label>
+      `).join('');
+    }
+
+    function renderDashboardPreferences() {
+      renderPreferenceGroup(userDashboardCardsEl, userDashboardCardLabels, userDashboardPreferences.cards || {}, 'user_card');
+      renderPreferenceGroup(userDashboardSectionsEl, userDashboardSectionLabels, userDashboardPreferences.sections || {}, 'user_section');
+    }
+
+    function readPreferenceGroup(container) {
+      return Object.fromEntries(Array.from(container.querySelectorAll('[data-pref-key]')).map((input) => [input.dataset.prefKey, input.checked]));
+    }
+
+    async function loadDashboardPreferences() {
+      dashboardPreferencesStatusEl.textContent = 'user dashboard settings loading...';
+      try {
+        const response = await fetch('/dashboard/preferences');
+        const data = await response.json();
+        if (!response.ok) {
+          dashboardPreferencesStatusEl.textContent = `settings load failed: HTTP ${response.status}`;
+          return;
+        }
+        docsPortalUrlEl.value = data.docs_url || '__DOCS_PORTAL_URL__';
+        userDashboardPreferences = data.user_dashboard || JSON.parse(JSON.stringify(defaultUserDashboardPreferences));
+        renderDashboardPreferences();
+        dashboardPreferencesStatusEl.textContent = 'user dashboard settings loaded';
+      } catch (error) {
+        dashboardPreferencesStatusEl.textContent = `settings load failed: ${error.message}`;
+      }
+    }
+
+    async function saveDashboardPreferences() {
+      dashboardPreferencesStatusEl.textContent = 'saving user dashboard settings...';
+      const payload = {
+        docs_url: docsPortalUrlEl.value.trim() || '__DOCS_PORTAL_URL__',
+        user_dashboard: {
+          cards: readPreferenceGroup(userDashboardCardsEl),
+          sections: readPreferenceGroup(userDashboardSectionsEl),
+        },
+      };
+      try {
+        const response = await fetch('/dashboard/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          dashboardPreferencesStatusEl.textContent = `settings save failed: HTTP ${response.status}`;
+          resultEl.value = JSON.stringify(data, null, 2);
+          return;
+        }
+        docsPortalUrlEl.value = data.docs_url || payload.docs_url;
+        userDashboardPreferences = data.user_dashboard || payload.user_dashboard;
+        renderDashboardPreferences();
+        dashboardPreferencesStatusEl.textContent = 'user dashboard settings saved';
+      } catch (error) {
+        dashboardPreferencesStatusEl.textContent = `settings save failed: ${error.message}`;
+      }
     }
 
     function compactScope() {
@@ -1029,10 +1665,12 @@ def render_query_console_html() -> str:
     document.getElementById('copy_payload').addEventListener('click', copyPayload);
     document.getElementById('query_guide').addEventListener('click', () => openGuideModal('', guideExamples));
     document.getElementById('refresh_dashboard').addEventListener('click', loadDashboard);
+    document.getElementById('save_dashboard_preferences').addEventListener('click', saveDashboardPreferences);
     filtersEl.value = JSON.stringify(defaultPayload.filters, null, 2);
     renderGuideButtons(guideExamplesEl, guideExamples);
 
     async function initialize() {
+      await loadDashboardPreferences();
       await loadCatalog();
       await loadDashboard();
     }
@@ -1041,7 +1679,15 @@ def render_query_console_html() -> str:
   </script>
 </body>
 </html>"""
-    return html.replace("__PAYLOAD_JSON__", payload_json).replace("__DEFAULT_PAYLOAD_JSON__", default_payload_json).replace("__GUIDE_EXAMPLES__", guide_examples_json)
+    return (
+        html.replace("__PAYLOAD_JSON__", payload_json)
+        .replace("__DEFAULT_PAYLOAD_JSON__", default_payload_json)
+        .replace("__GUIDE_EXAMPLES__", guide_examples_json)
+        .replace("__DOCS_PORTAL_URL__", docs_url)
+        .replace("__USER_DASHBOARD_PREFS_JSON__", default_preferences_json)
+        .replace("__CARD_LABELS_JSON__", card_labels_json)
+        .replace("__SECTION_LABELS_JSON__", section_labels_json)
+    )
 
 
 def _source_coverage(store: InMemoryQueryStore) -> list[dict[str, Any]]:
@@ -1242,4 +1888,5 @@ __all__ = [
     "create_query_service_from_env",
     "interpret_query_text",
     "render_query_console_html",
+    "render_user_dashboard_html",
 ]
