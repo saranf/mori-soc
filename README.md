@@ -72,18 +72,33 @@ Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리�
 | 11 | `login_failure_spike` | 로그인 실패 급증 호스트 |
 | 12 | `collection_errors` | 수집 오류 반복 호스트 |
 
-### 🔲 Phase 2: 관제 질의 엔진 — **미착수**
+### 🚧 Phase 2: 관제 질의 엔진 — **진행 중**
 
-다음에 구현해야 할 내용입니다.
+현재는 MVC 1~4의 초안이 연결된 상태입니다.
 
-| 항목 | 내용 |
-|---|---|
-| **FastAPI HTTP 서버** | `POST /query` 엔드포인트, QueryRequest → QueryResponse |
-| **PostgresRepository** | InMemoryRepository를 Postgres로 교체, `schema/001_phase1_initial.sql` 적용 |
-| **자연어 → Intent 변환** | 입력 문장을 intent + filter로 파싱하는 경량 변환기 |
-| **Dockerfile** | `mori-soc` Python 서비스용 컨테이너 이미지 |
-| **docker-compose.yml 추가** | `mori-api` 서비스 + 전용 `soc-postgres` DB 항목 |
-| **실시간 수집 연동** | Wazuh/Fleet/Zabbix API 폴링 또는 webhook 수신 |
+| 항목 | 상태 | 내용 |
+|---|---|---|
+| **MVC 1 / FastAPI HTTP 서버** | ✅ 완료 | `GET /health`, `GET /catalog`, `POST /query`, `POST /interpret`, `GET /ui` |
+| **MVC 2 / PostgresRepository** | ✅ 완료 | `schema/001_phase1_initial.sql` 기반 조회 저장소 연결 |
+| **MVC 3 / Docker Compose 배포선** | ✅ 완료 | `mori-api`, `soc-postgres`, `Dockerfile`, `.env.example`, 배포 문서 |
+| **MVC 4 / 자연어 질의 변환** | ✅ 초안 완료 | 한국어/영문 질문 → `intent + scope + filters` 변환 |
+| **운영 대시보드형 UI** | ✅ 완료 | `/ui`에서 상태/위험/최근 활동/빠른 질의/자연어 질의 제공 |
+| **실시간 수집 연동** | 🔲 남음 | Wazuh/Fleet/Zabbix API 폴링 또는 webhook 수신 |
+
+### 권장 운영 모델
+
+- **PC / 노트북 / 사용자 단말**: `FleetDM`
+  - osquery 기반 인벤토리, 쿼리, 취약점, 정책 점검에 강함
+- **서버 / VM / 상시 가동 자산**: `Zabbix Agent`
+  - 가용성, 리소스 메트릭, trigger/event 기반 운영 관측에 강함
+- **보안 이벤트 탐지**: `Wazuh`
+  - 인증/프로세스/무결성/탐지 이벤트를 경보 형태로 제공
+- **취약점 스캔**: `Trivy`
+  - 현재는 온디맨드/배치 스캔이 적합하며, 이후 MORI 수집 파이프라인으로 연결 예정
+
+`Zabbix Agent + Trivy`를 묶은 자체 agent는 장기적으로는 가능하지만,
+지금 단계에서는 배포/업데이트/권한/플랫폼별 패키징 복잡도가 커서 **후순위**가 더 자연스럽습니다.
+우선은 `PC=Fleet`, `Server=Zabbix Agent`, `Vuln=Trivy`, `Detection=Wazuh`로 역할을 분리하는 편이 운영 리스크가 낮습니다.
 
 ### 🔲 Phase 3: 제한형 조사 에이전트 — **미착수**
 
@@ -99,6 +114,7 @@ Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리�
 - `docs/SECURITY_CONTROL_MAPPING.md`: 보안 통제(Security Controls) 매핑 문서
 - `docs/IMPLEMENTATION_ROADMAP.md`: 기능 정의서 기준 구현 로드맵
 - `docs/SECURITY_DATA_QUERY_PLATFORM.md`: 데이터 중심 보안 질의 플랫폼 설계 및 단계별 구현 계획
+- `docs/MORI_IMPLEMENTATION_SUMMARY.md`: 현재까지 구현된 기능, 운영 전략, 다음 단계 요약
 - `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md`: Phase 1 입력 소스 명세, 공통 스키마 초안, 1차 질의 카탈로그
 - `docs/PHASE1_LOGICAL_SCHEMA.md`: Phase 1 논리 스키마, 테이블 관계, 인덱스 초안
 - `schema/001_phase1_initial.sql`: Phase 1 Postgres 초기 DDL 초안
@@ -335,7 +351,7 @@ Grafana Explore에서 Loki로 아래 쿼리를 확인합니다.
 - Fleet status 로그: `{job="fleetdm", log_type="status"}`
 - Fleet result 로그: `{job="fleetdm", log_type="result"}`
 
-## 12. MORI API (Phase 2 MVC 1~3) 배포
+## 12. MORI API (Phase 2 MVC 1~4) 배포
 
 이제 `mori-api` + `soc-postgres`가 `docker compose`로 함께 올라가도록 구성을 추가했습니다.
 
@@ -372,6 +388,7 @@ Grafana Explore에서 Loki로 아래 쿼리를 확인합니다.
 - Swagger Docs: `http://mori.rmstudio.co.kr:${MORI_API_PORT:-18000}/docs`
 - Health: `curl http://mori.rmstudio.co.kr:${MORI_API_PORT:-18000}/health`
 - Catalog: `curl http://mori.rmstudio.co.kr:${MORI_API_PORT:-18000}/catalog`
+- Dashboard JSON: `curl http://mori.rmstudio.co.kr:${MORI_API_PORT:-18000}/dashboard/summary`
 - Natural language 해석: `POST /interpret`
 - Query 예시:
 
@@ -386,7 +403,13 @@ curl -X POST http://mori.rmstudio.co.kr:18000/query \
 웹에서 테스트할 때는 우선 `/ui` 또는 `/docs`로 접속하면 됩니다.
 메인 포털(`http://mori.rmstudio.co.kr:${PUBLIC_PORT:-37854}`)에도 MORI Query UI 링크를 추가했습니다.
 
-`/ui`에서는 이제 자연어 질문도 바로 넣어볼 수 있습니다.
+`/ui`에서는 이제 아래를 한 화면에서 볼 수 있습니다.
+
+- 요약 카드: 총 호스트 / 오프라인 / high alert / critical vuln / source coverage
+- Latest Host Status
+- Risk Summary
+- Recent Activity
+- Quick Actions + 자연어 질의 + 구조화 payload 실행
 
 예:
 
@@ -422,9 +445,11 @@ curl -X POST http://mori.rmstudio.co.kr:18000/query \
   - FastAPI HTTP 서버 추가 완료
   - PostgresRepository 추가 완료
   - Dockerfile / `mori-api` / `soc-postgres` compose 항목 추가 완료
-  - 남은 큰 작업: 자연어 → intent/filter 변환, 실시간 수집 연동
+  - 규칙형 자연어 질의 변환기 완료
+  - `/ui` 운영 대시보드형 웹 UI 완료
+  - 남은 큰 작업: 실시간 수집 연동, SQL 기반 읽기 최적화
 
-### Phase 2 시작 프롬프트 (추천)
+### Phase 2 이어가기 프롬프트 (추천)
 
 ```
 이 저장소는 MORI SOC-lite이며, Security Data Query Platform을 단계별로 구현 중이다.
@@ -432,13 +457,14 @@ README의 "Security Data Query Platform — 단계별 진행 현황" 섹션과
 docs/SECURITY_DATA_QUERY_PLATFORM.md, docs/PHASE1_LOGICAL_SCHEMA.md,
 schema/001_phase1_initial.sql, src/mori_soc/를 읽고 현재 상태를 확인해줘.
 Phase 1(데이터 수집/정규화 코어)은 완료되어 있다.
-Phase 2(관제 질의 엔진)를 시작해줘: FastAPI HTTP 서버 → PostgresRepository → Dockerfile → docker-compose 항목 순서로.
+Phase 2(관제 질의 엔진)는 MVC 1~4 초안까지 구현되어 있다.
+남은 실시간 수집 연동(worker/poller), SQL 기반 조회 최적화, 운영 대시보드 보강을 이어서 진행해줘.
 ```
 
 ### 짧은 버전
 
 ```
-이 저장소 MORI SOC-lite에서 Phase 2 시작해줘.
+이 저장소 MORI SOC-lite에서 Phase 2 남은 작업 이어서 해줘.
 README 상단 현황 섹션, src/mori_soc, schema/001_phase1_initial.sql 읽고 바로 이어서.
 ```
 
@@ -487,9 +513,15 @@ Starter dashboard에도 아래 패널이 표시됩니다.
 
 ### Security Data Query Platform (Phase 2)
 
-1. **자연어 → Intent 변환기** — 입력 문장을 intent + filter로 파싱하는 경량 규칙/LLM 기반 변환기
-2. **실시간 수집 연동** — Wazuh/Fleet/Zabbix API 폴링 또는 webhook으로 Postgres 적재
-3. **읽기 성능 최적화** — 현재 snapshot 기반 조회를 SQL/view 기반으로 고도화
+1. **실시간 수집 연동** — Wazuh/Fleet/Zabbix API 폴링 또는 webhook으로 Postgres 적재
+2. **읽기 성능 최적화** — 현재 snapshot 기반 조회를 SQL/view 기반으로 고도화
+3. **대시보드 보강** — source health, collector lag, 위험도 drill-down 추가
+
+### 운영 아키텍처 고도화
+
+- Trivy 결과를 MORI ingestion 경로로 표준화
+- 서버 자산 자동 온보딩 정책 정리
+- 후순위 검토: `Zabbix Agent + Trivy` 결합형 자체 agent
 
 ### 인프라 운영
 

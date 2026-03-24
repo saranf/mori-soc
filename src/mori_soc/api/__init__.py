@@ -8,6 +8,7 @@ __all__ = [
     "QueryResponse",
     "QueryScope",
     "DEFAULT_UI_PAYLOAD",
+    "build_dashboard_payload",
     "build_query_request",
     "create_app",
     "create_app_from_env",
@@ -20,6 +21,7 @@ __all__ = [
 
 _SERVER_EXPORTS = {
     "DEFAULT_UI_PAYLOAD",
+    "build_dashboard_payload",
     "build_query_request",
     "create_app",
     "create_app_from_env",

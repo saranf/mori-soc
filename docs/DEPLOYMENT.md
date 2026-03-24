@@ -73,7 +73,7 @@ docker compose ps
 Phase 2의 HTTP API는 아래 두 서비스로 추가되었습니다.
 
 - `soc-postgres`: MORI 질의용 전용 Postgres
-- `mori-api`: FastAPI 기반 조회 API (`/ui`, `/docs`, `/health`, `/catalog`, `/interpret`, `/query`)
+- `mori-api`: FastAPI 기반 조회 API (`/ui`, `/docs`, `/health`, `/catalog`, `/dashboard/summary`, `/interpret`, `/query`)
 
 기본 포트:
 
@@ -100,6 +100,7 @@ open http://mori.rmstudio.co.kr:18000/ui
 open http://mori.rmstudio.co.kr:18000/docs
 curl http://mori.rmstudio.co.kr:18000/health
 curl http://mori.rmstudio.co.kr:18000/catalog
+curl http://mori.rmstudio.co.kr:18000/dashboard/summary
 curl -X POST http://mori.rmstudio.co.kr:18000/interpret \
   -H 'Content-Type: application/json' \
   -d '{"text":"오프라인 호스트 보여줘"}'
@@ -110,9 +111,18 @@ curl -X POST http://mori.rmstudio.co.kr:18000/query \
 
 브라우저에서 빠르게 확인할 때는:
 
-- `http://mori.rmstudio.co.kr:18000/ui` : 운영자용 최소 웹 콘솔
+- `http://mori.rmstudio.co.kr:18000/ui` : 운영자용 대시보드 + 질의 콘솔
 - `http://mori.rmstudio.co.kr:18000/docs` : FastAPI Swagger 문서
 - `http://mori.rmstudio.co.kr:37854` : 메인 포털(여기서 MORI UI 링크 클릭 가능)
+
+`/ui`에서는 아래를 한 번에 확인할 수 있습니다.
+
+- 총 호스트 / 오프라인 / alert / 취약점 요약 카드
+- Source Coverage
+- Latest Host Status
+- Risk Summary
+- Recent Activity
+- 자연어 질문 → payload 생성 → query 실행
 
 주의:
 
