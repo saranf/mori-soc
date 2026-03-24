@@ -2,7 +2,6 @@
 
 from .base import BaseRepository, RepositorySnapshot
 from .memory import InMemoryRepository
-from .postgres import PostgresRepository, PSYCOPG_AVAILABLE, snapshot_to_query_store
 
 __all__ = [
     "BaseRepository",
@@ -12,3 +11,14 @@ __all__ = [
     "PSYCOPG_AVAILABLE",
     "snapshot_to_query_store",
 ]
+
+
+_POSTGRES_EXPORTS = {"PostgresRepository", "PSYCOPG_AVAILABLE", "snapshot_to_query_store"}
+
+
+def __getattr__(name: str):
+    if name in _POSTGRES_EXPORTS:
+        from . import postgres
+
+        return getattr(postgres, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -24,6 +24,14 @@
 
     <div class="grid">
       <div class="card">
+        <h2>MORI Query UI</h2>
+        <p>보안 질의를 브라우저에서 직접 실행하는 웹 콘솔과 API 문서 진입점.</p>
+        <a id="mori-ui-link" class="button" href="#">MORI UI 열기</a>
+        <div class="muted">UI: <code>18000/ui</code> · Docs: <code>18000/docs</code></div>
+        <a id="mori-docs-link" class="button" href="#" style="background:#475569; margin-left:8px;">API Docs</a>
+      </div>
+
+      <div class="card">
         <h2>Grafana</h2>
         <p>로그 조회, Loki Explore, 보안 현황 대시보드 확인.</p>
         <a id="grafana-link" class="button" href="#">Grafana 열기</a>
@@ -54,6 +62,8 @@
 
   <script>
     const base = `${window.location.protocol}//${window.location.hostname}`;
+    document.getElementById('mori-ui-link').href = `${base}:18000/ui`;
+    document.getElementById('mori-docs-link').href = `${base}:18000/docs`;
     document.getElementById('grafana-link').href = `${base}:13000`;
     document.getElementById('zabbix-link').href = `${base}:18081`;
     document.getElementById('fleet-link').href = `${base}:1337`;

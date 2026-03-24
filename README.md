@@ -368,8 +368,11 @@ Grafana Explore에서 Loki로 아래 쿼리를 확인합니다.
 
 ### API 확인
 
+- 브라우저 UI: `http://mori.rmstudio.co.kr:${MORI_API_PORT:-18000}/ui`
+- Swagger Docs: `http://mori.rmstudio.co.kr:${MORI_API_PORT:-18000}/docs`
 - Health: `curl http://mori.rmstudio.co.kr:${MORI_API_PORT:-18000}/health`
 - Catalog: `curl http://mori.rmstudio.co.kr:${MORI_API_PORT:-18000}/catalog`
+- Natural language 해석: `POST /interpret`
 - Query 예시:
 
 <augment_code_snippet mode="EXCERPT">
@@ -379,6 +382,17 @@ curl -X POST http://mori.rmstudio.co.kr:18000/query \
   -d '{"intent":"offline_hosts","scope":{"time_range":"24h"}}'
 ````
 </augment_code_snippet>
+
+웹에서 테스트할 때는 우선 `/ui` 또는 `/docs`로 접속하면 됩니다.
+메인 포털(`http://mori.rmstudio.co.kr:${PUBLIC_PORT:-37854}`)에도 MORI Query UI 링크를 추가했습니다.
+
+`/ui`에서는 이제 자연어 질문도 바로 넣어볼 수 있습니다.
+
+예:
+
+- `오프라인 호스트 보여줘`
+- `최근 24시간 wazuh high alert 요약`
+- `host-1 타임라인 보여줘`
 
 ### 캐시만 지우고 재빌드
 

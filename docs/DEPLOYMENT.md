@@ -73,7 +73,7 @@ docker compose ps
 Phase 2의 HTTP API는 아래 두 서비스로 추가되었습니다.
 
 - `soc-postgres`: MORI 질의용 전용 Postgres
-- `mori-api`: FastAPI 기반 조회 API (`/health`, `/catalog`, `/query`)
+- `mori-api`: FastAPI 기반 조회 API (`/ui`, `/docs`, `/health`, `/catalog`, `/interpret`, `/query`)
 
 기본 포트:
 
@@ -96,12 +96,23 @@ docker compose logs mori-api --tail=100
 확인 예시:
 
 ```bash
+open http://mori.rmstudio.co.kr:18000/ui
+open http://mori.rmstudio.co.kr:18000/docs
 curl http://mori.rmstudio.co.kr:18000/health
 curl http://mori.rmstudio.co.kr:18000/catalog
+curl -X POST http://mori.rmstudio.co.kr:18000/interpret \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"오프라인 호스트 보여줘"}'
 curl -X POST http://mori.rmstudio.co.kr:18000/query \
   -H 'Content-Type: application/json' \
   -d '{"intent":"offline_hosts","scope":{"time_range":"24h"}}'
 ```
+
+브라우저에서 빠르게 확인할 때는:
+
+- `http://mori.rmstudio.co.kr:18000/ui` : 운영자용 최소 웹 콘솔
+- `http://mori.rmstudio.co.kr:18000/docs` : FastAPI Swagger 문서
+- `http://mori.rmstudio.co.kr:37854` : 메인 포털(여기서 MORI UI 링크 클릭 가능)
 
 주의:
 
