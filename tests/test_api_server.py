@@ -79,6 +79,10 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertIn("overview_modal", html)
         self.assertIn("resolvePayloadForRun", html)
         self.assertIn("queryMode = 'natural'", html)
+        self.assertIn("Download CSV", html)
+        self.assertIn("hasQueryResults", html)
+        self.assertIn("showNoResultsAlert", html)
+        self.assertIn("window.alert", html)
         self.assertIn("extractFilename", html)
         self.assertIn("downloadTextFile", html)
 

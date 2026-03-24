@@ -946,7 +946,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
         <section class=\"card\">
           <h2>Natural Language Query</h2>
-          <div class=\"subtext\">자연스럽게 질문해도 되며, Run Query는 마지막으로 수정한 입력 영역(자연어/구조화)을 우선 사용합니다.</div>
+          <div class=\"subtext\">자연스럽게 질문해도 되며, Run Query는 마지막으로 수정한 입력 영역(자연어/구조화)을 우선 사용합니다. CSV는 원할 때만 별도로 다운로드합니다.</div>
           <div class=\"row\">
             <label for=\"nlp_text\">질문</label>
             <textarea id=\"nlp_text\">오프라인 호스트 보여줘</textarea>
@@ -955,6 +955,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"actions\">
             <button id=\"interpret\" class=\"secondary\">Interpret Text</button>
             <button id=\"run\">Run Query</button>
+            <button id=\"download_csv\" class=\"ghost\">Download CSV</button>
           </div>
           <div id=\"interpretation_hint\"></div>
           <div class=\"status-line\" id=\"query_status\">catalog loading...</div>
@@ -1581,6 +1582,24 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       return match ? match[1] : 'mori-query.csv';
     }
 
+    function queryResultCount(data) {
+      if (typeof data?.meta?.count === 'number') {
+        return data.meta.count;
+      }
+      return Array.isArray(data?.evidence) ? data.evidence.length : 0;
+    }
+
+    function hasQueryResults(data) {
+      return queryResultCount(data) > 0;
+    }
+
+    function showNoResultsAlert(data) {
+      const message = typeof data?.summary === 'string' && data.summary.trim()
+        ? data.summary.trim()
+        : '조회 결과가 없습니다.';
+      window.alert(message);
+    }
+
     function downloadTextFile(text, filename, mimeType = 'text/csv;charset=utf-8') {
       const blob = new Blob([text], { type: mimeType });
       const url = URL.createObjectURL(blob);
@@ -1598,7 +1617,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       if (!payload) return;
       queryStatusEl.textContent = 'query running...';
       try {
-        const response = await fetch('/query?format=csv', {
+        const response = await fetch('/query', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -1614,14 +1633,68 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           queryStatusEl.textContent = `query failed: HTTP ${response.status}`;
           return;
         }
-        const csvText = await response.text();
-        const filename = extractFilename(response);
-        downloadTextFile(csvText, filename, response.headers.get('content-type') || 'text/csv;charset=utf-8');
-        resultEl.value = `CSV download started: ${filename}`;
-        queryStatusEl.textContent = 'query completed as csv download';
+        const data = await response.json();
+        if (!hasQueryResults(data)) {
+          resultEl.value = '조회 결과가 없습니다.';
+          queryStatusEl.textContent = 'query returned no results';
+          showNoResultsAlert(data);
+          return;
+        }
+        resultEl.value = JSON.stringify(data, null, 2);
+        queryStatusEl.textContent = 'query completed';
       } catch (error) {
         resultEl.value = error.stack || String(error);
         queryStatusEl.textContent = `query failed: ${error.message}`;
+      }
+    }
+
+    async function downloadCsv() {
+      const payload = await resolvePayloadForRun();
+      if (!payload) return;
+      queryStatusEl.textContent = 'checking query results before csv download...';
+      try {
+        const previewResponse = await fetch('/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const previewData = await previewResponse.json();
+        if (!previewResponse.ok) {
+          resultEl.value = JSON.stringify(previewData, null, 2);
+          queryStatusEl.textContent = `query failed: HTTP ${previewResponse.status}`;
+          return;
+        }
+        if (!hasQueryResults(previewData)) {
+          resultEl.value = '조회 결과가 없습니다.';
+          queryStatusEl.textContent = 'csv download skipped: no results';
+          showNoResultsAlert(previewData);
+          return;
+        }
+
+        const response = await fetch('/query?format=csv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const data = await response.json();
+            resultEl.value = JSON.stringify(data, null, 2);
+          } else {
+            resultEl.value = await response.text();
+          }
+          queryStatusEl.textContent = `csv download failed: HTTP ${response.status}`;
+          return;
+        }
+        const csvText = await response.text();
+        const filename = extractFilename(response);
+        downloadTextFile(csvText, filename, response.headers.get('content-type') || 'text/csv;charset=utf-8');
+        resultEl.value = JSON.stringify(previewData, null, 2);
+        queryStatusEl.textContent = `csv download started: ${filename}`;
+      } catch (error) {
+        resultEl.value = error.stack || String(error);
+        queryStatusEl.textContent = `csv download failed: ${error.message}`;
       }
     }
 
@@ -1661,6 +1734,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     });
     document.getElementById('interpret').addEventListener('click', interpretText);
     document.getElementById('run').addEventListener('click', runQuery);
+    document.getElementById('download_csv').addEventListener('click', downloadCsv);
     document.getElementById('reset').addEventListener('click', resetForm);
     document.getElementById('copy_payload').addEventListener('click', copyPayload);
     document.getElementById('query_guide').addEventListener('click', () => openGuideModal('', guideExamples));
