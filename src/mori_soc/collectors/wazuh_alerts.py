@@ -70,6 +70,7 @@ class WazuhAlertCollector(BaseCollector):
 
         normalized = {
             "host_id": host_alias,
+            "source_aliases": record.host_aliases,
             "hostname": hostname,
             "primary_ip": primary_ip,
             "source_event_id": record.external_id,

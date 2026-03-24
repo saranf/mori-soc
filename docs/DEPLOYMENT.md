@@ -46,6 +46,7 @@ sudo sysctl -w vm.max_map_count=262144
 - `FLEET_DB_ROOT_PASSWORD`
 - `FLEET_DB_PASSWORD`
 - `FLEET_SERVER_PRIVATE_KEY`
+- `MORI_DB_PASSWORD`
 
 예시:
 
@@ -66,6 +67,69 @@ docker compose ps
 
 기존에 인증서 생성 전에 `docker compose up`을 먼저 실행했다면,
 `config/wazuh_indexer_ssl_certs` 내부 경로가 디렉터리로 잘못 생성될 수 있으므로 위처럼 초기화 후 다시 생성하는 것을 권장합니다.
+
+### 4-1. MORI API + Postgres 기동
+
+Phase 2의 HTTP API는 아래 두 서비스로 추가되었습니다.
+
+- `soc-postgres`: MORI 질의용 전용 Postgres
+- `mori-api`: FastAPI 기반 조회 API (`/health`, `/catalog`, `/query`)
+
+기본 포트:
+
+- `MORI_API_PORT=18000`
+
+기동:
+
+```bash
+docker compose up -d soc-postgres mori-api
+docker compose ps soc-postgres mori-api
+docker compose logs mori-api --tail=100
+```
+
+정상 기준:
+
+- `soc-postgres`가 healthy
+- `mori-api`가 healthy
+- `GET /health`가 `{"status":"ok", ...}` 반환
+
+확인 예시:
+
+```bash
+curl http://mori.rmstudio.co.kr:18000/health
+curl http://mori.rmstudio.co.kr:18000/catalog
+curl -X POST http://mori.rmstudio.co.kr:18000/query \
+  -H 'Content-Type: application/json' \
+  -d '{"intent":"offline_hosts","scope":{"time_range":"24h"}}'
+```
+
+주의:
+
+- `schema/001_phase1_initial.sql`은 `mori-postgres-data` 볼륨이 비어 있는 **최초 기동 시점에만** 자동 적용됩니다.
+- 이미 데이터 볼륨이 생성된 상태라면, 이후 schema 파일 변경은 자동 반영되지 않습니다.
+- 현재 단계는 **조회 API + DB 배포선**까지이며, 실제 보안 데이터 적재 자동화는 후속 수집 연동 작업이 필요합니다.
+
+### 4-2. 캐시만 삭제하고 MORI API 재빌드
+
+데이터 볼륨을 지우지 않고 **이미지 빌드 캐시만** 정리한 뒤 재빌드하려면 아래 순서를 권장합니다.
+
+```bash
+docker builder prune -f
+docker compose build --no-cache mori-api
+docker compose up -d mori-api
+```
+
+DB까지 함께 올리고 싶다면:
+
+```bash
+docker compose up -d soc-postgres mori-api
+```
+
+중요:
+
+- 위 명령은 **빌드 캐시만** 정리합니다.
+- `docker compose down -v`는 볼륨까지 삭제하므로 DB 데이터가 날아갑니다.
+- schema를 처음부터 다시 적용해야 할 때만 `mori-postgres-data` 볼륨 삭제를 고려하세요.
 
 ### 5. Grafana 로그인 안 될 때
 

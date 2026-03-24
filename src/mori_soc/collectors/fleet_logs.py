@@ -62,6 +62,7 @@ class FleetLogCollector(BaseCollector):
         normalized = {
             "source": self.source_name,
             "host_id": host_alias,
+            "source_aliases": record.host_aliases,
             "observation_type": "status",
             "metric_name": "fleet_status",
             "metric_value": payload.get("message") or payload.get("status") or "status",
@@ -84,6 +85,9 @@ class FleetLogCollector(BaseCollector):
         normalized = {
             "source": self.source_name,
             "host_id": host_alias,
+            "source_aliases": record.host_aliases,
+            "hostname": result_json.get("hostname") if isinstance(result_json, dict) else None,
+            "platform": result_json.get("platform") if isinstance(result_json, dict) else None,
             "query_name": payload.get("name") or record.external_id,
             "query_text": payload.get("query") or payload.get("query_sql"),
             "result_json": result_json,
@@ -104,7 +108,11 @@ class FleetLogCollector(BaseCollector):
             payload.get("hostIdentifier"),
             payload.get("hostname"),
             self._nested(payload, "decorations", "hostname"),
+            self._nested(payload, "decorations", "uuid"),
             self._nested(payload, "columns", "hostname"),
+            self._nested(payload, "columns", "uuid"),
+            self._nested(payload, "columns", "hardware_uuid"),
+            payload.get("uuid"),
         ):
             if isinstance(candidate, str) and candidate and candidate not in aliases:
                 aliases.append(candidate)

@@ -1,4 +1,41 @@
 services:
+  soc-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${MORI_DB_NAME:-mori_soc}
+      POSTGRES_USER: ${MORI_DB_USER:-mori}
+      POSTGRES_PASSWORD: ${MORI_DB_PASSWORD:-mori}
+    volumes:
+      - mori-postgres-data:/var/lib/postgresql/data
+      - ./schema/001_phase1_initial.sql:/docker-entrypoint-initdb.d/001_phase1_initial.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [soc]
+
+  mori-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      soc-postgres:
+        condition: service_healthy
+    environment:
+      MORI_QUERY_BACKEND: postgres
+      MORI_DATABASE_URL: postgresql://${MORI_DB_USER:-mori}:${MORI_DB_PASSWORD:-mori}@soc-postgres:5432/${MORI_DB_NAME:-mori_soc}
+    ports:
+      - "${MORI_API_PORT:-18000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks: [soc]
+
   portal:
     image: nginx:alpine
     restart: unless-stopped
@@ -269,6 +306,7 @@ networks:
     driver: bridge
 
 volumes:
+  mori-postgres-data:
   grafana-data:
   loki-data:
   zabbix-postgres-data:

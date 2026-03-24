@@ -335,18 +335,80 @@ Grafana Explore에서 Loki로 아래 쿼리를 확인합니다.
 - Fleet status 로그: `{job="fleetdm", log_type="status"}`
 - Fleet result 로그: `{job="fleetdm", log_type="result"}`
 
-## 12. 이어서 작업할 때 사용할 프롬프트
+## 12. MORI API (Phase 2 MVC 1~3) 배포
+
+이제 `mori-api` + `soc-postgres`가 `docker compose`로 함께 올라가도록 구성을 추가했습니다.
+
+### 추가된 항목
+
+- `Dockerfile` : MORI API 컨테이너 이미지
+- `docker-compose.yml` : `mori-api`, `soc-postgres` 서비스 추가
+- `src/mori_soc/repositories/postgres.py` : Postgres 저장소
+- `src/mori_soc/api/server.py` : env 기반 `memory/postgres` 백엔드 선택 지원
+
+### 환경변수
+
+`.env.example`에 아래 값이 추가되었습니다.
+
+- `MORI_API_PORT=18000`
+- `MORI_DB_NAME=mori_soc`
+- `MORI_DB_USER=mori`
+- `MORI_DB_PASSWORD=...`
+
+### 최초 설정
+
+1. `.env` 준비
+   - `cp .env.example .env`
+   - `MORI_DB_PASSWORD`를 반드시 변경
+2. 기존 스택과 함께 기동
+   - `docker compose up -d soc-postgres mori-api`
+3. 상태 확인
+   - `docker compose ps soc-postgres mori-api`
+   - `docker compose logs mori-api --tail=100`
+
+### API 확인
+
+- Health: `curl http://mori.rmstudio.co.kr:${MORI_API_PORT:-18000}/health`
+- Catalog: `curl http://mori.rmstudio.co.kr:${MORI_API_PORT:-18000}/catalog`
+- Query 예시:
+
+<augment_code_snippet mode="EXCERPT">
+````bash
+curl -X POST http://mori.rmstudio.co.kr:18000/query \
+  -H 'Content-Type: application/json' \
+  -d '{"intent":"offline_hosts","scope":{"time_range":"24h"}}'
+````
+</augment_code_snippet>
+
+### 캐시만 지우고 재빌드
+
+데이터 볼륨은 유지하고 **빌드 캐시만** 정리하려면:
+
+- `docker builder prune -f`
+- `docker compose build --no-cache mori-api`
+- `docker compose up -d mori-api`
+
+### 주의
+
+- `soc-postgres`는 **초기 1회만** `schema/001_phase1_initial.sql`을 자동 적용합니다.
+- 이미 `mori-postgres-data` 볼륨이 만들어진 뒤에는 schema 파일 변경이 자동 반영되지 않습니다.
+- 현재 단계에서는 **스키마와 조회 API 배포선**까지 포함되며, 실제 데이터 적재는 이후 실시간 수집 연동이 필요합니다.
+
+## 13. 이어서 작업할 때 사용할 프롬프트
 
 다른 장소에서 이 저장소 작업을 다시 이어갈 때는,
 현재 목표와 읽어야 할 파일, 그리고 바로 다음 작업 범위를 한 번에 적어주면 가장 빠르게 이어집니다.
 
-### 현재 상태 (Phase 1 완료 / Phase 2 미착수)
+### 현재 상태 (Phase 1 완료 / Phase 2 진행 중)
 
 - Phase 1 (데이터 수집/정규화 코어) — **완료**
   - `src/mori_soc/` : 수집기, 정규화, 질의 서비스, 뷰 집계, 인메모리 저장소
   - `tests/test_query_service.py` : 20+ 단위 테스트
-- Phase 2 (관제 질의 엔진) — **미착수**
-  - FastAPI HTTP 서버, PostgresRepository, Dockerfile, docker-compose 항목 추가 필요
+- Phase 2 (관제 질의 엔진) — **진행 중**
+  - FastAPI HTTP 서버 추가 완료
+  - PostgresRepository 추가 완료
+  - Dockerfile / `mori-api` / `soc-postgres` compose 항목 추가 완료
+  - 남은 큰 작업: 자연어 → intent/filter 변환, 실시간 수집 연동
 
 ### Phase 2 시작 프롬프트 (추천)
 
@@ -407,15 +469,13 @@ Starter dashboard에도 아래 패널이 표시됩니다.
 - Trivy 실행 가능
 - Wazuh/Fleet 내부 포트 접속 가능
 
-## 13. 다음 작업 후보
+## 14. 다음 작업 후보
 
 ### Security Data Query Platform (Phase 2)
 
-1. **FastAPI HTTP 서버** — `src/mori_soc/api/server.py` 생성, `POST /query` 엔드포인트
-2. **PostgresRepository** — `src/mori_soc/repositories/postgres.py`, `schema/001_phase1_initial.sql` 적용
-3. **Dockerfile** — `mori-soc` Python 서비스 컨테이너 이미지
-4. **docker-compose.yml** — `mori-api` + `soc-postgres` 서비스 항목 추가
-5. **자연어 → Intent 변환기** — 입력 문장을 intent + filter로 파싱하는 경량 규칙/LLM 기반 변환기
+1. **자연어 → Intent 변환기** — 입력 문장을 intent + filter로 파싱하는 경량 규칙/LLM 기반 변환기
+2. **실시간 수집 연동** — Wazuh/Fleet/Zabbix API 폴링 또는 webhook으로 Postgres 적재
+3. **읽기 성능 최적화** — 현재 snapshot 기반 조회를 SQL/view 기반으로 고도화
 
 ### 인프라 운영
 

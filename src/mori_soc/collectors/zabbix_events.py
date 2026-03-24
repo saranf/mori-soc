@@ -90,6 +90,8 @@ class ZabbixEventCollector(BaseCollector):
 
         normalized = {
             "host_id": host_alias,
+            "source_aliases": record.host_aliases,
+            "hostname": host_alias,
             "source_event_id": record.external_id,
             "severity": severity,
             "original_severity": str(severity_raw) if severity_raw is not None else None,
@@ -114,6 +116,8 @@ class ZabbixEventCollector(BaseCollector):
 
         normalized = {
             "host_id": host_alias,
+            "source_aliases": record.host_aliases,
+            "hostname": host_alias,
             "observation_type": "metric",
             "metric_name": self._str(payload.get("item_name")) or self._str(payload.get("key_")) or "unknown_metric",
             "metric_value": str(value) if value is not None else None,

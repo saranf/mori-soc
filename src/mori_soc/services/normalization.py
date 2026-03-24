@@ -27,20 +27,20 @@ class EnvelopeEntityMapper:
 
     def _map_host_observation(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
         normalized = envelope.normalized
-        alias = self._string_value(normalized.get("host_id"))
-        host_id = self._resolve_host_id(alias, fallback=f"host-{envelope.entity_id}")
-        hostname = alias or host_id
+        alias, aliases = self._extract_aliases(normalized)
+        host_id = self._resolve_host_id(aliases, fallback=f"host-{envelope.entity_id}")
+        hostname = self._string_value(normalized.get("hostname")) or alias or host_id
         records: list[object] = [
             Host(
                 host_id=host_id,
                 hostname=hostname,
+                primary_ip=self._string_value(normalized.get("primary_ip")),
                 status="online",
                 first_seen_at=envelope.observed_at,
                 last_seen_at=envelope.observed_at,
             )
         ]
-        if alias:
-            records.append(self._build_alias(host_id, alias, envelope.source, "source_alias", envelope.observed_at))
+        records.extend(self._build_alias_records(host_id, aliases, envelope.source, envelope.observed_at))
         records.append(
             HostObservation(
                 observation_id=envelope.entity_id,
@@ -50,6 +50,7 @@ class EnvelopeEntityMapper:
                 metric_name=self._string_value(normalized.get("metric_name")) or "unknown_metric",
                 observed_at=envelope.observed_at,
                 metric_value=self._string_value(normalized.get("metric_value")),
+                unit=self._string_value(normalized.get("unit")),
                 severity=self._string_value(normalized.get("severity")),
                 raw_ref=envelope.raw_ref,
                 raw_payload=envelope.raw_payload,
@@ -59,11 +60,11 @@ class EnvelopeEntityMapper:
 
     def _map_query_result(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
         normalized = envelope.normalized
-        alias = self._string_value(normalized.get("host_id"))
-        host_id = self._resolve_host_id(alias, fallback=f"host-{envelope.entity_id}")
+        alias, aliases = self._extract_aliases(normalized)
+        host_id = self._resolve_host_id(aliases, fallback=f"host-{envelope.entity_id}")
         result_json = normalized.get("result_json") if isinstance(normalized.get("result_json"), dict) else {}
-        hostname = self._string_value(result_json.get("hostname")) or alias
-        platform = self._string_value(result_json.get("platform"))
+        hostname = self._string_value(normalized.get("hostname")) or self._string_value(result_json.get("hostname")) or alias
+        platform = self._string_value(normalized.get("platform")) or self._string_value(result_json.get("platform"))
         records: list[object] = []
         if hostname:
             records.append(
@@ -76,8 +77,7 @@ class EnvelopeEntityMapper:
                     last_seen_at=envelope.observed_at,
                 )
             )
-        if alias:
-            records.append(self._build_alias(host_id, alias, envelope.source, "source_alias", envelope.observed_at))
+        records.extend(self._build_alias_records(host_id, aliases, envelope.source, envelope.observed_at))
         records.append(
             QueryResult(
                 query_result_id=envelope.entity_id,
@@ -92,12 +92,18 @@ class EnvelopeEntityMapper:
         )
         return tuple(records)
 
-    def _resolve_host_id(self, alias: str | None, fallback: str) -> str:
-        if alias and alias in self.alias_map:
-            return self.alias_map[alias]
-        if alias:
-            self.alias_map[alias] = alias
-            return alias
+    def _resolve_host_id(self, aliases: list[str], fallback: str) -> str:
+        for alias in aliases:
+            if alias in self.alias_map:
+                host_id = self.alias_map[alias]
+                for candidate in aliases:
+                    self.alias_map[candidate] = host_id
+                return host_id
+        if aliases:
+            host_id = aliases[0]
+            for candidate in aliases:
+                self.alias_map[candidate] = host_id
+            return host_id
         return fallback
 
     def _build_alias(self, host_id: str, alias: str, source: str, alias_type: str, observed_at):
@@ -113,15 +119,27 @@ class EnvelopeEntityMapper:
             last_seen_at=observed_at,
         )
 
+    def _build_alias_records(
+        self,
+        host_id: str,
+        aliases: list[str],
+        source: str,
+        observed_at,
+    ) -> tuple[HostAlias, ...]:
+        return tuple(
+            self._build_alias(host_id, alias, source, "source_alias", observed_at)
+            for alias in aliases
+        )
+
     def _map_alert(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
         normalized = envelope.normalized
-        alias = self._string_value(normalized.get("host_id"))
+        alias, aliases = self._extract_aliases(normalized)
         host_id: str | None = None
         records: list[object] = []
 
-        if alias:
-            host_id = self._resolve_host_id(alias, fallback=alias)
-            hostname = self._string_value(normalized.get("hostname")) or alias
+        if aliases:
+            host_id = self._resolve_host_id(aliases, fallback=alias or f"host-{envelope.entity_id}")
+            hostname = self._string_value(normalized.get("hostname")) or alias or host_id
             primary_ip = self._string_value(normalized.get("primary_ip"))
             records.append(
                 Host(
@@ -133,9 +151,7 @@ class EnvelopeEntityMapper:
                     last_seen_at=envelope.observed_at,
                 )
             )
-            records.append(
-                self._build_alias(host_id, alias, envelope.source, "source_alias", envelope.observed_at)
-            )
+            records.extend(self._build_alias_records(host_id, aliases, envelope.source, envelope.observed_at))
 
         records.append(
             Alert(
@@ -157,8 +173,8 @@ class EnvelopeEntityMapper:
 
     def _map_vulnerability(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
         normalized = envelope.normalized
-        alias = self._string_value(normalized.get("host_id"))
-        host_id = self._resolve_host_id(alias, fallback=f"host-{envelope.entity_id}")
+        alias, aliases = self._extract_aliases(normalized)
+        host_id = self._resolve_host_id(aliases, fallback=f"host-{envelope.entity_id}")
         records: list[object] = []
 
         if alias:
@@ -172,9 +188,7 @@ class EnvelopeEntityMapper:
                     last_seen_at=envelope.observed_at,
                 )
             )
-            records.append(
-                self._build_alias(host_id, alias, envelope.source, "source_alias", envelope.observed_at)
-            )
+        records.extend(self._build_alias_records(host_id, aliases, envelope.source, envelope.observed_at))
 
         records.append(
             Vulnerability(
@@ -192,6 +206,18 @@ class EnvelopeEntityMapper:
             )
         )
         return tuple(records)
+
+    def _extract_aliases(self, normalized: dict[str, object]) -> tuple[str | None, list[str]]:
+        aliases: list[str] = []
+        primary = self._string_value(normalized.get("host_id"))
+        if primary:
+            aliases.append(primary)
+        source_aliases = normalized.get("source_aliases")
+        if isinstance(source_aliases, list):
+            for value in source_aliases:
+                if isinstance(value, str) and value and value not in aliases:
+                    aliases.append(value)
+        return primary or (aliases[0] if aliases else None), aliases
 
     def _string_value(self, value: object) -> str | None:
         return value if isinstance(value, str) and value else None
