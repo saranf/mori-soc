@@ -110,7 +110,39 @@ MORI는 기존 SOC-lite 배포 스캐폴드에서 출발해, 지금은 **Securit
 - **Vulnerability**: Trivy
 - **Unified query / dashboard**: MORI
 
-## 6. 현재 남은 큰 작업
+## 6. 데이터 정확성 메모
+
+### 왜 Zabbix에는 1대가 보이는데 MORI API는 0대로 보일 수 있나
+
+현재 MORI의 `/dashboard/summary` 와 `/ui` 는 **원본 도구 화면을 직접 조회하는 구조가 아니라,
+MORI 저장소에 적재된 host / host_alias / observation / alert 데이터를 집계하는 구조**입니다.
+
+즉 아래 흐름이 먼저 돌아야 숫자가 맞습니다.
+
+1. Zabbix/Fleet/Wazuh 에 원본 데이터 존재
+2. MORI 수집기가 API/log 를 읽음
+3. 정규화 후 MORI 저장소(Postgres)에 적재
+4. 대시보드/API가 그 적재 결과를 집계
+
+지금은 2~3번에 해당하는 **실시간 ingestion worker** 가 아직 연결되지 않았습니다.
+그래서 테스트 데이터나 수동 적재가 없는 상태에서는, Zabbix UI 에 host 가 있어도 MORI API 는 `0` 으로 보일 수 있습니다.
+
+이건 현재 시점에서는 **대시보드 집계 버그라기보다 수집 파이프라인 부재에 따른 데이터 정확성 갭**에 가깝습니다.
+
+### MVC 4까지 된 건가
+
+네. 현재 저장소 기준으로는 **MVC 4 초안까지는 구현된 상태**로 보는 게 맞습니다.
+
+- MVC 1: FastAPI API
+- MVC 2: PostgresRepository
+- MVC 3: Docker/Compose 배포선
+- MVC 4: 규칙형 자연어 질의 변환 + `/interpret` + `/ui`
+
+다만 **운영 신뢰도 측면의 핵심 공백은 데이터 정확성**입니다.
+즉, 기능 축의 MVC 4 와 운영 축의 실데이터 동기화는 별개이며,
+다음 우선순위는 MVC 숫자보다 **live ingestion / freshness / sync 상태** 쪽입니다.
+
+## 7. 현재 남은 큰 작업
 
 ### 우선순위 높음
 
@@ -133,7 +165,7 @@ MORI는 기존 SOC-lite 배포 스캐폴드에서 출발해, 지금은 **Securit
 5. **자체 lightweight agent 검토**
 6. **조사형 multi-hop pivot 기능**
 
-## 7. 지금 시점 한 줄 정리
+## 8. 지금 시점 한 줄 정리
 
 MORI는 이제 **“보안 데이터를 모으고, 웹에서 한눈에 보고, 자연어로 질의하는” 초기 운영 플랫폼** 단계까지 왔고,
-다음 핵심은 **실데이터를 자동 적재하는 ingestion worker** 입니다.
+다음 핵심은 **실데이터를 자동 적재하는 ingestion worker와 데이터 freshness 가시화** 입니다.

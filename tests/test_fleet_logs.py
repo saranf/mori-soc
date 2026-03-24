@@ -41,6 +41,28 @@ class FleetLogCollectorTests(unittest.TestCase):
         self.assertEqual(normalized.normalized["query_name"], "system_info")
         self.assertEqual(normalized.normalized["result_json"]["uuid"], "abc")
 
+    def test_collect_and_normalize_nested_result_record(self) -> None:
+        collector = FleetLogCollector()
+        records = collector.collect_lines(
+            [
+                '{"name":"system_info","host_id":42,"decorations":{"hostname":"mbp-02","uuid":"fleet-uuid-2"},'
+                '"unixTime":1710160500,"snapshot":[{"columns":{"hostname":"mbp-02","platform":"darwin","hardware_uuid":"hw-123"}}]}'
+            ],
+            "result",
+        )
+
+        self.assertEqual(len(records), 1)
+        record = records[0]
+        self.assertIn("42", record.host_aliases)
+        self.assertIn("fleet-uuid-2", record.host_aliases)
+        self.assertIn("hw-123", record.host_aliases)
+
+        normalized = list(collector.normalize(record))[0]
+        self.assertEqual(normalized.normalized["hostname"], "mbp-02")
+        self.assertEqual(normalized.normalized["platform"], "darwin")
+        self.assertEqual(normalized.normalized["result_json"]["row_count"], 1)
+        self.assertEqual(normalized.normalized["result_json"]["rows"][0]["hardware_uuid"], "hw-123")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,7 +6,9 @@ from typing import Any, Literal
 
 Severity = Literal["critical", "high", "medium", "low", "info"]
 HostStatus = Literal["online", "offline", "unknown"]
-AliasSource = Literal["fleet", "wazuh", "zabbix", "host_log"]
+SourceName = Literal["fleet", "wazuh", "zabbix", "host_log"]
+AliasSource = SourceName
+SyncStatus = Literal["success", "error", "running"]
 
 
 @dataclass(slots=True)
@@ -91,3 +93,16 @@ class HostObservation:
     severity: Severity | None = None
     raw_ref: str | None = None
     raw_payload: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class SourceSync:
+    source: SourceName
+    status: SyncStatus
+    last_sync_at: datetime
+    last_success_at: datetime | None = None
+    last_error_at: datetime | None = None
+    message: str | None = None
+    records_collected: int = 0
+    envelopes_normalized: int = 0
+    entities_saved: int = 0

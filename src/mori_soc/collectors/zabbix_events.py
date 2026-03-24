@@ -4,6 +4,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from typing import Iterable
+from urllib import error, request
 
 from .base import BaseCollector, CollectorRecord, NormalizedEnvelope
 
@@ -24,17 +25,87 @@ class ZabbixEventCollector(BaseCollector):
         self,
         problem_lines: Iterable[str] = (),
         item_lines: Iterable[str] = (),
+        *,
+        api_url: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        token: str | None = None,
+        request_timeout: int = 10,
+        host_limit: int = 500,
+        problem_limit: int = 500,
     ) -> None:
         self._problem_lines = tuple(problem_lines)
         self._item_lines = tuple(item_lines)
+        self._api_url = api_url
+        self._username = username
+        self._password = password
+        self._token = token
+        self._request_timeout = request_timeout
+        self._host_limit = host_limit
+        self._problem_limit = problem_limit
 
     @property
     def source_name(self) -> str:
         return "zabbix"
 
     def collect(self) -> Iterable[CollectorRecord]:
+        if self._api_url:
+            yield from self._collect_api()
+            return
         yield from self.collect_problem_lines(self._problem_lines)
         yield from self.collect_item_lines(self._item_lines)
+
+    def _collect_api(self) -> list[CollectorRecord]:
+        auth = self._token or self._login()
+        collected_at = datetime.now(tz=timezone.utc)
+        hosts = self._api_call(
+            "host.get",
+            {
+                "output": ["hostid", "host", "name", "status"],
+                "selectInterfaces": ["ip", "available"],
+                "monitored_hosts": True,
+                "limit": self._host_limit,
+                "sortfield": "host",
+            },
+            auth=auth,
+        )
+        problems = self._api_call(
+            "problem.get",
+            {
+                "output": ["eventid", "clock", "name", "severity", "objectid"],
+                "selectHosts": ["hostid", "host", "name"],
+                "recent": True,
+                "sortfield": "eventid",
+                "sortorder": "DESC",
+                "limit": self._problem_limit,
+            },
+            auth=auth,
+        )
+
+        records: list[CollectorRecord] = []
+        for payload in hosts:
+            records.append(
+                CollectorRecord(
+                    source=self.source_name,
+                    record_type="host",
+                    observed_at=collected_at,
+                    external_id=str(payload.get("hostid") or payload.get("host") or payload.get("name") or "zbx-host"),
+                    host_aliases=self._extract_host_aliases(payload),
+                    payload=payload,
+                )
+            )
+        for payload in problems:
+            records.append(
+                CollectorRecord(
+                    source=self.source_name,
+                    record_type="problem",
+                    observed_at=self._extract_timestamp(payload),
+                    external_id=str(payload.get("eventid") or payload.get("objectid") or "zbx-problem"),
+                    host_aliases=self._extract_host_aliases(payload),
+                    payload=payload,
+                )
+            )
+        return records
 
     def collect_problem_lines(self, lines: Iterable[str]) -> list[CollectorRecord]:
         records: list[CollectorRecord] = []
@@ -71,6 +142,9 @@ class ZabbixEventCollector(BaseCollector):
         return records
 
     def normalize(self, record: CollectorRecord) -> Iterable[NormalizedEnvelope]:
+        if record.record_type == "host":
+            yield self._normalize_host(record)
+            return
         if record.record_type == "problem":
             yield self._normalize_problem(record)
             return
@@ -133,16 +207,52 @@ class ZabbixEventCollector(BaseCollector):
             raw_payload=payload,
         )
 
+    def _normalize_host(self, record: CollectorRecord) -> NormalizedEnvelope:
+        payload = record.payload
+        primary_ip = self._extract_primary_ip(payload)
+        status = self._extract_host_status(payload)
+        metric_value = "available" if status == "online" else "unavailable" if status == "offline" else "unknown"
+        normalized = {
+            "host_id": record.host_aliases[0] if record.host_aliases else None,
+            "source_aliases": record.host_aliases,
+            "hostname": self._str(payload.get("name")) or self._str(payload.get("host")) or primary_ip,
+            "primary_ip": primary_ip,
+            "status": status,
+            "observation_type": "availability",
+            "metric_name": "zabbix_agent_status",
+            "metric_value": metric_value,
+        }
+        return NormalizedEnvelope(
+            entity_type="host_observation",
+            entity_id=self._make_id("host", record),
+            observed_at=record.observed_at,
+            source=self.source_name,
+            raw_ref=f"zabbix:host:{record.external_id}",
+            normalized=normalized,
+            raw_payload=payload,
+        )
+
     def _extract_host_aliases(self, payload: dict) -> list[str]:
         aliases: list[str] = []
+        for key in ("name", "host", "hostid"):
+            value = self._str(payload.get(key))
+            if value and value not in aliases:
+                aliases.append(value)
         hosts = payload.get("hosts")
         if isinstance(hosts, list):
             for h in hosts:
                 if isinstance(h, dict):
-                    for key in ("name", "hostid"):
+                    for key in ("name", "host", "hostid"):
                         val = self._str(h.get(key))
                         if val and val not in aliases:
                             aliases.append(val)
+        interfaces = payload.get("interfaces")
+        if isinstance(interfaces, list):
+            for interface in interfaces:
+                if isinstance(interface, dict):
+                    ip = self._str(interface.get("ip"))
+                    if ip and ip not in aliases:
+                        aliases.append(ip)
         return aliases
 
     def _extract_timestamp(self, payload: dict) -> datetime:
@@ -162,6 +272,63 @@ class ZabbixEventCollector(BaseCollector):
             5: "critical", "5": "critical",
         }
         return mapping.get(severity, "info")
+
+    def _extract_primary_ip(self, payload: dict) -> str | None:
+        interfaces = payload.get("interfaces")
+        if isinstance(interfaces, list):
+            for interface in interfaces:
+                if isinstance(interface, dict):
+                    ip = self._str(interface.get("ip"))
+                    if ip:
+                        return ip
+        return None
+
+    def _extract_host_status(self, payload: dict) -> str:
+        if str(payload.get("status")) == "1":
+            return "offline"
+        interfaces = payload.get("interfaces")
+        if isinstance(interfaces, list):
+            for interface in interfaces:
+                if isinstance(interface, dict):
+                    available = str(interface.get("available"))
+                    if available == "1":
+                        return "online"
+                    if available == "2":
+                        return "offline"
+        return "unknown"
+
+    def _login(self) -> str:
+        if not self._username or not self._password:
+            raise RuntimeError("Zabbix API credentials are missing")
+        try:
+            return str(self._api_call("user.login", {"username": self._username, "password": self._password}))
+        except RuntimeError as exc:
+            if "Invalid params" not in str(exc):
+                raise
+        return str(self._api_call("user.login", {"user": self._username, "password": self._password}))
+
+    def _api_call(self, method: str, params: dict[str, object], *, auth: str | None = None):
+        if not self._api_url:
+            raise RuntimeError("Zabbix API URL is not configured")
+        payload = {"jsonrpc": "2.0", "method": method, "params": params, "id": 1}
+        if auth:
+            payload["auth"] = auth
+        body = json.dumps(payload).encode("utf-8")
+        req = request.Request(
+            self._api_url,
+            data=body,
+            headers={"Content-Type": "application/json-rpc"},
+            method="POST",
+        )
+        try:
+            with request.urlopen(req, timeout=self._request_timeout) as response:
+                data = json.loads(response.read().decode("utf-8"))
+        except error.URLError as exc:
+            raise RuntimeError(f"Zabbix API request failed: {exc}") from exc
+        if "error" in data:
+            err = data["error"]
+            raise RuntimeError(f"Zabbix API error {err.get('code')}: {err.get('message')} {err.get('data', '')}".strip())
+        return data.get("result", [])
 
     def _make_id(self, prefix: str, record: CollectorRecord) -> str:
         digest = hashlib.sha1(

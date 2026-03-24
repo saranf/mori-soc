@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, Vulnerability
+from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, SourceSync, Vulnerability
 from mori_soc.services.query_service import InMemoryQueryStore
 
 from .base import BaseRepository, RepositorySnapshot
@@ -27,6 +27,7 @@ def snapshot_to_query_store(snapshot: RepositorySnapshot) -> InMemoryQueryStore:
         query_results=list(snapshot.query_results),
         observations=list(snapshot.observations),
         host_aliases=list(snapshot.host_aliases),
+        source_syncs=list(snapshot.source_syncs),
     )
 
 
@@ -247,6 +248,39 @@ class PostgresRepository(BaseRepository):
                 )
                 return
 
+            if isinstance(entity, SourceSync):
+                _ensure_source_syncs_table(cur)
+                cur.execute(
+                    """
+                    INSERT INTO source_syncs (
+                        source, status, last_sync_at, last_success_at, last_error_at, message,
+                        records_collected, envelopes_normalized, entities_saved
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (source) DO UPDATE SET
+                        status = EXCLUDED.status,
+                        last_sync_at = EXCLUDED.last_sync_at,
+                        last_success_at = EXCLUDED.last_success_at,
+                        last_error_at = EXCLUDED.last_error_at,
+                        message = EXCLUDED.message,
+                        records_collected = EXCLUDED.records_collected,
+                        envelopes_normalized = EXCLUDED.envelopes_normalized,
+                        entities_saved = EXCLUDED.entities_saved,
+                        updated_at = now()
+                    """,
+                    (
+                        entity.source,
+                        entity.status,
+                        entity.last_sync_at,
+                        entity.last_success_at,
+                        entity.last_error_at,
+                        entity.message,
+                        entity.records_collected,
+                        entity.envelopes_normalized,
+                        entity.entities_saved,
+                    ),
+                )
+                return
+
             raise TypeError(f"Unsupported entity type: {type(entity)!r}")
 
     def snapshot(self) -> RepositorySnapshot:
@@ -371,6 +405,29 @@ class PostgresRepository(BaseRepository):
                 for row in cur.fetchall()
             ]
 
+            _ensure_source_syncs_table(cur)
+            cur.execute(
+                """
+                SELECT source, status, last_sync_at, last_success_at, last_error_at, message,
+                       records_collected, envelopes_normalized, entities_saved
+                FROM source_syncs ORDER BY source
+                """
+            )
+            source_syncs = [
+                SourceSync(
+                    source=row[0],
+                    status=row[1],
+                    last_sync_at=row[2],
+                    last_success_at=row[3],
+                    last_error_at=row[4],
+                    message=row[5],
+                    records_collected=row[6],
+                    envelopes_normalized=row[7],
+                    entities_saved=row[8],
+                )
+                for row in cur.fetchall()
+            ]
+
         return RepositorySnapshot(
             hosts=hosts,
             host_aliases=host_aliases,
@@ -378,6 +435,7 @@ class PostgresRepository(BaseRepository):
             vulnerabilities=vulnerabilities,
             query_results=query_results,
             observations=observations,
+            source_syncs=source_syncs,
         )
 
     def _connect(self):
@@ -398,3 +456,24 @@ def _as_dict(value: Any) -> dict[str, Any]:
     if isinstance(value, dict):
         return value
     return dict(value)
+
+
+def _ensure_source_syncs_table(cur) -> None:
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS source_syncs (
+            source text PRIMARY KEY,
+            status text NOT NULL,
+            last_sync_at timestamptz NOT NULL,
+            last_success_at timestamptz,
+            last_error_at timestamptz,
+            message text,
+            records_collected integer NOT NULL DEFAULT 0,
+            envelopes_normalized integer NOT NULL DEFAULT 0,
+            entities_saved integer NOT NULL DEFAULT 0,
+            updated_at timestamptz NOT NULL DEFAULT now(),
+            CONSTRAINT source_syncs_source_check CHECK (source IN ('fleet', 'wazuh', 'zabbix', 'host_log')),
+            CONSTRAINT source_syncs_status_check CHECK (status IN ('success', 'error', 'running'))
+        )
+        """
+    )

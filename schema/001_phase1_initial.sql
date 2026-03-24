@@ -96,6 +96,21 @@ CREATE TABLE IF NOT EXISTS host_observations (
     CONSTRAINT host_observations_severity_check CHECK (severity IS NULL OR severity IN ('critical', 'high', 'medium', 'low', 'info'))
 );
 
+CREATE TABLE IF NOT EXISTS source_syncs (
+    source text PRIMARY KEY,
+    status text NOT NULL,
+    last_sync_at timestamptz NOT NULL,
+    last_success_at timestamptz,
+    last_error_at timestamptz,
+    message text,
+    records_collected integer NOT NULL DEFAULT 0,
+    envelopes_normalized integer NOT NULL DEFAULT 0,
+    entities_saved integer NOT NULL DEFAULT 0,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT source_syncs_source_check CHECK (source IN ('fleet', 'wazuh', 'zabbix', 'host_log')),
+    CONSTRAINT source_syncs_status_check CHECK (status IN ('success', 'error', 'running'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_hosts_hostname ON hosts (hostname);
 CREATE INDEX IF NOT EXISTS idx_hosts_status ON hosts (status);
 CREATE INDEX IF NOT EXISTS idx_hosts_last_seen_at ON hosts (last_seen_at DESC);
@@ -116,6 +131,7 @@ CREATE INDEX IF NOT EXISTS idx_query_results_name_observed_at ON query_results (
 
 CREATE INDEX IF NOT EXISTS idx_observations_host_observed_at ON host_observations (host_id, observed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_observations_metric_observed_at ON host_observations (metric_name, observed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_source_syncs_last_sync_at ON source_syncs (last_sync_at DESC);
 
 CREATE OR REPLACE VIEW latest_host_status_view AS
 SELECT

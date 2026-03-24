@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from mori_soc.api.contracts import QueryRequest, QueryScope
-from mori_soc.services.intent_parser import NaturalLanguageQueryParser
+from mori_soc.services.intent_parser import QUERY_GUIDE_EXAMPLES, NaturalLanguageQueryParser
 from mori_soc.services.query_catalog import PHASE1_QUERY_CATALOG
 from mori_soc.services.query_service import InMemoryQueryStore, QueryService
 from mori_soc.services.views import host_risk_summary_view, latest_host_status_view
@@ -96,6 +96,7 @@ def build_dashboard_payload(service: QueryService) -> dict[str, Any]:
         "critical_vulns": sum(1 for vuln in store.vulnerabilities if vuln.severity == "critical"),
         "high_vulns": sum(1 for vuln in store.vulnerabilities if vuln.severity == "high"),
         "sources_reporting": sum(1 for item in source_coverage if item["host_count"] > 0),
+        "sources_healthy": sum(1 for item in source_coverage if item["status"] == "success"),
         "ingested_records": len(store.alerts)
         + len(store.vulnerabilities)
         + len(store.query_results)
@@ -226,6 +227,7 @@ def create_app_from_env() -> Any:
 def render_query_console_html() -> str:
     payload_json = json.dumps(DEFAULT_UI_PAYLOAD, indent=2, ensure_ascii=False)
     default_payload_json = json.dumps(DEFAULT_UI_PAYLOAD, ensure_ascii=False)
+    guide_examples_json = json.dumps(list(QUERY_GUIDE_EXAMPLES), ensure_ascii=False)
     html = """<!doctype html>
 <html lang=\"ko\">
 <head>
@@ -278,6 +280,19 @@ def render_query_console_html() -> str:
     .quick-actions { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .status-line { color: #94a3b8; font-size: 13px; margin-top: 8px; }
     .mono { font-family: ui-monospace, SFMono-Regular, monospace; }
+    .top-actions button, .guide-chips button, .guide-list button { width: auto; }
+    .guide-chips, .guide-list { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .chip { padding: 8px 12px; border-radius: 999px; }
+    .guide-banner { margin-top: 12px; border-radius: 12px; padding: 12px; border: 1px solid #334155; background: #111827; }
+    .guide-banner strong { display: block; margin-bottom: 6px; }
+    .guide-banner.need-guide { border-color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
+    .guide-banner.warning { border-color: #38bdf8; background: rgba(56, 189, 248, 0.1); }
+    dialog { border: 1px solid #334155; border-radius: 18px; padding: 0; background: #0f172a; color: #e5e7eb; width: min(760px, calc(100vw - 32px)); }
+    dialog::backdrop { background: rgba(2, 6, 23, 0.74); }
+    .guide-dialog { padding: 20px; }
+    .guide-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .guide-dialog-head h3 { margin: 0; font-size: 20px; }
+    .guide-dialog-copy { color: #94a3b8; font-size: 14px; line-height: 1.5; }
     @media (max-width: 1240px) {
       .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .layout { grid-template-columns: 1fr; }
@@ -303,6 +318,7 @@ def render_query_console_html() -> str:
         </div>
       </div>
       <div class=\"top-actions\">
+        <button id=\"query_guide\" class=\"ghost\">Query Guide</button>
         <button id=\"refresh_dashboard\" class=\"ghost\">Refresh Dashboard</button>
       </div>
     </section>
@@ -346,14 +362,17 @@ def render_query_console_html() -> str:
 
         <section class=\"card\">
           <h2>Natural Language Query</h2>
+          <div class=\"subtext\">자연스럽게 질문해도 되지만, 애매하면 아래 예시 형식으로 다시 물어보면 더 정확하게 해석합니다.</div>
           <div class=\"row\">
             <label for=\"nlp_text\">질문</label>
             <textarea id=\"nlp_text\">오프라인 호스트 보여줘</textarea>
           </div>
+          <div class=\"guide-chips\" id=\"guide_examples\"></div>
           <div class=\"actions\">
             <button id=\"interpret\" class=\"secondary\">Interpret Text</button>
             <button id=\"run\">Run Query</button>
           </div>
+          <div id=\"interpretation_hint\"></div>
           <div class=\"status-line\" id=\"query_status\">catalog loading...</div>
         </section>
 
@@ -408,8 +427,20 @@ def render_query_console_html() -> str:
     </div>
   </div>
 
+  <dialog id=\"query_guide_modal\">
+    <div class=\"guide-dialog\">
+      <div class=\"guide-dialog-head\">
+        <h3>Natural Language Query Guide</h3>
+        <form method=\"dialog\"><button class=\"secondary\">닫기</button></form>
+      </div>
+      <div class=\"guide-dialog-copy\" id=\"query_guide_message\">질문 의도를 정확히 해석하지 못하면 아래 예시를 눌러 다시 시작할 수 있습니다.</div>
+      <div class=\"guide-list\" id=\"query_guide_list\"></div>
+    </div>
+  </dialog>
+
   <script>
     const defaultPayload = __DEFAULT_PAYLOAD_JSON__;
+    const guideExamples = __GUIDE_EXAMPLES__;
     const overviewCardsEl = document.getElementById('overview_cards');
     const sourceCoverageEl = document.getElementById('source_coverage');
     const latestStatusEl = document.getElementById('latest_status');
@@ -428,6 +459,11 @@ def render_query_console_html() -> str:
     const filtersEl = document.getElementById('filters');
     const payloadEl = document.getElementById('payload');
     const resultEl = document.getElementById('result');
+    const interpretationHintEl = document.getElementById('interpretation_hint');
+    const guideExamplesEl = document.getElementById('guide_examples');
+    const guideModalEl = document.getElementById('query_guide_modal');
+    const guideMessageEl = document.getElementById('query_guide_message');
+    const guideListEl = document.getElementById('query_guide_list');
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -482,6 +518,53 @@ def render_query_console_html() -> str:
       return payload;
     }
 
+    function normalizeGuideExamples(examples) {
+      return Array.isArray(examples) && examples.length ? examples : guideExamples;
+    }
+
+    function renderGuideButtons(container, examples) {
+      const items = normalizeGuideExamples(examples);
+      container.innerHTML = items.map((example, index) => `
+        <button class=\"ghost chip\" type=\"button\" data-guide-index=\"${index}\">${escapeHtml(example)}</button>
+      `).join('');
+      container.querySelectorAll('[data-guide-index]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const example = items[Number(button.dataset.guideIndex)] || '';
+          nlpTextEl.value = example;
+          queryStatusEl.textContent = `guide loaded: ${example}`;
+          if (guideModalEl.open) {
+            guideModalEl.close();
+          }
+        });
+      });
+    }
+
+    function renderInterpretationHint(data) {
+      const warnings = Array.isArray(data?.warnings) ? data.warnings : [];
+      if (!warnings.length && data?.recognized !== false) {
+        interpretationHintEl.innerHTML = '';
+        return;
+      }
+      const tone = data?.recognized === false ? 'need-guide' : 'warning';
+      const title = data?.recognized === false ? '이 질문은 다시 써주는 편이 좋습니다.' : '추가 힌트가 있습니다.';
+      interpretationHintEl.innerHTML = `
+        <div class=\"guide-banner ${escapeHtml(tone)}\">
+          <strong>${escapeHtml(title)}</strong>
+          ${warnings.map((warning) => `<div>${escapeHtml(warning)}</div>`).join('')}
+        </div>
+      `;
+    }
+
+    function openGuideModal(message, examples) {
+      guideMessageEl.textContent = message || '질문 의도를 정확히 해석하지 못하면 아래 예시를 눌러 다시 시작할 수 있습니다.';
+      renderGuideButtons(guideListEl, examples);
+      if (typeof guideModalEl.showModal === 'function') {
+        guideModalEl.showModal();
+        return;
+      }
+      guideModalEl.setAttribute('open', 'open');
+    }
+
     function renderOverview(overview) {
       const cards = [
         ['Total Hosts', overview.total_hosts, `${overview.online_hosts} online / ${overview.unknown_hosts} unknown`],
@@ -489,6 +572,7 @@ def render_query_console_html() -> str:
         ['High Alerts 24h', overview.alerts_24h, 'high + critical'],
         ['Critical Vulns', overview.critical_vulns, `high ${overview.high_vulns}`],
         ['Sources Reporting', overview.sources_reporting, 'fleet / wazuh / zabbix / host_log'],
+        ['Healthy Collectors', overview.sources_healthy, '최근 sync success 기준'],
         ['Ingested Records', overview.ingested_records, 'alerts + vulns + queries + observations'],
       ];
       overviewCardsEl.innerHTML = cards.map(([label, value, sub]) => `
@@ -505,11 +589,15 @@ def render_query_console_html() -> str:
         sourceCoverageEl.innerHTML = '<div class=\"empty\">아직 연결된 source alias가 없습니다.</div>';
         return;
       }
+      const statusToBadge = { success: 'online', error: 'offline', running: 'unknown', unknown: 'unknown' };
       sourceCoverageEl.innerHTML = items.map((item) => `
         <div class=\"coverage-item\">
           <div class=\"metric-label\">${escapeHtml(item.source.toUpperCase())}</div>
           <strong>${escapeHtml(item.host_count)}</strong>
-          <div class=\"metric-sub\">호스트</div>
+          <div class=\"metric-sub\">호스트 · <span class=\"badge ${escapeHtml(statusToBadge[item.status] || 'unknown')}\">${escapeHtml(item.status)}</span></div>
+          <div class=\"metric-sub\">last sync: ${escapeHtml(formatTime(item.last_sync_at))}</div>
+          <div class=\"metric-sub\">records ${escapeHtml(item.records_collected)} / entities ${escapeHtml(item.entities_saved)}</div>
+          <div class=\"status-line\">${escapeHtml(item.message || '아직 sync 기록 없음')}</div>
         </div>
       `).join('');
     }
@@ -656,6 +744,7 @@ def render_query_console_html() -> str:
       const text = nlpTextEl.value.trim();
       if (!text) {
         queryStatusEl.textContent = '자연어 질문을 입력하세요.';
+        renderInterpretationHint({ warnings: ['질문을 먼저 입력해 주세요.'], recognized: false });
         return;
       }
       queryStatusEl.textContent = 'interpreting text...';
@@ -671,8 +760,16 @@ def render_query_console_html() -> str:
           queryStatusEl.textContent = `interpret failed: HTTP ${response.status}`;
           return;
         }
+        renderInterpretationHint(data);
+        const examples = normalizeGuideExamples(data.guide_examples);
+        renderGuideButtons(guideExamplesEl, examples);
+        if (data.recognized === false) {
+          openGuideModal((data.warnings || [])[0], examples);
+          queryStatusEl.textContent = 'interpret needs guide examples';
+          return;
+        }
         populateFormFromPayload({ intent: data.intent, scope: data.scope || {}, filters: data.filters || {} });
-        queryStatusEl.textContent = 'interpret completed';
+        queryStatusEl.textContent = (data.warnings || []).length ? 'interpret completed with hints' : 'interpret completed';
       } catch (error) {
         resultEl.value = error.stack || String(error);
         queryStatusEl.textContent = `interpret failed: ${error.message}`;
@@ -683,6 +780,7 @@ def render_query_console_html() -> str:
       nlpTextEl.value = '오프라인 호스트 보여줘';
       populateFormFromPayload(defaultPayload);
       resultEl.value = '아직 실행 전입니다.';
+      interpretationHintEl.innerHTML = '';
       queryStatusEl.textContent = 'form reset';
     }
 
@@ -701,8 +799,10 @@ def render_query_console_html() -> str:
     document.getElementById('run').addEventListener('click', runQuery);
     document.getElementById('reset').addEventListener('click', resetForm);
     document.getElementById('copy_payload').addEventListener('click', copyPayload);
+    document.getElementById('query_guide').addEventListener('click', () => openGuideModal('', guideExamples));
     document.getElementById('refresh_dashboard').addEventListener('click', loadDashboard);
     filtersEl.value = JSON.stringify(defaultPayload.filters, null, 2);
+    renderGuideButtons(guideExamplesEl, guideExamples);
 
     async function initialize() {
       await loadCatalog();
@@ -713,14 +813,32 @@ def render_query_console_html() -> str:
   </script>
 </body>
 </html>"""
-    return html.replace("__PAYLOAD_JSON__", payload_json).replace("__DEFAULT_PAYLOAD_JSON__", default_payload_json)
+    return html.replace("__PAYLOAD_JSON__", payload_json).replace("__DEFAULT_PAYLOAD_JSON__", default_payload_json).replace("__GUIDE_EXAMPLES__", guide_examples_json)
 
 
 def _source_coverage(store: InMemoryQueryStore) -> list[dict[str, Any]]:
     sources = {"fleet": set(), "wazuh": set(), "zabbix": set(), "host_log": set()}
     for alias in store.host_aliases:
         sources.setdefault(alias.source, set()).add(alias.host_id)
-    return [{"source": source, "host_count": len(host_ids)} for source, host_ids in sources.items()]
+    sync_map = {item.source: item for item in store.source_syncs}
+    rows: list[dict[str, Any]] = []
+    for source, host_ids in sources.items():
+        sync = sync_map.get(source)
+        rows.append(
+            {
+                "source": source,
+                "host_count": len(host_ids),
+                "status": sync.status if sync else "unknown",
+                "last_sync_at": _isoformat(sync.last_sync_at) if sync else None,
+                "last_success_at": _isoformat(sync.last_success_at) if sync else None,
+                "last_error_at": _isoformat(sync.last_error_at) if sync else None,
+                "message": sync.message if sync else None,
+                "records_collected": sync.records_collected if sync else 0,
+                "envelopes_normalized": sync.envelopes_normalized if sync else 0,
+                "entities_saved": sync.entities_saved if sync else 0,
+            }
+        )
+    return rows
 
 
 def _recent_activity(store: InMemoryQueryStore, limit: int = 10) -> list[dict[str, Any]]:

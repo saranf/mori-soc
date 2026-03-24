@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, Vulnerability
+from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, SourceSync, Vulnerability
 
 
 @dataclass(slots=True)
@@ -14,6 +14,7 @@ class RepositorySnapshot:
     vulnerabilities: list[Vulnerability] = field(default_factory=list)
     query_results: list[QueryResult] = field(default_factory=list)
     observations: list[HostObservation] = field(default_factory=list)
+    source_syncs: list[SourceSync] = field(default_factory=list)
 
 
 class BaseRepository(ABC):

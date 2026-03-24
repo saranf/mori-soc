@@ -36,6 +36,30 @@ services:
       retries: 10
     networks: [soc]
 
+  mori-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      soc-postgres:
+        condition: service_healthy
+      zabbix-web:
+        condition: service_started
+    command: ["python", "-m", "mori_soc.worker"]
+    environment:
+      MORI_DATABASE_URL: postgresql://${MORI_DB_USER:-mori}:${MORI_DB_PASSWORD:-mori}@soc-postgres:5432/${MORI_DB_NAME:-mori_soc}
+      MORI_WORKER_INTERVAL_SECONDS: ${MORI_WORKER_INTERVAL_SECONDS:-60}
+      MORI_ENABLE_ZABBIX: ${MORI_ENABLE_ZABBIX:-true}
+      MORI_ZABBIX_API_URL: ${MORI_ZABBIX_API_URL:-http://zabbix-web:8080/api_jsonrpc.php}
+      MORI_ZABBIX_API_TOKEN: ${MORI_ZABBIX_API_TOKEN:-}
+      MORI_ZABBIX_USER: ${MORI_ZABBIX_USER:-Admin}
+      MORI_ZABBIX_PASSWORD: ${MORI_ZABBIX_PASSWORD:-zabbix}
+      MORI_ZABBIX_TIMEOUT_SECONDS: ${MORI_ZABBIX_TIMEOUT_SECONDS:-10}
+      MORI_ZABBIX_HOST_LIMIT: ${MORI_ZABBIX_HOST_LIMIT:-500}
+      MORI_ZABBIX_PROBLEM_LIMIT: ${MORI_ZABBIX_PROBLEM_LIMIT:-500}
+    networks: [soc]
+
   portal:
     image: nginx:alpine
     restart: unless-stopped

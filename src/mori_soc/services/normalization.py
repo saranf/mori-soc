@@ -30,12 +30,15 @@ class EnvelopeEntityMapper:
         alias, aliases = self._extract_aliases(normalized)
         host_id = self._resolve_host_id(aliases, fallback=f"host-{envelope.entity_id}")
         hostname = self._string_value(normalized.get("hostname")) or alias or host_id
+        platform = self._string_value(normalized.get("platform"))
+        status = self._string_value(normalized.get("status")) or "online"
         records: list[object] = [
             Host(
                 host_id=host_id,
                 hostname=hostname,
+                platform=platform,
                 primary_ip=self._string_value(normalized.get("primary_ip")),
-                status="online",
+                status=status,  # type: ignore[arg-type]
                 first_seen_at=envelope.observed_at,
                 last_seen_at=envelope.observed_at,
             )

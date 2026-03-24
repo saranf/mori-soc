@@ -129,6 +129,7 @@ curl -X POST http://mori.rmstudio.co.kr:18000/query \
 - `schema/001_phase1_initial.sql`은 `mori-postgres-data` 볼륨이 비어 있는 **최초 기동 시점에만** 자동 적용됩니다.
 - 이미 데이터 볼륨이 생성된 상태라면, 이후 schema 파일 변경은 자동 반영되지 않습니다.
 - 현재 단계는 **조회 API + DB 배포선**까지이며, 실제 보안 데이터 적재 자동화는 후속 수집 연동 작업이 필요합니다.
+- `/dashboard/summary` 와 `/ui` 는 MORI DB 기준 집계이므로, 실시간 수집 worker가 없으면 Zabbix UI/Fleet UI 수치와 차이가 날 수 있습니다.
 
 ### 4-2. 캐시만 삭제하고 MORI API 재빌드
 
@@ -245,6 +246,8 @@ Grafana Explore의 Loki 쿼리 예시:
 
 - `Fleet Status Logs`
 - `Fleet osquery Results`
+
+Fleet 로그인 실패나 host 재설치가 필요하면 `docs/FLEET_RESET_AND_REINSTALL_GUIDE.md` 절차를 그대로 따라가면 됩니다.
 
 주의:
 

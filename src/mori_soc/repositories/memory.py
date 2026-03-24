@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
-from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, Vulnerability
+from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, SourceSync, Vulnerability
 
 from .base import BaseRepository, RepositorySnapshot
 
@@ -19,6 +19,7 @@ class InMemoryRepository(BaseRepository):
         self._vulnerabilities: dict[str, Vulnerability] = {}
         self._query_results: dict[str, QueryResult] = {}
         self._observations: dict[str, HostObservation] = {}
+        self._source_syncs: dict[str, SourceSync] = {}
 
     def save(self, entity: object) -> None:
         if isinstance(entity, Host):
@@ -39,6 +40,9 @@ class InMemoryRepository(BaseRepository):
         if isinstance(entity, HostObservation):
             self._observations[entity.observation_id] = entity
             return
+        if isinstance(entity, SourceSync):
+            self._source_syncs[entity.source] = entity
+            return
         raise TypeError(f"Unsupported entity type: {type(entity)!r}")
 
     def snapshot(self) -> RepositorySnapshot:
@@ -49,6 +53,7 @@ class InMemoryRepository(BaseRepository):
             vulnerabilities=list(self._vulnerabilities.values()),
             query_results=list(self._query_results.values()),
             observations=list(self._observations.values()),
+            source_syncs=list(self._source_syncs.values()),
         )
 
     def apply_risk_scores(self, scores: dict[str, int]) -> None:
@@ -80,6 +85,7 @@ class InMemoryRepository(BaseRepository):
             query_results=snapshot.query_results,
             observations=snapshot.observations,
             host_aliases=snapshot.host_aliases,
+            source_syncs=snapshot.source_syncs,
         )
 
     def _save_host(self, incoming: Host) -> None:

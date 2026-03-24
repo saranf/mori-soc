@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from mori_soc.api.contracts import EvidenceRef, QueryRequest, QueryResponse
-from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, Vulnerability
+from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, SourceSync, Vulnerability
 
 from .query_catalog import get_template_query
 
@@ -18,6 +18,7 @@ class InMemoryQueryStore:
     query_results: list[QueryResult] = field(default_factory=list)
     observations: list[HostObservation] = field(default_factory=list)
     host_aliases: list[HostAlias] = field(default_factory=list)
+    source_syncs: list[SourceSync] = field(default_factory=list)
 
 
 class QueryService:

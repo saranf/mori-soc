@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
-from typing import Iterable
+from typing import Any, Iterable
 
 from .base import BaseCollector, CollectorRecord, NormalizedEnvelope
 
@@ -65,7 +65,10 @@ class FleetLogCollector(BaseCollector):
             "source_aliases": record.host_aliases,
             "observation_type": "status",
             "metric_name": "fleet_status",
-            "metric_value": payload.get("message") or payload.get("status") or "status",
+            "metric_value": payload.get("message") or payload.get("status") or payload.get("state") or "status",
+            "hostname": self._extract_hostname(payload),
+            "platform": self._extract_platform(payload),
+            "status": "online",
             "severity": self._normalize_severity(payload.get("severity")),
         }
         return NormalizedEnvelope(
@@ -81,15 +84,15 @@ class FleetLogCollector(BaseCollector):
     def _normalize_result(self, record: CollectorRecord) -> NormalizedEnvelope:
         payload = record.payload
         host_alias = record.host_aliases[0] if record.host_aliases else None
-        result_json = payload.get("columns") or payload.get("result") or payload
+        result_json = self._extract_result_json(payload)
         normalized = {
             "source": self.source_name,
             "host_id": host_alias,
             "source_aliases": record.host_aliases,
-            "hostname": result_json.get("hostname") if isinstance(result_json, dict) else None,
-            "platform": result_json.get("platform") if isinstance(result_json, dict) else None,
-            "query_name": payload.get("name") or record.external_id,
-            "query_text": payload.get("query") or payload.get("query_sql"),
+            "hostname": self._extract_hostname(payload, result_json),
+            "platform": self._extract_platform(payload, result_json),
+            "query_name": self._string_value(payload.get("name")) or self._string_value(payload.get("query_name")) or record.external_id,
+            "query_text": self._string_value(payload.get("query")) or self._string_value(payload.get("query_sql")) or self._string_value(payload.get("sql")),
             "result_json": result_json,
         }
         return NormalizedEnvelope(
@@ -104,19 +107,115 @@ class FleetLogCollector(BaseCollector):
 
     def _extract_host_aliases(self, payload: dict[str, object]) -> list[str]:
         aliases: list[str] = []
-        for candidate in (
-            payload.get("hostIdentifier"),
-            payload.get("hostname"),
-            self._nested(payload, "decorations", "hostname"),
-            self._nested(payload, "decorations", "uuid"),
-            self._nested(payload, "columns", "hostname"),
-            self._nested(payload, "columns", "uuid"),
-            self._nested(payload, "columns", "hardware_uuid"),
-            payload.get("uuid"),
+        for container in (
+            payload,
+            payload.get("decorations"),
+            payload.get("columns"),
+            payload.get("result"),
+            payload.get("results"),
+            payload.get("snapshot"),
         ):
-            if isinstance(candidate, str) and candidate and candidate not in aliases:
-                aliases.append(candidate)
+            self._collect_aliases(container, aliases)
         return aliases
+
+    def _extract_result_json(self, payload: dict[str, object]) -> dict[str, Any]:
+        for key in ("columns", "result", "results", "snapshot", "data"):
+            extracted = self._normalize_result_container(payload.get(key))
+            if extracted is not None:
+                return extracted
+        return dict(payload)
+
+    def _normalize_result_container(self, value: object) -> dict[str, Any] | None:
+        if isinstance(value, dict):
+            columns = value.get("columns")
+            if isinstance(columns, dict):
+                return dict(columns)
+            return dict(value)
+        if isinstance(value, list):
+            rows = [row for row in (self._normalize_result_row(item) for item in value) if row is not None]
+            if rows:
+                return {"rows": rows, "row_count": len(rows)}
+            return {"rows": [], "row_count": 0}
+        if value is None:
+            return None
+        return {"value": value}
+
+    def _normalize_result_row(self, value: object) -> dict[str, Any] | None:
+        if isinstance(value, dict):
+            columns = value.get("columns")
+            if isinstance(columns, dict):
+                return dict(columns)
+            return dict(value)
+        if value is None:
+            return None
+        return {"value": value}
+
+    def _extract_hostname(self, payload: dict[str, object], result_json: dict[str, Any] | None = None) -> str | None:
+        for candidate in (
+            self._string_value(payload.get("hostname")),
+            self._string_value(self._nested(payload, "decorations", "hostname")),
+            self._string_value(self._nested(payload, "columns", "hostname")),
+            self._string_value(self._nested(payload, "columns", "computer_name")),
+            self._string_value(result_json.get("hostname")) if isinstance(result_json, dict) else None,
+            self._string_value(result_json.get("computer_name")) if isinstance(result_json, dict) else None,
+            self._first_row_value(result_json, "hostname", "computer_name", "local_hostname") if isinstance(result_json, dict) else None,
+            self._string_value(payload.get("hostIdentifier")),
+        ):
+            if candidate:
+                return candidate
+        return None
+
+    def _extract_platform(self, payload: dict[str, object], result_json: dict[str, Any] | None = None) -> str | None:
+        for candidate in (
+            self._string_value(payload.get("platform")),
+            self._string_value(self._nested(payload, "columns", "platform")),
+            self._string_value(result_json.get("platform")) if isinstance(result_json, dict) else None,
+            self._first_row_value(result_json, "platform") if isinstance(result_json, dict) else None,
+        ):
+            if candidate:
+                return candidate
+        return None
+
+    def _collect_aliases(self, value: object, aliases: list[str]) -> None:
+        if isinstance(value, dict):
+            for key in (
+                "hostIdentifier",
+                "host_identifier",
+                "host_id",
+                "hostId",
+                "hostname",
+                "local_hostname",
+                "computer_name",
+                "uuid",
+                "host_uuid",
+                "hardware_uuid",
+                "hardwareUuid",
+            ):
+                self._append_alias(aliases, value.get(key))
+            if "columns" in value:
+                self._collect_aliases(value.get("columns"), aliases)
+            return
+        if isinstance(value, list):
+            for item in value:
+                self._collect_aliases(item, aliases)
+
+    def _append_alias(self, aliases: list[str], candidate: object) -> None:
+        text = self._string_value(candidate)
+        if text and text not in aliases:
+            aliases.append(text)
+
+    def _first_row_value(self, result_json: dict[str, Any], *keys: str) -> str | None:
+        rows = result_json.get("rows")
+        if not isinstance(rows, list):
+            return None
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            for key in keys:
+                text = self._string_value(row.get(key))
+                if text:
+                    return text
+        return None
 
     def _extract_timestamp(self, payload: dict[str, object]) -> datetime:
         unix_time = payload.get("unixTime") or payload.get("unix_time")
@@ -172,3 +271,10 @@ class FleetLogCollector(BaseCollector):
                 return None
             current = current[key]
         return current
+
+    def _string_value(self, value: object) -> str | None:
+        if isinstance(value, str) and value:
+            return value
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return str(value)
+        return None

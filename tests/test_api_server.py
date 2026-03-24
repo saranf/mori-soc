@@ -14,7 +14,7 @@ from mori_soc.api.server import (
     interpret_query_text,
     render_query_console_html,
 )
-from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, Vulnerability
+from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, SourceSync, Vulnerability
 from mori_soc.services.query_service import InMemoryQueryStore, QueryService
 
 FASTAPI_AVAILABLE = importlib.util.find_spec("fastapi") is not None
@@ -66,6 +66,8 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertIn("/query", html)
         self.assertIn("/interpret", html)
         self.assertIn("/dashboard/summary", html)
+        self.assertIn("Query Guide", html)
+        self.assertIn("오프라인 호스트 보여줘", html)
         self.assertIn(DEFAULT_UI_PAYLOAD["intent"], html)
 
     def test_interpret_query_text_returns_structured_request(self) -> None:
@@ -74,6 +76,15 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertEqual(interpretation["scope"]["time_range"], "24h")
         self.assertEqual(interpretation["scope"]["source"], "wazuh")
         self.assertEqual(interpretation["scope"]["severity"], "high")
+        self.assertTrue(interpretation["recognized"])
+        self.assertGreater(len(interpretation["guide_examples"]), 0)
+
+    def test_interpret_query_text_returns_guide_for_unrecognized_text(self) -> None:
+        interpretation = interpret_query_text("안녕하세요 오늘 뭐가 좋을까요")
+        self.assertEqual(interpretation["intent"], "alert_summary")
+        self.assertFalse(interpretation["recognized"])
+        self.assertGreater(len(interpretation["warnings"]), 0)
+        self.assertGreater(len(interpretation["guide_examples"]), 0)
 
     def test_build_dashboard_payload_summarizes_store(self) -> None:
         now = datetime.now(tz=timezone.utc)
@@ -126,6 +137,18 @@ class QueryRequestBuilderTests(unittest.TestCase):
                     observed_at=now,
                 )
             ],
+            source_syncs=[
+                SourceSync(
+                    source="zabbix",
+                    status="success",
+                    last_sync_at=now,
+                    last_success_at=now,
+                    message="host.get + problem.get ok",
+                    records_collected=2,
+                    envelopes_normalized=2,
+                    entities_saved=4,
+                )
+            ],
         )
         payload = build_dashboard_payload(QueryService(store))
         self.assertEqual(payload["overview"]["total_hosts"], 2)
@@ -133,6 +156,9 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertEqual(payload["overview"]["alerts_24h"], 1)
         self.assertEqual(payload["overview"]["critical_vulns"], 1)
         self.assertEqual(payload["source_coverage"][0]["source"], "fleet")
+        zabbix_row = next(item for item in payload["source_coverage"] if item["source"] == "zabbix")
+        self.assertEqual(zabbix_row["status"], "success")
+        self.assertEqual(payload["overview"]["sources_healthy"], 1)
         self.assertEqual(payload["latest_status"][0]["host_id"], "host-1")
         self.assertTrue(any(item["entity_type"] == "alert" for item in payload["recent_activity"]))
         self.assertEqual(len(payload["recommended_queries"]), 4)
@@ -172,3 +198,9 @@ class FastAPIAppTests(unittest.TestCase):
         response = self.client.get("/dashboard/summary")
         self.assertEqual(response.status_code, 200)
         self.assertIn("overview", response.json())
+
+    def test_interpret_endpoint_returns_guide_metadata(self) -> None:
+        response = self.client.post("/interpret", json={"text": "안녕하세요 오늘 뭐가 좋을까요"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("recognized", response.json())
+        self.assertIn("guide_examples", response.json())

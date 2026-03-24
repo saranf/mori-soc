@@ -85,6 +85,12 @@ Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리�
 | **운영 대시보드형 UI** | ✅ 완료 | `/ui`에서 상태/위험/최근 활동/빠른 질의/자연어 질의 제공 |
 | **실시간 수집 연동** | 🔲 남음 | Wazuh/Fleet/Zabbix API 폴링 또는 webhook 수신 |
 
+중요:
+
+- 현재 `/dashboard/summary` 와 `/ui` 는 **원본 Zabbix/Fleet UI를 직접 읽는 것이 아니라 MORI 저장소에 적재된 데이터**를 보여줍니다.
+- 따라서 **실시간 ingestion worker가 아직 없으면** Zabbix UI에는 host가 보여도 MORI API에서는 `0` 으로 보일 수 있습니다.
+- 즉, 현재 단계는 **MVC 4 초안까지는 맞지만 데이터 정확성은 다음 우선순위 작업**입니다.
+
 ### 권장 운영 모델
 
 - **PC / 노트북 / 사용자 단말**: `FleetDM`
@@ -122,6 +128,7 @@ Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리�
 - `docs/TRIVY_USAGE.md`: Trivy 파일시스템/이미지 스캔 가이드
 - `docs/DEPLOYMENT.md`: 서버 배포/운영/트러블슈팅 가이드
 - `docs/FLEET_MACBOOK_ENROLLMENT_AND_TEST.md`: Fleet macOS 등록/검증/대시보드 확인 문서
+- `docs/FLEET_RESET_AND_REINSTALL_GUIDE.md`: Fleet 로그인 문제 시 초기화 및 macOS host 재설치 가이드
 
 ## 1. 배포 목표
 
