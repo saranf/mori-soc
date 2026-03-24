@@ -312,16 +312,35 @@ class ZabbixEventCollector(BaseCollector):
         return str(self._api_call("user.login", {"user": self._username, "password": self._password}))
 
     def _api_call(self, method: str, params: dict[str, object], *, auth: str | None = None):
+        prefer_auth_header = bool(auth and self._token)
+        try:
+            return self._perform_api_call(method, params, auth=auth, use_auth_header=prefer_auth_header)
+        except RuntimeError as exc:
+            if auth and not prefer_auth_header and 'unexpected parameter "auth"' in str(exc):
+                return self._perform_api_call(method, params, auth=auth, use_auth_header=True)
+            raise
+
+    def _perform_api_call(
+        self,
+        method: str,
+        params: dict[str, object],
+        *,
+        auth: str | None = None,
+        use_auth_header: bool = False,
+    ):
         if not self._api_url:
             raise RuntimeError("Zabbix API URL is not configured")
         payload = {"jsonrpc": "2.0", "method": method, "params": params, "id": 1}
-        if auth:
+        if auth and not use_auth_header:
             payload["auth"] = auth
         body = json.dumps(payload).encode("utf-8")
+        headers = {"Content-Type": "application/json-rpc"}
+        if auth and use_auth_header:
+            headers["Authorization"] = f"Bearer {auth}"
         req = request.Request(
             self._api_url,
             data=body,
-            headers={"Content-Type": "application/json-rpc"},
+            headers=headers,
             method="POST",
         )
         try:

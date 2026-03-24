@@ -157,15 +157,20 @@ def _extract_hostname(question: str, matched_rules: list[str]) -> str | None:
         matched_rules.append("scope:hostname(explicit)")
         return explicit.group(1)
     contextual_patterns = (
-        (r"(?:호스트|host)\s*[:=]?\s*([A-Za-z0-9._-]+)", "scope:hostname(context-prefix)"),
-        (r"([A-Za-z0-9._-]+)\s*(?:호스트|host)\b", "scope:hostname(context-suffix)"),
+        (r"(?:호스트|host)(?:\s*[:=]\s*|\s+)([A-Za-z0-9._-]+)", "scope:hostname(context-prefix)"),
+        (r"([A-Za-z0-9._-]+)\s+(?:호스트|host)\b", "scope:hostname(context-suffix)"),
         (r"([A-Za-z0-9._-]+)\s*(?:타임라인|timeline|최근 활동|활동 이력|이력|history)", "scope:hostname(activity)"),
     )
     for pattern, rule in contextual_patterns:
         match = re.search(pattern, question, re.IGNORECASE)
-        if match and _looks_like_hostname(match.group(1)):
+        if not match:
+            continue
+        candidate = match.group(1)
+        if _looks_like_host_id(candidate):
+            continue
+        if _looks_like_hostname(candidate):
             matched_rules.append(rule)
-            return match.group(1)
+            return candidate
     return None
 
 
@@ -225,6 +230,10 @@ def _contains_any(text: str, keywords: tuple[str, ...]) -> bool:
 
 def _looks_like_hostname(value: str) -> bool:
     return bool(value) and (any(char.isdigit() for char in value) or any(char in value for char in ("-", ".", "_")))
+
+
+def _looks_like_host_id(value: str) -> bool:
+    return bool(re.fullmatch(r"host-[A-Za-z0-9_-]+", value))
 
 
 __all__ = ["InterpretationResult", "NaturalLanguageQueryParser", "QUERY_GUIDE_EXAMPLES"]

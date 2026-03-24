@@ -16,6 +16,13 @@ class NaturalLanguageQueryParserTests(unittest.TestCase):
         result = self.parser.interpret("host-1 타임라인 보여줘")
         self.assertEqual(result.request.intent, "host_timeline")
         self.assertEqual(result.request.scope.host_id, "host-1")
+        self.assertIsNone(result.request.scope.hostname)
+
+    def test_fleet_query_question_with_host_id_does_not_extract_partial_hostname(self) -> None:
+        result = self.parser.interpret("host-1 fleet query 결과 보여줘")
+        self.assertEqual(result.request.intent, "host_fleet_queries")
+        self.assertEqual(result.request.scope.host_id, "host-1")
+        self.assertIsNone(result.request.scope.hostname)
 
     def test_wazuh_alert_summary_extracts_source_and_severity(self) -> None:
         result = self.parser.interpret("최근 24시간 wazuh high alert 요약")
