@@ -69,6 +69,9 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertIn("Query Guide", html)
         self.assertIn("오프라인 호스트 보여줘", html)
         self.assertIn(DEFAULT_UI_PAYLOAD["intent"], html)
+        self.assertIn("overview_modal", html)
+        self.assertIn("resolvePayloadForRun", html)
+        self.assertIn("queryMode = 'natural'", html)
 
     def test_interpret_query_text_returns_structured_request(self) -> None:
         interpretation = interpret_query_text("최근 24시간 wazuh high alert 요약")
@@ -175,6 +178,11 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertEqual(payload["latest_status"][0]["host_id"], "host-1")
         self.assertTrue(any(item["entity_type"] == "alert" for item in payload["recent_activity"]))
         self.assertEqual(len(payload["recommended_queries"]), 4)
+        self.assertIn("overview_details", payload)
+        self.assertEqual(payload["overview_details"]["offline_hosts"][0]["host_id"], "host-1")
+        self.assertEqual(payload["overview_details"]["alerts_24h"][0]["alert_id"], "alert-1")
+        self.assertEqual(payload["overview_details"]["critical_vulns"][0]["vuln_id"], "vuln-1")
+        self.assertEqual(payload["overview_details"]["ingested_records"][0]["entity_type"], "alerts")
 
 
 @unittest.skipUnless(FASTAPI_AVAILABLE, "fastapi is not installed")
@@ -211,6 +219,7 @@ class FastAPIAppTests(unittest.TestCase):
         response = self.client.get("/dashboard/summary")
         self.assertEqual(response.status_code, 200)
         self.assertIn("overview", response.json())
+        self.assertIn("overview_details", response.json())
 
     def test_interpret_endpoint_returns_guide_metadata(self) -> None:
         response = self.client.post("/interpret", json={"text": "안녕하세요 오늘 뭐가 좋을까요"})

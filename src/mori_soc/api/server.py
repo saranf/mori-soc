@@ -83,6 +83,7 @@ def build_dashboard_payload(service: QueryService) -> dict[str, Any]:
     status_rows = sorted(latest_host_status_view(store), key=_latest_status_sort_key)
     risk_rows = host_risk_summary_view(store)
     source_coverage = _source_coverage(store)
+    hostnames = {host.host_id: host.hostname for host in store.hosts}
 
     alerts_24h = [
         alert for alert in store.alerts if alert.observed_at >= since_24h and alert.severity in {"high", "critical"}
@@ -106,19 +107,17 @@ def build_dashboard_payload(service: QueryService) -> dict[str, Any]:
     return {
         "generated_at": _isoformat(now),
         "overview": overview,
+        "overview_details": {
+            "total_hosts": _status_detail_rows(status_rows),
+            "offline_hosts": _status_detail_rows([row for row in status_rows if row.status == "offline"]),
+            "alerts_24h": _alert_detail_rows(alerts_24h, hostnames),
+            "critical_vulns": _critical_vuln_detail_rows(store, hostnames),
+            "sources_reporting": [item for item in source_coverage if item["host_count"] > 0],
+            "sources_healthy": [item for item in source_coverage if item["status"] == "success"],
+            "ingested_records": _ingested_record_rows(store),
+        },
         "source_coverage": source_coverage,
-        "latest_status": [
-            {
-                "host_id": row.host_id,
-                "hostname": row.hostname,
-                "status": row.status,
-                "risk_score": row.risk_score,
-                "last_seen_at": _isoformat(row.last_seen_at),
-                "last_alert_at": _isoformat(row.last_alert_at),
-                "last_observation_at": _isoformat(row.last_observation_at),
-            }
-            for row in status_rows[:8]
-        ],
+        "latest_status": _status_detail_rows(status_rows[:8]),
         "risk_summary": [
             {
                 "host_id": row.host_id,
@@ -248,6 +247,9 @@ def render_query_console_html() -> str:
     .stack { display: grid; gap: 16px; }
     .metrics { display: grid; gap: 12px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
     .card { background: linear-gradient(180deg, #101827 0%, #0f172a 100%); border: 1px solid #233046; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
+    .metric-card { cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
+    .metric-card:hover { transform: translateY(-1px); border-color: #38bdf8; }
+    .metric-card:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
     .metric-label { color: #94a3b8; font-size: 13px; margin-bottom: 8px; }
     .metric-value { font-size: 28px; font-weight: 800; }
     .metric-sub { margin-top: 6px; color: #7dd3fc; font-size: 13px; }
@@ -293,6 +295,7 @@ def render_query_console_html() -> str:
     .guide-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
     .guide-dialog-head h3 { margin: 0; font-size: 20px; }
     .guide-dialog-copy { color: #94a3b8; font-size: 14px; line-height: 1.5; }
+    .dialog-body { padding: 0 20px 20px; max-height: 60vh; overflow: auto; }
     @media (max-width: 1240px) {
       .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .layout { grid-template-columns: 1fr; }
@@ -362,7 +365,7 @@ def render_query_console_html() -> str:
 
         <section class=\"card\">
           <h2>Natural Language Query</h2>
-          <div class=\"subtext\">자연스럽게 질문해도 되지만, 애매하면 아래 예시 형식으로 다시 물어보면 더 정확하게 해석합니다.</div>
+          <div class=\"subtext\">자연스럽게 질문해도 되며, Run Query는 마지막으로 수정한 입력 영역(자연어/구조화)을 우선 사용합니다.</div>
           <div class=\"row\">
             <label for=\"nlp_text\">질문</label>
             <textarea id=\"nlp_text\">오프라인 호스트 보여줘</textarea>
@@ -438,6 +441,17 @@ def render_query_console_html() -> str:
     </div>
   </dialog>
 
+  <dialog id=\"overview_modal\">
+    <div class=\"guide-dialog\">
+      <div class=\"guide-dialog-head\">
+        <h3 id=\"overview_modal_title\">Overview Details</h3>
+        <form method=\"dialog\"><button class=\"secondary\">닫기</button></form>
+      </div>
+      <div class=\"guide-dialog-copy\" id=\"overview_modal_copy\">선택한 카드의 상세 목록입니다.</div>
+    </div>
+    <div class=\"dialog-body\" id=\"overview_modal_body\"></div>
+  </dialog>
+
   <script>
     const defaultPayload = __DEFAULT_PAYLOAD_JSON__;
     const guideExamples = __GUIDE_EXAMPLES__;
@@ -464,6 +478,12 @@ def render_query_console_html() -> str:
     const guideModalEl = document.getElementById('query_guide_modal');
     const guideMessageEl = document.getElementById('query_guide_message');
     const guideListEl = document.getElementById('query_guide_list');
+    const overviewModalEl = document.getElementById('overview_modal');
+    const overviewModalTitleEl = document.getElementById('overview_modal_title');
+    const overviewModalCopyEl = document.getElementById('overview_modal_copy');
+    const overviewModalBodyEl = document.getElementById('overview_modal_body');
+    let dashboardDetails = {};
+    let queryMode = 'natural';
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -492,7 +512,11 @@ def render_query_console_html() -> str:
       return Object.fromEntries(Object.entries(scope).filter(([, value]) => value));
     }
 
-    function populateFormFromPayload(payload) {
+    function setQueryMode(mode) {
+      queryMode = mode;
+    }
+
+    function populateFormFromPayload(payload, options = {}) {
       intentEl.value = payload.intent || defaultPayload.intent;
       const scope = payload.scope || {};
       timeRangeEl.value = scope.time_range || '24h';
@@ -501,6 +525,7 @@ def render_query_console_html() -> str:
       severityEl.value = scope.severity || '';
       sourceEl.value = scope.source || '';
       filtersEl.value = JSON.stringify(payload.filters || {}, null, 2);
+      setQueryMode(options.mode || 'structured');
       syncPayload();
     }
 
@@ -531,6 +556,7 @@ def render_query_console_html() -> str:
         button.addEventListener('click', () => {
           const example = items[Number(button.dataset.guideIndex)] || '';
           nlpTextEl.value = example;
+          setQueryMode('natural');
           queryStatusEl.textContent = `guide loaded: ${example}`;
           if (guideModalEl.open) {
             guideModalEl.close();
@@ -558,6 +584,9 @@ def render_query_console_html() -> str:
     function openGuideModal(message, examples) {
       guideMessageEl.textContent = message || '질문 의도를 정확히 해석하지 못하면 아래 예시를 눌러 다시 시작할 수 있습니다.';
       renderGuideButtons(guideListEl, examples);
+      if (guideModalEl.open) {
+        return;
+      }
       if (typeof guideModalEl.showModal === 'function') {
         guideModalEl.showModal();
         return;
@@ -565,23 +594,140 @@ def render_query_console_html() -> str:
       guideModalEl.setAttribute('open', 'open');
     }
 
+    function openOverviewModal(title, description, bodyHtml) {
+      overviewModalTitleEl.textContent = title;
+      overviewModalCopyEl.textContent = description;
+      overviewModalBodyEl.innerHTML = bodyHtml;
+      if (overviewModalEl.open) {
+        return;
+      }
+      if (typeof overviewModalEl.showModal === 'function') {
+        overviewModalEl.showModal();
+        return;
+      }
+      overviewModalEl.setAttribute('open', 'open');
+    }
+
+    function renderDetailTable(columns, items, emptyText) {
+      if (!items.length) {
+        return `<div class="empty">${escapeHtml(emptyText)}</div>`;
+      }
+      return `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr>
+            </thead>
+            <tbody>
+              ${items.map((item) => `
+                <tr>
+                  ${columns.map((column) => `<td>${column.render(item)}</td>`).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderStatusDetailTable(items) {
+      return renderDetailTable([
+        {
+          label: 'Host',
+          render: (item) => `<strong>${escapeHtml(item.hostname)}</strong><br /><span class="subtext">${escapeHtml(item.host_id)}</span>`,
+        },
+        { label: 'Status', render: (item) => `<span class="badge ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span>` },
+        { label: 'Risk', render: (item) => escapeHtml(item.risk_score) },
+        { label: 'Last Seen', render: (item) => escapeHtml(formatTime(item.last_seen_at)) },
+        { label: 'Last Alert', render: (item) => escapeHtml(formatTime(item.last_alert_at)) },
+      ], items, '표시할 호스트가 없습니다.');
+    }
+
+    function renderAlertDetailTable(items) {
+      return renderDetailTable([
+        { label: 'Time', render: (item) => escapeHtml(formatTime(item.observed_at)) },
+        {
+          label: 'Host',
+          render: (item) => `<strong>${escapeHtml(item.hostname || '-')}</strong><br /><span class="subtext">${escapeHtml(item.host_id || '-')}</span>`,
+        },
+        { label: 'Source', render: (item) => escapeHtml(item.source) },
+        { label: 'Severity', render: (item) => escapeHtml(item.severity) },
+        { label: 'Message', render: (item) => escapeHtml(item.message) },
+      ], items, '최근 24시간 high / critical alert가 없습니다.');
+    }
+
+    function renderVulnerabilityDetailTable(items) {
+      return renderDetailTable([
+        { label: 'Detected', render: (item) => escapeHtml(formatTime(item.detected_at)) },
+        {
+          label: 'Host',
+          render: (item) => `<strong>${escapeHtml(item.hostname || item.host_id)}</strong><br /><span class="subtext">${escapeHtml(item.host_id)}</span>`,
+        },
+        { label: 'Source', render: (item) => escapeHtml(item.source) },
+        { label: 'CVE', render: (item) => escapeHtml(item.cve || '-') },
+        { label: 'Package', render: (item) => escapeHtml(item.package_name || '-') },
+      ], items, 'critical 취약점이 없습니다.');
+    }
+
+    function renderSourceDetailTable(items) {
+      return renderDetailTable([
+        { label: 'Source', render: (item) => escapeHtml(item.source) },
+        { label: 'Hosts', render: (item) => escapeHtml(item.host_count) },
+        { label: 'Status', render: (item) => escapeHtml(item.status) },
+        { label: 'Last Sync', render: (item) => escapeHtml(formatTime(item.last_sync_at)) },
+        { label: 'Message', render: (item) => escapeHtml(item.message || '-') },
+      ], items, '표시할 source 상태가 없습니다.');
+    }
+
+    function renderIngestedDetailTable(items) {
+      return renderDetailTable([
+        { label: 'Entity', render: (item) => escapeHtml(item.entity_type) },
+        { label: 'Count', render: (item) => escapeHtml(item.count) },
+      ], items, '수집된 레코드가 없습니다.');
+    }
+
+    function showOverviewDetail(key, label) {
+      const items = Array.isArray(dashboardDetails[key]) ? dashboardDetails[key] : [];
+      const renderers = {
+        total_hosts: [renderStatusDetailTable, '현재 알려진 전체 호스트 목록입니다.'],
+        offline_hosts: [renderStatusDetailTable, '즉시 확인이 필요한 offline 호스트 목록입니다.'],
+        alerts_24h: [renderAlertDetailTable, '최근 24시간 high / critical alert 목록입니다.'],
+        critical_vulns: [renderVulnerabilityDetailTable, '현재 critical 취약점 목록입니다.'],
+        sources_reporting: [renderSourceDetailTable, '호스트를 보고 중인 source 목록입니다.'],
+        sources_healthy: [renderSourceDetailTable, '최근 sync가 success인 collector 목록입니다.'],
+        ingested_records: [renderIngestedDetailTable, '저장된 엔터티 타입별 레코드 수입니다.'],
+      };
+      const [renderer, description] = renderers[key] || [renderIngestedDetailTable, '선택한 카드의 상세 데이터입니다.'];
+      openOverviewModal(label, description, renderer(items));
+    }
+
     function renderOverview(overview) {
       const cards = [
-        ['Total Hosts', overview.total_hosts, `${overview.online_hosts} online / ${overview.unknown_hosts} unknown`],
-        ['Offline Hosts', overview.offline_hosts, '즉시 확인 대상'],
-        ['High Alerts 24h', overview.alerts_24h, 'high + critical'],
-        ['Critical Vulns', overview.critical_vulns, `high ${overview.high_vulns}`],
-        ['Sources Reporting', overview.sources_reporting, 'fleet / wazuh / zabbix / trivy / host_log'],
-        ['Healthy Collectors', overview.sources_healthy, '최근 sync success 기준'],
-        ['Ingested Records', overview.ingested_records, 'alerts + vulns + queries + observations'],
+        ['total_hosts', 'Total Hosts', overview.total_hosts, `${overview.online_hosts} online / ${overview.unknown_hosts} unknown`],
+        ['offline_hosts', 'Offline Hosts', overview.offline_hosts, '즉시 확인 대상'],
+        ['alerts_24h', 'High Alerts 24h', overview.alerts_24h, 'high + critical'],
+        ['critical_vulns', 'Critical Vulns', overview.critical_vulns, `high ${overview.high_vulns}`],
+        ['sources_reporting', 'Sources Reporting', overview.sources_reporting, 'fleet / wazuh / zabbix / trivy / host_log'],
+        ['sources_healthy', 'Healthy Collectors', overview.sources_healthy, '최근 sync success 기준'],
+        ['ingested_records', 'Ingested Records', overview.ingested_records, 'alerts + vulns + queries + observations'],
       ];
-      overviewCardsEl.innerHTML = cards.map(([label, value, sub]) => `
-        <section class=\"card\">
+      overviewCardsEl.innerHTML = cards.map(([key, label, value, sub]) => `
+        <section class=\"card metric-card\" role=\"button\" tabindex=\"0\" data-overview-key=\"${escapeHtml(key)}\" data-overview-label=\"${escapeHtml(label)}\">
           <div class=\"metric-label\">${escapeHtml(label)}</div>
           <div class=\"metric-value\">${escapeHtml(value)}</div>
           <div class=\"metric-sub\">${escapeHtml(sub)}</div>
         </section>
       `).join('');
+      overviewCardsEl.querySelectorAll('[data-overview-key]').forEach((card) => {
+        const open = () => showOverviewDetail(card.dataset.overviewKey, card.dataset.overviewLabel || 'Overview');
+        card.addEventListener('click', open);
+        card.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            open();
+          }
+        });
+      });
     }
 
     function renderSourceCoverage(items) {
@@ -681,7 +827,7 @@ def render_query_console_html() -> str:
         button.addEventListener('click', () => {
           const item = items[Number(button.dataset.quickIndex)];
           nlpTextEl.value = item.text || '';
-          populateFormFromPayload(item.payload || defaultPayload);
+          populateFormFromPayload(item.payload || defaultPayload, { mode: 'natural' });
           queryStatusEl.textContent = `quick query loaded: ${item.label}`;
         });
       });
@@ -693,7 +839,7 @@ def render_query_console_html() -> str:
         const data = await response.json();
         const queries = data.queries || [];
         intentEl.innerHTML = queries.map((query) => `<option value=\"${query.intent}\">${escapeHtml(query.name)} (${escapeHtml(query.intent)})</option>`).join('');
-        populateFormFromPayload(defaultPayload);
+        populateFormFromPayload(defaultPayload, { mode: 'natural' });
         queryStatusEl.textContent = `catalog loaded: ${queries.length} queries`;
       } catch (error) {
         queryStatusEl.textContent = `catalog load failed: ${error.message}`;
@@ -709,6 +855,7 @@ def render_query_console_html() -> str:
           dashboardStatusEl.textContent = `dashboard load failed: HTTP ${response.status}`;
           return;
         }
+        dashboardDetails = data.overview_details || {};
         renderOverview(data.overview || {});
         renderSourceCoverage(data.source_coverage || []);
         renderLatestStatus(data.latest_status || []);
@@ -721,8 +868,60 @@ def render_query_console_html() -> str:
       }
     }
 
+    async function interpretNaturalText(options = {}) {
+      const text = nlpTextEl.value.trim();
+      if (!text) {
+        queryStatusEl.textContent = '자연어 질문을 입력하세요.';
+        renderInterpretationHint({ warnings: ['질문을 먼저 입력해 주세요.'], recognized: false });
+        return null;
+      }
+      queryStatusEl.textContent = options.statusText || 'interpreting text...';
+      try {
+        const response = await fetch('/interpret', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        const data = await response.json();
+        resultEl.value = JSON.stringify(data, null, 2);
+        if (!response.ok) {
+          queryStatusEl.textContent = `interpret failed: HTTP ${response.status}`;
+          return null;
+        }
+        renderInterpretationHint(data);
+        const examples = normalizeGuideExamples(data.guide_examples);
+        renderGuideButtons(guideExamplesEl, examples);
+        if (data.recognized === false) {
+          if (options.openGuideOnUnrecognized !== false) {
+            openGuideModal((data.warnings || [])[0], examples);
+          }
+          queryStatusEl.textContent = 'interpret needs guide examples';
+          return { recognized: false, data };
+        }
+        const payload = { intent: data.intent, scope: data.scope || {}, filters: data.filters || {} };
+        populateFormFromPayload(payload, { mode: 'natural' });
+        queryStatusEl.textContent = (data.warnings || []).length ? 'interpret completed with hints' : 'interpret completed';
+        return { recognized: true, data, payload };
+      } catch (error) {
+        resultEl.value = error.stack || String(error);
+        queryStatusEl.textContent = `interpret failed: ${error.message}`;
+        return null;
+      }
+    }
+
+    async function resolvePayloadForRun() {
+      if (queryMode === 'natural' && nlpTextEl.value.trim()) {
+        const interpreted = await interpretNaturalText({ statusText: 'interpreting text before query...' });
+        if (!interpreted || interpreted.recognized === false) {
+          return null;
+        }
+        return interpreted.payload;
+      }
+      return syncPayload();
+    }
+
     async function runQuery() {
-      const payload = syncPayload();
+      const payload = await resolvePayloadForRun();
       if (!payload) return;
       queryStatusEl.textContent = 'query running...';
       try {
@@ -741,44 +940,12 @@ def render_query_console_html() -> str:
     }
 
     async function interpretText() {
-      const text = nlpTextEl.value.trim();
-      if (!text) {
-        queryStatusEl.textContent = '자연어 질문을 입력하세요.';
-        renderInterpretationHint({ warnings: ['질문을 먼저 입력해 주세요.'], recognized: false });
-        return;
-      }
-      queryStatusEl.textContent = 'interpreting text...';
-      try {
-        const response = await fetch('/interpret', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text }),
-        });
-        const data = await response.json();
-        resultEl.value = JSON.stringify(data, null, 2);
-        if (!response.ok) {
-          queryStatusEl.textContent = `interpret failed: HTTP ${response.status}`;
-          return;
-        }
-        renderInterpretationHint(data);
-        const examples = normalizeGuideExamples(data.guide_examples);
-        renderGuideButtons(guideExamplesEl, examples);
-        if (data.recognized === false) {
-          openGuideModal((data.warnings || [])[0], examples);
-          queryStatusEl.textContent = 'interpret needs guide examples';
-          return;
-        }
-        populateFormFromPayload({ intent: data.intent, scope: data.scope || {}, filters: data.filters || {} });
-        queryStatusEl.textContent = (data.warnings || []).length ? 'interpret completed with hints' : 'interpret completed';
-      } catch (error) {
-        resultEl.value = error.stack || String(error);
-        queryStatusEl.textContent = `interpret failed: ${error.message}`;
-      }
+      await interpretNaturalText();
     }
 
     function resetForm() {
       nlpTextEl.value = '오프라인 호스트 보여줘';
-      populateFormFromPayload(defaultPayload);
+      populateFormFromPayload(defaultPayload, { mode: 'natural' });
       resultEl.value = '아직 실행 전입니다.';
       interpretationHintEl.innerHTML = '';
       queryStatusEl.textContent = 'form reset';
@@ -793,8 +960,19 @@ def render_query_console_html() -> str:
       }
     }
 
-    [intentEl, timeRangeEl, hostIdEl, hostnameEl, severityEl, sourceEl].forEach((element) => element.addEventListener('input', syncPayload));
-    filtersEl.addEventListener('input', syncPayload);
+    nlpTextEl.addEventListener('input', () => setQueryMode('natural'));
+    [intentEl, timeRangeEl, hostIdEl, hostnameEl, severityEl, sourceEl].forEach((element) => {
+      const handleStructuredInput = () => {
+        setQueryMode('structured');
+        syncPayload();
+      };
+      element.addEventListener('input', handleStructuredInput);
+      element.addEventListener('change', handleStructuredInput);
+    });
+    filtersEl.addEventListener('input', () => {
+      setQueryMode('structured');
+      syncPayload();
+    });
     document.getElementById('interpret').addEventListener('click', interpretText);
     document.getElementById('run').addEventListener('click', runQuery);
     document.getElementById('reset').addEventListener('click', resetForm);
@@ -842,6 +1020,61 @@ def _source_coverage(store: InMemoryQueryStore) -> list[dict[str, Any]]:
             }
         )
     return rows
+
+
+def _status_detail_rows(rows: list[Any]) -> list[dict[str, Any]]:
+    return [
+        {
+            "host_id": row.host_id,
+            "hostname": row.hostname,
+            "status": row.status,
+            "risk_score": row.risk_score,
+            "last_seen_at": _isoformat(row.last_seen_at),
+            "last_alert_at": _isoformat(row.last_alert_at),
+            "last_observation_at": _isoformat(row.last_observation_at),
+        }
+        for row in rows
+    ]
+
+
+def _alert_detail_rows(alerts: list[Any], hostnames: Mapping[str, str]) -> list[dict[str, Any]]:
+    return [
+        {
+            "alert_id": alert.alert_id,
+            "host_id": alert.host_id,
+            "hostname": hostnames.get(alert.host_id or "", alert.host_id or "-"),
+            "source": alert.source,
+            "severity": alert.severity,
+            "message": alert.message,
+            "observed_at": _isoformat(alert.observed_at),
+        }
+        for alert in sorted(alerts, key=lambda item: item.observed_at, reverse=True)
+    ]
+
+
+def _critical_vuln_detail_rows(store: InMemoryQueryStore, hostnames: Mapping[str, str]) -> list[dict[str, Any]]:
+    critical_vulns = [vuln for vuln in store.vulnerabilities if vuln.severity == "critical"]
+    return [
+        {
+            "vuln_id": vuln.vuln_id,
+            "host_id": vuln.host_id,
+            "hostname": hostnames.get(vuln.host_id, vuln.host_id),
+            "source": vuln.source,
+            "cve": vuln.cve,
+            "package_name": vuln.package_name,
+            "detected_at": _isoformat(vuln.detected_at),
+        }
+        for vuln in sorted(critical_vulns, key=lambda item: item.detected_at, reverse=True)
+    ]
+
+
+def _ingested_record_rows(store: InMemoryQueryStore) -> list[dict[str, Any]]:
+    return [
+        {"entity_type": "alerts", "count": len(store.alerts)},
+        {"entity_type": "vulnerabilities", "count": len(store.vulnerabilities)},
+        {"entity_type": "query_results", "count": len(store.query_results)},
+        {"entity_type": "observations", "count": len(store.observations)},
+    ]
 
 
 def _recent_activity(store: InMemoryQueryStore, limit: int = 10) -> list[dict[str, Any]]:
