@@ -61,9 +61,8 @@ class ZabbixEventCollector(BaseCollector):
         hosts = self._api_call(
             "host.get",
             {
-                "output": ["hostid", "host", "name", "status"],
+                "output": ["hostid", "host", "name", "status", "active_available"],
                 "selectInterfaces": ["ip", "available"],
-                "monitored_hosts": True,
                 "limit": self._host_limit,
                 "sortfield": "host",
             },
@@ -295,6 +294,11 @@ class ZabbixEventCollector(BaseCollector):
                         return "online"
                     if available == "2":
                         return "offline"
+        active_available = str(payload.get("active_available"))
+        if active_available == "1":
+            return "online"
+        if active_available == "2":
+            return "offline"
         return "unknown"
 
     def _login(self) -> str:

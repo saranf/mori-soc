@@ -111,6 +111,7 @@ class FleetLogCollector(BaseCollector):
             payload,
             payload.get("decorations"),
             payload.get("columns"),
+            payload.get("data"),
             payload.get("result"),
             payload.get("results"),
             payload.get("snapshot"),
@@ -192,8 +193,9 @@ class FleetLogCollector(BaseCollector):
                 "hardwareUuid",
             ):
                 self._append_alias(aliases, value.get(key))
-            if "columns" in value:
-                self._collect_aliases(value.get("columns"), aliases)
+            for nested_key in ("columns", "data", "decorations", "result", "results", "snapshot"):
+                if nested_key in value:
+                    self._collect_aliases(value.get(nested_key), aliases)
             return
         if isinstance(value, list):
             for item in value:

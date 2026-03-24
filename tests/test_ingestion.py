@@ -163,6 +163,66 @@ class IngestionFlowTests(unittest.TestCase):
         self.assertEqual(len(snapshot.alerts), 1)
         self.assertEqual(len(snapshot.observations), 1)
 
+    def test_zabbix_api_collect_uses_inventory_hosts_and_active_availability(self) -> None:
+        collector = ZabbixEventCollector(api_url="http://zabbix.example/api_jsonrpc.php", token="token")
+        calls: list[tuple[str, dict[str, object]]] = []
+
+        def fake_api_call(method: str, params: dict[str, object], *, auth: str | None = None):
+            del auth
+            calls.append((method, params))
+            if method == "host.get":
+                return [
+                    {
+                        "hostid": "20084",
+                        "host": "srv-active-01",
+                        "name": "srv-active-01",
+                        "status": "0",
+                        "active_available": "2",
+                    }
+                ]
+            return []
+
+        with patch.object(collector, "_api_call", side_effect=fake_api_call):
+            records = list(collector.collect())
+
+        self.assertEqual(calls[0][0], "host.get")
+        self.assertIn("active_available", calls[0][1]["output"])
+        self.assertNotIn("monitored_hosts", calls[0][1])
+        self.assertEqual(records[0].record_type, "host")
+        normalized = list(collector.normalize(records[0]))[0]
+        self.assertEqual(normalized.normalized["status"], "offline")
+
+    def test_worker_preserves_last_success_metadata_when_sync_fails(self) -> None:
+        first_run_at = datetime(2026, 3, 24, 10, 0, tzinfo=timezone.utc)
+        second_run_at = datetime(2026, 3, 24, 10, 5, tzinfo=timezone.utc)
+        repository = InMemoryRepository()
+        mapper = EnvelopeEntityMapper(alias_map={"srv-01": "host-1"})
+        collector = ZabbixEventCollector(api_url="http://zabbix.example/api_jsonrpc.php", token="token")
+
+        with patch.object(
+            collector,
+            "_api_call",
+            side_effect=[
+                [{"hostid": "20084", "host": "srv-01", "name": "srv-01", "status": "0", "interfaces": []}],
+                [],
+            ],
+        ):
+            run_ingestion_cycle(repository, [collector], mapper=mapper, started_at=first_run_at)
+
+        first_sync = repository.snapshot().source_syncs[0]
+
+        with patch.object(collector, "_api_call", side_effect=RuntimeError("api down")):
+            reports = run_ingestion_cycle(repository, [collector], mapper=mapper, started_at=second_run_at)
+
+        snapshot = repository.snapshot()
+        sync = snapshot.source_syncs[0]
+        self.assertEqual(reports[0].status, "error")
+        self.assertEqual(sync.status, "error")
+        self.assertEqual(sync.last_success_at, first_run_at)
+        self.assertEqual(sync.last_error_at, second_run_at)
+        self.assertEqual(sync.records_collected, first_sync.records_collected)
+        self.assertEqual(sync.entities_saved, first_sync.entities_saved)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -59,9 +59,11 @@ def run_ingestion_cycle(
     mapper = mapper or EnvelopeEntityMapper()
     service = CollectorIngestionService(mapper, repository)
     cycle_started_at = started_at or datetime.now(tz=timezone.utc)
+    existing_syncs = {item.source: item for item in repository.snapshot().source_syncs}
     results: list[WorkerCycleResult] = []
 
     for collector in collectors:
+        previous_sync = existing_syncs.get(collector.source_name)
         try:
             report = service.ingest_collector(collector)
             sync = SourceSync(
@@ -69,24 +71,30 @@ def run_ingestion_cycle(
                 status="success",
                 last_sync_at=cycle_started_at,
                 last_success_at=cycle_started_at,
+                last_error_at=previous_sync.last_error_at if previous_sync else None,
                 message=f"ok: {report.records_collected} records",
                 records_collected=report.records_collected,
                 envelopes_normalized=report.envelopes_normalized,
                 entities_saved=report.entities_saved,
             )
             repository.save(sync)
+            existing_syncs[collector.source_name] = sync
             results.append(WorkerCycleResult(source=collector.source_name, status="success", report=report, message=sync.message))
         except Exception as exc:
             message = _truncate_message(f"{type(exc).__name__}: {exc}")
-            repository.save(
-                SourceSync(
-                    source=collector.source_name,  # type: ignore[arg-type]
-                    status="error",
-                    last_sync_at=cycle_started_at,
-                    last_error_at=cycle_started_at,
-                    message=message,
-                )
+            sync = SourceSync(
+                source=collector.source_name,  # type: ignore[arg-type]
+                status="error",
+                last_sync_at=cycle_started_at,
+                last_success_at=previous_sync.last_success_at if previous_sync else None,
+                last_error_at=cycle_started_at,
+                message=message,
+                records_collected=previous_sync.records_collected if previous_sync else 0,
+                envelopes_normalized=previous_sync.envelopes_normalized if previous_sync else 0,
+                entities_saved=previous_sync.entities_saved if previous_sync else 0,
             )
+            repository.save(sync)
+            existing_syncs[collector.source_name] = sync
             results.append(WorkerCycleResult(source=collector.source_name, status="error", message=message))
     return results
 
