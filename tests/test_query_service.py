@@ -1,9 +1,11 @@
+import csv
+import io
 import unittest
 from datetime import datetime, timedelta, timezone
 
 from mori_soc.api.contracts import QueryRequest, QueryScope
 from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, Vulnerability
-from mori_soc.services.query_service import InMemoryQueryStore, QueryService
+from mori_soc.services.query_service import InMemoryQueryStore, QueryService, query_response_to_csv
 from mori_soc.services.views import (
     host_risk_summary_view,
     host_timeline_view,
@@ -257,6 +259,30 @@ class QueryServiceTests(unittest.TestCase):
         # o-2(observation_type="error") + a-3(rule_name 에 "timeout") → host-2
         ids = [e.record_id for e in response.evidence]
         self.assertIn("host-2", ids)
+
+    def test_query_response_to_csv_flattens_rows(self) -> None:
+        response = self.service.execute(
+            QueryRequest(intent="host_wazuh_alerts", scope=QueryScope(time_range="24h", host_id="host-1"))
+        )
+        csv_text = query_response_to_csv(response)
+        rows = list(csv.DictReader(io.StringIO(csv_text)))
+
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["filter_host_id"], "host-1")
+        self.assertEqual(rows[0]["meta_host_id"], "host-1")
+        self.assertEqual(rows[0]["evidence_source"], "wazuh")
+        self.assertIn("호스트 host-1", rows[0]["query_summary"])
+
+    def test_query_response_to_csv_writes_empty_evidence_row(self) -> None:
+        response = self.service.execute(
+            QueryRequest(intent="host_wazuh_alerts", scope=QueryScope(time_range="24h"))
+        )
+        csv_text = query_response_to_csv(response)
+        rows = list(csv.DictReader(io.StringIO(csv_text)))
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["evidence_source"], "")
+        self.assertEqual(rows[0]["evidence_record_id"], "")
 
 
 # ---------------------------------------------------------------------------

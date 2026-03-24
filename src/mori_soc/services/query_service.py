@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import csv
+import io
+import json
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -395,9 +398,18 @@ class QueryService:
         if request.scope.host_id:
             return request.scope.host_id
         if request.scope.hostname:
-            for host in self.store.hosts:
-                if host.hostname == request.scope.hostname:
-                    return host.host_id
+            matching_hosts = [host for host in self.store.hosts if host.hostname == request.scope.hostname]
+            if len(matching_hosts) == 1:
+                return matching_hosts[0].host_id
+            if request.scope.source:
+                source_host_ids = {
+                    alias.host_id for alias in self.store.host_aliases if alias.source == request.scope.source
+                }
+                scoped_matches = [host for host in matching_hosts if host.host_id in source_host_ids]
+                if len(scoped_matches) == 1:
+                    return scoped_matches[0].host_id
+            if matching_hosts:
+                return matching_hosts[0].host_id
         return None
 
     def _filters(self, request: QueryRequest) -> dict[str, str]:
@@ -426,3 +438,57 @@ class QueryService:
         except (TypeError, ValueError):
             return default
         return max(1, min(parsed, maximum))
+
+
+def query_response_to_csv(response: QueryResponse) -> str:
+    payload = response.to_dict()
+    filters = payload.get("filters") if isinstance(payload.get("filters"), dict) else {}
+    meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+    evidence = payload.get("evidence") if isinstance(payload.get("evidence"), list) else []
+    base_row = {
+        "query_summary": _csv_value(payload.get("summary")),
+        "evidence_count": str(len(evidence)),
+        **{f"filter_{key}": _csv_value(value) for key, value in sorted(filters.items())},
+        **{f"meta_{key}": _csv_value(value) for key, value in sorted(meta.items())},
+    }
+    rows = [
+        {
+            **base_row,
+            "evidence_source": _csv_value(item.get("source")),
+            "evidence_record_id": _csv_value(item.get("record_id")),
+            "evidence_raw_ref": _csv_value(item.get("raw_ref")),
+            "evidence_summary": _csv_value(item.get("summary")),
+        }
+        for item in evidence
+        if isinstance(item, dict)
+    ]
+    if not rows:
+        rows = [
+            {
+                **base_row,
+                "evidence_source": "",
+                "evidence_record_id": "",
+                "evidence_raw_ref": "",
+                "evidence_summary": "",
+            }
+        ]
+
+    fieldnames: list[str] = []
+    for row in rows:
+        for key in row:
+            if key not in fieldnames:
+                fieldnames.append(key)
+
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=fieldnames, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    return buffer.getvalue()
+
+
+def _csv_value(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (dict, list, tuple, set)):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    return str(value)

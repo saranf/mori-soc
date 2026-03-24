@@ -1,18 +1,38 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass, field
 
 from mori_soc.collectors.base import NormalizedEnvelope
 from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, Vulnerability
 
 
+ASSET_BUCKET_BY_SOURCE = {
+    "fleet": "pc",
+    "zabbix": "server",
+    "trivy": "server",
+    "wazuh": "neutral",
+    "host_log": "neutral",
+}
+
+BRIDGED_ASSET_BUCKETS = ("pc", "server")
+
+
 @dataclass(slots=True)
 class EnvelopeEntityMapper:
     alias_map: dict[str, str] = field(default_factory=dict)
+    bucket_alias_map: dict[str, dict[str, str]] = field(default_factory=dict)
 
-    def register_alias(self, alias: str, host_id: str) -> None:
+    def __post_init__(self) -> None:
+        for bucket in {"pc", "server", "neutral"}:
+            self.bucket_alias_map.setdefault(bucket, {})
+
+    def register_alias(self, alias: str, host_id: str, *, source: str | None = None, bucket: str | None = None) -> None:
         self.alias_map[alias] = host_id
+        resolved_bucket = bucket or self._bucket_for_source(source)
+        if resolved_bucket:
+            self.bucket_alias_map.setdefault(resolved_bucket, {})[alias] = host_id
 
     def map_envelope(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
         if envelope.entity_type == "host_observation":
@@ -28,7 +48,7 @@ class EnvelopeEntityMapper:
     def _map_host_observation(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
         normalized = envelope.normalized
         alias, aliases = self._extract_aliases(normalized)
-        host_id = self._resolve_host_id(aliases, fallback=f"host-{envelope.entity_id}")
+        host_id = self._resolve_host_id(envelope.source, aliases, fallback=f"host-{envelope.entity_id}")
         hostname = self._string_value(normalized.get("hostname")) or alias or host_id
         platform = self._string_value(normalized.get("platform"))
         status = self._host_status(normalized.get("status"))
@@ -64,7 +84,7 @@ class EnvelopeEntityMapper:
     def _map_query_result(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
         normalized = envelope.normalized
         alias, aliases = self._extract_aliases(normalized)
-        host_id = self._resolve_host_id(aliases, fallback=f"host-{envelope.entity_id}")
+        host_id = self._resolve_host_id(envelope.source, aliases, fallback=f"host-{envelope.entity_id}")
         result_json = normalized.get("result_json") if isinstance(normalized.get("result_json"), dict) else {}
         hostname = self._string_value(normalized.get("hostname")) or self._string_value(result_json.get("hostname")) or alias
         platform = self._string_value(normalized.get("platform")) or self._string_value(result_json.get("platform"))
@@ -95,19 +115,29 @@ class EnvelopeEntityMapper:
         )
         return tuple(records)
 
-    def _resolve_host_id(self, aliases: list[str], fallback: str) -> str:
+    def _resolve_host_id(self, source: str, aliases: list[str], fallback: str) -> str:
+        bucket = self._bucket_for_source(source) or "neutral"
+        host_id = self._find_bucket_host_id(bucket, aliases)
+        if host_id is not None:
+            self._register_bucket_aliases(bucket, aliases, host_id)
+            return host_id
+
+        if bucket == "neutral":
+            bridged_host_id = self._find_neutral_bridge_host_id(aliases)
+            if bridged_host_id is not None:
+                self._register_bucket_aliases(bucket, aliases, bridged_host_id)
+                return bridged_host_id
+
         for alias in aliases:
             if alias in self.alias_map:
                 host_id = self.alias_map[alias]
-                for candidate in aliases:
-                    self.alias_map[candidate] = host_id
+                self._register_bucket_aliases(bucket, aliases, host_id)
                 return host_id
-        if aliases:
-            host_id = aliases[0]
-            for candidate in aliases:
-                self.alias_map[candidate] = host_id
-            return host_id
-        return fallback
+
+        identity = aliases[0] if aliases else fallback
+        host_id = self._scoped_host_id(bucket, identity)
+        self._register_bucket_aliases(bucket, aliases, host_id)
+        return host_id
 
     def _build_alias(self, host_id: str, alias: str, source: str, alias_type: str, observed_at):
         digest = hashlib.sha1(f"{host_id}|{source}|{alias_type}|{alias}".encode("utf-8")).hexdigest()
@@ -141,7 +171,7 @@ class EnvelopeEntityMapper:
         records: list[object] = []
 
         if aliases:
-            host_id = self._resolve_host_id(aliases, fallback=alias or f"host-{envelope.entity_id}")
+            host_id = self._resolve_host_id(envelope.source, aliases, fallback=alias or f"host-{envelope.entity_id}")
             hostname = self._string_value(normalized.get("hostname")) or alias or host_id
             primary_ip = self._string_value(normalized.get("primary_ip"))
             records.append(
@@ -177,7 +207,7 @@ class EnvelopeEntityMapper:
     def _map_vulnerability(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
         normalized = envelope.normalized
         alias, aliases = self._extract_aliases(normalized)
-        host_id = self._resolve_host_id(aliases, fallback=f"host-{envelope.entity_id}")
+        host_id = self._resolve_host_id(envelope.source, aliases, fallback=f"host-{envelope.entity_id}")
         records: list[object] = []
 
         if alias:
@@ -221,6 +251,45 @@ class EnvelopeEntityMapper:
                 if isinstance(value, str) and value and value not in aliases:
                     aliases.append(value)
         return primary or (aliases[0] if aliases else None), aliases
+
+    def _bucket_for_source(self, source: str | None) -> str | None:
+        if source is None:
+            return None
+        return ASSET_BUCKET_BY_SOURCE.get(source)
+
+    def _find_bucket_host_id(self, bucket: str, aliases: list[str]) -> str | None:
+        bucket_map = self.bucket_alias_map.get(bucket, {})
+        for alias in aliases:
+            host_id = bucket_map.get(alias)
+            if host_id is not None:
+                return host_id
+        return None
+
+    def _find_neutral_bridge_host_id(self, aliases: list[str]) -> str | None:
+        matched_host_ids = {
+            host_id
+            for bucket in BRIDGED_ASSET_BUCKETS
+            for alias in aliases
+            for host_id in [self.bucket_alias_map.get(bucket, {}).get(alias)]
+            if host_id is not None
+        }
+        if len(matched_host_ids) == 1:
+            return next(iter(matched_host_ids))
+        return None
+
+    def _register_bucket_aliases(self, bucket: str, aliases: list[str], host_id: str) -> None:
+        bucket_map = self.bucket_alias_map.setdefault(bucket, {})
+        for alias in aliases:
+            bucket_map[alias] = host_id
+
+    def _scoped_host_id(self, bucket: str, identity: str) -> str:
+        safe_identity = re.sub(r"[^A-Za-z0-9._-]+", "-", identity).strip("-._")
+        if not safe_identity:
+            digest = hashlib.sha1(identity.encode("utf-8")).hexdigest()
+            safe_identity = digest[:16]
+        if safe_identity.startswith(f"{bucket}-"):
+            return safe_identity
+        return f"{bucket}-{safe_identity}"
 
     def _string_value(self, value: object) -> str | None:
         return value if isinstance(value, str) and value else None

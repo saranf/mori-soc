@@ -10,17 +10,18 @@ from typing import Any
 from mori_soc.api.contracts import QueryRequest, QueryScope
 from mori_soc.services.intent_parser import QUERY_GUIDE_EXAMPLES, NaturalLanguageQueryParser
 from mori_soc.services.query_catalog import PHASE1_QUERY_CATALOG
-from mori_soc.services.query_service import InMemoryQueryStore, QueryService
+from mori_soc.services.query_service import InMemoryQueryStore, QueryService, query_response_to_csv
 from mori_soc.services.views import host_risk_summary_view, latest_host_status_view
 
 try:
     from fastapi import FastAPI, HTTPException
-    from fastapi.responses import HTMLResponse, RedirectResponse
+    from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 except ImportError:  # pragma: no cover - exercised by runtime guard tests
     FastAPI = None
     HTTPException = None
     HTMLResponse = None
     RedirectResponse = None
+    StreamingResponse = None
 
 
 DEFAULT_UI_PAYLOAD = {
@@ -196,7 +197,7 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
             raise HTTPException(status_code=503, detail=f"dashboard summary unavailable: {exc}") from exc
 
     @app.post("/query")
-    def query(payload: dict[str, Any]) -> dict[str, Any]:
+    def query(payload: dict[str, Any], format: str = "json") -> Any:
         try:
             request = build_query_request(payload)
             response = get_query_service().execute(request)
@@ -204,6 +205,16 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"query execution failed: {exc}") from exc
+        if format == "csv":
+            csv_payload = query_response_to_csv(response)
+            filename = _query_csv_filename(request.intent)
+            return StreamingResponse(
+                iter([csv_payload]),
+                media_type="text/csv; charset=utf-8",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            )
+        if format != "json":
+            raise HTTPException(status_code=400, detail="format must be either json or csv")
         return response.to_dict()
 
     @app.post("/interpret")
@@ -221,6 +232,14 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
 
 def create_app_from_env() -> Any:
     return create_app(service_factory=create_query_service_from_env)
+
+
+def _query_csv_filename(intent: str) -> str:
+    safe_intent = "".join(char if char.isalnum() or char in {"-", "_"} else "-" for char in intent).strip("-")
+    if not safe_intent:
+        safe_intent = "query"
+    timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return f"mori-query-{safe_intent}-{timestamp}.csv"
 
 
 def render_query_console_html() -> str:
@@ -920,19 +939,50 @@ def render_query_console_html() -> str:
       return syncPayload();
     }
 
+    function extractFilename(response) {
+      const disposition = response.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      return match ? match[1] : 'mori-query.csv';
+    }
+
+    function downloadTextFile(text, filename, mimeType = 'text/csv;charset=utf-8') {
+      const blob = new Blob([text], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    }
+
     async function runQuery() {
       const payload = await resolvePayloadForRun();
       if (!payload) return;
       queryStatusEl.textContent = 'query running...';
       try {
-        const response = await fetch('/query', {
+        const response = await fetch('/query?format=csv', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        const data = await response.json();
-        resultEl.value = JSON.stringify(data, null, 2);
-        queryStatusEl.textContent = response.ok ? 'query completed' : `query failed: HTTP ${response.status}`;
+        if (!response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const data = await response.json();
+            resultEl.value = JSON.stringify(data, null, 2);
+          } else {
+            resultEl.value = await response.text();
+          }
+          queryStatusEl.textContent = `query failed: HTTP ${response.status}`;
+          return;
+        }
+        const csvText = await response.text();
+        const filename = extractFilename(response);
+        downloadTextFile(csvText, filename, response.headers.get('content-type') || 'text/csv;charset=utf-8');
+        resultEl.value = `CSV download started: ${filename}`;
+        queryStatusEl.textContent = 'query completed as csv download';
       } catch (error) {
         resultEl.value = error.stack || String(error);
         queryStatusEl.textContent = `query failed: ${error.message}`;

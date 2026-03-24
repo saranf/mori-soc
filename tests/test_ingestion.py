@@ -96,6 +96,138 @@ class IngestionFlowTests(unittest.TestCase):
         )
         self.assertIn("host-1", [e.record_id for e in error_response.evidence])
 
+    def test_asset_buckets_keep_fleet_and_server_sources_separate(self) -> None:
+        now = datetime.now(tz=timezone.utc)
+        repository = InMemoryRepository()
+        mapper = EnvelopeEntityMapper()
+        service = CollectorIngestionService(mapper, repository)
+
+        fleet = FleetLogCollector(
+            result_lines=[
+                '{"name":"system_info","hostIdentifier":"shared-01","unixTime":'
+                + str(int(now.timestamp()))
+                + ',"columns":{"hostname":"shared-01","platform":"darwin"}}'
+            ]
+        )
+        zabbix = ZabbixEventCollector(
+            item_lines=[
+                '{"itemid":"22001","clock":"'
+                + str(int(now.timestamp()))
+                + '","value":"85.4","hosts":[{"hostid":"10001","name":"shared-01"}],'
+                + '"item_name":"CPU utilization","units":"%"}'
+            ]
+        )
+        trivy = TrivyCollector(
+            reports=[
+                {
+                    "CreatedAt": now.isoformat().replace("+00:00", "Z"),
+                    "ArtifactName": "shared-01",
+                    "ArtifactType": "filesystem",
+                    "Results": [
+                        {
+                            "Target": "/",
+                            "Class": "os-pkgs",
+                            "Type": "ubuntu",
+                            "Vulnerabilities": [
+                                {
+                                    "VulnerabilityID": "CVE-2026-0003",
+                                    "PkgName": "openssl",
+                                    "InstalledVersion": "1.0.0",
+                                    "FixedVersion": "1.0.1",
+                                    "Severity": "HIGH",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            host_aliases=["shared-01"],
+            hostname="shared-01",
+        )
+
+        service.ingest_collector(fleet)
+        service.ingest_collector(zabbix)
+        service.ingest_collector(trivy)
+        snapshot = repository.snapshot()
+
+        host_ids = {host.host_id for host in snapshot.hosts}
+        self.assertEqual(host_ids, {"pc-shared-01", "server-shared-01"})
+        self.assertEqual({result.host_id for result in snapshot.query_results}, {"pc-shared-01"})
+        self.assertEqual({observation.host_id for observation in snapshot.observations}, {"server-shared-01"})
+        self.assertEqual({vuln.host_id for vuln in snapshot.vulnerabilities}, {"server-shared-01"})
+
+    def test_neutral_sources_bridge_to_unique_bucket_match(self) -> None:
+        now = datetime.now(tz=timezone.utc)
+        repository = InMemoryRepository()
+        mapper = EnvelopeEntityMapper()
+        service = CollectorIngestionService(mapper, repository)
+
+        fleet = FleetLogCollector(
+            status_lines=[
+                '{"hostIdentifier":"shared-01","timestamp":"'
+                + now.isoformat().replace("+00:00", "Z")
+                + '","severity":"2","message":"heartbeat ok"}'
+            ]
+        )
+        wazuh = WazuhAlertCollector(
+            alert_lines=[
+                '{"id":"evt-1","timestamp":"'
+                + now.isoformat().replace("+00:00", "Z")
+                + '","agent":{"id":"001","name":"shared-01"},'
+                + '"rule":{"id":"5710","level":12,"description":"sshd authentication failed"},'
+                + '"full_log":"Failed password for root"}'
+            ]
+        )
+
+        service.ingest_collector(fleet)
+        service.ingest_collector(wazuh)
+        snapshot = repository.snapshot()
+
+        self.assertEqual({host.host_id for host in snapshot.hosts}, {"pc-shared-01"})
+        self.assertEqual(snapshot.alerts[0].host_id, "pc-shared-01")
+
+    def test_neutral_sources_do_not_bridge_when_bucket_match_is_ambiguous(self) -> None:
+        now = datetime.now(tz=timezone.utc)
+        repository = InMemoryRepository()
+        mapper = EnvelopeEntityMapper()
+        service = CollectorIngestionService(mapper, repository)
+
+        fleet = FleetLogCollector(
+            status_lines=[
+                '{"hostIdentifier":"shared-01","timestamp":"'
+                + now.isoformat().replace("+00:00", "Z")
+                + '","severity":"2","message":"heartbeat ok"}'
+            ]
+        )
+        zabbix = ZabbixEventCollector(
+            item_lines=[
+                '{"itemid":"22001","clock":"'
+                + str(int(now.timestamp()))
+                + '","value":"85.4","hosts":[{"hostid":"10001","name":"shared-01"}],'
+                + '"item_name":"CPU utilization","units":"%"}'
+            ]
+        )
+        wazuh = WazuhAlertCollector(
+            alert_lines=[
+                '{"id":"evt-1","timestamp":"'
+                + now.isoformat().replace("+00:00", "Z")
+                + '","agent":{"id":"001","name":"shared-01"},'
+                + '"rule":{"id":"5710","level":12,"description":"sshd authentication failed"},'
+                + '"full_log":"Failed password for root"}'
+            ]
+        )
+
+        service.ingest_collector(fleet)
+        service.ingest_collector(zabbix)
+        service.ingest_collector(wazuh)
+        snapshot = repository.snapshot()
+
+        self.assertEqual(
+            {host.host_id for host in snapshot.hosts},
+            {"pc-shared-01", "server-shared-01", "neutral-shared-01"},
+        )
+        self.assertEqual(snapshot.alerts[0].host_id, "neutral-shared-01")
+
     def test_fleet_ingestion_maps_nested_snapshot_aliases(self) -> None:
         now = datetime.now(tz=timezone.utc)
         collector = FleetLogCollector(

@@ -64,6 +64,7 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertIn("MORI Security Dashboard", html)
         self.assertIn("/docs", html)
         self.assertIn("/query", html)
+        self.assertIn("/query?format=csv", html)
         self.assertIn("/interpret", html)
         self.assertIn("/dashboard/summary", html)
         self.assertIn("Query Guide", html)
@@ -72,6 +73,8 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertIn("overview_modal", html)
         self.assertIn("resolvePayloadForRun", html)
         self.assertIn("queryMode = 'natural'", html)
+        self.assertIn("extractFilename", html)
+        self.assertIn("downloadTextFile", html)
 
     def test_interpret_query_text_returns_structured_request(self) -> None:
         interpretation = interpret_query_text("최근 24시간 wazuh high alert 요약")
@@ -204,6 +207,14 @@ class FastAPIAppTests(unittest.TestCase):
         response = self.client.post("/query", json={"intent": "offline_hosts", "scope": {"time_range": "24h"}})
         self.assertEqual(response.status_code, 200)
         self.assertIn("summary", response.json())
+
+    def test_query_endpoint_supports_csv_download(self) -> None:
+        response = self.client.post("/query?format=csv", json={"intent": "offline_hosts", "scope": {"time_range": "24h"}})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/csv", response.headers["content-type"])
+        self.assertIn("attachment; filename=", response.headers["content-disposition"])
+        self.assertIn("query_summary", response.text)
+        self.assertIn("evidence_count", response.text)
 
     def test_ui_endpoint(self) -> None:
         response = self.client.get("/ui")
