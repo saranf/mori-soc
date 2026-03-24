@@ -249,7 +249,7 @@ class ZabbixEventCollector(BaseCollector):
         }
         return NormalizedEnvelope(
             entity_type="host_observation",
-            entity_id=self._make_id("item", record),
+            entity_id=self._make_id("item", record, stable=True),
             observed_at=record.observed_at,
             source=self.source_name,
             raw_ref=f"zabbix:item:{record.external_id}",
@@ -274,7 +274,7 @@ class ZabbixEventCollector(BaseCollector):
         }
         return NormalizedEnvelope(
             entity_type="host_observation",
-            entity_id=self._make_id("host", record),
+            entity_id=self._make_id("host", record, stable=True),
             observed_at=record.observed_at,
             source=self.source_name,
             raw_ref=f"zabbix:host:{record.external_id}",
@@ -421,10 +421,27 @@ class ZabbixEventCollector(BaseCollector):
             raise RuntimeError(f"Zabbix API error {err.get('code')}: {err.get('message')} {err.get('data', '')}".strip())
         return data.get("result", [])
 
-    def _make_id(self, prefix: str, record: CollectorRecord) -> str:
-        digest = hashlib.sha1(
-            f"zabbix|{prefix}|{record.external_id}|{record.observed_at.isoformat()}".encode("utf-8")
-        ).hexdigest()
+    def _make_id(self, prefix: str, record: CollectorRecord, *, stable: bool = False) -> str:
+        """Generate a deterministic ID for a collector record.
+
+        Parameters
+        ----------
+        prefix:
+            Record category (``host``, ``item``, ``problem``).
+        record:
+            The source record.
+        stable:
+            When *True*, the ID is derived from source+prefix+external_id only,
+            without the collection timestamp.  Use this for "current-state"
+            observations (host availability, metric snapshots) so that repeated
+            polling cycles overwrite the previous record instead of accumulating
+            duplicates in the store.
+        """
+        if stable:
+            key = f"zabbix|{prefix}|{record.external_id}"
+        else:
+            key = f"zabbix|{prefix}|{record.external_id}|{record.observed_at.isoformat()}"
+        digest = hashlib.sha1(key.encode("utf-8")).hexdigest()
         return f"zabbix-{prefix}-{digest[:16]}"
 
     def _str(self, value: object) -> str | None:

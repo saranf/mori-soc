@@ -73,7 +73,7 @@ class FleetLogCollector(BaseCollector):
         }
         return NormalizedEnvelope(
             entity_type="host_observation",
-            entity_id=self._make_id("status", record),
+            entity_id=self._make_id("status", record, stable=True),
             observed_at=record.observed_at,
             source=self.source_name,
             raw_ref=payload.get("raw_ref"),
@@ -260,10 +260,27 @@ class FleetLogCollector(BaseCollector):
         }
         return mapping.get(value, "info")
 
-    def _make_id(self, prefix: str, record: CollectorRecord) -> str:
-        digest = hashlib.sha1(
-            f"{prefix}|{record.external_id}|{record.observed_at.isoformat()}|{record.payload}".encode("utf-8")
-        ).hexdigest()
+    def _make_id(self, prefix: str, record: CollectorRecord, *, stable: bool = False) -> str:
+        """Generate a deterministic ID for a collector record.
+
+        Parameters
+        ----------
+        prefix:
+            Record category (``status``, ``result``).
+        record:
+            The source record.
+        stable:
+            When *True*, the ID is derived from source+prefix+external_id only,
+            without the collection timestamp or payload.  Use this for
+            "current-state" observations (host status check-ins) so that each
+            new poll overwrites the previous record instead of accumulating
+            duplicates.
+        """
+        if stable:
+            key = f"fleet|{prefix}|{record.external_id}"
+        else:
+            key = f"fleet|{prefix}|{record.external_id}|{record.observed_at.isoformat()}"
+        digest = hashlib.sha1(key.encode("utf-8")).hexdigest()
         return f"fleet-{prefix}-{digest[:16]}"
 
     def _nested(self, payload: dict[str, object], *keys: str) -> object | None:

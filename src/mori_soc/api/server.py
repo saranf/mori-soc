@@ -1994,14 +1994,17 @@ def _ingested_record_rows(store: InMemoryQueryStore) -> list[dict[str, Any]]:
 
 
 GRAFANA_BASE_URL = os.getenv("MORI_GRAFANA_URL", "http://mori.rmstudio.co.kr:13000")
+# Grafana 데이터소스 UID — Grafana 관리 화면 > Configuration > Data sources > 해당 소스 상세에서 확인
+# 기본값 "loki" 는 datasource 이름으로도 동작하지만, UID 를 넣으면 더 안정적
 _LOKI_DATASOURCE_UID = os.getenv("MORI_LOKI_DATASOURCE_UID", "loki")
+_LOKI_DATASOURCE_TYPE = os.getenv("MORI_LOKI_DATASOURCE_TYPE", "loki")
 
 
 def _grafana_explore_url(host_id: str | None, raw_ref: str | None = None) -> str | None:
-    """Grafana Explore 딥링크 URL 생성.
+    """Grafana 10+ Explore 딥링크 URL 생성 (panes 포맷).
 
-    host_id 또는 raw_ref 기준으로 Loki 쿼리 URL을 만든다.
-    둘 다 없으면 None을 반환한다.
+    Grafana 10 부터 left= 파라미터가 제거되고 panes= 포맷으로 변경됐다.
+    host_id 또는 raw_ref 기준으로 Loki LogQL 쿼리를 생성한다.
     """
     if host_id:
         loki_query = '{host_id="' + host_id + '"}'
@@ -2010,19 +2013,23 @@ def _grafana_explore_url(host_id: str | None, raw_ref: str | None = None) -> str
     else:
         return None
 
-    explore_state = {
-        "datasource": _LOKI_DATASOURCE_UID,
+    ds_uid = _LOKI_DATASOURCE_UID
+    ds_type = _LOKI_DATASOURCE_TYPE
+
+    pane = {
+        "datasource": ds_uid,
         "queries": [
             {
                 "refId": "A",
                 "expr": loki_query,
                 "queryType": "range",
+                "datasource": {"type": ds_type, "uid": ds_uid},
             }
         ],
         "range": {"from": "now-6h", "to": "now"},
     }
-    encoded = _url_quote(json.dumps(explore_state, separators=(",", ":")), safe="")
-    return f"{GRAFANA_BASE_URL}/explore?orgId=1&left={encoded}"
+    panes_json = _url_quote(json.dumps({"pane": pane}, separators=(",", ":")), safe="")
+    return f"{GRAFANA_BASE_URL}/explore?schemaVersion=1&panes={panes_json}&orgId=1"
 
 
 def _recent_activity(store: InMemoryQueryStore, limit: int = 10) -> list[dict[str, Any]]:
