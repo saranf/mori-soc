@@ -72,7 +72,6 @@ class ZabbixEventCollector(BaseCollector):
             "problem.get",
             {
                 "output": ["eventid", "clock", "name", "severity", "objectid"],
-                "selectHosts": ["hostid", "host", "name"],
                 "recent": True,
                 "sortfield": "eventid",
                 "sortorder": "DESC",
@@ -80,6 +79,7 @@ class ZabbixEventCollector(BaseCollector):
             },
             auth=auth,
         )
+        trigger_hosts = self._fetch_trigger_hosts(problems, auth=auth)
 
         records: list[CollectorRecord] = []
         for payload in hosts:
@@ -94,17 +94,68 @@ class ZabbixEventCollector(BaseCollector):
                 )
             )
         for payload in problems:
+            enriched_payload = self._enrich_problem_payload(payload, trigger_hosts)
             records.append(
                 CollectorRecord(
                     source=self.source_name,
                     record_type="problem",
-                    observed_at=self._extract_timestamp(payload),
-                    external_id=str(payload.get("eventid") or payload.get("objectid") or "zbx-problem"),
-                    host_aliases=self._extract_host_aliases(payload),
-                    payload=payload,
+                    observed_at=self._extract_timestamp(enriched_payload),
+                    external_id=str(enriched_payload.get("eventid") or enriched_payload.get("objectid") or "zbx-problem"),
+                    host_aliases=self._extract_problem_host_aliases(enriched_payload),
+                    payload=enriched_payload,
                 )
             )
         return records
+
+    def _fetch_trigger_hosts(
+        self,
+        problems: list[dict[str, object]],
+        *,
+        auth: str | None,
+    ) -> dict[str, list[dict[str, object]]]:
+        trigger_ids: list[str] = []
+        for payload in problems:
+            trigger_id = payload.get("objectid") or payload.get("triggerid")
+            if trigger_id is None:
+                continue
+            trigger_id_text = str(trigger_id)
+            if trigger_id_text not in trigger_ids:
+                trigger_ids.append(trigger_id_text)
+        if not trigger_ids:
+            return {}
+        triggers = self._api_call(
+            "trigger.get",
+            {
+                "output": ["triggerid"],
+                "triggerids": trigger_ids,
+                "selectHosts": ["hostid", "host", "name"],
+            },
+            auth=auth,
+        )
+        trigger_hosts: dict[str, list[dict[str, object]]] = {}
+        for trigger in triggers:
+            trigger_id = trigger.get("triggerid")
+            hosts = trigger.get("hosts")
+            if trigger_id is None or not isinstance(hosts, list):
+                continue
+            trigger_hosts[str(trigger_id)] = [host for host in hosts if isinstance(host, dict)]
+        return trigger_hosts
+
+    def _enrich_problem_payload(
+        self,
+        payload: dict[str, object],
+        trigger_hosts: dict[str, list[dict[str, object]]],
+    ) -> dict[str, object]:
+        enriched = dict(payload)
+        trigger_id = enriched.get("objectid") or enriched.get("triggerid")
+        if trigger_id is None:
+            return enriched
+        trigger_id_text = str(trigger_id)
+        enriched.setdefault("triggerid", trigger_id_text)
+        hosts = trigger_hosts.get(trigger_id_text)
+        if hosts:
+            enriched["hosts"] = hosts
+        return enriched
 
     def collect_problem_lines(self, lines: Iterable[str]) -> list[CollectorRecord]:
         records: list[CollectorRecord] = []
@@ -117,7 +168,7 @@ class ZabbixEventCollector(BaseCollector):
                     record_type="problem",
                     observed_at=self._extract_timestamp(payload),
                     external_id=external_id,
-                    host_aliases=self._extract_host_aliases(payload),
+                    host_aliases=self._extract_problem_host_aliases(payload),
                     payload=payload,
                 )
             )
@@ -252,6 +303,23 @@ class ZabbixEventCollector(BaseCollector):
                     ip = self._str(interface.get("ip"))
                     if ip and ip not in aliases:
                         aliases.append(ip)
+        return aliases
+
+    def _extract_problem_host_aliases(self, payload: dict) -> list[str]:
+        aliases: list[str] = []
+        hosts = payload.get("hosts")
+        if isinstance(hosts, list):
+            for host in hosts:
+                if not isinstance(host, dict):
+                    continue
+                for key in ("name", "host", "hostid"):
+                    value = self._str(host.get(key))
+                    if value and value not in aliases:
+                        aliases.append(value)
+        for key in ("host", "hostid"):
+            value = self._str(payload.get(key))
+            if value and value not in aliases:
+                aliases.append(value)
         return aliases
 
     def _extract_timestamp(self, payload: dict) -> datetime:

@@ -35,6 +35,12 @@ class NaturalLanguageQueryParserTests(unittest.TestCase):
         self.assertEqual(result.request.intent, "top_vulnerable_hosts")
         self.assertEqual(result.request.filters["limit"], 5)
 
+    def test_top_vulnerability_korean_phrase_with_count_does_not_extract_numeric_hostname(self) -> None:
+        result = self.parser.interpret("상위 취약한 호스트 1개 보여줘")
+        self.assertEqual(result.request.intent, "top_vulnerable_hosts")
+        self.assertEqual(result.request.filters["limit"], 1)
+        self.assertIsNone(result.request.scope.hostname)
+
     def test_trivy_vulnerability_question_extracts_source(self) -> None:
         result = self.parser.interpret("최근 7일 trivy high 취약점 보여줘")
         self.assertEqual(result.request.intent, "new_high_vulns")

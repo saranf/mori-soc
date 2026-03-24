@@ -219,6 +219,11 @@ class IngestionFlowTests(unittest.TestCase):
                         "name": "CPU load high",
                         "severity": "4",
                         "objectid": "99001",
+                    }
+                ],
+                [
+                    {
+                        "triggerid": "99001",
                         "hosts": [{"hostid": "20084", "host": "srv-01", "name": "srv-01"}],
                     }
                 ],

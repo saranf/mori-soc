@@ -121,7 +121,7 @@ def _select_intent(lowered: str, matched_rules: list[str], *, has_host_scope: bo
             matched_rules.append(rule)
             return intent, True
 
-    if _contains_any(lowered, ("취약점", "vulnerability", "vuln", "cve", "트리비", "trivy")):
+    if _contains_any(lowered, ("취약점", "취약한", "취약", "vulnerability", "vulnerable", "vuln", "cve", "트리비", "trivy")):
         if _contains_any(lowered, ("top", "상위", "랭킹", "많은 호스트", "취약점 많은", "most")):
             matched_rules.append("intent:top_vulnerable_hosts")
             return "top_vulnerable_hosts", True
@@ -217,11 +217,16 @@ def _extract_source(lowered: str, matched_rules: list[str]) -> str | None:
 
 
 def _extract_limit(lowered: str, matched_rules: list[str]) -> int | None:
-    match = re.search(r"(?:top|상위)\s*([0-9]+)", lowered)
-    if not match:
-        return None
-    matched_rules.append("filters:limit")
-    return int(match.group(1))
+    patterns = (
+        r"(?:top|상위)\s*([0-9]+)",
+        r"(?:top|상위)[^0-9]{0,20}([0-9]+)\s*(?:개|대|host|hosts)?",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, lowered)
+        if match:
+            matched_rules.append("filters:limit")
+            return int(match.group(1))
+    return None
 
 
 def _contains_any(text: str, keywords: tuple[str, ...]) -> bool:
@@ -229,7 +234,9 @@ def _contains_any(text: str, keywords: tuple[str, ...]) -> bool:
 
 
 def _looks_like_hostname(value: str) -> bool:
-    return bool(value) and (any(char.isdigit() for char in value) or any(char in value for char in ("-", ".", "_")))
+    if not value or re.fullmatch(r"[0-9]+", value):
+        return False
+    return bool(re.search(r"[A-Za-z]", value) or any(char in value for char in ("-", ".", "_")))
 
 
 def _looks_like_host_id(value: str) -> bool:
