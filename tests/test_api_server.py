@@ -97,6 +97,16 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertNotIn("Structured Query Builder", html)
         self.assertNotIn("User Dashboard Controls", html)
         self.assertNotIn("Open User Dashboard", html)
+        # NLQ section present in /ui
+        self.assertIn("자연어 질의 (NLQ)", html)
+        self.assertIn("nlq_textarea", html)
+        self.assertIn("nlq_run_btn", html)
+        self.assertIn("nlq_csv_btn", html)
+        self.assertIn("/interpret", html)
+        # Grafana link and info modal
+        self.assertIn("grafana_url", html)
+        self.assertIn("info_modal", html)
+        self.assertIn("showInfoModal", html)
 
     def test_interpret_query_text_returns_structured_request(self) -> None:
         interpretation = interpret_query_text("최근 24시간 wazuh high alert 요약")
@@ -208,6 +218,14 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertEqual(payload["overview_details"]["alerts_24h"][0]["alert_id"], "alert-1")
         self.assertEqual(payload["overview_details"]["critical_vulns"][0]["vuln_id"], "vuln-1")
         self.assertEqual(payload["overview_details"]["ingested_records"][0]["entity_type"], "alerts")
+        # grafana_url must be present in recent_activity items
+        alert_item = next(item for item in payload["recent_activity"] if item["entity_type"] == "alert")
+        self.assertIn("grafana_url", alert_item)
+        self.assertIsNotNone(alert_item["grafana_url"])
+        self.assertIn("mori.rmstudio.co.kr:13000", alert_item["grafana_url"])
+        # counts derived from status_rows (dedup'd) – verify online/offline counts are consistent
+        self.assertEqual(payload["overview"]["online_hosts"], 1)
+        self.assertEqual(payload["overview"]["unknown_hosts"], 0)
 
 
 @unittest.skipUnless(FASTAPI_AVAILABLE, "fastapi is not installed")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 from collections import Counter
@@ -124,10 +125,10 @@ def build_dashboard_payload(service: QueryService) -> dict[str, Any]:
         alert for alert in store.alerts if alert.observed_at >= since_24h and alert.severity in {"high", "critical"}
     ]
     overview = {
-        "total_hosts": len(store.hosts),
-        "online_hosts": Counter(host.status for host in store.hosts).get("online", 0),
-        "offline_hosts": Counter(host.status for host in store.hosts).get("offline", 0),
-        "unknown_hosts": Counter(host.status for host in store.hosts).get("unknown", 0),
+        "total_hosts": len(status_rows),
+        "online_hosts": sum(1 for row in status_rows if row.status == "online"),
+        "offline_hosts": sum(1 for row in status_rows if row.status == "offline"),
+        "unknown_hosts": sum(1 for row in status_rows if row.status not in {"online", "offline"}),
         "alerts_24h": len(alerts_24h),
         "critical_vulns": sum(1 for vuln in store.vulnerabilities if vuln.severity == "critical"),
         "high_vulns": sum(1 for vuln in store.vulnerabilities if vuln.severity == "high"),
@@ -474,6 +475,19 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"subtext\">운영자가 허용한 범위에서 최근 이벤트와 관측값을 보여줍니다.</div>
           <div class=\"list\" id=\"recent_activity\"></div>
         </section>
+
+        <section class=\"card\" id=\"nlq_section\">
+          <h2>자연어 질의 (NLQ)</h2>
+          <div class=\"subtext\">자연스럽게 질문하거나 아래 예시 형식으로 입력하면 더 정확하게 해석합니다.</div>
+          <textarea id=\"nlq_textarea\" rows=\"3\" style=\"width:100%;box-sizing:border-box;background:#0b1220;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:10px;font-size:14px;resize:vertical;\" placeholder=\"예: 오프라인 호스트 보여줘 / 최근 24시간 wazuh high alert 요약\"></textarea>
+          <div id=\"nlq_interpret_result\" style=\"margin:8px 0;color:#7dd3fc;font-size:13px;\"></div>
+          <div style=\"display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;\">
+            <button type=\"button\" id=\"nlq_interpret_btn\" style=\"padding:8px 16px;background:#0f172a;color:#cfe3ff;border:1px solid #334155;border-radius:999px;cursor:pointer;\">Interpret</button>
+            <button type=\"button\" id=\"nlq_run_btn\" style=\"padding:8px 16px;background:#1d4ed8;color:#fff;border:none;border-radius:999px;cursor:pointer;\">Run Query</button>
+            <button type=\"button\" id=\"nlq_csv_btn\" style=\"padding:8px 16px;background:#0f172a;color:#cfe3ff;border:1px solid #334155;border-radius:999px;cursor:pointer;\" disabled>Download CSV</button>
+          </div>
+          <div id=\"nlq_result_area\" style=\"margin-top:12px;\"></div>
+        </section>
       </div>
     </div>
 
@@ -484,11 +498,21 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"guide-dialog\">
       <div class=\"guide-dialog-head\">
         <h3 id=\"overview_modal_title\">Overview Details</h3>
-        <form method=\"dialog\"><button type=\"submit\">닫기</button></form>
+        <form method=\"dialog\"><button type=\"submit\" style=\"padding:6px 16px;background:#0f172a;color:#cfe3ff;border:1px solid #334155;border-radius:999px;cursor:pointer;\">닫기</button></form>
       </div>
       <div class=\"guide-dialog-copy\" id=\"overview_modal_copy\">선택한 카드의 상세 목록입니다.</div>
     </div>
     <div class=\"dialog-body\" id=\"overview_modal_body\"></div>
+  </dialog>
+
+  <dialog id=\"info_modal\">
+    <div class=\"guide-dialog\">
+      <div class=\"guide-dialog-head\">
+        <h3 id=\"info_modal_title\">알림</h3>
+        <form method=\"dialog\"><button type=\"submit\" style=\"padding:6px 16px;background:#0f172a;color:#cfe3ff;border:1px solid #334155;border-radius:999px;cursor:pointer;\">확인</button></form>
+      </div>
+      <div class=\"guide-dialog-copy\" id=\"info_modal_body\" style=\"padding:0 0 8px;\"></div>
+    </div>
   </dialog>
 
   <script>
@@ -713,12 +737,99 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         recentActivityEl.innerHTML = '<div class=\"empty\">아직 최근 활동 데이터가 없습니다.</div>';
         return;
       }
-      recentActivityEl.innerHTML = items.map((item) => `
+      recentActivityEl.innerHTML = items.map((item) => {
+        const grafanaLink = item.grafana_url
+          ? `<a href=\"${escapeHtml(item.grafana_url)}\" target=\"_blank\" rel=\"noreferrer\" style=\"color:#38bdf8;font-size:12px;margin-left:8px;\">Grafana에서 보기 ↗</a>`
+          : '';
+        return `
         <div class=\"list-item\">
           <div class=\"top\"><strong>${escapeHtml(item.summary)}</strong><span class=\"meta\">${escapeHtml(formatTime(item.observed_at))}</span></div>
-          <div class=\"meta\">${escapeHtml(item.entity_type)} · ${escapeHtml(item.source)} · ${escapeHtml(item.host_id || '-')}</div>
-        </div>`).join('');
+          <div class=\"meta\">${escapeHtml(item.entity_type)} · ${escapeHtml(item.source)} · ${escapeHtml(item.host_id || '-')}${grafanaLink}</div>
+        </div>`;
+      }).join('');
     }
+
+    function showInfoModal(title, message) {
+      const modal = document.getElementById('info_modal');
+      document.getElementById('info_modal_title').textContent = title;
+      document.getElementById('info_modal_body').textContent = message;
+      if (!modal.open) modal.showModal();
+    }
+
+    // --- NLQ section ---
+    const nlqTextarea = document.getElementById('nlq_textarea');
+    const nlqInterpretBtn = document.getElementById('nlq_interpret_btn');
+    const nlqRunBtn = document.getElementById('nlq_run_btn');
+    const nlqCsvBtn = document.getElementById('nlq_csv_btn');
+    const nlqInterpretResult = document.getElementById('nlq_interpret_result');
+    const nlqResultArea = document.getElementById('nlq_result_area');
+    let lastInterpretedPayload = null;
+
+    nlqInterpretBtn.addEventListener('click', async () => {
+      const text = nlqTextarea.value.trim();
+      if (!text) { showInfoModal('입력 필요', '질의할 내용을 입력해 주세요.'); return; }
+      nlqInterpretResult.textContent = '해석 중...';
+      try {
+        const res = await fetch('/interpret', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text}) });
+        const data = await res.json();
+        if (!res.ok) { nlqInterpretResult.textContent = `오류: ${data.detail || res.status}`; return; }
+        lastInterpretedPayload = { intent: data.intent, scope: data.scope || {time_range:'24h'}, filters: data.filters || {} };
+        nlqInterpretResult.textContent = `해석 결과: ${data.intent} (${data.recognized ? '인식됨' : '유사 매칭'})${data.warnings?.length ? ' ⚠ ' + data.warnings.join(', ') : ''}`;
+        nlqCsvBtn.disabled = false;
+      } catch (err) { nlqInterpretResult.textContent = `오류: ${err.message}`; }
+    });
+
+    async function runNlqQuery(format) {
+      const text = nlqTextarea.value.trim();
+      if (!text) { showInfoModal('입력 필요', '질의할 내용을 입력해 주세요.'); return null; }
+      let payload = lastInterpretedPayload;
+      if (!payload) {
+        // auto-interpret first
+        try {
+          const res = await fetch('/interpret', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text}) });
+          const data = await res.json();
+          if (!res.ok) { showInfoModal('해석 오류', data.detail || String(res.status)); return null; }
+          payload = { intent: data.intent, scope: data.scope || {time_range:'24h'}, filters: data.filters || {} };
+          lastInterpretedPayload = payload;
+          nlqInterpretResult.textContent = `해석 결과: ${data.intent}`;
+        } catch (err) { showInfoModal('해석 오류', err.message); return null; }
+      }
+      try {
+        const url = format === 'csv' ? '/query?format=csv' : '/query';
+        const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+        if (format === 'csv') {
+          if (!res.ok) { const d = await res.json(); showInfoModal('오류', d.detail || String(res.status)); return null; }
+          const blob = await res.blob();
+          const cd = res.headers.get('content-disposition') || '';
+          const match = cd.match(/filename=\"([^\"]+)\"/);
+          const filename = match ? match[1] : 'mori-query.csv';
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+          return 'csv_downloaded';
+        }
+        const data = await res.json();
+        if (!res.ok) { showInfoModal('질의 오류', data.detail || String(res.status)); return null; }
+        return data;
+      } catch (err) { showInfoModal('오류', err.message); return null; }
+    }
+
+    nlqRunBtn.addEventListener('click', async () => {
+      nlqResultArea.textContent = '실행 중...';
+      const result = await runNlqQuery('json');
+      if (!result) { nlqResultArea.textContent = ''; return; }
+      const evidence = result.evidence || [];
+      if (!evidence.length) {
+        nlqResultArea.textContent = '';
+        showInfoModal('결과 없음', '조건에 맞는 데이터가 없습니다.');
+        nlqCsvBtn.disabled = true;
+        return;
+      }
+      nlqCsvBtn.disabled = false;
+      nlqResultArea.innerHTML = `<pre style=\"background:#0b1220;border:1px solid #233046;border-radius:8px;padding:12px;overflow:auto;font-size:12px;color:#e5e7eb;max-height:320px;\">${escapeHtml(JSON.stringify(result, null, 2))}</pre>`;
+    });
+
+    nlqCsvBtn.addEventListener('click', async () => {
+      await runNlqQuery('csv');
+    });
 
     async function loadPreferences() {
       try {
@@ -1847,6 +1958,38 @@ def _ingested_record_rows(store: InMemoryQueryStore) -> list[dict[str, Any]]:
     ]
 
 
+GRAFANA_BASE_URL = os.getenv("MORI_GRAFANA_URL", "http://mori.rmstudio.co.kr:13000")
+_LOKI_DATASOURCE_UID = os.getenv("MORI_LOKI_DATASOURCE_UID", "loki")
+
+
+def _grafana_explore_url(host_id: str | None, raw_ref: str | None = None) -> str | None:
+    """Grafana Explore 딥링크 URL 생성.
+
+    host_id 또는 raw_ref 기준으로 Loki 쿼리 URL을 만든다.
+    둘 다 없으면 None을 반환한다.
+    """
+    if host_id:
+        loki_query = '{host_id="' + host_id + '"}'
+    elif raw_ref:
+        loki_query = '{raw_ref="' + raw_ref + '"}'
+    else:
+        return None
+
+    explore_state = {
+        "datasource": _LOKI_DATASOURCE_UID,
+        "queries": [
+            {
+                "refId": "A",
+                "expr": loki_query,
+                "queryType": "range",
+            }
+        ],
+        "range": {"from": "now-6h", "to": "now"},
+    }
+    encoded = base64.urlsafe_b64encode(json.dumps(explore_state, separators=(",", ":")).encode()).decode()
+    return f"{GRAFANA_BASE_URL}/explore?left={encoded}"
+
+
 def _recent_activity(store: InMemoryQueryStore, limit: int = 10) -> list[dict[str, Any]]:
     activity: list[dict[str, Any]] = []
     for alert in store.alerts:
@@ -1859,6 +2002,7 @@ def _recent_activity(store: InMemoryQueryStore, limit: int = 10) -> list[dict[st
                 "summary": alert.message,
                 "severity": alert.severity,
                 "observed_at": _isoformat(alert.observed_at),
+                "grafana_url": _grafana_explore_url(alert.host_id, getattr(alert, "raw_ref", None)),
                 "sort_at": alert.observed_at,
             }
         )
@@ -1872,6 +2016,7 @@ def _recent_activity(store: InMemoryQueryStore, limit: int = 10) -> list[dict[st
                 "summary": result.query_name or "fleet_query",
                 "severity": None,
                 "observed_at": _isoformat(result.observed_at),
+                "grafana_url": _grafana_explore_url(result.host_id, getattr(result, "raw_ref", None)),
                 "sort_at": result.observed_at,
             }
         )
@@ -1887,6 +2032,7 @@ def _recent_activity(store: InMemoryQueryStore, limit: int = 10) -> list[dict[st
                 "summary": f"{observation.observation_type}:{observation.metric_name}={value}{suffix}",
                 "severity": observation.severity,
                 "observed_at": _isoformat(observation.observed_at),
+                "grafana_url": _grafana_explore_url(observation.host_id, getattr(observation, "raw_ref", None)),
                 "sort_at": observation.observed_at,
             }
         )
