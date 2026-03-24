@@ -42,6 +42,10 @@ def latest_host_status_view(store: InMemoryQueryStore) -> list[LatestHostStatusR
     """호스트별 최신 상태와 마지막 관측 시각을 집계한다.
 
     SQL 뷰 ``latest_host_status_view`` 의 Python 구현체입니다.
+
+    같은 물리 호스트가 구형 host_id (prefix 없음) 와 신형 host_id (server-/pc- prefix)
+    로 중복 저장된 경우 hostname 기준으로 dedup 하고, last_seen_at 이 가장 최신인 행만
+    남긴다.
     """
     last_alert: dict[str, datetime] = {}
     for alert in store.alerts:
@@ -56,8 +60,12 @@ def latest_host_status_view(store: InMemoryQueryStore) -> list[LatestHostStatusR
         if prev is None or obs.observed_at > prev:
             last_obs[obs.host_id] = obs.observed_at
 
-    return [
-        LatestHostStatusRow(
+    _epoch = datetime.min.replace(tzinfo=timezone.utc)
+
+    # hostname → best row (most recent last_seen_at; prefer prefixed host_id on tie)
+    best: dict[str, LatestHostStatusRow] = {}
+    for h in store.hosts:
+        row = LatestHostStatusRow(
             host_id=h.host_id,
             hostname=h.hostname,
             status=h.status,
@@ -66,8 +74,19 @@ def latest_host_status_view(store: InMemoryQueryStore) -> list[LatestHostStatusR
             last_alert_at=last_alert.get(h.host_id),
             last_observation_at=last_obs.get(h.host_id),
         )
-        for h in store.hosts
-    ]
+        key = h.hostname.lower()
+        existing = best.get(key)
+        if existing is None:
+            best[key] = row
+        else:
+            row_ts = row.last_seen_at or _epoch
+            existing_ts = existing.last_seen_at or _epoch
+            # prefer newer timestamp; on tie, prefer prefixed (canonical) host_id
+            has_prefix = any(h.host_id.startswith(p) for p in ("server-", "pc-", "neutral-"))
+            if row_ts > existing_ts or (row_ts == existing_ts and has_prefix):
+                best[key] = row
+
+    return list(best.values())
 
 
 # ---------------------------------------------------------------------------
@@ -120,8 +139,11 @@ def host_risk_summary_view(
         vuln_counts[vuln.host_id]["total"] += 1
         vuln_counts[vuln.host_id][vuln.severity] += 1
 
-    rows = [
-        HostRiskSummaryRow(
+    # Build rows and deduplicate by hostname (same logic as latest_host_status_view)
+    _epoch = datetime.min.replace(tzinfo=timezone.utc)
+    best: dict[str, HostRiskSummaryRow] = {}
+    for h in store.hosts:
+        row = HostRiskSummaryRow(
             host_id=h.host_id,
             hostname=h.hostname,
             risk_score=h.risk_score,
@@ -132,8 +154,19 @@ def host_risk_summary_view(
             critical_vuln_count=vuln_counts[h.host_id]["critical"],
             high_vuln_count=vuln_counts[h.host_id]["high"],
         )
-        for h in store.hosts
-    ]
+        key = h.hostname.lower()
+        existing = best.get(key)
+        if existing is None:
+            best[key] = row
+        else:
+            # prefer higher risk_score; on tie prefer prefixed host_id
+            has_prefix = any(h.host_id.startswith(p) for p in ("server-", "pc-", "neutral-"))
+            if row.risk_score > existing.risk_score or (
+                row.risk_score == existing.risk_score and has_prefix
+            ):
+                best[key] = row
+
+    rows = list(best.values())
     return sorted(rows, key=lambda r: (r.risk_score, r.alert_count_24h), reverse=True)
 
 

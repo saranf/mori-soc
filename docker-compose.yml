@@ -27,6 +27,9 @@ services:
     environment:
       MORI_QUERY_BACKEND: postgres
       MORI_DATABASE_URL: postgresql://${MORI_DB_USER:-mori}:${MORI_DB_PASSWORD:-mori}@soc-postgres:5432/${MORI_DB_NAME:-mori_soc}
+      MORI_GRAFANA_URL: ${GRAFANA_URL:-http://mori.rmstudio.co.kr:13000}
+      MORI_ZABBIX_UI_URL: ${MORI_ZABBIX_UI_URL:-http://mori.rmstudio.co.kr:18081}
+      MORI_FLEET_UI_URL: ${MORI_FLEET_UI_URL:-http://mori.rmstudio.co.kr:1337}
     ports:
       - "${MORI_API_PORT:-18000}:8000"
     healthcheck:

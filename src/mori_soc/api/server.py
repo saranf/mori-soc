@@ -600,9 +600,16 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       `;
     }
 
+    function renderHostCell(item) {
+      const name = item.source_url
+        ? `<a href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer"><strong>${escapeHtml(item.hostname)}</strong></a>`
+        : `<strong>${escapeHtml(item.hostname)}</strong>`;
+      return `${name}<br /><span class=\"subtext\">${escapeHtml(item.host_id)}</span>`;
+    }
+
     function renderStatusDetailTable(items) {
       return renderDetailTable([
-        { label: 'Host', render: (item) => `<strong>${escapeHtml(item.hostname)}</strong><br /><span class=\"subtext\">${escapeHtml(item.host_id)}</span>` },
+        { label: 'Host', render: (item) => renderHostCell(item) },
         { label: 'Status', render: (item) => `<span class=\"badge ${escapeHtml(item.status)}\">${escapeHtml(item.status)}</span>` },
         { label: 'Risk', render: (item) => escapeHtml(item.risk_score) },
         { label: 'Last Seen', render: (item) => escapeHtml(formatTime(item.last_seen_at)) },
@@ -719,7 +726,7 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <thead><tr><th>Host</th><th>Status</th><th>Risk</th><th>Last Seen</th></tr></thead>
           <tbody>${items.map((item) => `
             <tr>
-              <td><strong>${escapeHtml(item.hostname)}</strong><br /><span class=\"subtext\">${escapeHtml(item.host_id)}</span></td>
+              <td>${renderHostCell(item)}</td>
               <td><span class=\"badge ${escapeHtml(item.status)}\">${escapeHtml(item.status)}</span></td>
               <td>${escapeHtml(item.risk_score)}</td>
               <td>${escapeHtml(formatTime(item.last_seen_at))}</td>
@@ -1432,12 +1439,16 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       `;
     }
 
+    function renderHostCell(item) {
+      const name = item.source_url
+        ? `<a href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer"><strong>${escapeHtml(item.hostname)}</strong></a>`
+        : `<strong>${escapeHtml(item.hostname)}</strong>`;
+      return `${name}<br /><span class="subtext">${escapeHtml(item.host_id)}</span>`;
+    }
+
     function renderStatusDetailTable(items) {
       return renderDetailTable([
-        {
-          label: 'Host',
-          render: (item) => `<strong>${escapeHtml(item.hostname)}</strong><br /><span class="subtext">${escapeHtml(item.host_id)}</span>`,
-        },
+        { label: 'Host', render: (item) => renderHostCell(item) },
         { label: 'Status', render: (item) => `<span class="badge ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span>` },
         { label: 'Risk', render: (item) => escapeHtml(item.risk_score) },
         { label: 'Last Seen', render: (item) => escapeHtml(formatTime(item.last_seen_at)) },
@@ -1563,7 +1574,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <tbody>
             ${items.map((item) => `
               <tr>
-                <td><strong>${escapeHtml(item.hostname)}</strong><br /><span class=\"subtext\">${escapeHtml(item.host_id)}</span></td>
+                <td>${renderHostCell(item)}</td>
                 <td><span class=\"badge ${escapeHtml(item.status)}\">${escapeHtml(item.status)}</span></td>
                 <td>${escapeHtml(item.risk_score)}</td>
                 <td>${escapeHtml(formatTime(item.last_seen_at))}</td>
@@ -1948,6 +1959,7 @@ def _status_detail_rows(rows: list[Any]) -> list[dict[str, Any]]:
             "last_seen_at": _isoformat(row.last_seen_at),
             "last_alert_at": _isoformat(row.last_alert_at),
             "last_observation_at": _isoformat(row.last_observation_at),
+            "source_url": _host_source_url(row.host_id, row.hostname),
         }
         for row in rows
     ]
@@ -1999,6 +2011,12 @@ GRAFANA_BASE_URL = os.getenv("MORI_GRAFANA_URL", "http://mori.rmstudio.co.kr:130
 _LOKI_DATASOURCE_UID = os.getenv("MORI_LOKI_DATASOURCE_UID", "loki")
 _LOKI_DATASOURCE_TYPE = os.getenv("MORI_LOKI_DATASOURCE_TYPE", "loki")
 
+# 호스트 소스 딥링크용 외부 UI URL
+# server- prefix → Zabbix 웹 UI (예: http://mori.rmstudio.co.kr:8080)
+_ZABBIX_UI_URL = os.getenv("MORI_ZABBIX_UI_URL", "").rstrip("/")
+# pc- prefix → Fleet 웹 UI (예: https://fleet.example.com)
+_FLEET_UI_URL = os.getenv("MORI_FLEET_UI_URL", "").rstrip("/")
+
 
 def _grafana_explore_url(host_id: str | None, raw_ref: str | None = None) -> str | None:
     """Grafana 10+ Explore 딥링크 URL 생성 (panes 포맷).
@@ -2030,6 +2048,20 @@ def _grafana_explore_url(host_id: str | None, raw_ref: str | None = None) -> str
     }
     panes_json = _url_quote(json.dumps({"pane": pane}, separators=(",", ":")), safe="")
     return f"{GRAFANA_BASE_URL}/explore?schemaVersion=1&panes={panes_json}&orgId=1"
+
+
+def _host_source_url(host_id: str, hostname: str) -> str | None:
+    """호스트 ID prefix 에 따라 Zabbix / Fleet 호스트 페이지 URL 을 반환한다.
+
+    환경변수 ``MORI_ZABBIX_UI_URL`` / ``MORI_FLEET_UI_URL`` 이 설정되지 않으면 None.
+    """
+    if host_id.startswith("server-") and _ZABBIX_UI_URL:
+        # Zabbix 호스트 목록에서 이름으로 필터링
+        return f"{_ZABBIX_UI_URL}/zabbix.php?action=host.list&filter_set=1&filter_host={_url_quote(hostname)}"
+    if host_id.startswith("pc-") and _FLEET_UI_URL:
+        # Fleet 호스트 목록에서 hostname 검색
+        return f"{_FLEET_UI_URL}/hosts?query={_url_quote(hostname)}"
+    return None
 
 
 def _recent_activity(store: InMemoryQueryStore, limit: int = 10) -> list[dict[str, Any]]:
