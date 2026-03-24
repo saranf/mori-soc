@@ -472,7 +472,7 @@ def _ensure_source_syncs_table(cur) -> None:
             envelopes_normalized integer NOT NULL DEFAULT 0,
             entities_saved integer NOT NULL DEFAULT 0,
             updated_at timestamptz NOT NULL DEFAULT now(),
-            CONSTRAINT source_syncs_source_check CHECK (source IN ('fleet', 'wazuh', 'zabbix', 'host_log')),
+            CONSTRAINT source_syncs_source_check CHECK (source IN ('fleet', 'wazuh', 'zabbix', 'host_log', 'trivy')),
             CONSTRAINT source_syncs_status_check CHECK (status IN ('success', 'error', 'running'))
         )
         """

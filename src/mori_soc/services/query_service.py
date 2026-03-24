@@ -71,10 +71,16 @@ class QueryService:
         since = self._since(request.scope.time_range)
         severities = self._severity_filter(request.scope.severity) or {"high", "critical"}
         alerts = [
-            alert for alert in self.store.alerts if alert.observed_at >= since and alert.severity in severities
+            alert
+            for alert in self.store.alerts
+            if alert.observed_at >= since
+            and alert.severity in severities
+            and self._matches_source(alert.source, request.scope.source)
         ]
         source_counts = Counter(alert.source for alert in alerts)
         top_sources = ", ".join(f"{source}:{count}" for source, count in source_counts.most_common(3)) or "none"
+        severity_label = request.scope.severity or "high/critical"
+        source_label = f"{request.scope.source} " if request.scope.source else ""
         evidence = [
             EvidenceRef(
                 source=alert.source,
@@ -85,7 +91,7 @@ class QueryService:
             for alert in sorted(alerts, key=lambda item: item.observed_at, reverse=True)[:5]
         ]
         return QueryResponse(
-            summary=f"최근 {request.scope.time_range} 동안 {len(alerts)}건의 high/critical alert가 있었고 주요 소스는 {top_sources} 입니다.",
+            summary=f"최근 {request.scope.time_range} 동안 {len(alerts)}건의 {source_label}{severity_label} alert가 있었고 주요 소스는 {top_sources} 입니다.",
             filters=self._filters(request),
             evidence=evidence,
             meta={"query_id": query_id, "count": len(alerts)},
@@ -106,22 +112,24 @@ class QueryService:
 
     def _top_vulnerable_hosts(self, request: QueryRequest, query_id: str) -> QueryResponse:
         since = self._since(request.scope.time_range)
+        limit = self._limit(request, default=5)
         counts: dict[str, int] = defaultdict(int)
         for vuln in self.store.vulnerabilities:
-            if vuln.detected_at >= since:
+            if vuln.detected_at >= since and self._matches_source(vuln.source, request.scope.source):
                 counts[vuln.host_id] += 1
         ranked = sorted(counts.items(), key=lambda item: item[1], reverse=True)
         hostnames = {host.host_id: host.hostname for host in self.store.hosts}
         evidence = [
             EvidenceRef(source="vulnerabilities", record_id=host_id, summary=f"{hostnames.get(host_id, host_id)}:{count}")
-            for host_id, count in ranked[:10]
+            for host_id, count in ranked[:limit]
         ]
-        summary = ", ".join(f"{hostnames.get(host_id, host_id)}({count})" for host_id, count in ranked[:5]) or "없음"
+        summary = ", ".join(f"{hostnames.get(host_id, host_id)}({count})" for host_id, count in ranked[:limit]) or "없음"
+        source_label = f"{request.scope.source} " if request.scope.source else ""
         return QueryResponse(
-            summary=f"최근 {request.scope.time_range} 기준 취약점 상위 호스트는 {summary} 입니다.",
+            summary=f"최근 {request.scope.time_range} 기준 {source_label}취약점 상위 호스트는 {summary} 입니다.",
             filters=self._filters(request),
             evidence=evidence,
-            meta={"query_id": query_id, "count": len(ranked)},
+            meta={"query_id": query_id, "count": len(ranked), "limit": limit},
         )
 
     def _host_timeline(self, request: QueryRequest, query_id: str) -> QueryResponse:
@@ -234,7 +242,9 @@ class QueryService:
         high_severities = {"critical", "high"}
         vulns = [
             v for v in self.store.vulnerabilities
-            if v.severity in high_severities and v.detected_at >= since
+            if v.severity in high_severities
+            and v.detected_at >= since
+            and self._matches_source(v.source, request.scope.source)
         ]
         vulns = sorted(vulns, key=lambda v: v.detected_at, reverse=True)
         hostnames = {h.host_id: h.hostname for h in self.store.hosts}
@@ -247,8 +257,9 @@ class QueryService:
             )
             for v in vulns[:10]
         ]
+        source_label = f"{request.scope.source} " if request.scope.source else ""
         return QueryResponse(
-            summary=f"최근 {request.scope.time_range} 새로 탐지된 high 이상 취약점은 {len(vulns)}건입니다.",
+            summary=f"최근 {request.scope.time_range} 새로 탐지된 {source_label}high 이상 취약점은 {len(vulns)}건입니다.",
             filters=self._filters(request),
             evidence=evidence,
             meta={"query_id": query_id, "count": len(vulns)},
@@ -402,3 +413,16 @@ class QueryService:
         for key, value in request.filters.items():
             filters[key] = str(value)
         return filters
+
+    def _matches_source(self, candidate: str, requested: str | None) -> bool:
+        return requested is None or candidate == requested
+
+    def _limit(self, request: QueryRequest, default: int = 10, maximum: int = 100) -> int:
+        value = request.filters.get("limit")
+        if value is None:
+            return default
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return default
+        return max(1, min(parsed, maximum))

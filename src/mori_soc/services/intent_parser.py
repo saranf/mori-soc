@@ -16,6 +16,7 @@ QUERY_GUIDE_EXAMPLES = (
     "fleet 체크인 안 한 호스트 보여줘",
     "host-1 fleet query 결과 보여줘",
     "취약점 많은 호스트 top 5",
+    "최근 7일 trivy high 취약점 보여줘",
 )
 
 
@@ -121,11 +122,11 @@ def _select_intent(lowered: str, matched_rules: list[str], *, has_host_scope: bo
             return intent, True
 
     if _contains_any(lowered, ("취약점", "vulnerability", "vuln", "cve", "트리비", "trivy")):
-        if _contains_any(lowered, ("신규", "new", "새로", "최근 발견")):
-            matched_rules.append("intent:new_high_vulns")
-            return "new_high_vulns", True
-        matched_rules.append("intent:top_vulnerable_hosts")
-        return "top_vulnerable_hosts", True
+        if _contains_any(lowered, ("top", "상위", "랭킹", "많은 호스트", "취약점 많은", "most")):
+            matched_rules.append("intent:top_vulnerable_hosts")
+            return "top_vulnerable_hosts", True
+        matched_rules.append("intent:new_high_vulns")
+        return "new_high_vulns", True
 
     if _contains_any(lowered, ("alert", "경보", "탐지", "이벤트")) and _contains_any(
         lowered,
@@ -201,6 +202,7 @@ def _extract_source(lowered: str, matched_rules: list[str]) -> str | None:
         "wazuh": ("wazuh", "와주", "와즈"),
         "fleet": ("fleet", "플릿", "osquery"),
         "zabbix": ("zabbix", "자빅스"),
+        "trivy": ("trivy", "트리비"),
     }
     for source, keywords in source_aliases.items():
         if _contains_any(lowered, keywords):

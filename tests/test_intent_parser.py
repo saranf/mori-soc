@@ -10,7 +10,7 @@ class NaturalLanguageQueryParserTests(unittest.TestCase):
     def test_offline_hosts_question_maps_to_offline_intent(self) -> None:
         result = self.parser.interpret("오프라인 호스트 보여줘")
         self.assertEqual(result.request.intent, "offline_hosts")
-        self.assertEqual(result.request.scope.time_range, "1h")
+        self.assertEqual(result.request.scope.time_range, "24h")
 
     def test_timeline_question_extracts_host_id(self) -> None:
         result = self.parser.interpret("host-1 타임라인 보여줘")
@@ -27,6 +27,13 @@ class NaturalLanguageQueryParserTests(unittest.TestCase):
         result = self.parser.interpret("취약점 많은 호스트 top 5")
         self.assertEqual(result.request.intent, "top_vulnerable_hosts")
         self.assertEqual(result.request.filters["limit"], 5)
+
+    def test_trivy_vulnerability_question_extracts_source(self) -> None:
+        result = self.parser.interpret("최근 7일 trivy high 취약점 보여줘")
+        self.assertEqual(result.request.intent, "new_high_vulns")
+        self.assertEqual(result.request.scope.time_range, "7d")
+        self.assertEqual(result.request.scope.source, "trivy")
+        self.assertEqual(result.request.scope.severity, "high")
 
     def test_activity_question_extracts_hostname(self) -> None:
         result = self.parser.interpret("mbp-01 호스트 최근 활동 보여줘")

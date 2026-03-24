@@ -96,6 +96,7 @@ class QueryRequestBuilderTests(unittest.TestCase):
             host_aliases=[
                 HostAlias(alias_id="a1", host_id="host-1", source="fleet", alias_type="uuid", alias_value="fleet-1"),
                 HostAlias(alias_id="a2", host_id="host-2", source="zabbix", alias_type="hostid", alias_value="20084"),
+                HostAlias(alias_id="a3", host_id="host-1", source="trivy", alias_type="hostname", alias_value="mbp-01"),
             ],
             alerts=[
                 Alert(
@@ -147,6 +148,16 @@ class QueryRequestBuilderTests(unittest.TestCase):
                     records_collected=2,
                     envelopes_normalized=2,
                     entities_saved=4,
+                ),
+                SourceSync(
+                    source="trivy",
+                    status="success",
+                    last_sync_at=now,
+                    last_success_at=now,
+                    message="report parsed",
+                    records_collected=1,
+                    envelopes_normalized=1,
+                    entities_saved=2,
                 )
             ],
         )
@@ -157,8 +168,10 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertEqual(payload["overview"]["critical_vulns"], 1)
         self.assertEqual(payload["source_coverage"][0]["source"], "fleet")
         zabbix_row = next(item for item in payload["source_coverage"] if item["source"] == "zabbix")
+        trivy_row = next(item for item in payload["source_coverage"] if item["source"] == "trivy")
         self.assertEqual(zabbix_row["status"], "success")
-        self.assertEqual(payload["overview"]["sources_healthy"], 1)
+        self.assertEqual(trivy_row["host_count"], 1)
+        self.assertEqual(payload["overview"]["sources_healthy"], 2)
         self.assertEqual(payload["latest_status"][0]["host_id"], "host-1")
         self.assertTrue(any(item["entity_type"] == "alert" for item in payload["recent_activity"]))
         self.assertEqual(len(payload["recommended_queries"]), 4)

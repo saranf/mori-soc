@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 from mori_soc.api.contracts import QueryRequest, QueryScope
-from mori_soc.collectors import FleetLogCollector, WazuhAlertCollector, ZabbixEventCollector
+from mori_soc.collectors import FleetLogCollector, TrivyCollector, WazuhAlertCollector, ZabbixEventCollector
 from mori_soc.repositories import InMemoryRepository
 from mori_soc.services import CollectorIngestionService, EnvelopeEntityMapper, QueryService
 from mori_soc.worker import run_ingestion_cycle
@@ -122,6 +122,77 @@ class IngestionFlowTests(unittest.TestCase):
         self.assertTrue({"42", "fleet-uuid-2", "hw-123", "mbp-02"}.issubset(alias_values))
         self.assertEqual(snapshot.query_results[0].result_json["rows"][0]["hardware_uuid"], "hw-123")
 
+    def test_zabbix_metric_without_explicit_status_keeps_host_unknown(self) -> None:
+        now = datetime.now(tz=timezone.utc)
+        collector = ZabbixEventCollector(
+            item_lines=[
+                '{"itemid":"22001","clock":"'
+                + str(int(now.timestamp()))
+                + '","value":"85.4","hosts":[{"hostid":"10001","name":"srv-01"}],'
+                + '"item_name":"CPU utilization","units":"%"}'
+            ]
+        )
+        repository = InMemoryRepository()
+        mapper = EnvelopeEntityMapper(alias_map={"srv-01": "host-1"})
+        service = CollectorIngestionService(mapper, repository)
+
+        service.ingest_collector(collector)
+        snapshot = repository.snapshot()
+
+        self.assertEqual(snapshot.hosts[0].host_id, "host-1")
+        self.assertEqual(snapshot.hosts[0].status, "unknown")
+
+    def test_trivy_ingestion_does_not_override_explicit_offline_status(self) -> None:
+        now = datetime(2026, 3, 24, 10, 0, tzinfo=timezone.utc)
+        repository = InMemoryRepository()
+        mapper = EnvelopeEntityMapper(alias_map={"srv-01": "host-1"})
+        service = CollectorIngestionService(mapper, repository)
+        zabbix = ZabbixEventCollector(api_url="http://zabbix.example/api_jsonrpc.php", token="token")
+
+        with patch.object(
+            zabbix,
+            "_api_call",
+            side_effect=[
+                [{"hostid": "20084", "host": "srv-01", "name": "srv-01", "status": "0", "active_available": "2"}],
+                [],
+            ],
+        ):
+            service.ingest_collector(zabbix)
+
+        trivy = TrivyCollector(
+            reports=[
+                {
+                    "CreatedAt": now.isoformat().replace("+00:00", "Z"),
+                    "ArtifactName": "srv-01",
+                    "ArtifactType": "filesystem",
+                    "Results": [
+                        {
+                            "Target": "/",
+                            "Class": "os-pkgs",
+                            "Type": "ubuntu",
+                            "Vulnerabilities": [
+                                {
+                                    "VulnerabilityID": "CVE-2026-0001",
+                                    "PkgName": "openssl",
+                                    "InstalledVersion": "1.0.0",
+                                    "FixedVersion": "1.0.1",
+                                    "Severity": "CRITICAL",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            host_aliases=["srv-01"],
+            hostname="srv-01",
+        )
+
+        service.ingest_collector(trivy)
+        snapshot = repository.snapshot()
+
+        self.assertEqual(snapshot.hosts[0].host_id, "host-1")
+        self.assertEqual(snapshot.hosts[0].status, "offline")
+
     def test_zabbix_api_collect_and_worker_cycle_save_source_sync(self) -> None:
         now = datetime.now(tz=timezone.utc)
         repository = InMemoryRepository()
@@ -222,6 +293,58 @@ class IngestionFlowTests(unittest.TestCase):
         self.assertEqual(sync.last_error_at, second_run_at)
         self.assertEqual(sync.records_collected, first_sync.records_collected)
         self.assertEqual(sync.entities_saved, first_sync.entities_saved)
+
+    def test_trivy_ingestion_saves_vulnerabilities_and_source_sync(self) -> None:
+        now = datetime(2026, 3, 24, 10, 0, tzinfo=timezone.utc)
+        repository = InMemoryRepository()
+        mapper = EnvelopeEntityMapper(alias_map={"srv-01": "host-1"})
+        collector = TrivyCollector(
+            reports=[
+                {
+                    "CreatedAt": now.isoformat().replace("+00:00", "Z"),
+                    "ArtifactName": "srv-01",
+                    "ArtifactType": "filesystem",
+                    "Results": [
+                        {
+                            "Target": "/",
+                            "Class": "os-pkgs",
+                            "Type": "ubuntu",
+                            "Vulnerabilities": [
+                                {
+                                    "VulnerabilityID": "CVE-2026-0001",
+                                    "PkgName": "openssl",
+                                    "InstalledVersion": "1.0.0",
+                                    "FixedVersion": "1.0.1",
+                                    "Severity": "CRITICAL",
+                                },
+                                {
+                                    "VulnerabilityID": "CVE-2026-0002",
+                                    "PkgName": "curl",
+                                    "InstalledVersion": "8.0.0",
+                                    "FixedVersion": "8.0.1",
+                                    "Severity": "HIGH",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+            host_aliases=["srv-01", "10.0.0.10"],
+            hostname="srv-01",
+        )
+
+        reports = run_ingestion_cycle(repository, [collector], mapper=mapper, started_at=now)
+        snapshot = repository.snapshot()
+
+        self.assertEqual(reports[0].source, "trivy")
+        self.assertEqual(snapshot.source_syncs[0].source, "trivy")
+        self.assertEqual(snapshot.source_syncs[0].status, "success")
+        self.assertEqual(snapshot.source_syncs[0].records_collected, 2)
+        self.assertEqual(len(snapshot.vulnerabilities), 2)
+        self.assertEqual({v.source for v in snapshot.vulnerabilities}, {"trivy"})
+        self.assertEqual({v.host_id for v in snapshot.vulnerabilities}, {"host-1"})
+        alias_values = {alias.alias_value for alias in snapshot.host_aliases if alias.host_id == "host-1"}
+        self.assertTrue({"srv-01", "10.0.0.10"}.issubset(alias_values))
 
 
 if __name__ == "__main__":

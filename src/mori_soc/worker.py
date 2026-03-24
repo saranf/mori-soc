@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import glob
 import os
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable
 
-from mori_soc.collectors import BaseCollector, ZabbixEventCollector
+from mori_soc.collectors import BaseCollector, TrivyCollector, ZabbixEventCollector
 from mori_soc.models import SourceSync
 from mori_soc.repositories import BaseRepository, InMemoryRepository, PostgresRepository
 from mori_soc.services import CollectorIngestionService, EnvelopeEntityMapper, IngestionReport
@@ -46,6 +47,15 @@ def build_collectors_from_env() -> list[BaseCollector]:
                     problem_limit=int(os.getenv("MORI_ZABBIX_PROBLEM_LIMIT", "500")),
                 )
             )
+    if _env_flag("MORI_ENABLE_TRIVY", default=False):
+        report_glob = os.getenv("MORI_TRIVY_REPORT_GLOB", "reports/trivy/*.json").strip() or "reports/trivy/*.json"
+        collectors.append(
+            TrivyCollector(
+                report_paths=sorted(glob.glob(report_glob)),
+                host_aliases=_split_csv_env("MORI_TRIVY_HOST_ALIASES"),
+                hostname=os.getenv("MORI_TRIVY_HOSTNAME", "").strip() or None,
+            )
+        )
     return collectors
 
 
@@ -104,7 +114,7 @@ def run_forever() -> None:
     mapper = EnvelopeEntityMapper()
     collectors = build_collectors_from_env()
     if not collectors:
-        raise RuntimeError("No MORI collectors are enabled. Set MORI_ZABBIX_* environment variables.")
+        raise RuntimeError("No MORI collectors are enabled. Set MORI_ZABBIX_* or MORI_TRIVY_* environment variables.")
 
     poll_interval = max(1, int(os.getenv("MORI_WORKER_INTERVAL_SECONDS", "60")))
     run_once = _env_flag("MORI_WORKER_RUN_ONCE", default=False)
@@ -125,6 +135,11 @@ def _env_flag(name: str, *, default: bool) -> bool:
 
 def _truncate_message(message: str, limit: int = 500) -> str:
     return message if len(message) <= limit else message[: limit - 3] + "..."
+
+
+def _split_csv_env(name: str) -> list[str]:
+    value = os.getenv(name, "")
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 if __name__ == "__main__":

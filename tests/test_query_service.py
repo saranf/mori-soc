@@ -48,9 +48,9 @@ def _make_store(now: datetime) -> InMemoryQueryStore:
             ),
         ],
         vulnerabilities=[
-            Vulnerability(vuln_id="v-1", host_id="host-1", severity="high", detected_at=now - timedelta(days=1)),
-            Vulnerability(vuln_id="v-2", host_id="host-1", severity="critical", detected_at=now - timedelta(hours=3)),
-            Vulnerability(vuln_id="v-3", host_id="host-2", severity="medium", detected_at=now - timedelta(days=10)),
+            Vulnerability(vuln_id="v-1", host_id="host-1", source="fleet", severity="high", detected_at=now - timedelta(days=1)),
+            Vulnerability(vuln_id="v-2", host_id="host-1", source="trivy", severity="critical", detected_at=now - timedelta(hours=3)),
+            Vulnerability(vuln_id="v-3", host_id="host-2", source="trivy", severity="medium", detected_at=now - timedelta(days=2)),
         ],
         query_results=[
             QueryResult(
@@ -114,10 +114,34 @@ class QueryServiceTests(unittest.TestCase):
         self.assertIn("2건", response.summary)
         self.assertEqual(len(response.evidence), 2)
 
+    def test_alert_summary_respects_source_filter(self) -> None:
+        response = self.service.execute(
+            QueryRequest(intent="alert_summary", scope=QueryScope(time_range="24h", source="wazuh", severity="high"))
+        )
+        self.assertEqual(response.meta["count"], 1)
+        self.assertTrue(all(e.source == "wazuh" for e in response.evidence))
+
     def test_offline_hosts(self) -> None:
         response = self.service.execute(QueryRequest(intent="offline_hosts", scope=QueryScope(time_range="1h")))
         self.assertIn("1대", response.summary)
         self.assertEqual(response.evidence[0].record_id, "host-2")
+
+    def test_top_vulnerable_hosts_respects_limit(self) -> None:
+        response = self.service.execute(
+            QueryRequest(intent="top_vulnerable_hosts", scope=QueryScope(time_range="7d"), filters={"limit": 1})
+        )
+        self.assertEqual(response.meta["count"], 2)
+        self.assertEqual(response.meta["limit"], 1)
+        self.assertEqual(len(response.evidence), 1)
+        self.assertEqual(response.evidence[0].record_id, "host-1")
+
+    def test_new_high_vulns_respects_source_filter(self) -> None:
+        response = self.service.execute(
+            QueryRequest(intent="new_high_vulns", scope=QueryScope(time_range="7d", source="trivy"))
+        )
+        ids = [e.record_id for e in response.evidence]
+        self.assertEqual(response.meta["count"], 1)
+        self.assertEqual(ids, ["v-2"])
 
     def test_host_timeline_by_hostname(self) -> None:
         response = self.service.execute(

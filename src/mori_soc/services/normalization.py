@@ -31,7 +31,7 @@ class EnvelopeEntityMapper:
         host_id = self._resolve_host_id(aliases, fallback=f"host-{envelope.entity_id}")
         hostname = self._string_value(normalized.get("hostname")) or alias or host_id
         platform = self._string_value(normalized.get("platform"))
-        status = self._string_value(normalized.get("status")) or "online"
+        status = self._host_status(normalized.get("status"))
         records: list[object] = [
             Host(
                 host_id=host_id,
@@ -75,7 +75,7 @@ class EnvelopeEntityMapper:
                     host_id=host_id,
                     hostname=hostname,
                     platform=platform,
-                    status="online",
+                    status="unknown",
                     first_seen_at=envelope.observed_at,
                     last_seen_at=envelope.observed_at,
                 )
@@ -149,7 +149,7 @@ class EnvelopeEntityMapper:
                     host_id=host_id,
                     hostname=hostname,
                     primary_ip=primary_ip,
-                    status="online",
+                    status="unknown",
                     first_seen_at=envelope.observed_at,
                     last_seen_at=envelope.observed_at,
                 )
@@ -186,7 +186,7 @@ class EnvelopeEntityMapper:
                 Host(
                     host_id=host_id,
                     hostname=hostname,
-                    status="online",
+                    status="unknown",
                     first_seen_at=envelope.observed_at,
                     last_seen_at=envelope.observed_at,
                 )
@@ -197,7 +197,7 @@ class EnvelopeEntityMapper:
             Vulnerability(
                 vuln_id=envelope.entity_id,
                 host_id=host_id,
-                source="fleet",
+                source=envelope.source,  # type: ignore[arg-type]
                 cve=self._string_value(normalized.get("cve")),
                 severity=self._string_value(normalized.get("severity")) or "info",  # type: ignore[arg-type]
                 package_name=self._string_value(normalized.get("package_name")),
@@ -224,3 +224,9 @@ class EnvelopeEntityMapper:
 
     def _string_value(self, value: object) -> str | None:
         return value if isinstance(value, str) and value else None
+
+    def _host_status(self, value: object) -> str:
+        status = self._string_value(value)
+        if status in {"online", "offline", "unknown"}:
+            return status
+        return "unknown"

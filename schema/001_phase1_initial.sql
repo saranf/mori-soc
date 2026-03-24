@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS host_aliases (
     last_seen_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT host_aliases_confidence_check CHECK (confidence >= 0 AND confidence <= 1),
-    CONSTRAINT host_aliases_source_check CHECK (source IN ('fleet', 'wazuh', 'zabbix', 'host_log')),
+    CONSTRAINT host_aliases_source_check CHECK (source IN ('fleet', 'wazuh', 'zabbix', 'host_log', 'trivy')),
     CONSTRAINT host_aliases_unique UNIQUE (source, alias_type, alias_value)
 );
 
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS vulnerabilities (
     raw_ref text,
     raw_payload jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT vulnerabilities_source_check CHECK (source IN ('fleet')),
+    CONSTRAINT vulnerabilities_source_check CHECK (source IN ('fleet', 'trivy')),
     CONSTRAINT vulnerabilities_severity_check CHECK (severity IN ('critical', 'high', 'medium', 'low', 'info'))
 );
 
@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS source_syncs (
     envelopes_normalized integer NOT NULL DEFAULT 0,
     entities_saved integer NOT NULL DEFAULT 0,
     updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT source_syncs_source_check CHECK (source IN ('fleet', 'wazuh', 'zabbix', 'host_log')),
+    CONSTRAINT source_syncs_source_check CHECK (source IN ('fleet', 'wazuh', 'zabbix', 'host_log', 'trivy')),
     CONSTRAINT source_syncs_status_check CHECK (status IN ('success', 'error', 'running'))
 );
 

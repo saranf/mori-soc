@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 Severity = Literal["critical", "high", "medium", "low", "info"]
 HostStatus = Literal["online", "offline", "unknown"]
-SourceName = Literal["fleet", "wazuh", "zabbix", "host_log"]
+SourceName = Literal["fleet", "wazuh", "zabbix", "host_log", "trivy"]
 AliasSource = SourceName
 SyncStatus = Literal["success", "error", "running"]
 
@@ -57,7 +57,7 @@ class Vulnerability:
     vuln_id: str
     host_id: str
     detected_at: datetime
-    source: Literal["fleet"] = "fleet"
+    source: Literal["fleet", "trivy"] = "fleet"
     cve: str | None = None
     severity: Severity = "info"
     package_name: str | None = None

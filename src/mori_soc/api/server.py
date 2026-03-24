@@ -309,7 +309,7 @@ def render_query_console_html() -> str:
     <section class=\"hero\">
       <div>
         <h1>MORI Security Dashboard</h1>
-        <p>Fleet · Wazuh · Zabbix 데이터를 공통 모델로 묶어 상태/위험/최근 활동을 한눈에 보고, 같은 화면에서 자연어 질의까지 바로 실행하는 운영 대시보드입니다.</p>
+        <p>Fleet · Wazuh · Zabbix · Trivy 데이터를 공통 모델로 묶어 상태/위험/최근 활동을 한눈에 보고, 같은 화면에서 자연어 질의까지 바로 실행하는 운영 대시보드입니다.</p>
         <div class=\"links\">
           <a href=\"/docs\" target=\"_blank\" rel=\"noreferrer\">Swagger Docs</a>
           <a href=\"/catalog\" target=\"_blank\" rel=\"noreferrer\">Query Catalog JSON</a>
@@ -329,7 +329,7 @@ def render_query_console_html() -> str:
       <div class=\"stack\">
         <section class=\"card\">
           <h2>Source Coverage</h2>
-          <div class=\"subtext\">Fleet / Wazuh / Zabbix / host logs 기준으로 현재 MORI에 연결된 호스트 수입니다.</div>
+          <div class=\"subtext\">Fleet / Wazuh / Zabbix / Trivy / host logs 기준으로 현재 MORI에 연결된 호스트 수입니다.</div>
           <div class=\"coverage\" id=\"source_coverage\"></div>
           <div class=\"status-line\" id=\"dashboard_status\">dashboard loading...</div>
         </section>
@@ -571,7 +571,7 @@ def render_query_console_html() -> str:
         ['Offline Hosts', overview.offline_hosts, '즉시 확인 대상'],
         ['High Alerts 24h', overview.alerts_24h, 'high + critical'],
         ['Critical Vulns', overview.critical_vulns, `high ${overview.high_vulns}`],
-        ['Sources Reporting', overview.sources_reporting, 'fleet / wazuh / zabbix / host_log'],
+        ['Sources Reporting', overview.sources_reporting, 'fleet / wazuh / zabbix / trivy / host_log'],
         ['Healthy Collectors', overview.sources_healthy, '최근 sync success 기준'],
         ['Ingested Records', overview.ingested_records, 'alerts + vulns + queries + observations'],
       ];
@@ -817,10 +817,13 @@ def render_query_console_html() -> str:
 
 
 def _source_coverage(store: InMemoryQueryStore) -> list[dict[str, Any]]:
-    sources = {"fleet": set(), "wazuh": set(), "zabbix": set(), "host_log": set()}
+    ordered_sources = ["fleet", "wazuh", "zabbix", "trivy", "host_log"]
+    sources = {source: set() for source in ordered_sources}
     for alias in store.host_aliases:
         sources.setdefault(alias.source, set()).add(alias.host_id)
     sync_map = {item.source: item for item in store.source_syncs}
+    for source in sync_map:
+        sources.setdefault(source, set())
     rows: list[dict[str, Any]] = []
     for source, host_ids in sources.items():
         sync = sync_map.get(source)

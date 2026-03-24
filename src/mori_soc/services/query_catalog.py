@@ -29,7 +29,7 @@ PHASE1_QUERY_CATALOG: tuple[TemplateQuery, ...] = (
         name="오프라인 호스트 조회",
         description="현재 offline 또는 unavailable 상태 호스트를 조회한다.",
         intent="offline_hosts",
-        default_window="1h",
+        default_window="24h",
         required_filters=(),
         evidence_sources=("hosts", "host_observations"),
     ),
