@@ -795,32 +795,43 @@ sudo systemctl start orbit
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # ── Alert Triage ────────────────────────────────────────────────────────────
-    @app.get("/alerts")
+    @app.get("/alerts", tags=["Alerts"])
     def alerts_list() -> dict[str, Any]:
         store = get_query_service().store
         hostnames = {host.host_id: host.hostname for host in store.hosts}
         rows = _alert_detail_rows(store.alerts, hostnames)
         for row in rows:
-            row["triage"] = triage_store.get(row["alert_id"], {"status": "new"})
+            row["triage"] = triage_store.get(row["alert_id"], {"status": "pending"})
         return {"alerts": rows, "total": len(rows)}
 
-    @app.patch("/alerts/{alert_id}/triage")
+    @app.patch("/alerts/{alert_id}/triage", tags=["Alerts"])
     def alert_triage_update(alert_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         status = payload.get("status", "")
-        valid_statuses = {"new", "acknowledged", "investigating", "closed", "false_positive"}
+        valid_statuses = {"pending", "reviewing", "resolved"}
         if status not in valid_statuses:
             raise HTTPException(status_code=400, detail=f"status must be one of: {', '.join(sorted(valid_statuses))}")
         entry = triage_store.setdefault(alert_id, {})
+        prev_status = entry.get("status", "pending")
         entry["status"] = status
         entry["analyst"] = payload.get("analyst", "")
         entry["note"] = payload.get("note", entry.get("note", ""))
         entry["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
-        # Trigger Slack for acknowledged/investigating transitions
-        if status in {"acknowledged", "investigating"} and webhooks:
+        # history: 상태 변경 이력
+        history = entry.setdefault("history", [])
+        history.append({
+            "from_status": prev_status,
+            "to_status": status,
+            "analyst": entry["analyst"],
+            "note": entry["note"],
+            "changed_at": entry["updated_at"],
+        })
+        # Slack 알림: reviewing/resolved 전환 시
+        if status in {"reviewing", "resolved"} and webhooks:
             store = get_query_service().store
             alert_obj = next((a for a in store.alerts if a.alert_id == alert_id), None)
             if alert_obj:
-                msg = f":mag: [MORI Triage] `{alert_id}` → *{status.upper()}*\n*Alert:* {alert_obj.message}\n*Analyst:* {entry['analyst'] or 'unknown'}"
+                label = {"reviewing": "검토중", "resolved": "조치예정/완료"}.get(status, status)
+                msg = f":mag: [MORI Triage] `{alert_id}` → *{label}*\n*Alert:* {alert_obj.message}\n*담당자:* {entry['analyst'] or 'unknown'}"
                 _notify_all_webhooks(webhooks, msg)
         return {"alert_id": alert_id, "triage": entry}
 
@@ -863,46 +874,60 @@ sudo systemctl start orbit
         return {"ok": True}
 
     # ── Incidents ────────────────────────────────────────────────────────────────
-    @app.get("/incidents")
+    @app.get("/incidents", tags=["Incidents"])
     def incidents_list() -> dict[str, Any]:
         return {"incidents": list(incidents.values())}
 
-    @app.post("/incidents")
+    @app.post("/incidents", tags=["Incidents"])
     def incidents_create(payload: dict[str, Any]) -> dict[str, Any]:
         title = str(payload.get("title", "")).strip()
         if not title:
             raise HTTPException(status_code=400, detail="title is required")
         now_str = _isoformat(datetime.now(tz=timezone.utc))
+        analyst = str(payload.get("analyst", "")).strip() or "unknown"
         incident: dict[str, Any] = {
             "incident_id": str(uuid.uuid4()),
             "title": title,
             "status": "open",
             "alert_ids": list(payload.get("alert_ids") or []),
             "notes": [],
+            "history": [{"event": "created", "to_status": "open", "analyst": analyst, "changed_at": now_str}],
             "created_at": now_str,
             "updated_at": now_str,
         }
         incidents[incident["incident_id"]] = incident
         return incident
 
-    @app.patch("/incidents/{incident_id}")
+    @app.patch("/incidents/{incident_id}", tags=["Incidents"])
     def incidents_update(incident_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         incident = incidents.get(incident_id)
         if incident is None:
             raise HTTPException(status_code=404, detail="incident not found")
         valid_statuses = {"open", "investigating", "resolved", "closed"}
+        now_str = _isoformat(datetime.now(tz=timezone.utc))
+        analyst = str(payload.get("analyst", "")).strip() or "unknown"
         if "status" in payload:
-            if payload["status"] not in valid_statuses:
+            new_status = payload["status"]
+            if new_status not in valid_statuses:
                 raise HTTPException(status_code=400, detail=f"status must be one of: {', '.join(sorted(valid_statuses))}")
-            incident["status"] = payload["status"]
+            prev_status = incident.get("status", "open")
+            if new_status != prev_status:
+                incident.setdefault("history", []).append({
+                    "event": "status_changed",
+                    "from_status": prev_status,
+                    "to_status": new_status,
+                    "analyst": analyst,
+                    "changed_at": now_str,
+                })
+            incident["status"] = new_status
         if "title" in payload:
             incident["title"] = str(payload["title"]).strip()
         if "alert_ids" in payload:
             incident["alert_ids"] = list(payload["alert_ids"] or [])
-        incident["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
+        incident["updated_at"] = now_str
         return incident
 
-    @app.post("/incidents/{incident_id}/notes")
+    @app.post("/incidents/{incident_id}/notes", tags=["Incidents"])
     def incidents_add_note(incident_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         incident = incidents.get(incident_id)
         if incident is None:
@@ -921,7 +946,7 @@ sudo systemctl start orbit
         return note
 
     # ── Asset Owners ─────────────────────────────────────────────────────────
-    @app.get("/assets/owners")
+    @app.get("/assets/owners", tags=["Assets"])
     def owners_list() -> Any:
         return {"owners": list(asset_owners.values())}
 
@@ -989,7 +1014,7 @@ sudo systemctl start orbit
         return entry
 
     # ── Asset Collection Board ───────────────────────────────────────────────
-    @app.get("/assets")
+    @app.get("/assets", tags=["Assets"])
     def assets_get(format: str = "json", source: str = "all") -> Any:
         try:
             payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans)
@@ -1008,6 +1033,89 @@ sudo systemctl start orbit
                 headers={"Content-Disposition": f'attachment; filename="{filename}"'},
             )
         return payload
+
+    # ── Fleet 전용 API ───────────────────────────────────────────────────────
+    @app.get("/fleet/hosts", tags=["Fleet"])
+    def fleet_hosts_get(format: str = "json") -> Any:
+        """Fleet(PC 자산) 전용 호스트 목록 API."""
+        try:
+            payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"fleet hosts unavailable: {exc}") from exc
+        fleet_data = payload.get("fleet", {})
+        if format == "csv":
+            import io, csv as csv_mod
+            buf = io.StringIO()
+            hosts = fleet_data.get("hosts", [])
+            if hosts:
+                fieldnames = ["hostname", "asset_type", "platform", "primary_ip", "status", "risk_score", "last_seen_at", "owner", "team"]
+                writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
+                writer.writeheader()
+                writer.writerows(hosts)
+            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            return StreamingResponse(
+                iter([buf.getvalue()]),
+                media_type="text/csv; charset=utf-8",
+                headers={"Content-Disposition": f'attachment; filename="mori-fleet-hosts-{timestamp}.csv"'},
+            )
+        return {"source": "fleet", **fleet_data}
+
+    # ── Zabbix 전용 API ──────────────────────────────────────────────────────
+    @app.get("/zabbix/hosts", tags=["Zabbix"])
+    def zabbix_hosts_get(format: str = "json") -> Any:
+        """Zabbix(서버 자산) 전용 호스트 목록 API."""
+        try:
+            payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"zabbix hosts unavailable: {exc}") from exc
+        zabbix_data = payload.get("zabbix", {})
+        if format == "csv":
+            import io, csv as csv_mod
+            buf = io.StringIO()
+            hosts = zabbix_data.get("hosts", [])
+            if hosts:
+                fieldnames = ["hostname", "category", "importance", "isms_control", "iso27001_control", "primary_ip", "status", "latest_metric", "latest_value", "owner", "team"]
+                writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
+                writer.writeheader()
+                writer.writerows(hosts)
+            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            return StreamingResponse(
+                iter([buf.getvalue()]),
+                media_type="text/csv; charset=utf-8",
+                headers={"Content-Disposition": f'attachment; filename="mori-zabbix-hosts-{timestamp}.csv"'},
+            )
+        return {"source": "zabbix", **zabbix_data}
+
+    # ── Trivy 전용 API ───────────────────────────────────────────────────────
+    @app.get("/trivy/vulnerabilities", tags=["Trivy"])
+    def trivy_vulnerabilities_get(format: str = "json", severity: str = "all") -> Any:
+        """Trivy(취약점) 전용 취약점 목록 API. severity=critical|high|medium|low|all"""
+        try:
+            payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"trivy vulnerabilities unavailable: {exc}") from exc
+        trivy_data = payload.get("trivy", {})
+        rows = trivy_data.get("by_host", [])
+        valid_severities = {"critical", "high", "medium", "low", "all"}
+        if severity not in valid_severities:
+            raise HTTPException(status_code=400, detail=f"severity must be one of: {', '.join(sorted(valid_severities))}")
+        if severity != "all":
+            rows = [r for r in rows if (r.get(severity, 0) or 0) > 0]
+        if format == "csv":
+            import io, csv as csv_mod
+            buf = io.StringIO()
+            if rows:
+                fieldnames = ["hostname", "critical", "high", "medium", "low", "info", "total", "latest_cve", "action_plan", "action_target_date"]
+                writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
+                writer.writeheader()
+                writer.writerows(rows)
+            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            return StreamingResponse(
+                iter([buf.getvalue()]),
+                media_type="text/csv; charset=utf-8",
+                headers={"Content-Disposition": f'attachment; filename="mori-trivy-vulns-{timestamp}.csv"'},
+            )
+        return {"source": "trivy", "severity_filter": severity, "count": len(rows), "by_host": rows}
 
     return app
 
@@ -1417,10 +1525,15 @@ def render_user_dashboard_html(
             <option value=\"closed\">closed</option>
           </select>
         </div>
+        <div class=\"row\"><label>담당자</label><input id=\"incident_modal_status_analyst\" placeholder=\"예: alice\" /></div>
         <button id=\"incident_modal_update_status\" style=\"margin-bottom:12px\">상태 저장</button>
         <hr style=\"border-color:#334155;margin:12px 0\" />
+        <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#7dd3fc\">📋 상태 변경 히스토리</div>
+        <div id=\"incident_modal_history\" style=\"margin-bottom:12px\"></div>
+        <hr style=\"border-color:#334155;margin:12px 0\" />
+        <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#a3e635\">📝 조사 노트</div>
         <div id=\"incident_modal_notes\" style=\"margin-bottom:12px\"></div>
-        <div class=\"row\"><label>조사 노트 추가</label><textarea id=\"incident_modal_note_text\" style=\"min-height:72px\"></textarea></div>
+        <div class=\"row\"><label>노트 내용</label><textarea id=\"incident_modal_note_text\" style=\"min-height:72px\"></textarea></div>
         <div class=\"row\"><label>작성자</label><input id=\"incident_modal_analyst\" placeholder=\"예: alice\" /></div>
         <button id=\"incident_modal_add_note\">노트 추가</button>
         <div class=\"status-line\" id=\"incident_modal_status_line\"></div>
@@ -2060,6 +2173,7 @@ def render_user_dashboard_html(
       document.getElementById('incident_modal_status_line').textContent = '';
       document.getElementById('incident_modal_note_text').value = '';
       document.getElementById('incident_modal_analyst').value = '';
+      document.getElementById('incident_modal_status_analyst').value = '';
       try {
         const res = await fetch('/incidents');
         if (!res.ok) return;
@@ -2067,8 +2181,23 @@ def render_user_dashboard_html(
         const inc = (data.incidents || []).find(i => i.incident_id === incidentId);
         if (!inc) return;
         document.getElementById('incident_modal_title').textContent = inc.title;
-        document.getElementById('incident_modal_info').innerHTML = `ID: ${escapeHtml(inc.incident_id)}<br>생성: ${escapeHtml(formatTime(inc.created_at))}`;
+        document.getElementById('incident_modal_info').innerHTML = `ID: ${escapeHtml(inc.incident_id)}<br>생성: ${escapeHtml(formatTime(inc.created_at))} &nbsp;|&nbsp; 마지막 수정: ${escapeHtml(formatTime(inc.updated_at))}`;
         document.getElementById('incident_modal_status').value = inc.status;
+        // 상태 변경 히스토리
+        const history = inc.history || [];
+        const statusLabels = { open: '🔵 open', investigating: '🟡 investigating', resolved: '🟢 resolved', closed: '⚫ closed', created: '🆕 생성됨' };
+        document.getElementById('incident_modal_history').innerHTML = history.length
+          ? [...history].reverse().map(h => {
+              const arrow = h.event === 'created'
+                ? `<strong>${statusLabels[h.to_status] || h.to_status}</strong>`
+                : `${statusLabels[h.from_status] || h.from_status} → <strong>${statusLabels[h.to_status] || h.to_status}</strong>`;
+              return `<div style=\"background:#0c1827;border-left:3px solid #334155;padding:7px 12px;margin-bottom:5px;border-radius:4px;font-size:12px\">
+                <div style=\"color:#64748b\">${escapeHtml(formatTime(h.changed_at))} &nbsp;·&nbsp; ${escapeHtml(h.analyst || '-')}</div>
+                <div style=\"color:#e2e8f0;margin-top:2px\">${arrow}</div>
+              </div>`;
+            }).join('')
+          : '<div style=\"color:#64748b;font-size:13px\">변경 이력 없음</div>';
+        // 조사 노트
         const notes = inc.notes || [];
         document.getElementById('incident_modal_notes').innerHTML = notes.length
           ? notes.map(n => `<div style=\"background:#0f172a;border-left:3px solid #334155;padding:8px 12px;margin-bottom:6px;border-radius:4px\"><div style=\"color:#94a3b8;font-size:12px\">${escapeHtml(formatTime(n.created_at))} · ${escapeHtml(n.analyst||'-')}</div><div>${escapeHtml(n.text)}</div></div>`).join('')
@@ -2081,14 +2210,15 @@ def render_user_dashboard_html(
     document.getElementById('incident_modal_update_status').addEventListener('click', async () => {
       if (!currentIncidentId) return;
       const status = document.getElementById('incident_modal_status').value;
+      const analyst = document.getElementById('incident_modal_status_analyst').value.trim();
       const sl = document.getElementById('incident_modal_status_line');
       sl.textContent = '저장 중...';
       try {
         const res = await fetch(`/incidents/${encodeURIComponent(currentIncidentId)}`, {
-          method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ status }),
+          method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ status, analyst }),
         });
         sl.textContent = res.ok ? '상태 저장 완료' : `오류: ${res.status}`;
-        if (res.ok) loadIncidents();
+        if (res.ok) { loadIncidents(); openIncidentModal(currentIncidentId); }
       } catch (err) { sl.textContent = `오류: ${err.message}`; }
     });
 

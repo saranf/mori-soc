@@ -317,3 +317,89 @@ class FastAPIAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("recognized", response.json())
         self.assertIn("guide_examples", response.json())
+
+    def test_alert_triage_update_accepts_new_statuses(self) -> None:
+        """pending/reviewing/resolved 상태를 허용해야 한다."""
+        for status in ("pending", "reviewing", "resolved"):
+            response = self.client.patch(
+                "/alerts/alert-abc/triage",
+                json={"status": status, "analyst": "tester"},
+            )
+            self.assertEqual(response.status_code, 200, f"status={status} rejected")
+            data = response.json()
+            self.assertEqual(data["triage"]["status"], status)
+
+    def test_alert_triage_update_rejects_old_statuses(self) -> None:
+        """new/acknowledged 같은 구 상태는 400을 반환해야 한다."""
+        for status in ("new", "acknowledged", "investigating", "closed", "false_positive"):
+            response = self.client.patch(
+                "/alerts/alert-abc/triage",
+                json={"status": status},
+            )
+            self.assertEqual(response.status_code, 400, f"old status={status} should be rejected")
+
+    def test_alert_triage_history_recorded(self) -> None:
+        """상태 변경 시 history 항목이 추가되어야 한다."""
+        alert_id = "alert-hist-test"
+        self.client.patch(f"/alerts/{alert_id}/triage", json={"status": "pending", "analyst": "a1"})
+        resp = self.client.patch(f"/alerts/{alert_id}/triage", json={"status": "reviewing", "analyst": "a2"})
+        self.assertEqual(resp.status_code, 200)
+        triage = resp.json()["triage"]
+        self.assertIn("history", triage)
+        self.assertTrue(len(triage["history"]) >= 2)
+        last = triage["history"][-1]
+        self.assertEqual(last["from_status"], "pending")
+        self.assertEqual(last["to_status"], "reviewing")
+
+    def test_incidents_create_has_history(self) -> None:
+        """인시던트 생성 시 history에 created 항목이 있어야 한다."""
+        resp = self.client.post("/incidents", json={"title": "테스트 인시던트", "analyst": "ops"})
+        self.assertEqual(resp.status_code, 200)
+        inc = resp.json()
+        self.assertIn("history", inc)
+        self.assertTrue(len(inc["history"]) >= 1)
+        self.assertEqual(inc["history"][0]["event"], "created")
+
+    def test_incidents_status_change_recorded_in_history(self) -> None:
+        """인시던트 상태 변경 시 history에 status_changed 항목이 추가되어야 한다."""
+        create_resp = self.client.post("/incidents", json={"title": "히스토리 테스트"})
+        inc_id = create_resp.json()["incident_id"]
+        patch_resp = self.client.patch(
+            f"/incidents/{inc_id}",
+            json={"status": "investigating", "analyst": "analyst1"},
+        )
+        self.assertEqual(patch_resp.status_code, 200)
+        inc = patch_resp.json()
+        history = inc.get("history", [])
+        status_events = [h for h in history if h.get("event") == "status_changed"]
+        self.assertTrue(len(status_events) >= 1)
+        self.assertEqual(status_events[-1]["to_status"], "investigating")
+
+    def test_fleet_hosts_endpoint(self) -> None:
+        """GET /fleet/hosts 는 fleet 소스 데이터를 반환해야 한다."""
+        response = self.client.get("/fleet/hosts")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["source"], "fleet")
+        self.assertIn("hosts", data)
+
+    def test_zabbix_hosts_endpoint(self) -> None:
+        """GET /zabbix/hosts 는 zabbix 소스 데이터를 반환해야 한다."""
+        response = self.client.get("/zabbix/hosts")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["source"], "zabbix")
+        self.assertIn("hosts", data)
+
+    def test_trivy_vulnerabilities_endpoint(self) -> None:
+        """GET /trivy/vulnerabilities 는 trivy 취약점 데이터를 반환해야 한다."""
+        response = self.client.get("/trivy/vulnerabilities")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["source"], "trivy")
+        self.assertIn("by_host", data)
+
+    def test_trivy_vulnerabilities_rejects_invalid_severity(self) -> None:
+        """유효하지 않은 severity 필터는 400을 반환해야 한다."""
+        response = self.client.get("/trivy/vulnerabilities?severity=unknown_sev")
+        self.assertEqual(response.status_code, 400)
