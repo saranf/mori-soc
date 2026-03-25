@@ -403,3 +403,86 @@ class FastAPIAppTests(unittest.TestCase):
         """유효하지 않은 severity 필터는 400을 반환해야 한다."""
         response = self.client.get("/trivy/vulnerabilities?severity=unknown_sev")
         self.assertEqual(response.status_code, 400)
+
+    def test_login_page_returns_html(self) -> None:
+        """/login 페이지는 HTML을 반환해야 한다."""
+        response = self.client.get("/login")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/html", response.headers["content-type"])
+        self.assertIn("MORI SOC", response.text)
+        self.assertIn("로그인", response.text)
+        self.assertIn("/auth/login", response.text)
+        self.assertIn("/signup-request", response.text)
+
+    def test_signup_request_page_returns_html(self) -> None:
+        """/signup-request 페이지는 HTML을 반환해야 한다."""
+        response = self.client.get("/signup-request")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/html", response.headers["content-type"])
+        self.assertIn("가입 요청", response.text)
+        self.assertIn("/auth/signup-request", response.text)
+
+    def test_auth_login_rejects_wrong_credentials(self) -> None:
+        """/auth/login 에 잘못된 자격증명은 401을 반환해야 한다."""
+        response = self.client.post("/auth/login", json={"username": "admin", "password": "wrong"})
+        self.assertEqual(response.status_code, 401)
+
+    def test_auth_login_requires_username_and_password(self) -> None:
+        """/auth/login 에 빈 자격증명은 400을 반환해야 한다."""
+        response = self.client.post("/auth/login", json={"username": "", "password": ""})
+        self.assertEqual(response.status_code, 400)
+
+    def test_signup_request_submit_and_list(self) -> None:
+        """가입 요청 제출 후 목록에서 조회 가능해야 한다."""
+        resp = self.client.post("/auth/signup-request", json={
+            "name": "홍길동", "email": "hong@test.com",
+            "department": "보안팀", "reason": "업무 목적"
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()["ok"])
+
+        list_resp = self.client.get("/auth/signup-requests")
+        self.assertEqual(list_resp.status_code, 200)
+        data = list_resp.json()
+        self.assertIn("requests", data)
+        emails = [r["email"] for r in data["requests"]]
+        self.assertIn("hong@test.com", emails)
+
+    def test_signup_request_requires_name_and_email(self) -> None:
+        """이름이나 이메일 없이 가입 요청하면 400을 반환해야 한다."""
+        response = self.client.post("/auth/signup-request", json={"name": "", "email": ""})
+        self.assertEqual(response.status_code, 400)
+
+    def test_signup_request_approve_and_reject(self) -> None:
+        """가입 요청 승인/거절이 올바르게 동작해야 한다."""
+        # 요청 생성
+        resp = self.client.post("/auth/signup-request", json={"name": "테스터", "email": "tester@x.com"})
+        req_id = self.client.get("/auth/signup-requests").json()["requests"][-1]["id"]
+
+        # 승인
+        approve_resp = self.client.patch(f"/auth/signup-requests/{req_id}", json={"status": "approved"})
+        self.assertEqual(approve_resp.status_code, 200)
+        self.assertEqual(approve_resp.json()["status"], "approved")
+
+        # 거절로 변경
+        reject_resp = self.client.patch(f"/auth/signup-requests/{req_id}", json={"status": "rejected"})
+        self.assertEqual(reject_resp.status_code, 200)
+        self.assertEqual(reject_resp.json()["status"], "rejected")
+
+    def test_signup_request_rejects_invalid_status(self) -> None:
+        """유효하지 않은 상태값은 400을 반환해야 한다."""
+        self.client.post("/auth/signup-request", json={"name": "테스터2", "email": "t2@x.com"})
+        req_id = self.client.get("/auth/signup-requests").json()["requests"][-1]["id"]
+        response = self.client.patch(f"/auth/signup-requests/{req_id}", json={"status": "unknown"})
+        self.assertEqual(response.status_code, 400)
+
+    def test_user_dashboard_has_logout_link(self) -> None:
+        """/ui 에 로그아웃 링크가 있어야 한다."""
+        response = self.client.get("/ui")
+        self.assertIn("/auth/logout", response.text)
+
+    def test_admin_has_signup_requests_tab(self) -> None:
+        """/admin 어드민 콘솔에 가입 요청 탭이 있어야 한다."""
+        response = self.client.get("/admin")
+        self.assertIn("가입 요청", response.text)
+        self.assertIn("atab_users", response.text)

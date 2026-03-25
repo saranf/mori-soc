@@ -485,6 +485,155 @@ def _ldap_verify(username: str, password: str, ldap_url: str, bind_dn: str, bind
         return False
 
 
+def render_login_html(error: str = "", next_url: str = "/ui") -> str:
+    """로그인 페이지 HTML 반환."""
+    error_html = f'<div class="login-error">{error}</div>' if error else ""
+    return f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MORI SOC — 로그인</title>
+  <style>
+    *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{ background: #0a1628; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif;
+           display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
+    .login-card {{ background: #0f2035; border: 1px solid #1e3a5f; border-radius: 16px; padding: 40px 36px;
+                   width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }}
+    .login-logo {{ text-align: center; margin-bottom: 28px; }}
+    .login-logo h1 {{ font-size: 28px; font-weight: 800; color: #7dd3fc; letter-spacing: -0.5px; }}
+    .login-logo p {{ font-size: 13px; color: #64748b; margin-top: 6px; }}
+    label {{ display: block; font-size: 12px; color: #94a3b8; margin-bottom: 5px; font-weight: 600; letter-spacing: .5px; }}
+    input {{ width: 100%; background: #0a1628; border: 1px solid #1e3a5f; border-radius: 8px;
+             color: #e2e8f0; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s; }}
+    input:focus {{ border-color: #3b82f6; }}
+    .field {{ margin-bottom: 16px; }}
+    .btn {{ width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
+            cursor: pointer; transition: all .2s; margin-top: 8px; }}
+    .btn-primary {{ background: #2563eb; color: #fff; }}
+    .btn-primary:hover {{ background: #1d4ed8; }}
+    .login-error {{ background: #450a0a; border: 1px solid #991b1b; color: #fca5a5; border-radius: 8px;
+                    padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }}
+    .login-footer {{ text-align: center; margin-top: 20px; font-size: 13px; color: #64748b; }}
+    .login-footer a {{ color: #7dd3fc; text-decoration: none; }}
+    .status-line {{ font-size: 12px; color: #94a3b8; min-height: 18px; margin-top: 6px; text-align: center; }}
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="login-logo">
+      <h1>🛡️ MORI SOC</h1>
+      <p>Security Operations Center</p>
+    </div>
+    {error_html}
+    <div class="field"><label>아이디</label><input id="username" type="text" autocomplete="username" placeholder="admin" /></div>
+    <div class="field"><label>비밀번호</label><input id="password" type="password" autocomplete="current-password" placeholder="••••••" /></div>
+    <button class="btn btn-primary" id="login_btn">로그인</button>
+    <div class="status-line" id="status"></div>
+    <div class="login-footer">
+      계정이 없으신가요? <a href="/signup-request">가입 요청 →</a>
+    </div>
+  </div>
+  <script>
+    const nextUrl = {json.dumps(next_url)};
+    async function doLogin() {{
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const statusEl = document.getElementById('status');
+      if (!username || !password) {{ statusEl.textContent = '아이디와 비밀번호를 입력하세요.'; return; }}
+      statusEl.textContent = '로그인 중…';
+      try {{
+        const res = await fetch('/auth/login', {{
+          method: 'POST',
+          headers: {{'Content-Type': 'application/json'}},
+          body: JSON.stringify({{username, password}})
+        }});
+        if (res.ok) {{
+          window.location.href = nextUrl || '/ui';
+        }} else {{
+          const d = await res.json().catch(() => ({{}}));
+          statusEl.textContent = d.detail || '아이디 또는 비밀번호가 올바르지 않습니다.';
+        }}
+      }} catch(e) {{ statusEl.textContent = '네트워크 오류: ' + e.message; }}
+    }}
+    document.getElementById('login_btn').addEventListener('click', doLogin);
+    document.addEventListener('keydown', e => {{ if (e.key === 'Enter') doLogin(); }});
+  </script>
+</body>
+</html>"""
+
+
+def render_signup_request_html(success: bool = False) -> str:
+    """가입 요청 페이지 HTML 반환."""
+    body_html = """
+    <p style="color:#94a3b8;font-size:14px;margin-bottom:20px;">계정 사용을 원하시면 아래 정보를 입력하고 운영자에게 가입을 요청하세요.</p>
+    <div class="field"><label>이름 *</label><input id="req_name" placeholder="홍길동" /></div>
+    <div class="field"><label>이메일 *</label><input id="req_email" type="email" placeholder="hong@company.com" /></div>
+    <div class="field"><label>부서</label><input id="req_dept" placeholder="보안팀" /></div>
+    <div class="field"><label>요청 사유</label><textarea id="req_reason" style="width:100%;background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;color:#e2e8f0;padding:10px 14px;font-size:14px;min-height:80px;outline:none;" placeholder="업무 목적 및 필요 권한을 간략히 작성해주세요."></textarea></div>
+    <button class="btn btn-primary" id="submit_btn">가입 요청 제출</button>
+    <div class="status-line" id="status"></div>
+    <div class="login-footer"><a href="/login">← 로그인으로 돌아가기</a></div>
+    <script>
+      document.getElementById('submit_btn').addEventListener('click', async () => {{
+        const name = document.getElementById('req_name').value.trim();
+        const email = document.getElementById('req_email').value.trim();
+        const department = document.getElementById('req_dept').value.trim();
+        const reason = document.getElementById('req_reason').value.trim();
+        const statusEl = document.getElementById('status');
+        if (!name || !email) {{ statusEl.textContent = '이름과 이메일은 필수입니다.'; return; }}
+        statusEl.textContent = '제출 중…';
+        try {{
+          const res = await fetch('/auth/signup-request', {{
+            method: 'POST', headers: {{'Content-Type': 'application/json'}},
+            body: JSON.stringify({{name, email, department, reason}})
+          }});
+          if (res.ok) {{
+            document.querySelector('.login-card').innerHTML = '<div style="text-align:center;padding:40px 0"><div style="font-size:48px">✅</div><h2 style="color:#22c55e;margin:16px 0 8px">가입 요청 완료</h2><p style="color:#94a3b8">운영자 승인 후 계정이 생성됩니다.<br>이메일로 안내드리겠습니다.</p><div style="margin-top:24px"><a href="/login" style="color:#7dd3fc">← 로그인으로 돌아가기</a></div></div>';
+          }} else {{
+            const d = await res.json().catch(() => ({{}}));
+            statusEl.textContent = d.detail || '오류가 발생했습니다.';
+          }}
+        }} catch(e) {{ statusEl.textContent = '네트워크 오류: ' + e.message; }}
+      }});
+    </script>""" if not success else '<div style="text-align:center;padding:40px 0"><div style="font-size:48px">✅</div><h2 style="color:#22c55e">가입 요청 완료</h2><p style="color:#94a3b8;margin-top:8px">운영자 승인 후 계정이 생성됩니다.</p><div style="margin-top:24px"><a href="/login" style="color:#7dd3fc">← 로그인으로 돌아가기</a></div></div>'
+    return f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MORI SOC — 가입 요청</title>
+  <style>
+    *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{ background: #0a1628; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif;
+           display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
+    .login-card {{ background: #0f2035; border: 1px solid #1e3a5f; border-radius: 16px; padding: 40px 36px;
+                   width: 100%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }}
+    .login-logo {{ text-align: center; margin-bottom: 24px; }}
+    .login-logo h1 {{ font-size: 24px; font-weight: 800; color: #7dd3fc; }}
+    label {{ display: block; font-size: 12px; color: #94a3b8; margin-bottom: 5px; font-weight: 600; letter-spacing: .5px; }}
+    input {{ width: 100%; background: #0a1628; border: 1px solid #1e3a5f; border-radius: 8px;
+             color: #e2e8f0; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s; }}
+    input:focus {{ border-color: #3b82f6; }}
+    .field {{ margin-bottom: 14px; }}
+    .btn {{ width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
+            cursor: pointer; transition: all .2s; margin-top: 4px; }}
+    .btn-primary {{ background: #2563eb; color: #fff; }}
+    .btn-primary:hover {{ background: #1d4ed8; }}
+    .login-footer {{ text-align: center; margin-top: 20px; font-size: 13px; }}
+    .login-footer a {{ color: #7dd3fc; text-decoration: none; }}
+    .status-line {{ font-size: 12px; color: #ef4444; min-height: 18px; margin-top: 6px; text-align: center; }}
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="login-logo"><h1>🛡️ MORI SOC 가입 요청</h1></div>
+    {body_html}
+  </div>
+</body>
+</html>"""
+
+
 def create_app(service: QueryService | None = None, service_factory=None) -> Any:
     if FastAPI is None or HTTPException is None:
         raise RuntimeError(
@@ -494,50 +643,67 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     app = FastAPI(title="MORI SOC Query API", version="0.1.0")
     dashboard_preferences = _default_dashboard_preferences()
 
-    # ── Optional LDAP auth middleware ────────────────────────────────────────
+    # ── Auth configuration ────────────────────────────────────────────────────
     _ldap_url = os.environ.get("LDAP_URL", "").strip()
     _ldap_bind_dn = os.environ.get("LDAP_BIND_DN", "").strip()
     _ldap_bind_pw = os.environ.get("LDAP_BIND_PASSWORD", "").strip()
     _ldap_base_dn = os.environ.get("LDAP_BASE_DN", "").strip()
     _ldap_user_attr = os.environ.get("LDAP_USER_ATTR", "uid").strip()
     _ldap_enabled = bool(_ldap_url and _ldap3_available)
+    _admin_user = os.environ.get("MORI_ADMIN_USER", "admin")
+    _admin_password = os.environ.get("MORI_ADMIN_PASSWORD", "1234")
+    _auth_enabled = bool(os.environ.get("MORI_AUTH_ENABLED", "") or _ldap_enabled)
 
-    if _ldap_enabled:
-        import base64
+    # Sessions: token -> {username, role, created_at}
+    sessions: dict[str, dict[str, Any]] = {}
+    # Signup requests: [{id, name, email, department, reason, status, created_at}]
+    signup_requests: list[dict[str, Any]] = []
+
+    def _verify_credentials(username: str, password: str) -> bool:
+        """LDAP(설정 시) → 로컬 admin 순으로 인증."""
+        if _ldap_enabled:
+            try:
+                ok = _ldap_verify(username, password, _ldap_url, _ldap_bind_dn, _ldap_bind_pw, _ldap_base_dn, _ldap_user_attr)
+                if ok:
+                    return True
+            except Exception:
+                pass
+        return username == _admin_user and password == _admin_password
+
+    if _auth_enabled:
         from starlette.middleware.base import BaseHTTPMiddleware
         from starlette.requests import Request as _StarletteRequest
         from starlette.responses import Response as _StarletteResponse
 
-        _PUBLIC_PATHS = {"/docs", "/openapi.json", "/redoc", "/health"}
+        _AUTH_PUBLIC_PATHS = {
+            "/login", "/signup-request",
+            "/auth/login", "/auth/logout", "/auth/signup-request",
+            "/docs", "/openapi.json", "/redoc", "/health",
+        }
 
-        class _LDAPAuthMiddleware(BaseHTTPMiddleware):
+        class _SessionAuthMiddleware(BaseHTTPMiddleware):
             async def dispatch(self, request: _StarletteRequest, call_next):  # type: ignore[override]
                 path = request.url.path
-                if path in _PUBLIC_PATHS or path.startswith("/redoc"):
+                if path in _AUTH_PUBLIC_PATHS or path.startswith("/redoc") or path.startswith("/static"):
                     return await call_next(request)
-                auth_header = request.headers.get("Authorization", "")
-                if not auth_header.startswith("Basic "):
+                token = request.cookies.get("mori_session", "")
+                if token and token in sessions:
+                    return await call_next(request)
+                # Not authenticated
+                accept = request.headers.get("accept", "")
+                if "text/html" in accept:
                     return _StarletteResponse(
-                        status_code=401,
-                        headers={"WWW-Authenticate": 'Basic realm="MORI SOC"'},
-                        content="Unauthorized",
+                        status_code=302,
+                        headers={"location": f"/login?next={_url_quote(path)}"},
+                        content="",
                     )
-                try:
-                    creds = base64.b64decode(auth_header[6:]).decode("utf-8")
-                    username, password = creds.split(":", 1)
-                except Exception:
-                    return _StarletteResponse(status_code=401, headers={"WWW-Authenticate": 'Basic realm="MORI SOC"'}, content="Unauthorized")
-                try:
-                    import asyncio
-                    loop = asyncio.get_event_loop()
-                    ok = await loop.run_in_executor(None, _ldap_verify, username, password, _ldap_url, _ldap_bind_dn, _ldap_bind_pw, _ldap_base_dn, _ldap_user_attr)
-                    if not ok:
-                        return _StarletteResponse(status_code=401, headers={"WWW-Authenticate": 'Basic realm="MORI SOC"'}, content="Unauthorized")
-                except Exception:
-                    return _StarletteResponse(status_code=401, headers={"WWW-Authenticate": 'Basic realm="MORI SOC"'}, content="Unauthorized")
-                return await call_next(request)
+                return _StarletteResponse(
+                    status_code=401,
+                    content='{"detail":"Unauthorized. Please login at /login"}',
+                    media_type="application/json",
+                )
 
-        app.add_middleware(_LDAPAuthMiddleware)
+        app.add_middleware(_SessionAuthMiddleware)
 
     # Triage: alert_id -> {status, analyst, note, updated_at}
     triage_store: dict[str, dict[str, Any]] = {}
@@ -958,6 +1124,82 @@ ldapadd -x -D "cn=admin,dc=company,dc=local" -w AdminSecret123 -f user.ldif
         if service_factory is not None:
             return service_factory()
         return create_query_service()
+
+    # ── Auth routes ──────────────────────────────────────────────────────────
+    @app.get("/login", include_in_schema=False, response_class=HTMLResponse)
+    def login_page(next: str = "/ui") -> str:
+        return render_login_html(next_url=next)
+
+    @app.post("/auth/login", tags=["Auth"])
+    def auth_login(payload: dict[str, Any]) -> dict[str, Any]:
+        """로그인: {username, password} → 세션 쿠키 설정."""
+        username = str(payload.get("username", "")).strip()
+        password = str(payload.get("password", ""))
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="아이디와 비밀번호를 입력하세요.")
+        if not _verify_credentials(username, password):
+            raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다.")
+        token = str(uuid.uuid4())
+        sessions[token] = {
+            "username": username,
+            "role": "admin" if username == _admin_user else "user",
+            "created_at": _isoformat(datetime.now(tz=timezone.utc)),
+        }
+        from fastapi.responses import JSONResponse
+        resp = JSONResponse({"ok": True, "username": username})
+        resp.set_cookie("mori_session", token, httponly=True, samesite="lax", max_age=86400 * 7)
+        return resp
+
+    @app.get("/auth/logout", include_in_schema=False)
+    def auth_logout(request: Any = None) -> Any:
+        """로그아웃: 세션 쿠키 삭제 후 /login 리디렉션."""
+        from fastapi import Request as _FRequest
+        resp = RedirectResponse(url="/login", status_code=302)
+        resp.delete_cookie("mori_session")
+        return resp
+
+    @app.get("/signup-request", include_in_schema=False, response_class=HTMLResponse)
+    def signup_request_page() -> str:
+        return render_signup_request_html()
+
+    @app.post("/auth/signup-request", tags=["Auth"])
+    def submit_signup_request(payload: dict[str, Any]) -> dict[str, Any]:
+        """가입 요청 제출: {name, email, department, reason}."""
+        name = str(payload.get("name", "")).strip()
+        email = str(payload.get("email", "")).strip()
+        if not name or not email:
+            raise HTTPException(status_code=400, detail="이름과 이메일은 필수입니다.")
+        req = {
+            "id": str(uuid.uuid4()),
+            "name": name,
+            "email": email,
+            "department": str(payload.get("department", "")).strip(),
+            "reason": str(payload.get("reason", "")).strip(),
+            "status": "pending",
+            "created_at": _isoformat(datetime.now(tz=timezone.utc)),
+            "reviewed_at": None,
+        }
+        signup_requests.append(req)
+        return {"ok": True, "message": "가입 요청이 접수되었습니다. 운영자 승인 후 안내드리겠습니다."}
+
+    @app.get("/auth/signup-requests", tags=["Auth"])
+    def list_signup_requests() -> dict[str, Any]:
+        """가입 요청 목록 조회 (어드민용)."""
+        return {"requests": signup_requests, "total": len(signup_requests)}
+
+    @app.patch("/auth/signup-requests/{req_id}", tags=["Auth"])
+    def update_signup_request(req_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """가입 요청 승인/거절 (어드민용). status: approved | rejected."""
+        valid_statuses = {"approved", "rejected", "pending"}
+        new_status = str(payload.get("status", "")).strip()
+        if new_status not in valid_statuses:
+            raise HTTPException(status_code=400, detail=f"status must be one of: {', '.join(sorted(valid_statuses))}")
+        for req in signup_requests:
+            if req["id"] == req_id:
+                req["status"] = new_status
+                req["reviewed_at"] = _isoformat(datetime.now(tz=timezone.utc))
+                return req
+        raise HTTPException(status_code=404, detail="가입 요청을 찾을 수 없습니다.")
 
     @app.get("/", include_in_schema=False)
     def index() -> Any:
@@ -1544,6 +1786,7 @@ def render_user_dashboard_html(
       </div>
       <div class=\"top-actions\">
         <button id=\"refresh_dashboard\" type=\"button\">Refresh Dashboard</button>
+        <a href=\"/auth/logout\" style=\"color:#ef4444;font-size:13px;\">로그아웃</a>
       </div>
     </section>
 
@@ -2353,7 +2596,10 @@ def render_user_dashboard_html(
         const alerts = data.alerts || [];
         if (!alerts.length) { triageTableEl.innerHTML = '<span class=\"empty\">최근 24h 경보 없음</span>'; return; }
         const rows = alerts.map(a => {
-          const rawStatus = a.triage_status || 'pending';
+          const triage = a.triage || {};
+          const rawStatus = triage.status || 'pending';
+          const triageAnalyst = triage.analyst || '';
+          const triageNote = triage.note || '';
           const color = TRIAGE_STATUS_COLORS[rawStatus] || '#6b7280';
           const label = TRIAGE_STATUS_LABELS[rawStatus] || rawStatus;
           return `<tr>
@@ -2362,8 +2608,8 @@ def render_user_dashboard_html(
             <td><strong>${escapeHtml(a.hostname || a.host_id || '-')}</strong></td>
             <td><span style=\"background:#111827;padding:2px 6px;border-radius:4px;font-size:12px\">${escapeHtml(a.severity)}</span></td>
             <td style=\"max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">${escapeHtml(a.message)}</td>
-            <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(a.triage_analyst || '-')}</td>
-            <td><button onclick=\"openTriageModal('${escapeHtml(a.alert_id)}','${escapeHtml(rawStatus)}','${escapeHtml(a.triage_analyst||'')}','${escapeHtml(a.triage_note||'')}','${escapeHtml(a.message||'').replace(/'/g,\"&#39;\")}')\" style=\"background:${color};color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;white-space:nowrap\">${label}</button></td>
+            <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(triageAnalyst || '-')}</td>
+            <td><button onclick=\"openTriageModal('${escapeHtml(a.alert_id)}','${escapeHtml(rawStatus)}','${escapeHtml(triageAnalyst)}','${escapeHtml(triageNote)}','${escapeHtml(a.message||'').replace(/'/g,\"&#39;\")}')\" style=\"background:${color};color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;white-space:nowrap\">${label}</button></td>
           </tr>`;
         }).join('');
         triageTableEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
@@ -3018,6 +3264,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         <a href=\"/ui\">Open User Dashboard</a>
         <button id=\"query_guide\" class=\"ghost\">Query Guide</button>
         <button id=\"refresh_dashboard\" class=\"ghost\">Refresh Dashboard</button>
+        <a href=\"/auth/logout\" style=\"color:#ef4444;font-size:13px;margin-left:4px\">로그아웃</a>
       </div>
     </section>
 
@@ -3027,6 +3274,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\">👤 자산 관리</button>
       <button data-atab=\"query\" onclick=\"switchAdminTab('query')\">🔍 쿼리</button>
       <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\">⚙️ 설정</button>
+      <button data-atab=\"users\" onclick=\"switchAdminTab('users')\">🙋 가입 요청</button>
     </nav>
 
     <!-- ── Tab: 모니터링 ─────────────────────────────────────────────────── -->
@@ -3177,6 +3425,21 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
       </div>
     </div>
+
+    <!-- ── Tab: 가입 요청 관리 ──────────────────────────────────────────── -->
+    <div class=\"atab-panel\" id=\"atab_users\">
+      <div class=\"stack\">
+        <section class=\"card\">
+          <h2>🙋 가입 요청 관리</h2>
+          <div class=\"subtext\">사용자가 제출한 가입 요청 목록입니다. 승인하면 운영자가 별도로 계정을 생성해야 합니다.</div>
+          <div class=\"actions\" style=\"margin-bottom:12px\">
+            <button id=\"reload_signup_requests\" class=\"secondary\">새로고침</button>
+          </div>
+          <div id=\"signup_requests_list\" class=\"list\"><span class=\"empty\">로딩 중…</span></div>
+          <div class=\"status-line\" id=\"signup_requests_status\"></div>
+        </section>
+      </div>
+    </div>
   </div>
 
   <!-- ── 어드민 하단 탭 바 (모바일 전용) ────────────────────────────────── -->
@@ -3192,6 +3455,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     </button>
     <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\">
       <span class=\"bn-icon\">⚙️</span>설정
+    </button>
+    <button data-atab=\"users\" onclick=\"switchAdminTab('users')\">
+      <span class=\"bn-icon\">🙋</span>가입
     </button>
   </nav>
 
@@ -3503,7 +3769,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const UI_TRIAGE_COLORS = {new:'#f59e0b', acknowledged:'#38bdf8', investigating:'#a78bfa', closed:'#6ee7b7', false_positive:'#94a3b8'};
     let uiTriageData = {};
     async function loadUiTriageData() {
-      try { const r = await fetch('/alerts'); const d = await r.json(); (d.alerts||[]).forEach(a => { uiTriageData[a.alert_id] = a.triage || {status:'new'}; }); } catch(_) {}
+      try { const r = await fetch('/alerts'); const d = await r.json(); (d.alerts||[]).forEach(a => { uiTriageData[a.alert_id] = a.triage || {status:'pending'}; }); } catch(_) {}
     }
 
     function renderAlertDetailTable(items) {
@@ -4166,6 +4432,66 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    // ── Signup Requests ────────────────────────────────────────────────────
+    const signupListEl = document.getElementById('signup_requests_list');
+    const signupStatusEl = document.getElementById('signup_requests_status');
+
+    async function loadSignupRequests() {
+      if (!signupListEl) return;
+      signupListEl.innerHTML = '<span class="empty">로딩 중…</span>';
+      try {
+        const res = await fetch('/auth/signup-requests');
+        const data = await res.json();
+        const reqs = data.requests || [];
+        if (reqs.length === 0) {
+          signupListEl.innerHTML = '<span class="empty">가입 요청이 없습니다.</span>';
+          return;
+        }
+        const statusBadge = s => ({pending:'🟡 대기중', approved:'🟢 승인됨', rejected:'🔴 거절됨'}[s] || s);
+        signupListEl.innerHTML = reqs.map(r => `
+          <div class="owner-row" style="border:1px solid #1e3a5f;border-radius:10px;padding:12px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+              <div>
+                <strong>${r.name}</strong> <span style="color:#94a3b8;font-size:12px;">${r.email}</span>
+                ${r.department ? `<span style="color:#64748b;font-size:12px;margin-left:6px;">[${r.department}]</span>` : ''}
+                <div style="font-size:12px;color:#94a3b8;margin-top:4px;">${r.reason || '(사유 없음)'}</div>
+                <div style="font-size:11px;color:#475569;margin-top:4px;">요청일: ${r.created_at || '-'}${r.reviewed_at ? ' / 처리일: ' + r.reviewed_at : ''}</div>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                <span>${statusBadge(r.status)}</span>
+                ${r.status === 'pending' ? `
+                  <button class="secondary" style="font-size:12px;padding:4px 10px" onclick="handleSignupRequest('${r.id}','approved')">승인</button>
+                  <button class="danger" style="font-size:12px;padding:4px 10px" onclick="handleSignupRequest('${r.id}','rejected')">거절</button>
+                ` : ''}
+              </div>
+            </div>
+          </div>`).join('');
+      } catch(e) {
+        signupListEl.innerHTML = `<span class="empty">오류: ${e.message}</span>`;
+      }
+    }
+
+    async function handleSignupRequest(id, status) {
+      if (!signupStatusEl) return;
+      signupStatusEl.textContent = '처리 중…';
+      try {
+        const res = await fetch(`/auth/signup-requests/${id}`, {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({status})
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        signupStatusEl.textContent = status === 'approved' ? '✅ 승인 완료' : '❌ 거절 완료';
+        await loadSignupRequests();
+      } catch(e) {
+        signupStatusEl.textContent = `오류: ${e.message}`;
+      }
+    }
+
+    if (document.getElementById('reload_signup_requests')) {
+      document.getElementById('reload_signup_requests').addEventListener('click', loadSignupRequests);
+    }
+
     async function initialize() {
       await loadDashboardPreferences();
       await loadCatalog();
@@ -4173,6 +4499,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       await loadOwners();
       await loadWebhooks();
       await loadGuideForEdit(guideEditSelectEl.value);
+      await loadSignupRequests();
     }
 
     initialize();
