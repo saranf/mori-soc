@@ -67,6 +67,15 @@ USER_DASHBOARD_ASSET_COLUMN_LABELS = {
     "show_isms_control": "ISMS-P 통제 컬럼",
     "show_iso27001_control": "ISO 27001 통제 컬럼",
 }
+USER_DASHBOARD_GUIDE_LABELS = {
+    "zabbix_setup": "🖧 Zabbix 에이전트 설정",
+    "fleet_install": "🖥️ Fleet 에이전트 설치",
+    "isms_criteria": "📋 ISMS-P 심사 기준",
+    "iso27001_criteria": "🌐 ISO 27001 기준",
+    "ldap_setup": "🔐 LDAP 통합 설정",
+    "incident_response": "🚨 인시던트 대응 절차",
+    "security_policy": "📜 보안 정책 가이드",
+}
 DEFAULT_USER_DASHBOARD_PREFERENCES = {
     "cards": {
         "total_hosts": True,
@@ -87,6 +96,15 @@ DEFAULT_USER_DASHBOARD_PREFERENCES = {
         "show_importance": True,
         "show_isms_control": True,
         "show_iso27001_control": True,
+    },
+    "guides": {
+        "zabbix_setup": True,
+        "fleet_install": True,
+        "isms_criteria": True,
+        "iso27001_criteria": True,
+        "ldap_setup": True,
+        "incident_response": True,
+        "security_policy": True,
     },
 }
 
@@ -356,14 +374,12 @@ def _assets_csv(payload: dict[str, Any], source: str) -> str:
                 h.get("owner", ""), h.get("team", ""),
             ])
     elif source == "zabbix":
-        writer.writerow(["host_id", "hostname", "category", "importance", "isms_control",
-                         "iso27001_control", "platform", "primary_ip", "status", "risk_score",
-                         "last_seen_at", "observation_count", "latest_metric", "latest_value",
-                         "owner", "team"])
+        writer.writerow(["host_id", "hostname", "category", "importance", "platform",
+                         "primary_ip", "status", "risk_score", "last_seen_at",
+                         "observation_count", "latest_metric", "latest_value", "owner", "team"])
         for h in payload["zabbix"]["hosts"]:
             writer.writerow([
                 h["host_id"], h["hostname"], h.get("category", ""), h.get("importance", ""),
-                h.get("isms_control", ""), h.get("iso27001_control", ""),
                 h["platform"], h["primary_ip"],
                 h["status"], h["risk_score"], h["last_seen_at"] or "",
                 h["observation_count"], h["latest_metric"] or "", h["latest_value"] or "",
@@ -398,6 +414,7 @@ def _dashboard_preferences_response(preferences: Mapping[str, Any]) -> dict[str,
     cards = user_dashboard.get("cards") if isinstance(user_dashboard.get("cards"), Mapping) else {}
     sections = user_dashboard.get("sections") if isinstance(user_dashboard.get("sections"), Mapping) else {}
     asset_columns = user_dashboard.get("asset_columns") if isinstance(user_dashboard.get("asset_columns"), Mapping) else {}
+    guides = user_dashboard.get("guides") if isinstance(user_dashboard.get("guides"), Mapping) else {}
     return {
         "docs_url": docs_url,
         "user_dashboard": {
@@ -413,10 +430,15 @@ def _dashboard_preferences_response(preferences: Mapping[str, Any]) -> dict[str,
                 key: bool(asset_columns.get(key, DEFAULT_USER_DASHBOARD_PREFERENCES["asset_columns"][key]))
                 for key in USER_DASHBOARD_ASSET_COLUMN_LABELS
             },
+            "guides": {
+                key: bool(guides.get(key, DEFAULT_USER_DASHBOARD_PREFERENCES["guides"][key]))
+                for key in USER_DASHBOARD_GUIDE_LABELS
+            },
         },
         "card_labels": dict(USER_DASHBOARD_CARD_LABELS),
         "section_labels": dict(USER_DASHBOARD_SECTION_LABELS),
         "asset_column_labels": dict(USER_DASHBOARD_ASSET_COLUMN_LABELS),
+        "guide_labels": dict(USER_DASHBOARD_GUIDE_LABELS),
     }
 
 
@@ -439,6 +461,7 @@ def _merge_dashboard_preferences(current: Mapping[str, Any], payload: Mapping[st
             ("cards", USER_DASHBOARD_CARD_LABELS),
             ("sections", USER_DASHBOARD_SECTION_LABELS),
             ("asset_columns", USER_DASHBOARD_ASSET_COLUMN_LABELS),
+            ("guides", USER_DASHBOARD_GUIDE_LABELS),
         ):
             group_payload = user_dashboard.get(group_name)
             if group_payload is None:
@@ -458,6 +481,7 @@ def _merge_dashboard_preferences(current: Mapping[str, Any], payload: Mapping[st
             "cards": dict(merged["user_dashboard"]["cards"]),
             "sections": dict(merged["user_dashboard"]["sections"]),
             "asset_columns": dict(merged["user_dashboard"]["asset_columns"]),
+            "guides": dict(merged["user_dashboard"]["guides"]),
         },
     }
 
@@ -713,6 +737,8 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     incidents: dict[str, dict[str, Any]] = {}
     # Asset owners: hostname -> {owner, email, team, updated_at}
     asset_owners: dict[str, dict[str, Any]] = {}
+    # Asset audit log: [{log_id, hostname, field, old_value, new_value, changed_by, changed_at}]
+    asset_audit_log: list[dict[str, Any]] = []
     # Action plans: host_id -> {text, target_date, updated_by, updated_at}
     action_plans: dict[str, dict[str, Any]] = {}
     # Guides: guide_id -> {id, title, content, updated_at}
@@ -1116,6 +1142,139 @@ ldapadd -x -D "cn=admin,dc=company,dc=local" -w AdminSecret123 -f user.ldif
 > **보안 권고**: 프로덕션 환경에서는 반드시 LDAPS(636포트, TLS) 또는 StartTLS를 사용하세요.""",
             "updated_at": None,
         },
+        "incident_response": {
+            "id": "incident_response",
+            "title": "인시던트 대응 절차 가이드",
+            "content": """## 인시던트 대응 절차 (Incident Response)
+
+보안 이벤트 발생 시 아래 절차에 따라 신속하게 대응합니다.
+
+---
+
+### 1단계. 탐지 및 초기 분류 (Detection & Triage)
+
+- [ ] Alert Triage 탭에서 미확인(🔴) 경보 확인
+- [ ] 경보 유형, 영향 호스트, 심각도 파악
+- [ ] 상태를 **검토중(🟡)** 으로 변경하고 담당자 지정
+- [ ] 오탐 여부 1차 판단 (오탐 시 → `resolved` 처리 + 메모 기록)
+
+---
+
+### 2단계. 인시던트 생성 (Incident Creation)
+
+실제 보안 사고로 판단되면 인시던트를 생성합니다:
+
+1. **인시던트** 탭 → **+ 새 인시던트** 클릭
+2. 제목, 심각도, 관련 Alert 연결
+3. 담당자 지정 후 상태 → **조사중(investigating)**
+
+---
+
+### 3단계. 분석 및 봉쇄 (Analysis & Containment)
+
+- [ ] 영향 호스트 목록 파악 (자산 현황 탭 참조)
+- [ ] 네트워크 격리 또는 서비스 중단 여부 판단
+- [ ] 공격 벡터 분석 (로그, Zabbix 이벤트, Fleet 쿼리 결과)
+- [ ] 인시던트 **메모**에 분석 내용 지속 기록
+
+---
+
+### 4단계. 제거 및 복구 (Eradication & Recovery)
+
+- [ ] 악성 파일/계정 제거
+- [ ] 취약점 패치 적용 (Trivy 스캔 결과 → 조치계획 등록)
+- [ ] 서비스 정상화 확인
+- [ ] 상태 → **해결됨(resolved)**
+
+---
+
+### 5단계. 사후 분석 (Post-Incident Review)
+
+- [ ] 인시던트 상태 → **종료(closed)**
+- [ ] 근본 원인 분석(RCA) 작성 및 인시던트 메모에 첨부
+- [ ] 재발 방지 대책 수립
+- [ ] ISMS-P 2.11 이벤트 처리 / ISO 27001 A.5.26 증적으로 활용
+
+---
+
+> **ISMS-P 관련 통제**: 2.11 이벤트 처리, 2.12 업무연속성 보안
+> **ISO 27001 관련 통제**: A.5.24 정보보안사고 관리 계획, A.5.26 정보보안사고 대응""",
+            "updated_at": None,
+        },
+        "security_policy": {
+            "id": "security_policy",
+            "title": "보안 정책 및 운영 가이드",
+            "content": """## 보안 정책 및 운영 가이드
+
+MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
+
+---
+
+### 1. 자산 관리 정책
+
+| 항목 | 주기 | 담당 |
+|---|---|---|
+| 전체 자산 목록 갱신 | 분기 1회 | IT팀 |
+| 자산 중요도 분류 검토 | 반기 1회 | 보안팀 |
+| 담당자(Owner) 정보 업데이트 | 변경 발생 시 즉시 | 부서장 |
+| 자산 현황 CSV 다운로드 (증적) | 심사 전 | 보안팀 |
+
+---
+
+### 2. 취약점 관리 정책
+
+- **Critical/High 취약점**: 발견 후 **14일** 이내 조치 완료
+- **Medium 취약점**: 발견 후 **30일** 이내 조치 완료
+- **Low 취약점**: 분기별 일괄 검토 및 조치
+- Trivy 스캔은 **주 1회** 실행 권장
+- 조치계획은 반드시 MORI SOC 조치계획 탭에 등록
+
+---
+
+### 3. Alert 대응 정책
+
+| 심각도 | 초기 대응 시간 | 에스컬레이션 |
+|---|---|---|
+| Critical | 15분 이내 | 즉시 팀장 보고 |
+| High | 1시간 이내 | 2시간 내 미해결 시 팀장 보고 |
+| Medium | 4시간 이내 | 당일 처리 원칙 |
+| Low | 익일까지 | 주간 보고에 포함 |
+
+---
+
+### 4. 인시던트 관리 정책
+
+- 보안 사고는 반드시 인시던트로 등록
+- 인시던트 종료 후 **5일** 이내 사후 분석 보고서 작성
+- 심각 인시던트(Critical)는 경영진 보고 필수
+- 모든 인시던트 이력은 최소 **3년** 보존
+
+---
+
+### 5. 접근통제 정책
+
+- 관리자 계정(admin)은 반드시 복잡한 비밀번호 사용
+- LDAP 연동 시 그룹 기반 접근통제 적용
+- 퇴사/부서 이동 시 즉시 계정 비활성화
+- 비밀번호 변경 주기: **90일**
+
+---
+
+### 6. 로그 보존 정책
+
+| 로그 종류 | 보존 기간 |
+|---|---|
+| 보안 이벤트 (Alert) | 1년 이상 |
+| 인시던트 이력 | 3년 이상 |
+| 접근 로그 | 6개월 이상 |
+| 취약점 스캔 결과 | 2년 이상 |
+
+---
+
+> **ISMS-P 관련 통제**: 2.9 시스템 및 서비스 운영관리, 2.11 이벤트 처리
+> **ISO 27001 관련 통제**: A.5.1 정보보안 정책, A.8.15 로깅""",
+            "updated_at": None,
+        },
     }
 
     def get_query_service() -> QueryService:
@@ -1377,8 +1536,51 @@ ldapadd -x -D "cn=admin,dc=company,dc=local" -w AdminSecret123 -f user.ldif
 
     # ── Incidents ────────────────────────────────────────────────────────────────
     @app.get("/incidents", tags=["Incidents"])
-    def incidents_list() -> dict[str, Any]:
-        return {"incidents": list(incidents.values())}
+    def incidents_list(date_from: str = "", date_to: str = "", format: str = "json") -> Any:
+        import io, csv as csv_mod
+        all_items = list(incidents.values())
+        # Date filtering on created_at
+        if date_from:
+            try:
+                from_dt = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+                if from_dt.tzinfo is None:
+                    from_dt = from_dt.replace(tzinfo=timezone.utc)
+                all_items = [i for i in all_items if i.get("created_at", "") >= _isoformat(from_dt)]
+            except ValueError:
+                raise HTTPException(status_code=400, detail="date_from must be ISO format (YYYY-MM-DD)")
+        if date_to:
+            try:
+                to_dt = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+                if to_dt.tzinfo is None:
+                    to_dt = to_dt.replace(tzinfo=timezone.utc)
+                # Include the whole day
+                to_dt = to_dt.replace(hour=23, minute=59, second=59)
+                all_items = [i for i in all_items if i.get("created_at", "") <= _isoformat(to_dt)]
+            except ValueError:
+                raise HTTPException(status_code=400, detail="date_to must be ISO format (YYYY-MM-DD)")
+        if format == "csv":
+            buf = io.StringIO()
+            fieldnames = ["incident_id", "title", "status", "created_at", "updated_at", "status_updated_at", "alert_count", "note_count"]
+            writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
+            writer.writeheader()
+            for inc in all_items:
+                writer.writerow({
+                    "incident_id": inc.get("incident_id", ""),
+                    "title": inc.get("title", ""),
+                    "status": inc.get("status", ""),
+                    "created_at": inc.get("created_at", ""),
+                    "updated_at": inc.get("updated_at", ""),
+                    "status_updated_at": inc.get("status_updated_at", ""),
+                    "alert_count": len(inc.get("alert_ids", [])),
+                    "note_count": len(inc.get("notes", [])),
+                })
+            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            return StreamingResponse(
+                iter([buf.getvalue()]),
+                media_type="text/csv; charset=utf-8",
+                headers={"Content-Disposition": f'attachment; filename="mori-incidents-{timestamp}.csv"'},
+            )
+        return {"incidents": all_items}
 
     @app.post("/incidents", tags=["Incidents"])
     def incidents_create(payload: dict[str, Any]) -> dict[str, Any]:
@@ -1460,13 +1662,32 @@ ldapadd -x -D "cn=admin,dc=company,dc=local" -w AdminSecret123 -f user.ldif
         if not hostname:
             raise HTTPException(status_code=400, detail="hostname is required")
         owner_name = str(payload.get("owner", "")).strip()
+        changed_by = str(payload.get("changed_by", "")).strip() or "unknown"
+        now_str = _isoformat(datetime.now(tz=timezone.utc))
+        old_entry = asset_owners.get(hostname, {})
+        new_category = str(payload.get("category", old_entry.get("category", ""))).strip()
         entry = {
             "hostname": hostname,
             "owner": owner_name,
+            "category": new_category,
             "email": str(payload.get("email", "")).strip(),
             "team": str(payload.get("team", "")).strip(),
-            "updated_at": _isoformat(datetime.now(tz=timezone.utc)),
+            "updated_at": now_str,
         }
+        # Audit log: record changes for owner and category fields
+        for field in ("owner", "category"):
+            old_val = old_entry.get(field, "")
+            new_val = entry[field]
+            if new_val != old_val:
+                asset_audit_log.append({
+                    "log_id": str(uuid.uuid4()),
+                    "hostname": hostname,
+                    "field": field,
+                    "old_value": old_val,
+                    "new_value": new_val,
+                    "changed_by": changed_by,
+                    "changed_at": now_str,
+                })
         asset_owners[hostname] = entry
         return entry
 
@@ -1476,6 +1697,17 @@ ldapadd -x -D "cn=admin,dc=company,dc=local" -w AdminSecret123 -f user.ldif
             raise HTTPException(status_code=404, detail="owner not found")
         asset_owners.pop(hostname)
         return {"deleted": hostname}
+
+    # ── Asset Audit Log ───────────────────────────────────────────────────────
+    @app.get("/admin/audit-log", tags=["Assets"])
+    def audit_log_list(hostname: str = "", field: str = "") -> Any:
+        """자산 담당자/카테고리 변경 이력 조회 (어드민 전용)."""
+        result = list(reversed(asset_audit_log))  # 최신 순
+        if hostname:
+            result = [r for r in result if r["hostname"] == hostname]
+        if field:
+            result = [r for r in result if r["field"] == field]
+        return {"audit_log": result, "total": len(result)}
 
     # ── Action Plans ──────────────────────────────────────────────────────────
     @app.get("/assets/plans/{host_id}")
@@ -1578,7 +1810,7 @@ ldapadd -x -D "cn=admin,dc=company,dc=local" -w AdminSecret123 -f user.ldif
             buf = io.StringIO()
             hosts = zabbix_data.get("hosts", [])
             if hosts:
-                fieldnames = ["hostname", "category", "importance", "isms_control", "iso27001_control", "primary_ip", "status", "latest_metric", "latest_value", "owner", "team"]
+                fieldnames = ["hostname", "category", "importance", "primary_ip", "status", "latest_metric", "latest_value", "owner", "team"]
                 writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
                 writer.writeheader()
                 writer.writerows(hosts)
@@ -1644,6 +1876,7 @@ def render_user_dashboard_html(
     default_preferences_json = json.dumps(DEFAULT_USER_DASHBOARD_PREFERENCES, ensure_ascii=False)
     card_labels_json = json.dumps(USER_DASHBOARD_CARD_LABELS, ensure_ascii=False)
     section_labels_json = json.dumps(USER_DASHBOARD_SECTION_LABELS, ensure_ascii=False)
+    guide_labels_json = json.dumps(USER_DASHBOARD_GUIDE_LABELS, ensure_ascii=False)
     nlq_guide_examples_json = json.dumps(list(QUERY_GUIDE_EXAMPLES), ensure_ascii=False)
     html = """<!doctype html>
 <html lang=\"ko\">
@@ -1859,6 +2092,19 @@ def render_user_dashboard_html(
       <section class=\"card\">
         <h2>📋 인시던트 관리</h2>
         <div class=\"subtext\">여러 경보를 하나의 인시던트로 묶고 조사 노트를 남깁니다.</div>
+        <!-- 날짜 필터 + CSV 다운로드 -->
+        <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:#0f172a;border-radius:8px;border:1px solid #1e293b\">
+          <div style=\"display:flex;align-items:center;gap:6px\">
+            <label style=\"color:#94a3b8;font-size:13px;white-space:nowrap\">시작일</label>
+            <input type=\"date\" id=\"inc_date_from\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:13px\" />
+          </div>
+          <div style=\"display:flex;align-items:center;gap:6px\">
+            <label style=\"color:#94a3b8;font-size:13px;white-space:nowrap\">종료일</label>
+            <input type=\"date\" id=\"inc_date_to\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:13px\" />
+          </div>
+          <button id=\"inc_filter_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px\">🔍 조회</button>
+          <button id=\"inc_csv_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px;background:#1d3a5f;color:#93c5fd\">⬇️ CSV 다운로드</button>
+        </div>
         <div id=\"incidents_list\" class=\"list\" style=\"margin-bottom:14px\"><span class=\"empty\">로딩 중…</span></div>
         <div class=\"row\">
           <label for=\"inc_title\">새 인시던트 제목</label>
@@ -1937,18 +2183,7 @@ def render_user_dashboard_html(
 
     <!-- ── Tab: 가이드 & 기준 ────────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_guides\">
-      <div style=\"display:flex;gap:0;border-bottom:1px solid #233046;margin-bottom:20px;flex-wrap:wrap;\">
-        <button class=\"active\" id=\"guide_tab_zabbix_setup\" onclick=\"switchGuideTab('zabbix_setup')\"
-          style=\"background:none;border:none;border-bottom:2px solid #38bdf8;padding:8px 18px;color:#38bdf8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🖧 Zabbix 설정</button>
-        <button id=\"guide_tab_fleet_install\" onclick=\"switchGuideTab('fleet_install')\"
-          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🖥️ Fleet 설치</button>
-        <button id=\"guide_tab_isms_criteria\" onclick=\"switchGuideTab('isms_criteria')\"
-          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">📋 ISMS-P 기준</button>
-        <button id=\"guide_tab_iso27001_criteria\" onclick=\"switchGuideTab('iso27001_criteria')\"
-          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🌐 ISO 27001 기준</button>
-        <button id=\"guide_tab_ldap_setup\" onclick=\"switchGuideTab('ldap_setup')\"
-          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🔐 LDAP 통합 설정</button>
-      </div>
+      <div id=\"guide_sub_tabs\" style=\"display:flex;gap:0;border-bottom:1px solid #233046;margin-bottom:20px;flex-wrap:wrap;\"></div>
       <section class=\"card\" style=\"padding:0\">
         <div style=\"display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0;\">
           <h2 id=\"guide_content_title\" style=\"margin:0;font-size:16px\"></h2>
@@ -2076,11 +2311,11 @@ def render_user_dashboard_html(
     </div>
   </div>
 
-  <!-- 담당자 편집 모달 (운영자용) -->
+  <!-- 담당자 편집 모달 (사용자용) -->
   <div id=\"owner_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:28px 32px;width:440px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
-        <h3 id=\"owner_modal_title\" style=\"color:#a3e635;margin:0\">담당자 수정</h3>
+        <h3 id=\"owner_modal_title\" style=\"color:#a3e635;margin:0\">담당자/카테고리 수정</h3>
         <button onclick=\"closeOwnerModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
       </div>
       <div style=\"display:flex;flex-direction:column;gap:12px\">
@@ -2090,8 +2325,14 @@ def render_user_dashboard_html(
         <div><label style=\"color:#94a3b8;font-size:13px\">담당자</label>
           <input id=\"owner_modal_owner\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 홍길동\" />
         </div>
+        <div><label style=\"color:#94a3b8;font-size:13px\">카테고리 (서버 분류)</label>
+          <input id=\"owner_modal_category\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 웹 서버\" />
+        </div>
         <div><label style=\"color:#94a3b8;font-size:13px\">팀</label>
           <input id=\"owner_modal_team\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 인프라팀\" />
+        </div>
+        <div><label style=\"color:#94a3b8;font-size:13px\">수정자 이름 <span style=\"color:#ef4444\">*</span></label>
+          <input id=\"owner_modal_changed_by\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 홍길동 (이력 기록용)\" />
         </div>
         <div id=\"owner_modal_status\" style=\"font-size:13px;color:#94a3b8;\"></div>
         <div style=\"display:flex;gap:10px;justify-content:flex-end;margin-top:4px\">
@@ -2125,6 +2366,7 @@ def render_user_dashboard_html(
     const defaultPreferences = __USER_DASHBOARD_PREFS_JSON__;
     const cardLabels = __CARD_LABELS_JSON__;
     const sectionLabels = __SECTION_LABELS_JSON__;
+    const guideLabels = __GUIDE_LABELS_JSON__;
     let assetColumnPrefs = Object.assign({}, defaultPreferences.asset_columns || { show_importance: true, show_isms_control: true, show_iso27001_control: true });
     const nlqGuideExamples = __NLQ_GUIDE_EXAMPLES__;
     const overviewCardsEl = document.getElementById('overview_cards');
@@ -2187,7 +2429,10 @@ def render_user_dashboard_html(
       if (tabName === 'triage') loadTriage();
       if (tabName === 'incidents') loadIncidents();
       if (tabName === 'assets') loadAssets();
-      if (tabName === 'guides') loadGuide(currentGuideId || 'zabbix_setup');
+      if (tabName === 'guides') {
+        buildGuideSubTabs();
+        if (currentGuideId) switchGuideTab(currentGuideId);
+      }
     }
 
     function escapeHtml(value) {
@@ -2653,10 +2898,21 @@ def render_user_dashboard_html(
     document.getElementById('reload_triage').addEventListener('click', loadTriage);
 
     // ── Incidents ────────────────────────────────────────────────────────────
+    function buildIncidentParams() {
+      const params = new URLSearchParams();
+      const from = document.getElementById('inc_date_from')?.value;
+      const to = document.getElementById('inc_date_to')?.value;
+      if (from) params.set('date_from', from);
+      if (to) params.set('date_to', to);
+      return params;
+    }
+
     async function loadIncidents() {
       incidentsListEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
       try {
-        const res = await fetch('/incidents');
+        const params = buildIncidentParams();
+        const url = '/incidents' + (params.toString() ? '?' + params.toString() : '');
+        const res = await fetch(url);
         if (!res.ok) { incidentsListEl.innerHTML = '<span class=\"empty\">인시던트 로드 실패</span>'; return; }
         const data = await res.json();
         const list = data.incidents || [];
@@ -2767,6 +3023,26 @@ def render_user_dashboard_html(
 
     document.getElementById('reload_incidents').addEventListener('click', loadIncidents);
 
+    // 날짜 필터 조회 버튼
+    if (document.getElementById('inc_filter_btn')) {
+      document.getElementById('inc_filter_btn').addEventListener('click', loadIncidents);
+    }
+
+    // CSV 다운로드
+    if (document.getElementById('inc_csv_btn')) {
+      document.getElementById('inc_csv_btn').addEventListener('click', () => {
+        const params = buildIncidentParams();
+        params.set('format', 'csv');
+        const url = '/incidents?' + params.toString();
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'incidents.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+    }
+
     // ── Asset Collection Board ────────────────────────────────────────────────
     let currentAssetTab = 'fleet';
 
@@ -2793,7 +3069,7 @@ def render_user_dashboard_html(
         const fleetLink = FLEET_URL ? `<a href=\"${escapeHtml(FLEET_URL)}/hosts?query=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#6ee7b7;font-size:12px;\">Fleet ↗</a>` : '';
         const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
         const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>
-          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}')\"
+          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}')\"
             style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
         return `<tr>
           <td><strong>${escapeHtml(h.hostname)}</strong>${fleetLink ? '<br>' + fleetLink : ''}</td>
@@ -2834,7 +3110,7 @@ def render_user_dashboard_html(
         const impBadge = h.importance ? `<span style=\"background:#1e293b;color:${impColor[h.importance]||'#94a3b8'};padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700\">${escapeHtml(h.importance)}</span>` : '-';
         const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
         const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>
-          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}')\"
+          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}')\"
             style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
         return `<tr>
           <td><strong>${escapeHtml(h.hostname)}</strong>${zabbixLink ? '<br>' + zabbixLink : ''}</td>
@@ -2917,13 +3193,16 @@ def render_user_dashboard_html(
     }
     function closePlanModal() { document.getElementById('plan_modal').style.display = 'none'; }
 
-    /* ── 담당자 편집 모달 (운영자용) ──────────────────────────────────────── */
-    function openOwnerModal(hostname, owner, team) {
+    /* ── 담당자/카테고리 편집 모달 ──────────────────────────────────────── */
+    function openOwnerModal(hostname, owner, team, category) {
       document.getElementById('owner_modal_hostname').value = hostname;
       document.getElementById('owner_modal_owner').value = owner || '';
       document.getElementById('owner_modal_team').value = team || '';
+      document.getElementById('owner_modal_category').value = category || '';
+      document.getElementById('owner_modal_changed_by').value = '';
       document.getElementById('owner_modal_status').textContent = '';
-      document.getElementById('owner_modal_title').textContent = `담당자 수정 — ${hostname}`;
+      document.getElementById('owner_modal_status').style.color = '#94a3b8';
+      document.getElementById('owner_modal_title').textContent = `담당자/카테고리 수정 — ${hostname}`;
       document.getElementById('owner_modal').style.display = 'flex';
     }
     function closeOwnerModal() { document.getElementById('owner_modal').style.display = 'none'; }
@@ -2934,12 +3213,15 @@ def render_user_dashboard_html(
         const hostname = document.getElementById('owner_modal_hostname').value;
         const owner = document.getElementById('owner_modal_owner').value.trim();
         const team = document.getElementById('owner_modal_team').value.trim();
+        const category = document.getElementById('owner_modal_category').value.trim();
+        const changed_by = document.getElementById('owner_modal_changed_by').value.trim();
         const statusEl = document.getElementById('owner_modal_status');
+        if (!changed_by) { statusEl.style.color='#fca5a5'; statusEl.textContent='수정자 이름을 입력하세요.'; return; }
         statusEl.textContent = '저장 중...';
         try {
           const res = await fetch('/assets/owners', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ hostname, owner, team })
+            body: JSON.stringify({ hostname, owner, team, category, changed_by })
           });
           if (!res.ok) throw new Error(await res.text());
           statusEl.style.color = '#86efac';
@@ -3004,14 +3286,26 @@ def render_user_dashboard_html(
     }
 
     // ── Guide Tab ─────────────────────────────────────────────────────────
-    let currentGuideId = 'zabbix_setup';
-    const guideSubBtns = {
-      zabbix_setup: document.getElementById('guide_tab_zabbix_setup'),
-      fleet_install: document.getElementById('guide_tab_fleet_install'),
-      isms_criteria: document.getElementById('guide_tab_isms_criteria'),
-      iso27001_criteria: document.getElementById('guide_tab_iso27001_criteria'),
-      ldap_setup: document.getElementById('guide_tab_ldap_setup'),
-    };
+    let currentGuideId = null;
+    const guideSubBtns = {};
+    const guideSubTabsEl = document.getElementById('guide_sub_tabs');
+    const guidePrefs = defaultPreferences.guides || {};
+
+    function buildGuideSubTabs() {
+      if (!guideSubTabsEl) return;
+      guideSubTabsEl.innerHTML = '';
+      Object.keys(guideLabels).forEach((id, idx) => {
+        if (guidePrefs[id] === false) return; // hidden by admin
+        const btn = document.createElement('button');
+        btn.id = 'guide_tab_' + id;
+        btn.textContent = guideLabels[id];
+        btn.style.cssText = 'background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;';
+        btn.addEventListener('click', () => switchGuideTab(id));
+        guideSubTabsEl.appendChild(btn);
+        guideSubBtns[id] = btn;
+        if (currentGuideId === null) currentGuideId = id; // first visible
+      });
+    }
 
     function switchGuideTab(guideId) {
       currentGuideId = guideId;
@@ -3020,7 +3314,6 @@ def render_user_dashboard_html(
         const active = id === guideId;
         btn.style.borderBottomColor = active ? '#38bdf8' : 'transparent';
         btn.style.color = active ? '#38bdf8' : '#94a3b8';
-        if (!btn.classList) return;
       });
       loadGuide(guideId);
     }
@@ -3076,6 +3369,7 @@ def render_user_dashboard_html(
         .replace("__NLQ_GUIDE_EXAMPLES__", nlq_guide_examples_json)
         .replace("__FLEET_UI_URL__", fleet_ui_url)
         .replace("__ZABBIX_UI_URL__", zabbix_ui_url)
+        .replace("__GUIDE_LABELS_JSON__", guide_labels_json)
     )
 
 
@@ -3087,6 +3381,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     card_labels_json = json.dumps(USER_DASHBOARD_CARD_LABELS, ensure_ascii=False)
     section_labels_json = json.dumps(USER_DASHBOARD_SECTION_LABELS, ensure_ascii=False)
     asset_column_labels_json = json.dumps(USER_DASHBOARD_ASSET_COLUMN_LABELS, ensure_ascii=False)
+    guide_labels_json = json.dumps(USER_DASHBOARD_GUIDE_LABELS, ensure_ascii=False)
     html = """<!doctype html>
 <html lang=\"ko\">
 <head>
@@ -3275,6 +3570,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <button data-atab=\"query\" onclick=\"switchAdminTab('query')\">🔍 쿼리</button>
       <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\">⚙️ 설정</button>
       <button data-atab=\"users\" onclick=\"switchAdminTab('users')\">🙋 가입 요청</button>
+      <button data-atab=\"auditlog\" onclick=\"switchAdminTab('auditlog')\">📝 변경 이력</button>
     </nav>
 
     <!-- ── Tab: 모니터링 ─────────────────────────────────────────────────── -->
@@ -3383,6 +3679,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"row\"><label>사용자 요약 카드</label><div class=\"toggle-grid\" id=\"user_dashboard_cards\"></div></div>
           <div class=\"row\"><label>사용자 섹션</label><div class=\"toggle-grid\" id=\"user_dashboard_sections\"></div></div>
           <div class=\"row\"><label>자빅스 자산 테이블 컬럼 표시</label><div class=\"toggle-grid\" id=\"user_dashboard_asset_columns\"></div></div>
+          <div class=\"row\"><label>가이드 탭 노출 설정</label><div class=\"toggle-grid\" id=\"user_dashboard_guides\"></div></div>
           <div class=\"actions\">
             <button id=\"save_dashboard_preferences\" class=\"primary\">저장</button>
             <a href=\"/ui\">사용자 화면 열기 ↗</a>
@@ -3413,6 +3710,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <option value=\"isms_criteria\">📋 ISMS-P 심사 기준</option>
               <option value=\"iso27001_criteria\">🌐 ISO 27001 심사 기준</option>
               <option value=\"ldap_setup\">🔐 LDAP 통합 설정</option>
+              <option value=\"incident_response\">🚨 인시던트 대응 절차</option>
+              <option value=\"security_policy\">📜 보안 정책 가이드</option>
             </select>
           </div>
           <div class=\"row\"><label for=\"guide_edit_title\">제목</label><input id=\"guide_edit_title\" placeholder=\"가이드 제목\" /></div>
@@ -3440,6 +3739,28 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
       </div>
     </div>
+
+    <!-- ── Tab: 변경 이력 ────────────────────────────────────────────────── -->
+    <div class=\"atab-panel\" id=\"atab_auditlog\">
+      <div class=\"stack\">
+        <section class=\"card\">
+          <h2>📝 자산 변경 이력</h2>
+          <div class=\"subtext\">사용자가 수정한 담당자·카테고리 변경 이력입니다. 최신 순으로 표시됩니다.</div>
+          <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
+            <input id=\"audit_filter_hostname\" placeholder=\"호스트명으로 검색\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:180px\" />
+            <select id=\"audit_filter_field\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px\">
+              <option value=\"\">전체 항목</option>
+              <option value=\"owner\">담당자</option>
+              <option value=\"category\">카테고리</option>
+            </select>
+            <button id=\"audit_search_btn\" class=\"secondary\" style=\"padding:6px 14px\">🔍 검색</button>
+            <button id=\"reload_audit_log\" class=\"secondary\" style=\"padding:6px 14px\">새로고침</button>
+          </div>
+          <div id=\"audit_log_list\" class=\"list\"><span class=\"empty\">로딩 중…</span></div>
+          <div class=\"status-line\" id=\"audit_log_status\"></div>
+        </section>
+      </div>
+    </div>
   </div>
 
   <!-- ── 어드민 하단 탭 바 (모바일 전용) ────────────────────────────────── -->
@@ -3458,6 +3779,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     </button>
     <button data-atab=\"users\" onclick=\"switchAdminTab('users')\">
       <span class=\"bn-icon\">🙋</span>가입
+    </button>
+    <button data-atab=\"auditlog\" onclick=\"switchAdminTab('auditlog')\">
+      <span class=\"bn-icon\">📝</span>이력
     </button>
   </nav>
 
@@ -3519,6 +3843,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const userDashboardCardsEl = document.getElementById('user_dashboard_cards');
     const userDashboardSectionsEl = document.getElementById('user_dashboard_sections');
     const userDashboardAssetColumnsEl = document.getElementById('user_dashboard_asset_columns');
+    const userDashboardGuidesEl = document.getElementById('user_dashboard_guides');
     const dashboardPreferencesStatusEl = document.getElementById('dashboard_preferences_status');
 
     // Webhooks
@@ -3532,6 +3857,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const userDashboardCardLabels = __CARD_LABELS_JSON__;
     const userDashboardSectionLabels = __SECTION_LABELS_JSON__;
     const userDashboardAssetColumnLabels = __ASSET_COLUMN_LABELS_JSON__;
+    const userDashboardGuideLabels = __GUIDE_LABELS_JSON__;
     let dashboardDetails = {};
     let userDashboardPreferences = JSON.parse(JSON.stringify(defaultUserDashboardPreferences));
     let queryMode = 'natural';
@@ -3565,6 +3891,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       renderPreferenceGroup(userDashboardCardsEl, userDashboardCardLabels, userDashboardPreferences.cards || {}, 'user_card');
       renderPreferenceGroup(userDashboardSectionsEl, userDashboardSectionLabels, userDashboardPreferences.sections || {}, 'user_section');
       renderPreferenceGroup(userDashboardAssetColumnsEl, userDashboardAssetColumnLabels, userDashboardPreferences.asset_columns || {}, 'user_asset_col');
+      renderPreferenceGroup(userDashboardGuidesEl, userDashboardGuideLabels, userDashboardPreferences.guides || {}, 'user_guide');
     }
 
     function readPreferenceGroup(container) {
@@ -3597,6 +3924,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           cards: readPreferenceGroup(userDashboardCardsEl),
           sections: readPreferenceGroup(userDashboardSectionsEl),
           asset_columns: readPreferenceGroup(userDashboardAssetColumnsEl),
+          guides: readPreferenceGroup(userDashboardGuidesEl),
         },
       };
       try {
@@ -4430,6 +4758,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       if (panel) panel.classList.add('active');
       document.querySelectorAll('[data-atab="' + tab + '"]').forEach(btn => btn.classList.add('active'));
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (tab === 'auditlog') loadAuditLog();
     }
 
     // ── Signup Requests ────────────────────────────────────────────────────
@@ -4492,6 +4821,59 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       document.getElementById('reload_signup_requests').addEventListener('click', loadSignupRequests);
     }
 
+    // ── Asset Audit Log ────────────────────────────────────────────────────
+    const auditLogListEl = document.getElementById('audit_log_list');
+    const auditLogStatusEl = document.getElementById('audit_log_status');
+
+    async function loadAuditLog() {
+      if (!auditLogListEl) return;
+      auditLogListEl.innerHTML = '<span class="empty">로딩 중…</span>';
+      const hostname = (document.getElementById('audit_filter_hostname')?.value || '').trim();
+      const field = document.getElementById('audit_filter_field')?.value || '';
+      let url = '/admin/audit-log';
+      const params = new URLSearchParams();
+      if (hostname) params.set('hostname', hostname);
+      if (field) params.set('field', field);
+      if (params.toString()) url += '?' + params.toString();
+      try {
+        const res = await fetch(url);
+        if (!res.ok) { auditLogListEl.innerHTML = '<span class="empty">로드 실패</span>'; return; }
+        const data = await res.json();
+        const logs = data.audit_log || [];
+        if (!logs.length) { auditLogListEl.innerHTML = '<span class="empty">변경 이력 없음</span>'; return; }
+        const FIELD_LABEL = { owner: '담당자', category: '카테고리' };
+        auditLogListEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="background:#0f2035;">
+            <th style="padding:8px;color:#7dd3fc;text-align:left">시각</th>
+            <th style="padding:8px;color:#7dd3fc;text-align:left">호스트</th>
+            <th style="padding:8px;color:#7dd3fc;text-align:left">항목</th>
+            <th style="padding:8px;color:#7dd3fc;text-align:left">이전 값</th>
+            <th style="padding:8px;color:#a3e635;text-align:left">변경 값</th>
+            <th style="padding:8px;color:#7dd3fc;text-align:left">변경자</th>
+          </tr></thead>
+          <tbody>
+          ${logs.map(l => `<tr style="border-bottom:1px solid #1e293b;">
+            <td style="padding:7px 8px;color:#64748b;white-space:nowrap">${escapeHtml(formatTime(l.changed_at))}</td>
+            <td style="padding:7px 8px;color:#e2e8f0;font-weight:600">${escapeHtml(l.hostname)}</td>
+            <td style="padding:7px 8px;color:#fbbf24">${escapeHtml(FIELD_LABEL[l.field] || l.field)}</td>
+            <td style="padding:7px 8px;color:#94a3b8">${escapeHtml(l.old_value || '-')}</td>
+            <td style="padding:7px 8px;color:#a3e635">${escapeHtml(l.new_value || '-')}</td>
+            <td style="padding:7px 8px;color:#93c5fd">${escapeHtml(l.changed_by)}</td>
+          </tr>`).join('')}
+          </tbody></table>`;
+        if (auditLogStatusEl) auditLogStatusEl.textContent = `총 ${data.total}건`;
+      } catch(e) {
+        auditLogListEl.innerHTML = `<span class="empty">오류: ${escapeHtml(e.message)}</span>`;
+      }
+    }
+
+    if (document.getElementById('reload_audit_log')) {
+      document.getElementById('reload_audit_log').addEventListener('click', loadAuditLog);
+    }
+    if (document.getElementById('audit_search_btn')) {
+      document.getElementById('audit_search_btn').addEventListener('click', loadAuditLog);
+    }
+
     async function initialize() {
       await loadDashboardPreferences();
       await loadCatalog();
@@ -4515,6 +4897,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         .replace("__CARD_LABELS_JSON__", card_labels_json)
         .replace("__SECTION_LABELS_JSON__", section_labels_json)
         .replace("__ASSET_COLUMN_LABELS_JSON__", asset_column_labels_json)
+        .replace("__GUIDE_LABELS_JSON__", guide_labels_json)
     )
 
 
