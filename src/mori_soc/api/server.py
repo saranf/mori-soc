@@ -560,6 +560,24 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     .guide-dialog-head h3 { margin: 0; font-size: 20px; }
     .guide-dialog-copy { color: #94a3b8; font-size: 14px; line-height: 1.5; }
     .dialog-body { padding: 0 20px 20px; max-height: 60vh; overflow: auto; }
+    .row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .row label { font-size: 13px; color: #94a3b8; }
+    .row input, .row select, .row textarea { background: #0b1220; color: #e5e7eb; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px; font-size: 14px; width: 100%; box-sizing: border-box; }
+    .actions { display: flex; gap: 10px; margin-top: 12px; }
+    button { cursor: pointer; padding: 8px 16px; border-radius: 999px; border: 1px solid #334155; background: #1d4ed8; color: #fff; font-size: 14px; font-weight: 600; }
+    button.secondary { background: #0f172a; color: #cfe3ff; }
+    button.ghost { background: transparent; color: #94a3b8; }
+    .tabs-nav { display: flex; gap: 0; border-bottom: 1px solid #233046; margin-bottom: 20px; }
+    .tabs-nav button { background: none; border: none; border-bottom: 2px solid transparent; padding: 10px 22px; color: #94a3b8; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: -1px; border-radius: 0; }
+    .tabs-nav button.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .result-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .result-badge.wazuh { background: rgba(167,139,250,.15); color: #c4b5fd; }
+    .result-badge.zabbix { background: rgba(56,189,248,.15); color: #7dd3fc; }
+    .result-badge.fleet { background: rgba(52,211,153,.15); color: #6ee7b7; }
+    .result-badge.trivy { background: rgba(251,146,60,.15); color: #fdba74; }
+    .result-badge.hosts { background: rgba(148,163,184,.15); color: #cbd5e1; }
     @media (max-width: 960px) {
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .coverage { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -578,6 +596,7 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         <p>사용자에게 필요한 보안 현황과 조치 우선순위를 빠르게 보여주는 대시보드입니다. 상세한 수집 데이터는 운영자 화면에서 더 깊게 확인하고, 어떤 정보를 사용자 화면에 노출할지 운영자가 제어할 수 있습니다.</p>
         <div class=\"links\">
           <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\">운영 문서 / 포털</a>
+          <a href=\"/admin\">⚙️ Admin Console</a>
         </div>
       </div>
       <div class=\"top-actions\">
@@ -585,50 +604,85 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       </div>
     </section>
 
-    <section class=\"metrics\" id=\"overview_cards\"></section>
+    <nav class=\"tabs-nav\">
+      <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\">📊 대시보드</button>
+      <button data-tab=\"triage\" onclick=\"switchTab('triage')\">🚨 Alert Triage</button>
+      <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\">📋 인시던트</button>
+    </nav>
 
-    <div class=\"layout\">
-      <div class=\"stack\">
-        <section class=\"card\" id=\"source_coverage_section\">
-          <h2>Source Coverage</h2>
-          <div class=\"subtext\">운영자가 노출을 허용한 경우에만 source 상태를 표시합니다.</div>
-          <div class=\"coverage\" id=\"source_coverage\"></div>
-        </section>
+    <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
+    <div class=\"tab-panel active\" id=\"tab_dashboard\">
+      <section class=\"metrics\" id=\"overview_cards\"></section>
+      <div class=\"layout\">
+        <div class=\"stack\">
+          <section class=\"card\" id=\"source_coverage_section\">
+            <h2>Source Coverage</h2>
+            <div class=\"subtext\">운영자가 노출을 허용한 경우에만 source 상태를 표시합니다.</div>
+            <div class=\"coverage\" id=\"source_coverage\"></div>
+          </section>
 
-        <section class=\"card\" id=\"latest_status_section\">
-          <h2>Latest Host Status</h2>
-          <div class=\"subtext\">조치가 필요한 offline / unknown 호스트를 우선 확인합니다.</div>
-          <div class=\"table-wrap\" id=\"latest_status\"></div>
-        </section>
+          <section class=\"card\" id=\"latest_status_section\">
+            <h2>Latest Host Status</h2>
+            <div class=\"subtext\">조치가 필요한 offline / unknown 호스트를 우선 확인합니다.</div>
+            <div class=\"table-wrap\" id=\"latest_status\"></div>
+          </section>
 
-        <section class=\"card\" id=\"risk_summary_section\">
-          <h2>Risk Summary</h2>
-          <div class=\"subtext\">alert, 취약점, 상태를 기준으로 우선 대응 대상을 확인합니다.</div>
-          <div class=\"table-wrap\" id=\"risk_summary\"></div>
-        </section>
+          <section class=\"card\" id=\"risk_summary_section\">
+            <h2>Risk Summary</h2>
+            <div class=\"subtext\">alert, 취약점, 상태를 기준으로 우선 대응 대상을 확인합니다.</div>
+            <div class=\"table-wrap\" id=\"risk_summary\"></div>
+          </section>
 
-        <section class=\"card\" id=\"recent_activity_section\">
-          <h2>Recent Activity</h2>
-          <div class=\"subtext\">운영자가 허용한 범위에서 최근 이벤트와 관측값을 보여줍니다.</div>
-          <div class=\"list\" id=\"recent_activity\"></div>
-        </section>
+          <section class=\"card\" id=\"recent_activity_section\">
+            <h2>Recent Activity</h2>
+            <div class=\"subtext\">운영자가 허용한 범위에서 최근 이벤트와 관측값을 보여줍니다.</div>
+            <div class=\"list\" id=\"recent_activity\"></div>
+          </section>
 
-        <section class=\"card\" id=\"nlq_section\">
-          <h2>자연어 질의 (NLQ)</h2>
-          <div class=\"subtext\">자연스럽게 질문하거나 아래 예시 형식으로 입력하면 더 정확하게 해석합니다. <a href=\"#\" id=\"nlq_guide_link\" style=\"color:#7dd3fc;\">질의 가이드 보기 ↗</a></div>
-          <textarea id=\"nlq_textarea\" rows=\"3\" style=\"width:100%;box-sizing:border-box;background:#0b1220;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:10px;font-size:14px;resize:vertical;\" placeholder=\"예: 오프라인 호스트 보여줘 / 최근 24시간 wazuh high alert 요약\"></textarea>
-          <div id=\"nlq_interpret_result\" style=\"margin:8px 0;color:#7dd3fc;font-size:13px;\"></div>
-          <div style=\"display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;\">
-            <button type=\"button\" id=\"nlq_interpret_btn\" style=\"padding:8px 16px;background:#0f172a;color:#cfe3ff;border:1px solid #334155;border-radius:999px;cursor:pointer;\">Interpret</button>
-            <button type=\"button\" id=\"nlq_run_btn\" style=\"padding:8px 16px;background:#1d4ed8;color:#fff;border:none;border-radius:999px;cursor:pointer;\">Run Query</button>
-            <button type=\"button\" id=\"nlq_csv_btn\" style=\"display:none;padding:8px 16px;background:#0f172a;color:#cfe3ff;border:1px solid #334155;border-radius:999px;cursor:pointer;\">Download CSV</button>
-          </div>
-          <div id=\"nlq_result_area\" style=\"margin-top:12px;\"></div>
-        </section>
+          <section class=\"card\" id=\"nlq_section\">
+            <h2>자연어 질의 (NLQ)</h2>
+            <div class=\"subtext\">자연스럽게 질문하거나 아래 예시 형식으로 입력하면 더 정확하게 해석합니다. <a href=\"#\" id=\"nlq_guide_link\" style=\"color:#7dd3fc;\">질의 가이드 보기 ↗</a></div>
+            <textarea id=\"nlq_textarea\" rows=\"3\" style=\"width:100%;box-sizing:border-box;background:#0b1220;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:10px;font-size:14px;resize:vertical;\" placeholder=\"예: 오프라인 호스트 보여줘 / 최근 24시간 wazuh high alert 요약\"></textarea>
+            <div id=\"nlq_interpret_result\" style=\"margin:8px 0;color:#7dd3fc;font-size:13px;\"></div>
+            <div style=\"display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;\">
+              <button type=\"button\" id=\"nlq_interpret_btn\" class=\"secondary\">Interpret</button>
+              <button type=\"button\" id=\"nlq_run_btn\">Run Query</button>
+              <button type=\"button\" id=\"nlq_csv_btn\" class=\"secondary\" style=\"display:none;\">Download CSV</button>
+            </div>
+            <div id=\"nlq_result_area\" style=\"margin-top:12px;\"></div>
+          </section>
+        </div>
       </div>
+      <div class=\"status-line\" id=\"dashboard_status\">dashboard loading...</div>
     </div>
 
-    <div class=\"status-line\" id=\"dashboard_status\">dashboard loading...</div>
+    <!-- ── Tab: Alert Triage ───────────────────────────────────────────── -->
+    <div class=\"tab-panel\" id=\"tab_triage\">
+      <section class=\"card\">
+        <h2>🚨 Alert Triage</h2>
+        <div class=\"subtext\">최근 24h 경보 목록입니다. 상태를 클릭해 Triage 처리하세요.</div>
+        <div class=\"table-wrap\" id=\"triage_table\"><span class=\"empty\">로딩 중…</span></div>
+        <div style=\"margin-top:10px\"><button id=\"reload_triage\" class=\"secondary\">새로고침</button></div>
+      </section>
+    </div>
+
+    <!-- ── Tab: Incidents ─────────────────────────────────────────────── -->
+    <div class=\"tab-panel\" id=\"tab_incidents\">
+      <section class=\"card\">
+        <h2>📋 인시던트 관리</h2>
+        <div class=\"subtext\">여러 경보를 하나의 인시던트로 묶고 조사 노트를 남깁니다.</div>
+        <div id=\"incidents_list\" class=\"list\" style=\"margin-bottom:14px\"><span class=\"empty\">로딩 중…</span></div>
+        <div class=\"row\">
+          <label for=\"inc_title\">새 인시던트 제목</label>
+          <input id=\"inc_title\" placeholder=\"예: 특정 서버 무단 접근 시도\" />
+        </div>
+        <div class=\"actions\">
+          <button id=\"create_incident\">인시던트 생성</button>
+          <button id=\"reload_incidents\" class=\"secondary\">새로고침</button>
+        </div>
+        <div class=\"status-line\" id=\"incident_status\"></div>
+      </section>
+    </div>
   </div>
 
   <dialog id=\"overview_modal\">
@@ -656,11 +710,66 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"guide-dialog\">
       <div class=\"guide-dialog-head\">
         <h3>질의 가이드</h3>
-        <form method=\"dialog\"><button type=\"submit\" style=\"padding:6px 16px;background:#0f172a;color:#cfe3ff;border:1px solid #334155;border-radius:999px;cursor:pointer;\">닫기</button></form>
+        <form method=\"dialog\"><button type=\"submit\" class=\"secondary\">닫기</button></form>
       </div>
       <div class=\"guide-dialog-copy\">아래 예시를 클릭하면 입력창에 바로 채워집니다.</div>
     </div>
     <div class=\"dialog-body\" id=\"nlq_guide_list\" style=\"display:flex;flex-wrap:wrap;gap:8px;padding:16px;\"></div>
+  </dialog>
+
+  <dialog id=\"triage_modal\">
+    <div class=\"guide-dialog\">
+      <div class=\"guide-dialog-head\">
+        <h3>Alert Triage</h3>
+        <form method=\"dialog\"><button class=\"secondary\">닫기</button></form>
+      </div>
+      <div class=\"guide-dialog-copy\">
+        <div id=\"triage_modal_alert_info\" style=\"margin-bottom:12px\"></div>
+        <div class=\"row\"><label>상태</label>
+          <select id=\"triage_modal_status\">
+            <option value=\"new\">new</option>
+            <option value=\"acknowledged\">acknowledged</option>
+            <option value=\"investigating\">investigating</option>
+            <option value=\"closed\">closed</option>
+            <option value=\"false_positive\">false_positive</option>
+          </select>
+        </div>
+        <div class=\"row\"><label>담당자</label><input id=\"triage_modal_analyst\" placeholder=\"예: alice\" /></div>
+        <div class=\"row\"><label>메모</label><textarea id=\"triage_modal_note\" style=\"min-height:80px\"></textarea></div>
+        <div class=\"actions\">
+          <button id=\"triage_modal_save\">저장</button>
+          <form method=\"dialog\"><button class=\"secondary\">취소</button></form>
+        </div>
+        <div class=\"status-line\" id=\"triage_modal_status_line\"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id=\"incident_modal\">
+    <div class=\"guide-dialog\">
+      <div class=\"guide-dialog-head\">
+        <h3 id=\"incident_modal_title\">인시던트 상세</h3>
+        <form method=\"dialog\"><button class=\"secondary\">닫기</button></form>
+      </div>
+      <div class=\"guide-dialog-copy\">
+        <div id=\"incident_modal_info\" style=\"margin-bottom:12px;font-size:13px;color:#94a3b8\"></div>
+        <div class=\"row\"><label>상태 변경</label>
+          <select id=\"incident_modal_status\">
+            <option value=\"open\">open</option>
+            <option value=\"investigating\">investigating</option>
+            <option value=\"resolved\">resolved</option>
+            <option value=\"closed\">closed</option>
+          </select>
+        </div>
+        <button id=\"incident_modal_update_status\" style=\"margin-bottom:12px\">상태 저장</button>
+        <hr style=\"border-color:#334155;margin:12px 0\" />
+        <div id=\"incident_modal_notes\" style=\"margin-bottom:12px\"></div>
+        <div class=\"row\"><label>조사 노트 추가</label><textarea id=\"incident_modal_note_text\" style=\"min-height:72px\"></textarea></div>
+        <div class=\"row\"><label>작성자</label><input id=\"incident_modal_analyst\" placeholder=\"예: alice\" /></div>
+        <button id=\"incident_modal_add_note\">노트 추가</button>
+        <div class=\"status-line\" id=\"incident_modal_status_line\"></div>
+      </div>
+    </div>
   </dialog>
 
   <script>
@@ -680,8 +789,49 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const overviewModalBodyEl = document.getElementById('overview_modal_body');
     const nlqGuideModalEl = document.getElementById('nlq_guide_modal');
     const nlqGuideListEl = document.getElementById('nlq_guide_list');
+    // Triage
+    const triageTableEl = document.getElementById('triage_table');
+    const triageModalEl = document.getElementById('triage_modal');
+    const triageModalAlertInfoEl = document.getElementById('triage_modal_alert_info');
+    const triageModalStatusEl = document.getElementById('triage_modal_status');
+    const triageModalAnalystEl = document.getElementById('triage_modal_analyst');
+    const triageModalNoteEl = document.getElementById('triage_modal_note');
+    const triageModalSaveEl = document.getElementById('triage_modal_save');
+    const triageModalStatusLineEl = document.getElementById('triage_modal_status_line');
+    // Incidents
+    const incidentsListEl = document.getElementById('incidents_list');
+    const incTitleEl = document.getElementById('inc_title');
+    const incidentStatusEl = document.getElementById('incident_status');
+    const incidentModalEl = document.getElementById('incident_modal');
+    const incidentModalTitleEl = document.getElementById('incident_modal_title');
+    const incidentModalInfoEl = document.getElementById('incident_modal_info');
+    const incidentModalStatusEl = document.getElementById('incident_modal_status');
+    const incidentModalNotesEl = document.getElementById('incident_modal_notes');
+    const incidentModalNoteTextEl = document.getElementById('incident_modal_note_text');
+    const incidentModalAnalystEl = document.getElementById('incident_modal_analyst');
+    const incidentModalStatusLineEl = document.getElementById('incident_modal_status_line');
+
     let userPreferences = JSON.parse(JSON.stringify(defaultPreferences));
     let dashboardDetails = {};
+    let currentTriageAlertId = null;
+    let currentIncidentId = null;
+    const TRIAGE_STATUS_COLORS = {
+      new: '#f59e0b', acknowledged: '#38bdf8', investigating: '#a78bfa',
+      closed: '#6ee7b7', false_positive: '#94a3b8'
+    };
+    const INC_STATUS_COLORS = {open:'#f59e0b', investigating:'#a78bfa', resolved:'#6ee7b7', closed:'#94a3b8'};
+
+    // ── Tab Navigation ─────────────────────────────────────────────────────
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tabs-nav button').forEach(b => b.classList.remove('active'));
+      const panel = document.getElementById(`tab_${tabName}`);
+      if (panel) panel.classList.add('active');
+      const btn = document.querySelector(`.tabs-nav button[data-tab="${tabName}"]`);
+      if (btn) btn.classList.add('active');
+      if (tabName === 'triage') loadTriage();
+      if (tabName === 'incidents') loadIncidents();
+    }
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -1076,6 +1226,160 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     document.getElementById('refresh_dashboard').addEventListener('click', loadDashboard);
 
+    // ── Triage ──────────────────────────────────────────────────────────────
+    async function loadTriage() {
+      triageTableEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      try {
+        const res = await fetch('/alerts');
+        if (!res.ok) { triageTableEl.innerHTML = '<span class=\"empty\">경보 로드 실패</span>'; return; }
+        const data = await res.json();
+        const alerts = data.alerts || [];
+        if (!alerts.length) { triageTableEl.innerHTML = '<span class=\"empty\">최근 24h 경보 없음</span>'; return; }
+        const rows = alerts.map(a => {
+          const color = TRIAGE_STATUS_COLORS[a.triage_status] || '#6b7280';
+          return `<tr>
+            <td>${escapeHtml(formatTime(a.observed_at))}</td>
+            <td><span style=\"background:#1e293b;color:#93c5fd;padding:2px 8px;border-radius:4px;font-size:12px\">${escapeHtml(a.source)}</span></td>
+            <td><strong>${escapeHtml(a.hostname || a.host_id || '-')}</strong></td>
+            <td><span style=\"background:#111827;padding:2px 6px;border-radius:4px;font-size:12px\">${escapeHtml(a.severity)}</span></td>
+            <td style=\"max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">${escapeHtml(a.message)}</td>
+            <td><button onclick=\"openTriageModal('${escapeHtml(a.alert_id)}','${escapeHtml(a.triage_status||'new')}','${escapeHtml(a.triage_analyst||'')}','${escapeHtml(a.triage_note||'')}','${escapeHtml(a.message||'').replace(/'/g,\"&#39;\")}')\" style=\"background:${color};color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px\">${escapeHtml(a.triage_status || 'new')}</button></td>
+          </tr>`;
+        }).join('');
+        triageTableEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse\">
+          <thead><tr style=\"background:#0f2035\">
+            <th style=\"padding:8px;color:#93c5fd;text-align:left\">시각</th>
+            <th style=\"padding:8px;color:#93c5fd;text-align:left\">소스</th>
+            <th style=\"padding:8px;color:#93c5fd;text-align:left\">호스트</th>
+            <th style=\"padding:8px;color:#93c5fd;text-align:left\">심각도</th>
+            <th style=\"padding:8px;color:#93c5fd;text-align:left\">메시지</th>
+            <th style=\"padding:8px;color:#93c5fd;text-align:left\">Triage</th>
+          </tr></thead><tbody>${rows}</tbody></table>`;
+      } catch (err) { triageTableEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(err.message)}</span>`; }
+    }
+
+    function openTriageModal(alertId, status, analyst, note, message) {
+      currentTriageAlertId = alertId;
+      triageModalAlertInfoEl.innerHTML = `<strong>Alert ID:</strong> ${escapeHtml(alertId)}<br><span style=\"color:#94a3b8\">${escapeHtml(message)}</span>`;
+      triageModalStatusEl.value = status || 'new';
+      triageModalAnalystEl.value = analyst || '';
+      triageModalNoteEl.value = note || '';
+      triageModalStatusLineEl.textContent = '';
+      if (typeof triageModalEl.showModal === 'function') triageModalEl.showModal();
+      else triageModalEl.setAttribute('open', 'open');
+    }
+
+    document.getElementById('triage_modal_save').addEventListener('click', async () => {
+      if (!currentTriageAlertId) return;
+      const body = { status: triageModalStatusEl.value, analyst: triageModalAnalystEl.value, note: triageModalNoteEl.value };
+      triageModalStatusLineEl.textContent = '저장 중...';
+      try {
+        const res = await fetch(`/alerts/${encodeURIComponent(currentTriageAlertId)}/triage`, {
+          method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
+        });
+        if (!res.ok) { const d = await res.json(); triageModalStatusLineEl.textContent = `오류: ${d.detail || res.status}`; return; }
+        triageModalStatusLineEl.textContent = '저장 완료';
+        setTimeout(() => { if (triageModalEl.open) triageModalEl.close(); loadTriage(); }, 800);
+      } catch (err) { triageModalStatusLineEl.textContent = `오류: ${err.message}`; }
+    });
+
+    document.getElementById('reload_triage').addEventListener('click', loadTriage);
+
+    // ── Incidents ────────────────────────────────────────────────────────────
+    async function loadIncidents() {
+      incidentsListEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      try {
+        const res = await fetch('/incidents');
+        if (!res.ok) { incidentsListEl.innerHTML = '<span class=\"empty\">인시던트 로드 실패</span>'; return; }
+        const data = await res.json();
+        const list = data.incidents || [];
+        if (!list.length) { incidentsListEl.innerHTML = '<span class=\"empty\">인시던트 없음</span>'; return; }
+        const STATUS_COLOR = { open: '#ef4444', investigating: '#f59e0b', resolved: '#22c55e', closed: '#6b7280' };
+        incidentsListEl.innerHTML = list.map(inc => {
+          const color = STATUS_COLOR[inc.status] || '#6b7280';
+          return `<div style=\"background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center\">
+            <div>
+              <strong>${escapeHtml(inc.title)}</strong>
+              <div style=\"color:#94a3b8;font-size:12px;margin-top:4px\">${escapeHtml(formatTime(inc.created_at))} · 노트 ${(inc.notes||[]).length}개</div>
+            </div>
+            <div style=\"display:flex;gap:8px;align-items:center\">
+              <span style=\"background:${color};color:#fff;padding:3px 10px;border-radius:6px;font-size:12px\">${escapeHtml(inc.status)}</span>
+              <button onclick=\"openIncidentModal('${escapeHtml(inc.incident_id)}')\" style=\"background:#1e293b;color:#93c5fd;border:1px solid #334155;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px\">상세</button>
+            </div>
+          </div>`;
+        }).join('');
+      } catch (err) { incidentsListEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(err.message)}</span>`; }
+    }
+
+    async function openIncidentModal(incidentId) {
+      currentIncidentId = incidentId;
+      document.getElementById('incident_modal_title').textContent = '인시던트 상세';
+      document.getElementById('incident_modal_status_line').textContent = '';
+      document.getElementById('incident_modal_note_text').value = '';
+      document.getElementById('incident_modal_analyst').value = '';
+      try {
+        const res = await fetch('/incidents');
+        if (!res.ok) return;
+        const data = await res.json();
+        const inc = (data.incidents || []).find(i => i.incident_id === incidentId);
+        if (!inc) return;
+        document.getElementById('incident_modal_title').textContent = inc.title;
+        document.getElementById('incident_modal_info').innerHTML = `ID: ${escapeHtml(inc.incident_id)}<br>생성: ${escapeHtml(formatTime(inc.created_at))}`;
+        document.getElementById('incident_modal_status').value = inc.status;
+        const notes = inc.notes || [];
+        document.getElementById('incident_modal_notes').innerHTML = notes.length
+          ? notes.map(n => `<div style=\"background:#0f172a;border-left:3px solid #334155;padding:8px 12px;margin-bottom:6px;border-radius:4px\"><div style=\"color:#94a3b8;font-size:12px\">${escapeHtml(formatTime(n.created_at))} · ${escapeHtml(n.analyst||'-')}</div><div>${escapeHtml(n.text)}</div></div>`).join('')
+          : '<div style=\"color:#64748b;font-size:13px\">조사 노트 없음</div>';
+      } catch (_) {}
+      if (typeof incidentModalEl.showModal === 'function') incidentModalEl.showModal();
+      else incidentModalEl.setAttribute('open', 'open');
+    }
+
+    document.getElementById('incident_modal_update_status').addEventListener('click', async () => {
+      if (!currentIncidentId) return;
+      const status = document.getElementById('incident_modal_status').value;
+      const sl = document.getElementById('incident_modal_status_line');
+      sl.textContent = '저장 중...';
+      try {
+        const res = await fetch(`/incidents/${encodeURIComponent(currentIncidentId)}`, {
+          method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ status }),
+        });
+        sl.textContent = res.ok ? '상태 저장 완료' : `오류: ${res.status}`;
+        if (res.ok) loadIncidents();
+      } catch (err) { sl.textContent = `오류: ${err.message}`; }
+    });
+
+    document.getElementById('incident_modal_add_note').addEventListener('click', async () => {
+      if (!currentIncidentId) return;
+      const text = document.getElementById('incident_modal_note_text').value.trim();
+      const analyst = document.getElementById('incident_modal_analyst').value.trim();
+      const sl = document.getElementById('incident_modal_status_line');
+      if (!text) { sl.textContent = '노트 내용을 입력하세요.'; return; }
+      sl.textContent = '추가 중...';
+      try {
+        const res = await fetch(`/incidents/${encodeURIComponent(currentIncidentId)}/notes`, {
+          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ text, analyst }),
+        });
+        if (res.ok) { sl.textContent = '노트 추가 완료'; openIncidentModal(currentIncidentId); loadIncidents(); }
+        else sl.textContent = `오류: ${res.status}`;
+      } catch (err) { sl.textContent = `오류: ${err.message}`; }
+    });
+
+    document.getElementById('create_incident').addEventListener('click', async () => {
+      const title = incTitleEl.value.trim();
+      if (!title) { incidentStatusEl.textContent = '제목을 입력하세요.'; return; }
+      incidentStatusEl.textContent = '생성 중...';
+      try {
+        const res = await fetch('/incidents', {
+          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title }),
+        });
+        if (res.ok) { incidentStatusEl.textContent = '인시던트 생성 완료'; incTitleEl.value = ''; loadIncidents(); }
+        else { const d = await res.json(); incidentStatusEl.textContent = `오류: ${d.detail || res.status}`; }
+      } catch (err) { incidentStatusEl.textContent = `오류: ${err.message}`; }
+    });
+
+    document.getElementById('reload_incidents').addEventListener('click', loadIncidents);
+
     async function initialize() {
       await loadPreferences();
       await loadDashboard();
@@ -1249,27 +1553,6 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"list\" id=\"recent_activity\"></div>
         </section>
 
-        <section class=\"card\">
-          <h2>🚨 Alert Triage</h2>
-          <div class=\"subtext\">최근 24h 경보 목록입니다. 상태를 클릭해 Triage 처리하세요.</div>
-          <div class=\"table-wrap\" id=\"triage_table\"><span class=\"empty\">로딩 중…</span></div>
-          <div style=\"margin-top:8px\"><button id=\"reload_triage\" class=\"secondary\">새로고침</button></div>
-        </section>
-
-        <section class=\"card\">
-          <h2>📋 인시던트 관리</h2>
-          <div class=\"subtext\">여러 경보를 하나의 인시던트로 묶고 조사 노트를 남깁니다.</div>
-          <div id=\"incidents_list\" class=\"list\" style=\"margin-bottom:12px\"><span class=\"empty\">로딩 중…</span></div>
-          <div class=\"row\">
-            <label for=\"inc_title\">인시던트 제목</label>
-            <input id=\"inc_title\" placeholder=\"예: 특정 서버 무단 접근 시도\" />
-          </div>
-          <div class=\"actions\">
-            <button id=\"create_incident\">인시던트 생성</button>
-            <button id=\"reload_incidents\" class=\"secondary\">새로고침</button>
-          </div>
-          <div class=\"status-line\" id=\"incident_status\"></div>
-        </section>
       </div>
 
       <aside class=\"stack\">
@@ -1410,60 +1693,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"dialog-body\" id=\"overview_modal_body\"></div>
   </dialog>
 
-  <dialog id=\"triage_modal\">
-    <div class=\"guide-dialog\">
-      <div class=\"guide-dialog-head\">
-        <h3>Alert Triage</h3>
-        <form method=\"dialog\"><button class=\"secondary\">닫기</button></form>
-      </div>
-      <div class=\"guide-dialog-copy\">
-        <div id=\"triage_modal_alert_info\" style=\"margin-bottom:12px\"></div>
-        <div class=\"row\"><label>상태</label>
-          <select id=\"triage_modal_status\">
-            <option value=\"new\">new</option>
-            <option value=\"acknowledged\">acknowledged</option>
-            <option value=\"investigating\">investigating</option>
-            <option value=\"closed\">closed</option>
-            <option value=\"false_positive\">false_positive</option>
-          </select>
-        </div>
-        <div class=\"row\"><label>담당자</label><input id=\"triage_modal_analyst\" placeholder=\"예: alice\" /></div>
-        <div class=\"row\"><label>메모</label><textarea id=\"triage_modal_note\" style=\"min-height:80px\"></textarea></div>
-        <div class=\"actions\">
-          <button id=\"triage_modal_save\">저장</button>
-          <form method=\"dialog\"><button class=\"secondary\">취소</button></form>
-        </div>
-        <div class=\"status-line\" id=\"triage_modal_status_line\"></div>
-      </div>
-    </div>
-  </dialog>
 
-  <dialog id=\"incident_modal\">
-    <div class=\"guide-dialog\">
-      <div class=\"guide-dialog-head\">
-        <h3 id=\"incident_modal_title\">인시던트 상세</h3>
-        <form method=\"dialog\"><button class=\"secondary\">닫기</button></form>
-      </div>
-      <div class=\"guide-dialog-copy\">
-        <div id=\"incident_modal_info\" style=\"margin-bottom:12px;font-size:13px;color:#94a3b8\"></div>
-        <div class=\"row\"><label>상태 변경</label>
-          <select id=\"incident_modal_status\">
-            <option value=\"open\">open</option>
-            <option value=\"investigating\">investigating</option>
-            <option value=\"resolved\">resolved</option>
-            <option value=\"closed\">closed</option>
-          </select>
-        </div>
-        <button id=\"incident_modal_update_status\" style=\"margin-bottom:12px\">상태 저장</button>
-        <hr style=\"border-color:#334155;margin:12px 0\" />
-        <div id=\"incident_modal_notes\" style=\"margin-bottom:12px\"></div>
-        <div class=\"row\"><label>조사 노트 추가</label><textarea id=\"incident_modal_note_text\" style=\"min-height:72px\"></textarea></div>
-        <div class=\"row\"><label>작성자</label><input id=\"incident_modal_analyst\" placeholder=\"예: alice\" /></div>
-        <button id=\"incident_modal_add_note\">노트 추가</button>
-        <div class=\"status-line\" id=\"incident_modal_status_line\"></div>
-      </div>
-    </div>
-  </dialog>
 
   <script>
     const defaultPayload = __DEFAULT_PAYLOAD_JSON__;
@@ -1500,41 +1730,13 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const userDashboardSectionsEl = document.getElementById('user_dashboard_sections');
     const dashboardPreferencesStatusEl = document.getElementById('dashboard_preferences_status');
 
-    // Triage
-    const triageTableEl = document.getElementById('triage_table');
-    const triageModalEl = document.getElementById('triage_modal');
-    const triageModalAlertInfoEl = document.getElementById('triage_modal_alert_info');
-    const triageModalStatusEl = document.getElementById('triage_modal_status');
-    const triageModalAnalystEl = document.getElementById('triage_modal_analyst');
-    const triageModalNoteEl = document.getElementById('triage_modal_note');
-    const triageModalSaveEl = document.getElementById('triage_modal_save');
-    const triageModalStatusLineEl = document.getElementById('triage_modal_status_line');
-
     // Webhooks
     const webhooksListEl = document.getElementById('webhooks_list');
     const whNameEl = document.getElementById('wh_name');
     const whUrlEl = document.getElementById('wh_url');
     const webhookStatusEl = document.getElementById('webhook_status');
 
-    // Incidents
-    const incidentsListEl = document.getElementById('incidents_list');
-    const incTitleEl = document.getElementById('inc_title');
-    const incidentStatusEl = document.getElementById('incident_status');
-    const incidentModalEl = document.getElementById('incident_modal');
-    const incidentModalTitleEl = document.getElementById('incident_modal_title');
-    const incidentModalInfoEl = document.getElementById('incident_modal_info');
-    const incidentModalStatusEl = document.getElementById('incident_modal_status');
-    const incidentModalNotesEl = document.getElementById('incident_modal_notes');
-    const incidentModalNoteTextEl = document.getElementById('incident_modal_note_text');
-    const incidentModalAnalystEl = document.getElementById('incident_modal_analyst');
-    const incidentModalStatusLineEl = document.getElementById('incident_modal_status_line');
 
-    let currentTriageAlertId = null;
-    let currentIncidentId = null;
-    const TRIAGE_STATUS_COLORS = {
-      new: '#f59e0b', acknowledged: '#38bdf8', investigating: '#a78bfa',
-      closed: '#6ee7b7', false_positive: '#94a3b8'
-    };
     const defaultUserDashboardPreferences = __USER_DASHBOARD_PREFS_JSON__;
     const userDashboardCardLabels = __CARD_LABELS_JSON__;
     const userDashboardSectionLabels = __SECTION_LABELS_JSON__;
@@ -2282,55 +2484,6 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     filtersEl.value = JSON.stringify(defaultPayload.filters, null, 2);
     renderGuideButtons(guideExamplesEl, guideExamples);
 
-    // ── Triage ─────────────────────────────────────────────────────────────
-    const TRIAGE_LABELS = {new:'🆕 new', acknowledged:'👀 acknowledged', investigating:'🔍 investigating', closed:'✅ closed', false_positive:'🚫 false_positive'};
-    async function loadTriage() {
-      triageTableEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
-      try {
-        const res = await fetch('/alerts');
-        const data = await res.json();
-        const rows = data.alerts || [];
-        if (!rows.length) { triageTableEl.innerHTML = '<span class=\"empty\">경보 없음</span>'; return; }
-        const rowsHtml = rows.map(r => {
-          const tr = r.triage || {};
-          const st = tr.status || 'new';
-          const color = TRIAGE_STATUS_COLORS[st] || '#94a3b8';
-          return `<tr>
-            <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(formatTime(r.occurred_at || r.alert_id))}</td>
-            <td><span class=\"result-badge ${escapeHtml(r.source||'')}\">${escapeHtml(r.source||'-')}</span></td>
-            <td style=\"font-size:13px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\" title=\"${escapeHtml(r.message||'')}\">${escapeHtml(r.message||'-')}</td>
-            <td><span style=\"background:${color}22;color:${color};padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700\">${escapeHtml(TRIAGE_LABELS[st]||st)}</span></td>
-            <td><button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"openTriageModal('${escapeHtml(r.alert_id)}','${escapeHtml(r.message||'')}','${escapeHtml(st)}','${escapeHtml(tr.analyst||'')}','${escapeHtml(tr.note||'')}')\">Triage</button></td>
-          </tr>`;
-        }).join('');
-        triageTableEl.innerHTML = `<table><thead><tr><th>시각</th><th>소스</th><th>내용</th><th>상태</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
-      } catch(e) { triageTableEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(e.message)}</span>`; }
-    }
-    function openTriageModal(alertId, message, status, analyst, note) {
-      currentTriageAlertId = alertId;
-      triageModalAlertInfoEl.innerHTML = `<strong style=\"font-size:14px\">${escapeHtml(message)}</strong><br><span style=\"color:#94a3b8;font-size:12px\">${escapeHtml(alertId)}</span>`;
-      triageModalStatusEl.value = status || 'new';
-      triageModalAnalystEl.value = analyst || '';
-      triageModalNoteEl.value = note || '';
-      triageModalStatusLineEl.textContent = '';
-      triageModalEl.showModal();
-    }
-    triageModalSaveEl.addEventListener('click', async () => {
-      if (!currentTriageAlertId) return;
-      triageModalStatusLineEl.textContent = '저장 중…';
-      try {
-        const res = await fetch(`/alerts/${encodeURIComponent(currentTriageAlertId)}/triage`, {
-          method: 'PATCH',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({status: triageModalStatusEl.value, analyst: triageModalAnalystEl.value.trim(), note: triageModalNoteEl.value.trim()}),
-        });
-        if (!res.ok) throw new Error((await res.json()).detail || res.status);
-        triageModalStatusLineEl.textContent = '저장 완료 ✓';
-        setTimeout(() => { triageModalEl.close(); loadTriage(); }, 600);
-      } catch(e) { triageModalStatusLineEl.textContent = `오류: ${escapeHtml(e.message)}`; }
-    });
-    document.getElementById('reload_triage').addEventListener('click', loadTriage);
-
     // ── Webhooks ───────────────────────────────────────────────────────────
     async function loadWebhooks() {
       webhooksListEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
@@ -2382,90 +2535,11 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     });
     document.getElementById('reload_webhooks').addEventListener('click', loadWebhooks);
 
-    // ── Incidents ──────────────────────────────────────────────────────────
-    const INC_STATUS_COLORS = {open:'#f59e0b', investigating:'#a78bfa', resolved:'#6ee7b7', closed:'#94a3b8'};
-    async function loadIncidents() {
-      incidentsListEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
-      try {
-        const res = await fetch('/incidents');
-        const data = await res.json();
-        const items = data.incidents || [];
-        if (!items.length) { incidentsListEl.innerHTML = '<span class=\"empty\">인시던트 없음</span>'; return; }
-        items.sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
-        incidentsListEl.innerHTML = items.map(inc => {
-          const color = INC_STATUS_COLORS[inc.status] || '#94a3b8';
-          return `<div class=\"list-item\">
-            <div class=\"top\">
-              <strong>${escapeHtml(inc.title)}</strong>
-              <span style=\"background:${color}22;color:${color};padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700\">${escapeHtml(inc.status)}</span>
-            </div>
-            <div class=\"meta\">${escapeHtml(formatTime(inc.created_at))} · 노트 ${(inc.notes||[]).length}개</div>
-            <button class=\"ghost\" style=\"margin-top:8px;width:auto;padding:4px 12px;font-size:12px\" onclick=\"openIncidentModal('${escapeHtml(inc.incident_id)}','${escapeHtml(inc.title)}','${escapeHtml(inc.status)}',${escapeHtml(JSON.stringify(inc.notes||[]))})\">상세 / 노트</button>
-          </div>`;
-        }).join('');
-      } catch(e) { incidentsListEl.innerHTML = `<span class=\"empty\">오류: ${e.message}</span>`; }
-    }
-    function openIncidentModal(id, title, status, notes) {
-      currentIncidentId = id;
-      incidentModalTitleEl.textContent = title;
-      incidentModalInfoEl.textContent = `ID: ${id}`;
-      incidentModalStatusEl.value = status;
-      incidentModalStatusLineEl.textContent = '';
-      incidentModalNoteTextEl.value = '';
-      const notesArr = typeof notes === 'string' ? JSON.parse(notes) : notes;
-      if (!notesArr.length) { incidentModalNotesEl.innerHTML = '<span class=\"empty\">노트 없음</span>'; }
-      else { incidentModalNotesEl.innerHTML = notesArr.map(n => `<div class=\"list-item\"><div class=\"top\"><strong>${escapeHtml(n.analyst||'unknown')}</strong><span class=\"meta\">${escapeHtml(formatTime(n.created_at))}</span></div><div style=\"font-size:13px\">${escapeHtml(n.text)}</div></div>`).join(''); }
-      incidentModalEl.showModal();
-    }
-    document.getElementById('incident_modal_update_status').addEventListener('click', async () => {
-      if (!currentIncidentId) return;
-      incidentModalStatusLineEl.textContent = '저장 중…';
-      try {
-        const res = await fetch(`/incidents/${currentIncidentId}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status: incidentModalStatusEl.value})});
-        if (!res.ok) throw new Error((await res.json()).detail || res.status);
-        incidentModalStatusLineEl.textContent = '상태 저장 완료 ✓';
-        await loadIncidents();
-      } catch(e) { incidentModalStatusLineEl.textContent = `오류: ${e.message}`; }
-    });
-    document.getElementById('incident_modal_add_note').addEventListener('click', async () => {
-      if (!currentIncidentId) return;
-      const text = incidentModalNoteTextEl.value.trim();
-      if (!text) { incidentModalStatusLineEl.textContent = '노트 내용을 입력하세요.'; return; }
-      incidentModalStatusLineEl.textContent = '저장 중…';
-      try {
-        const res = await fetch(`/incidents/${currentIncidentId}/notes`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, analyst: incidentModalAnalystEl.value.trim() || 'unknown'})});
-        if (!res.ok) throw new Error((await res.json()).detail || res.status);
-        incidentModalNoteTextEl.value = '';
-        incidentModalStatusLineEl.textContent = '노트 추가 완료 ✓';
-        await loadIncidents();
-        // 노트 목록 새로고침을 위해 모달 재오픈
-        const reloadRes = await fetch('/incidents');
-        const reloadData = await reloadRes.json();
-        const updatedInc = (reloadData.incidents||[]).find(i => i.incident_id === currentIncidentId);
-        if (updatedInc) openIncidentModal(updatedInc.incident_id, updatedInc.title, updatedInc.status, updatedInc.notes);
-      } catch(e) { incidentModalStatusLineEl.textContent = `오류: ${e.message}`; }
-    });
-    document.getElementById('create_incident').addEventListener('click', async () => {
-      const title = incTitleEl.value.trim();
-      if (!title) { incidentStatusEl.textContent = '제목을 입력하세요.'; return; }
-      incidentStatusEl.textContent = '생성 중…';
-      try {
-        const res = await fetch('/incidents', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({title})});
-        if (!res.ok) throw new Error((await res.json()).detail || res.status);
-        incTitleEl.value = '';
-        incidentStatusEl.textContent = '인시던트 생성 완료 ✓';
-        await loadIncidents();
-      } catch(e) { incidentStatusEl.textContent = `오류: ${e.message}`; }
-    });
-    document.getElementById('reload_incidents').addEventListener('click', loadIncidents);
-
     async function initialize() {
       await loadDashboardPreferences();
       await loadCatalog();
       await loadDashboard();
-      await loadTriage();
       await loadWebhooks();
-      await loadIncidents();
     }
 
     initialize();

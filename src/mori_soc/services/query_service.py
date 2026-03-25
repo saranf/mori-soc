@@ -100,8 +100,33 @@ class QueryService:
             meta={"query_id": query_id, "count": len(alerts)},
         )
 
+    def _dedup_hosts(self, hosts: list) -> list:
+        """hostname 기준으로 중복 호스트를 제거한다.
+
+        같은 hostname이 구형/신형 host_id 두 개로 저장된 경우,
+        last_seen_at이 더 최신인 행을 우선 남긴다. 동점이면 server-/pc-/neutral- prefix가
+        있는 신형 ID를 우선한다.
+        """
+        from datetime import datetime, timezone
+
+        _epoch = datetime.min.replace(tzinfo=timezone.utc)
+        best: dict[str, object] = {}
+        for h in hosts:
+            key = h.hostname.lower()
+            existing = best.get(key)
+            if existing is None:
+                best[key] = h
+            else:
+                row_ts = h.last_seen_at or _epoch
+                existing_ts = existing.last_seen_at or _epoch
+                has_prefix = any(h.host_id.startswith(p) for p in ("server-", "pc-", "neutral-"))
+                if row_ts > existing_ts or (row_ts == existing_ts and has_prefix):
+                    best[key] = h
+        return list(best.values())
+
     def _offline_hosts(self, request: QueryRequest, query_id: str) -> QueryResponse:
-        offline_hosts = [host for host in self.store.hosts if host.status == "offline"]
+        all_offline = [host for host in self.store.hosts if host.status == "offline"]
+        offline_hosts = self._dedup_hosts(all_offline)
         evidence = [
             EvidenceRef(source="hosts", record_id=host.host_id, summary=host.hostname) for host in offline_hosts[:10]
         ]
@@ -177,9 +202,10 @@ class QueryService:
                 latest = latest_checkins.get(observation.host_id)
                 if latest is None or observation.observed_at > latest:
                     latest_checkins[observation.host_id] = observation.observed_at
-        stale_hosts = [
+        raw_stale = [
             host for host in self.store.hosts if host.host_id not in latest_checkins or latest_checkins[host.host_id] < since
         ]
+        stale_hosts = self._dedup_hosts(raw_stale)
         evidence = [EvidenceRef(source="fleet", record_id=host.host_id, summary=host.hostname) for host in stale_hosts[:10]]
         return QueryResponse(
             summary=f"최근 {request.scope.time_range} 안에 Fleet 체크인이 없거나 오래된 호스트는 {len(stale_hosts)}대입니다.",
@@ -275,10 +301,11 @@ class QueryService:
             if alert.observed_at >= since and alert.severity in {"critical", "high"} and alert.host_id:
                 alert_counts[alert.host_id] += 1
         unstable_statuses = {"offline", "unknown"}
-        risky = [
+        raw_risky = [
             h for h in self.store.hosts
             if alert_counts[h.host_id] > 0 or h.status in unstable_statuses
         ]
+        risky = self._dedup_hosts(raw_risky)
         risky = sorted(risky, key=lambda h: (alert_counts[h.host_id], h.risk_score), reverse=True)
         evidence = [
             EvidenceRef(
@@ -301,10 +328,11 @@ class QueryService:
         for alias in self.store.host_aliases:
             sources_per_host[alias.host_id].add(alias.source)
         target_sources = {"fleet", "wazuh", "zabbix"}
-        unmapped = [
+        raw_unmapped = [
             h for h in self.store.hosts
             if not target_sources.issubset(sources_per_host[h.host_id])
         ]
+        unmapped = self._dedup_hosts(raw_unmapped)
         evidence = [
             EvidenceRef(
                 source="hosts",
