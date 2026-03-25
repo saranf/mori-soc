@@ -2039,7 +2039,7 @@ def render_user_dashboard_html(
     .result-badge.trivy { background: rgba(251,146,60,.15); color: #fdba74; }
     .result-badge.hosts { background: rgba(148,163,184,.15); color: #cbd5e1; }
     /* ── NLQ FAB ── */
-    .nlq-fab { position: fixed; bottom: 88px; right: 20px; z-index: 999; background: linear-gradient(135deg,#1d4ed8,#0ea5e9); color: #fff; border: none; border-radius: 999px; padding: 14px 20px; font-size: 14px; font-weight: 700; box-shadow: 0 6px 24px rgba(14,165,233,.45); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.15s, box-shadow 0.15s; }
+    .nlq-fab { position: fixed; bottom: 88px; right: 20px; z-index: 1001; background: linear-gradient(135deg,#1d4ed8,#0ea5e9); color: #fff; border: none; border-radius: 999px; padding: 14px 20px; font-size: 14px; font-weight: 700; box-shadow: 0 6px 24px rgba(14,165,233,.45); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.15s, box-shadow 0.15s; }
     .nlq-fab:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(14,165,233,.55); }
     @media (min-width: 769px) { .nlq-fab { bottom: 32px; } }
     .nlq-dialog { width: min(640px, calc(100vw - 24px)); }
@@ -2650,14 +2650,22 @@ def render_user_dashboard_html(
     }
 
     function renderOverview(overview) {
+      if (!overview || typeof overview !== 'object') overview = {};
+      const o = {
+        total_hosts: overview.total_hosts ?? 0, online_hosts: overview.online_hosts ?? 0,
+        offline_hosts: overview.offline_hosts ?? 0, unknown_hosts: overview.unknown_hosts ?? 0,
+        alerts_24h: overview.alerts_24h ?? 0, critical_vulns: overview.critical_vulns ?? 0,
+        high_vulns: overview.high_vulns ?? 0, sources_reporting: overview.sources_reporting ?? 0,
+        sources_healthy: overview.sources_healthy ?? 0, ingested_records: overview.ingested_records ?? 0,
+      };
       const cards = [
-        ['total_hosts', overview.total_hosts, `${overview.online_hosts} online / ${overview.unknown_hosts} unknown`],
-        ['offline_hosts', overview.offline_hosts, '즉시 확인 대상'],
-        ['alerts_24h', overview.alerts_24h, 'high + critical'],
-        ['critical_vulns', overview.critical_vulns, `high ${overview.high_vulns}`],
-        ['sources_reporting', overview.sources_reporting, 'fleet / wazuh / zabbix / trivy / host_log'],
-        ['sources_healthy', overview.sources_healthy, '최근 sync success 기준'],
-        ['ingested_records', overview.ingested_records, 'alerts + vulns + queries + observations'],
+        ['total_hosts', o.total_hosts, `${o.online_hosts} online / ${o.unknown_hosts} unknown`],
+        ['offline_hosts', o.offline_hosts, '즉시 확인 대상'],
+        ['alerts_24h', o.alerts_24h, 'high + critical'],
+        ['critical_vulns', o.critical_vulns, `high ${o.high_vulns}`],
+        ['sources_reporting', o.sources_reporting, 'fleet / wazuh / zabbix / trivy / host_log'],
+        ['sources_healthy', o.sources_healthy, '최근 sync success 기준'],
+        ['ingested_records', o.ingested_records, 'alerts + vulns + queries + observations'],
       ].filter(([key]) => (userPreferences.cards || {})[key] !== false);
       if (!cards.length) {
         overviewCardsEl.innerHTML = '<div class=\"empty\">운영자가 공개한 요약 카드가 없습니다.</div>';
@@ -3540,7 +3548,10 @@ def render_user_dashboard_html(
       await loadDashboard();
     }
 
-    initialize();
+    initialize().catch(err => {
+      console.error('[MORI] initialize error:', err);
+      if (dashboardStatusEl) dashboardStatusEl.textContent = `초기화 오류: ${err.message}`;
+    });
   </script>
 
   <!-- ── NLQ Floating Action Button ───────────────────────────────────── -->
@@ -4430,14 +4441,22 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     }
 
     function renderOverview(overview) {
+      if (!overview || typeof overview !== 'object') overview = {};
+      const o = {
+        total_hosts: overview.total_hosts ?? 0, online_hosts: overview.online_hosts ?? 0,
+        offline_hosts: overview.offline_hosts ?? 0, unknown_hosts: overview.unknown_hosts ?? 0,
+        alerts_24h: overview.alerts_24h ?? 0, critical_vulns: overview.critical_vulns ?? 0,
+        high_vulns: overview.high_vulns ?? 0, sources_reporting: overview.sources_reporting ?? 0,
+        sources_healthy: overview.sources_healthy ?? 0, ingested_records: overview.ingested_records ?? 0,
+      };
       const cards = [
-        ['total_hosts', 'Total Hosts', overview.total_hosts, `${overview.online_hosts} online / ${overview.unknown_hosts} unknown`],
-        ['offline_hosts', 'Offline Hosts', overview.offline_hosts, '즉시 확인 대상'],
-        ['alerts_24h', 'High Alerts 24h', overview.alerts_24h, 'high + critical'],
-        ['critical_vulns', 'Critical Vulns', overview.critical_vulns, `high ${overview.high_vulns}`],
-        ['sources_reporting', 'Sources Reporting', overview.sources_reporting, 'fleet / wazuh / zabbix / trivy / host_log'],
-        ['sources_healthy', 'Healthy Collectors', overview.sources_healthy, '최근 sync success 기준'],
-        ['ingested_records', 'Ingested Records', overview.ingested_records, 'alerts + vulns + queries + observations'],
+        ['total_hosts', 'Total Hosts', o.total_hosts, `${o.online_hosts} online / ${o.unknown_hosts} unknown`],
+        ['offline_hosts', 'Offline Hosts', o.offline_hosts, '즉시 확인 대상'],
+        ['alerts_24h', 'High Alerts 24h', o.alerts_24h, 'high + critical'],
+        ['critical_vulns', 'Critical Vulns', o.critical_vulns, `high ${o.high_vulns}`],
+        ['sources_reporting', 'Sources Reporting', o.sources_reporting, 'fleet / wazuh / zabbix / trivy / host_log'],
+        ['sources_healthy', 'Healthy Collectors', o.sources_healthy, '최근 sync success 기준'],
+        ['ingested_records', 'Ingested Records', o.ingested_records, 'alerts + vulns + queries + observations'],
       ];
       overviewCardsEl.innerHTML = cards.map(([key, label, value, sub]) => `
         <section class=\"card metric-card\" role=\"button\" tabindex=\"0\" data-overview-key=\"${escapeHtml(key)}\" data-overview-label=\"${escapeHtml(label)}\">
@@ -5282,7 +5301,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       await loadUserActivityLog();
     }
 
-    initialize();
+    initialize().catch(err => {
+      console.error('[MORI Admin] initialize error:', err);
+      if (dashboardStatusEl) dashboardStatusEl.textContent = `초기화 오류: ${err.message}`;
+    });
   </script>
 </body>
 </html>"""
