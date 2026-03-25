@@ -2501,6 +2501,24 @@ def render_user_dashboard_html(
     const TRIAGE_STATUS_LABELS = { pending:'🔴 미확인', reviewing:'🟡 검토중', resolved:'🟢 조치예정/완료' };
     const INC_STATUS_COLORS = {open:'#f59e0b', investigating:'#a78bfa', resolved:'#6ee7b7', closed:'#94a3b8'};
 
+    // ── 전역 함수 노출 (onclick 속성에서 직접 호출 — 함수 선언은 호이스팅됨) ──
+    window.switchTab         = switchTab;
+    window.switchAssetTab    = switchAssetTab;
+    window.downloadAssetsCSV = downloadAssetsCSV;
+    window.openTriageModal   = openTriageModal;
+    window.openIncidentModal = openIncidentModal;
+    window.openOwnerModal    = openOwnerModal;
+    window.openPlanModal     = openPlanModal;
+    window.closePlanModal    = closePlanModal;
+    window.closeOwnerModal   = closeOwnerModal;
+    window.loadTriage        = loadTriage;
+    window.loadIncidents     = loadIncidents;
+    window.loadAssets        = loadAssets;
+    window.loadDashboard     = loadDashboard;
+    window.buildGuideSubTabs = buildGuideSubTabs;
+    window.switchGuideTab    = switchGuideTab;
+    window.logUserAction     = logUserAction;
+
     // ── Tab Navigation ─────────────────────────────────────────────────────
     function logUserAction(action, detail) {
       fetch('/admin/action-audit-log', {
@@ -2908,7 +2926,7 @@ def render_user_dashboard_html(
       }
     }
 
-    document.getElementById('refresh_dashboard').addEventListener('click', loadDashboard);
+    document.getElementById('refresh_dashboard')?.addEventListener('click', loadDashboard);
 
     // ── Triage ──────────────────────────────────────────────────────────────
     async function loadTriage() {
@@ -2960,7 +2978,7 @@ def render_user_dashboard_html(
       else triageModalEl.setAttribute('open', 'open');
     }
 
-    document.getElementById('triage_modal_save').addEventListener('click', async () => {
+    document.getElementById('triage_modal_save')?.addEventListener('click', async () => {
       if (!currentTriageAlertId) return;
       const body = { status: triageModalStatusEl.value, analyst: triageModalAnalystEl.value, note: triageModalNoteEl.value };
       triageModalStatusLineEl.textContent = '저장 중...';
@@ -2990,7 +3008,7 @@ def render_user_dashboard_html(
       } catch (err) { triageModalStatusLineEl.textContent = `오류: ${err.message}`; }
     });
 
-    document.getElementById('reload_triage').addEventListener('click', loadTriage);
+    document.getElementById('reload_triage')?.addEventListener('click', loadTriage);
 
     // ── Incidents ────────────────────────────────────────────────────────────
     function buildIncidentParams() {
@@ -3072,7 +3090,7 @@ def render_user_dashboard_html(
       else incidentModalEl.setAttribute('open', 'open');
     }
 
-    document.getElementById('incident_modal_update_status').addEventListener('click', async () => {
+    document.getElementById('incident_modal_update_status')?.addEventListener('click', async () => {
       if (!currentIncidentId) return;
       const status = document.getElementById('incident_modal_status').value;
       const analyst = document.getElementById('incident_modal_status_analyst').value.trim();
@@ -3087,7 +3105,7 @@ def render_user_dashboard_html(
       } catch (err) { sl.textContent = `오류: ${err.message}`; }
     });
 
-    document.getElementById('incident_modal_add_note').addEventListener('click', async () => {
+    document.getElementById('incident_modal_add_note')?.addEventListener('click', async () => {
       if (!currentIncidentId) return;
       const text = document.getElementById('incident_modal_note_text').value.trim();
       const analyst = document.getElementById('incident_modal_analyst').value.trim();
@@ -3103,7 +3121,7 @@ def render_user_dashboard_html(
       } catch (err) { sl.textContent = `오류: ${err.message}`; }
     });
 
-    document.getElementById('create_incident').addEventListener('click', async () => {
+    document.getElementById('create_incident')?.addEventListener('click', async () => {
       const title = incTitleEl.value.trim();
       if (!title) { incidentStatusEl.textContent = '제목을 입력하세요.'; return; }
       incidentStatusEl.textContent = '생성 중...';
@@ -3116,16 +3134,16 @@ def render_user_dashboard_html(
       } catch (err) { incidentStatusEl.textContent = `오류: ${err.message}`; }
     });
 
-    document.getElementById('reload_incidents').addEventListener('click', loadIncidents);
+    document.getElementById('reload_incidents')?.addEventListener('click', loadIncidents);
 
     // 날짜 필터 조회 버튼
     if (document.getElementById('inc_filter_btn')) {
-      document.getElementById('inc_filter_btn').addEventListener('click', loadIncidents);
+      document.getElementById('inc_filter_btn')?.addEventListener('click', loadIncidents);
     }
 
     // CSV 다운로드
     if (document.getElementById('inc_csv_btn')) {
-      document.getElementById('inc_csv_btn').addEventListener('click', () => {
+      document.getElementById('inc_csv_btn')?.addEventListener('click', () => {
         const params = buildIncidentParams();
         params.set('format', 'csv');
         const url = '/incidents?' + params.toString();
@@ -3526,21 +3544,6 @@ def render_user_dashboard_html(
         if (nlqFabDialog && nlqFabDialog.open) nlqFabDialog.close();
       });
     });
-
-    // ── 전역 함수 노출 (onclick 속성에서 직접 호출되는 함수는 window 객체에 명시적 등록) ──
-    window.switchTab         = switchTab;
-    window.switchAssetTab    = switchAssetTab;
-    window.downloadAssetsCSV = downloadAssetsCSV;
-    window.openTriageModal   = openTriageModal;
-    window.openIncidentModal = openIncidentModal;
-    window.openOwnerModal    = openOwnerModal;
-    window.openPlanModal     = openPlanModal;
-    window.closePlanModal    = closePlanModal;
-    window.closeOwnerModal   = closeOwnerModal;
-    window.loadTriage        = loadTriage;
-    window.loadIncidents     = loadIncidents;
-    window.loadAssets        = loadAssets;
-    window.loadDashboard     = loadDashboard;
 
     async function initialize() {
       await loadPreferences();
@@ -4125,6 +4128,13 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     let dashboardDetails = {};
     let userDashboardPreferences = JSON.parse(JSON.stringify(defaultUserDashboardPreferences));
     let queryMode = 'natural';
+
+    // ── 전역 함수 노출 (onclick 속성에서 직접 호출 — 함수 선언은 호이스팅됨) ──
+    window.switchAdminTab       = switchAdminTab;
+    window.deleteOwner          = deleteOwner;
+    window.testWebhook          = testWebhook;
+    window.deleteWebhook        = deleteWebhook;
+    window.handleSignupRequest  = handleSignupRequest;
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -4876,14 +4886,14 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       setQueryMode('structured');
       syncPayload();
     });
-    document.getElementById('interpret').addEventListener('click', interpretText);
-    document.getElementById('run').addEventListener('click', runQuery);
-    document.getElementById('download_csv').addEventListener('click', downloadCsv);
-    document.getElementById('reset').addEventListener('click', resetForm);
-    document.getElementById('copy_payload').addEventListener('click', copyPayload);
-    document.getElementById('query_guide').addEventListener('click', () => openGuideModal('', guideExamples));
-    document.getElementById('refresh_dashboard').addEventListener('click', loadDashboard);
-    document.getElementById('save_dashboard_preferences').addEventListener('click', saveDashboardPreferences);
+    document.getElementById('interpret')?.addEventListener('click', interpretText);
+    document.getElementById('run')?.addEventListener('click', runQuery);
+    document.getElementById('download_csv')?.addEventListener('click', downloadCsv);
+    document.getElementById('reset')?.addEventListener('click', resetForm);
+    document.getElementById('copy_payload')?.addEventListener('click', copyPayload);
+    document.getElementById('query_guide')?.addEventListener('click', () => openGuideModal('', guideExamples));
+    document.getElementById('refresh_dashboard')?.addEventListener('click', loadDashboard);
+    document.getElementById('save_dashboard_preferences')?.addEventListener('click', saveDashboardPreferences);
     filtersEl.value = JSON.stringify(defaultPayload.filters, null, 2);
     renderGuideButtons(guideExamplesEl, guideExamples);
 
@@ -4922,7 +4932,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       } catch(e) { ownerStatusEl.textContent = `삭제 실패: ${e.message}`; }
     }
 
-    document.getElementById('add_owner').addEventListener('click', async () => {
+    document.getElementById('add_owner')?.addEventListener('click', async () => {
       const hostname = ownHostnameEl.value.trim();
       if (!hostname) { ownerStatusEl.textContent = '호스트명을 입력하세요.'; return; }
       ownerStatusEl.textContent = '저장 중…';
@@ -4937,7 +4947,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         await loadOwners();
       } catch(e) { ownerStatusEl.textContent = `오류: ${e.message}`; }
     });
-    document.getElementById('reload_owners').addEventListener('click', loadOwners);
+    document.getElementById('reload_owners')?.addEventListener('click', loadOwners);
 
     // ── Webhooks ───────────────────────────────────────────────────────────
     async function loadWebhooks() {
@@ -4976,7 +4986,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         await loadWebhooks();
       } catch(e) { webhookStatusEl.textContent = `삭제 실패: ${e.message}`; btn.disabled = false; btn.textContent = '삭제'; }
     }
-    document.getElementById('add_webhook').addEventListener('click', async () => {
+    document.getElementById('add_webhook')?.addEventListener('click', async () => {
       const url = whUrlEl.value.trim();
       if (!url) { webhookStatusEl.textContent = 'URL을 입력하세요.'; return; }
       webhookStatusEl.textContent = '추가 중…';
@@ -4988,7 +4998,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         await loadWebhooks();
       } catch(e) { webhookStatusEl.textContent = `오류: ${e.message}`; }
     });
-    document.getElementById('reload_webhooks').addEventListener('click', loadWebhooks);
+    document.getElementById('reload_webhooks')?.addEventListener('click', loadWebhooks);
 
     // ── Guide Editor ───────────────────────────────────────────────────────
     const guideEditSelectEl = document.getElementById('guide_edit_select');
@@ -5008,13 +5018,13 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       } catch(e) { guideEditStatusEl.textContent = `불러오기 실패: ${e.message}`; }
     }
 
-    document.getElementById('guide_edit_load').addEventListener('click', () => {
+    document.getElementById('guide_edit_load')?.addEventListener('click', () => {
       loadGuideForEdit(guideEditSelectEl.value);
     });
     guideEditSelectEl.addEventListener('change', () => {
       loadGuideForEdit(guideEditSelectEl.value);
     });
-    document.getElementById('guide_edit_save').addEventListener('click', async () => {
+    document.getElementById('guide_edit_save')?.addEventListener('click', async () => {
       const guideId = guideEditSelectEl.value;
       const title = guideEditTitleEl.value.trim();
       const content = guideEditContentEl.value;
@@ -5099,7 +5109,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     }
 
     if (document.getElementById('reload_signup_requests')) {
-      document.getElementById('reload_signup_requests').addEventListener('click', loadSignupRequests);
+      document.getElementById('reload_signup_requests')?.addEventListener('click', loadSignupRequests);
     }
 
     // ── Asset Audit Log ────────────────────────────────────────────────────
@@ -5149,10 +5159,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     }
 
     if (document.getElementById('reload_audit_log')) {
-      document.getElementById('reload_audit_log').addEventListener('click', loadAuditLog);
+      document.getElementById('reload_audit_log')?.addEventListener('click', loadAuditLog);
     }
     if (document.getElementById('audit_search_btn')) {
-      document.getElementById('audit_search_btn').addEventListener('click', loadAuditLog);
+      document.getElementById('audit_search_btn')?.addEventListener('click', loadAuditLog);
     }
 
     // ── Role Permissions ─────────────────────────────────────────────────────
@@ -5199,10 +5209,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     }
 
     if (document.getElementById('reload_roleperm')) {
-      document.getElementById('reload_roleperm').addEventListener('click', loadRolePermissions);
+      document.getElementById('reload_roleperm')?.addEventListener('click', loadRolePermissions);
     }
     if (document.getElementById('save_roleperm')) {
-      document.getElementById('save_roleperm').addEventListener('click', async () => {
+      document.getElementById('save_roleperm')?.addEventListener('click', async () => {
         const statusEl = document.getElementById('roleperm_status');
         const checkboxes = document.querySelectorAll('#roleperm_list input[type=checkbox]');
         const payload = {};
@@ -5268,26 +5278,19 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     }
 
     if (document.getElementById('reload_userlog')) {
-      document.getElementById('reload_userlog').addEventListener('click', () => {
+      document.getElementById('reload_userlog')?.addEventListener('click', () => {
         const u = (document.getElementById('userlog_filter_user')||{}).value||'';
         const a = (document.getElementById('userlog_filter_action')||{}).value||'';
         loadUserActivityLog(u, a);
       });
     }
     if (document.getElementById('userlog_search_btn')) {
-      document.getElementById('userlog_search_btn').addEventListener('click', () => {
+      document.getElementById('userlog_search_btn')?.addEventListener('click', () => {
         const u = (document.getElementById('userlog_filter_user')||{}).value||'';
         const a = (document.getElementById('userlog_filter_action')||{}).value||'';
         loadUserActivityLog(u, a);
       });
     }
-
-    // ── 전역 함수 노출 (onclick 속성에서 직접 호출되는 함수는 window 객체에 명시적 등록) ──
-    window.switchAdminTab      = switchAdminTab;
-    window.deleteOwner         = deleteOwner;
-    window.testWebhook         = testWebhook;
-    window.deleteWebhook       = deleteWebhook;
-    window.handleSignupRequest = handleSignupRequest;
 
     async function initialize() {
       await loadDashboardPreferences();
