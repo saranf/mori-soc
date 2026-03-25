@@ -63,7 +63,7 @@ class QueryRequestBuilderTests(unittest.TestCase):
 
     def test_render_query_console_html_contains_expected_admin_features(self) -> None:
         html = render_query_console_html()
-        self.assertIn("MORI Admin Console", html)
+        self.assertIn("MORI Security Dashboard", html)
         self.assertIn("http://mori.rmstudio.co.kr:37854/", html)
         self.assertIn("/query", html)
         self.assertIn("/query?format=csv", html)
@@ -96,7 +96,7 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertIn("overview_modal", html)
         self.assertNotIn("Natural Language Query", html)
         self.assertNotIn("Structured Query Builder", html)
-        self.assertNotIn("MORI Admin Console", html)
+        self.assertNotIn("MORI Security Dashboard", html)
         self.assertNotIn("Open User Dashboard", html)
         # NLQ section present in /ui
         self.assertIn("자연어 질의 (NLQ)", html)
