@@ -4016,6 +4016,7 @@ def render_user_dashboard_html(
       } catch(e) {
         area.innerHTML = '<div class=\"empty\" style=\"color:#f87171\">리포트 목록을 불러올 수 없습니다.</div>';
       }
+    }
 
     async function loadCrosscheck() {
       const area = document.getElementById('crosscheck_area');
