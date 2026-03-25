@@ -52,6 +52,11 @@ USER_DASHBOARD_SECTION_LABELS = {
     "risk_summary": "Risk Summary",
     "recent_activity": "Recent Activity",
 }
+USER_DASHBOARD_ASSET_COLUMN_LABELS = {
+    "show_importance": "중요도 컬럼",
+    "show_isms_control": "ISMS-P 통제 컬럼",
+    "show_iso27001_control": "ISO 27001 통제 컬럼",
+}
 DEFAULT_USER_DASHBOARD_PREFERENCES = {
     "cards": {
         "total_hosts": True,
@@ -67,6 +72,11 @@ DEFAULT_USER_DASHBOARD_PREFERENCES = {
         "latest_status": True,
         "risk_summary": True,
         "recent_activity": True,
+    },
+    "asset_columns": {
+        "show_importance": True,
+        "show_isms_control": True,
+        "show_iso27001_control": True,
     },
 }
 
@@ -367,6 +377,7 @@ def _default_dashboard_preferences() -> dict[str, Any]:
         "user_dashboard": {
             "cards": dict(DEFAULT_USER_DASHBOARD_PREFERENCES["cards"]),
             "sections": dict(DEFAULT_USER_DASHBOARD_PREFERENCES["sections"]),
+            "asset_columns": dict(DEFAULT_USER_DASHBOARD_PREFERENCES["asset_columns"]),
         },
     }
 
@@ -376,6 +387,7 @@ def _dashboard_preferences_response(preferences: Mapping[str, Any]) -> dict[str,
     user_dashboard = preferences.get("user_dashboard") if isinstance(preferences.get("user_dashboard"), Mapping) else {}
     cards = user_dashboard.get("cards") if isinstance(user_dashboard.get("cards"), Mapping) else {}
     sections = user_dashboard.get("sections") if isinstance(user_dashboard.get("sections"), Mapping) else {}
+    asset_columns = user_dashboard.get("asset_columns") if isinstance(user_dashboard.get("asset_columns"), Mapping) else {}
     return {
         "docs_url": docs_url,
         "user_dashboard": {
@@ -387,9 +399,14 @@ def _dashboard_preferences_response(preferences: Mapping[str, Any]) -> dict[str,
                 key: bool(sections.get(key, DEFAULT_USER_DASHBOARD_PREFERENCES["sections"][key]))
                 for key in USER_DASHBOARD_SECTION_LABELS
             },
+            "asset_columns": {
+                key: bool(asset_columns.get(key, DEFAULT_USER_DASHBOARD_PREFERENCES["asset_columns"][key]))
+                for key in USER_DASHBOARD_ASSET_COLUMN_LABELS
+            },
         },
         "card_labels": dict(USER_DASHBOARD_CARD_LABELS),
         "section_labels": dict(USER_DASHBOARD_SECTION_LABELS),
+        "asset_column_labels": dict(USER_DASHBOARD_ASSET_COLUMN_LABELS),
     }
 
 
@@ -411,6 +428,7 @@ def _merge_dashboard_preferences(current: Mapping[str, Any], payload: Mapping[st
         for group_name, labels in (
             ("cards", USER_DASHBOARD_CARD_LABELS),
             ("sections", USER_DASHBOARD_SECTION_LABELS),
+            ("asset_columns", USER_DASHBOARD_ASSET_COLUMN_LABELS),
         ):
             group_payload = user_dashboard.get(group_name)
             if group_payload is None:
@@ -429,6 +447,7 @@ def _merge_dashboard_preferences(current: Mapping[str, Any], payload: Mapping[st
         "user_dashboard": {
             "cards": dict(merged["user_dashboard"]["cards"]),
             "sections": dict(merged["user_dashboard"]["sections"]),
+            "asset_columns": dict(merged["user_dashboard"]["asset_columns"]),
         },
     }
 
@@ -1150,7 +1169,6 @@ def render_user_dashboard_html(
         <p>사용자에게 필요한 보안 현황과 조치 우선순위를 빠르게 보여주는 대시보드입니다. 상세한 수집 데이터는 운영자 화면에서 더 깊게 확인하고, 어떤 정보를 사용자 화면에 노출할지 운영자가 제어할 수 있습니다.</p>
         <div class=\"links\">
           <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\">운영 문서 / 포털</a>
-          <a href=\"/admin\">⚙️ Admin Console</a>
         </div>
       </div>
       <div class=\"top-actions\">
@@ -1486,6 +1504,7 @@ def render_user_dashboard_html(
     const defaultPreferences = __USER_DASHBOARD_PREFS_JSON__;
     const cardLabels = __CARD_LABELS_JSON__;
     const sectionLabels = __SECTION_LABELS_JSON__;
+    let assetColumnPrefs = Object.assign({}, defaultPreferences.asset_columns || { show_importance: true, show_isms_control: true, show_iso27001_control: true });
     const nlqGuideExamples = __NLQ_GUIDE_EXAMPLES__;
     const overviewCardsEl = document.getElementById('overview_cards');
     const sourceCoverageEl = document.getElementById('source_coverage');
@@ -1912,6 +1931,9 @@ def render_user_dashboard_html(
         const data = await response.json();
         if (response.ok && data.user_dashboard) {
           userPreferences = data.user_dashboard;
+          if (data.user_dashboard.asset_columns) {
+            assetColumnPrefs = Object.assign({}, assetColumnPrefs, data.user_dashboard.asset_columns);
+          }
         }
       } catch (error) {
         dashboardStatusEl.textContent = `preferences load failed: ${error.message}`;
@@ -2157,6 +2179,9 @@ def render_user_dashboard_html(
 
     function renderZabbixTable(hosts, containerEl) {
       if (!hosts.length) { containerEl.innerHTML = '<div class=\"empty\">Zabbix에서 수집된 서버 자산이 없습니다.</div>'; return; }
+      const showImp = assetColumnPrefs.show_importance !== false;
+      const showIsms = assetColumnPrefs.show_isms_control !== false;
+      const showIso = assetColumnPrefs.show_iso27001_control !== false;
       const impColor = { '상': '#fca5a5', '중': '#fde68a', '하': '#86efac' };
       const rows = hosts.map(h => {
         const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
@@ -2170,9 +2195,9 @@ def render_user_dashboard_html(
         return `<tr>
           <td><strong>${escapeHtml(h.hostname)}</strong>${zabbixLink ? '<br>' + zabbixLink : ''}</td>
           <td style=\"font-size:12px\">${escapeHtml(h.category || '-')}</td>
-          <td>${impBadge}</td>
-          <td style=\"font-size:11px;color:#7dd3fc\">${escapeHtml(h.isms_control || '-')}</td>
-          <td style=\"font-size:11px;color:#a78bfa\">${escapeHtml(h.iso27001_control || '-')}</td>
+          ${showImp ? `<td>${impBadge}</td>` : ''}
+          ${showIsms ? `<td style=\"font-size:11px;color:#7dd3fc\">${escapeHtml(h.isms_control || '-')}</td>` : ''}
+          ${showIso ? `<td style=\"font-size:11px;color:#a78bfa\">${escapeHtml(h.iso27001_control || '-')}</td>` : ''}
           <td>${escapeHtml(h.primary_ip)}</td>
           <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
           <td style=\"font-size:12px;color:#94a3b8\">${metricStr}</td>
@@ -2183,9 +2208,9 @@ def render_user_dashboard_html(
         <thead><tr style=\"background:#0f2035;\">
           <th style=\"padding:8px;color:#7dd3fc\">호스트명</th>
           <th style=\"padding:8px;color:#7dd3fc\">분류</th>
-          <th style=\"padding:8px;color:#fde68a\">중요도</th>
-          <th style=\"padding:8px;color:#7dd3fc\">ISMS-P 통제</th>
-          <th style=\"padding:8px;color:#a78bfa\">ISO 27001</th>
+          ${showImp ? '<th style=\"padding:8px;color:#fde68a\">중요도</th>' : ''}
+          ${showIsms ? '<th style=\"padding:8px;color:#7dd3fc\">ISMS-P 통제</th>' : ''}
+          ${showIso ? '<th style=\"padding:8px;color:#a78bfa\">ISO 27001</th>' : ''}
           <th style=\"padding:8px;color:#93c5fd\">IP</th>
           <th style=\"padding:8px;color:#93c5fd\">상태</th>
           <th style=\"padding:8px;color:#94a3b8\">최근 메트릭</th>
@@ -2416,6 +2441,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     default_preferences_json = json.dumps(DEFAULT_USER_DASHBOARD_PREFERENCES, ensure_ascii=False)
     card_labels_json = json.dumps(USER_DASHBOARD_CARD_LABELS, ensure_ascii=False)
     section_labels_json = json.dumps(USER_DASHBOARD_SECTION_LABELS, ensure_ascii=False)
+    asset_column_labels_json = json.dumps(USER_DASHBOARD_ASSET_COLUMN_LABELS, ensure_ascii=False)
     html = """<!doctype html>
 <html lang=\"ko\">
 <head>
@@ -2464,11 +2490,20 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     label { font-size: 13px; color: #cbd5e1; }
     input, select, textarea, button { width: 100%; box-sizing: border-box; border-radius: 12px; border: 1px solid #334155; background: #0b1220; color: #e5e7eb; padding: 10px 12px; }
     textarea { resize: vertical; min-height: 120px; font-family: ui-monospace, SFMono-Regular, monospace; }
-    button { border: none; background: #2563eb; font-weight: 700; cursor: pointer; }
-    button.secondary { background: #334155; }
-    button.ghost { background: #172033; border: 1px solid #334155; }
+    /* 버튼 계층: primary(저장/실행) / secondary(보조) / ghost(중립) / danger(삭제) */
+    button { border: 1px solid #1e3a5f; background: #1e3a5f; color: #93c5fd; font-weight: 600; cursor: pointer; font-size: 13px; }
+    button:hover { background: #1e4a7a; border-color: #2563eb; color: #bfdbfe; }
+    button.primary { background: #1d4ed8; border-color: #2563eb; color: #fff; }
+    button.primary:hover { background: #2563eb; }
+    button.secondary { background: #1e293b; border: 1px solid #334155; color: #94a3b8; }
+    button.secondary:hover { background: #263345; color: #cbd5e1; }
+    button.ghost { background: transparent; border: 1px solid #334155; color: #64748b; }
+    button.ghost:hover { background: #0f172a; color: #94a3b8; }
+    button.danger { background: #450a0a; border: 1px solid #7f1d1d; color: #fca5a5; }
+    button.danger:hover { background: #7f1d1d; }
     .actions { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .actions a, .top-actions a { display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid #334155; background: #172033; color: #e5e7eb; padding: 10px 12px; text-decoration: none; font-weight: 700; }
+    .actions a, .top-actions a { display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid #334155; background: #172033; color: #94a3b8; padding: 10px 12px; text-decoration: none; font-weight: 600; font-size: 13px; }
+    .actions a:hover, .top-actions a:hover { background: #1e293b; color: #e5e7eb; }
     .quick-actions { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .status-line { color: #94a3b8; font-size: 13px; margin-top: 8px; }
     .mono { font-family: ui-monospace, SFMono-Regular, monospace; }
@@ -2698,11 +2733,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <h2>🖥️ 사용자 대시보드 설정</h2>
           <div class=\"subtext\">`/ui` 에서 사용자에게 보이는 카드와 섹션을 제어합니다. 재시작 시 초기값으로 돌아갑니다.</div>
           <div class=\"row\"><label for=\"docs_portal_url\">문서 / 포털 URL</label><input id=\"docs_portal_url\" value=\"__DOCS_PORTAL_URL__\" /></div>
-          <div class=\"row\"><label>User Overview Cards</label><div class=\"toggle-grid\" id=\"user_dashboard_cards\"></div></div>
-          <div class=\"row\"><label>User Sections</label><div class=\"toggle-grid\" id=\"user_dashboard_sections\"></div></div>
+          <div class=\"row\"><label>사용자 요약 카드</label><div class=\"toggle-grid\" id=\"user_dashboard_cards\"></div></div>
+          <div class=\"row\"><label>사용자 섹션</label><div class=\"toggle-grid\" id=\"user_dashboard_sections\"></div></div>
+          <div class=\"row\"><label>자빅스 자산 테이블 컬럼 표시</label><div class=\"toggle-grid\" id=\"user_dashboard_asset_columns\"></div></div>
           <div class=\"actions\">
-            <button id=\"save_dashboard_preferences\">Save User View</button>
-            <a href=\"/ui\">Open User View</a>
+            <button id=\"save_dashboard_preferences\" class=\"primary\">저장</button>
+            <a href=\"/ui\">사용자 화면 열기 ↗</a>
           </div>
           <div class=\"status-line\" id=\"dashboard_preferences_status\">user dashboard settings loading...</div>
         </section>
@@ -2816,6 +2852,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const docsPortalUrlEl = document.getElementById('docs_portal_url');
     const userDashboardCardsEl = document.getElementById('user_dashboard_cards');
     const userDashboardSectionsEl = document.getElementById('user_dashboard_sections');
+    const userDashboardAssetColumnsEl = document.getElementById('user_dashboard_asset_columns');
     const dashboardPreferencesStatusEl = document.getElementById('dashboard_preferences_status');
 
     // Webhooks
@@ -2828,6 +2865,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const defaultUserDashboardPreferences = __USER_DASHBOARD_PREFS_JSON__;
     const userDashboardCardLabels = __CARD_LABELS_JSON__;
     const userDashboardSectionLabels = __SECTION_LABELS_JSON__;
+    const userDashboardAssetColumnLabels = __ASSET_COLUMN_LABELS_JSON__;
     let dashboardDetails = {};
     let userDashboardPreferences = JSON.parse(JSON.stringify(defaultUserDashboardPreferences));
     let queryMode = 'natural';
@@ -2860,6 +2898,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     function renderDashboardPreferences() {
       renderPreferenceGroup(userDashboardCardsEl, userDashboardCardLabels, userDashboardPreferences.cards || {}, 'user_card');
       renderPreferenceGroup(userDashboardSectionsEl, userDashboardSectionLabels, userDashboardPreferences.sections || {}, 'user_section');
+      renderPreferenceGroup(userDashboardAssetColumnsEl, userDashboardAssetColumnLabels, userDashboardPreferences.asset_columns || {}, 'user_asset_col');
     }
 
     function readPreferenceGroup(container) {
@@ -2891,6 +2930,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         user_dashboard: {
           cards: readPreferenceGroup(userDashboardCardsEl),
           sections: readPreferenceGroup(userDashboardSectionsEl),
+          asset_columns: readPreferenceGroup(userDashboardAssetColumnsEl),
         },
       };
       try {
@@ -3747,6 +3787,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         .replace("__USER_DASHBOARD_PREFS_JSON__", default_preferences_json)
         .replace("__CARD_LABELS_JSON__", card_labels_json)
         .replace("__SECTION_LABELS_JSON__", section_labels_json)
+        .replace("__ASSET_COLUMN_LABELS_JSON__", asset_column_labels_json)
     )
 
 
