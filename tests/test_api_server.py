@@ -70,7 +70,7 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertIn("/dashboard/summary", html)
         self.assertIn("/dashboard/preferences", html)
         self.assertIn("Open User Dashboard", html)
-        self.assertIn("User Dashboard Controls", html)
+        self.assertIn("사용자 대시보드 설정", html)
         self.assertIn("Natural Language Query", html)
         self.assertIn("Structured Query Builder", html)
         self.assertIn("Query Guide", html)
@@ -95,7 +95,7 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertIn("overview_modal", html)
         self.assertNotIn("Natural Language Query", html)
         self.assertNotIn("Structured Query Builder", html)
-        self.assertNotIn("User Dashboard Controls", html)
+        self.assertNotIn("MORI Admin Console", html)
         self.assertNotIn("Open User Dashboard", html)
         # NLQ section present in /ui
         self.assertIn("자연어 질의 (NLQ)", html)
@@ -266,7 +266,7 @@ class FastAPIAppTests(unittest.TestCase):
         response = self.client.get("/admin")
         self.assertEqual(response.status_code, 200)
         self.assertIn("MORI Admin Console", response.text)
-        self.assertIn("User Dashboard Controls", response.text)
+        self.assertIn("사용자 대시보드 설정", response.text)
 
     def test_root_redirects_to_ui(self) -> None:
         response = self.client.get("/", follow_redirects=False)

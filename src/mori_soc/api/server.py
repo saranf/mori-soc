@@ -1438,6 +1438,32 @@ def render_user_dashboard_html(
     </div>
   </div>
 
+  <!-- 담당자 편집 모달 (운영자용) -->
+  <div id=\"owner_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
+    <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:28px 32px;width:440px;max-width:95vw\">
+      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
+        <h3 id=\"owner_modal_title\" style=\"color:#a3e635;margin:0\">담당자 수정</h3>
+        <button onclick=\"closeOwnerModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+      </div>
+      <div style=\"display:flex;flex-direction:column;gap:12px\">
+        <div><label style=\"color:#94a3b8;font-size:13px\">호스트명</label>
+          <input id=\"owner_modal_hostname\" readonly style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+        </div>
+        <div><label style=\"color:#94a3b8;font-size:13px\">담당자</label>
+          <input id=\"owner_modal_owner\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 홍길동\" />
+        </div>
+        <div><label style=\"color:#94a3b8;font-size:13px\">팀</label>
+          <input id=\"owner_modal_team\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 인프라팀\" />
+        </div>
+        <div id=\"owner_modal_status\" style=\"font-size:13px;color:#94a3b8;\"></div>
+        <div style=\"display:flex;gap:10px;justify-content:flex-end;margin-top:4px\">
+          <button id=\"owner_modal_save\" style=\"background:#1d4ed8;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\">저장</button>
+          <button onclick=\"closeOwnerModal()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\">취소</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── 하단 탭 바 (모바일 전용) ────────────────────────────────────────── -->
   <nav class=\"bottom-nav\" id=\"bottom_nav\">
     <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\">
@@ -2100,7 +2126,10 @@ def render_user_dashboard_html(
       const rows = hosts.map(h => {
         const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
         const fleetLink = FLEET_URL ? `<a href=\"${escapeHtml(FLEET_URL)}/hosts?query=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#6ee7b7;font-size:12px;\">Fleet ↗</a>` : '';
-        const ownerStr = [h.owner, h.team].filter(Boolean).join(' / ') || '<span style=\"color:#475569\">-</span>';
+        const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
+        const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>
+          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}')\"
+            style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
         return `<tr>
           <td><strong>${escapeHtml(h.hostname)}</strong>${fleetLink ? '<br>' + fleetLink : ''}</td>
           <td><span style=\"background:#0d2137;color:#6ee7b7;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;\">🖥️ PC</span></td>
@@ -2109,7 +2138,7 @@ def render_user_dashboard_html(
           <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
           <td>${escapeHtml(h.risk_score)}</td>
           <td>${escapeHtml(formatTime(h.last_seen_at))}</td>
-          <td style=\"color:#a3e635;font-size:12px\">${ownerStr}</td>
+          <td>${ownerStr}</td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
@@ -2135,7 +2164,10 @@ def render_user_dashboard_html(
         const zabbixLink = ZABBIX_URL ? `<a href=\"${escapeHtml(ZABBIX_URL)}/zabbix.php?action=host.list&filter_set=1&filter_host=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#7dd3fc;font-size:12px;\">Zabbix ↗</a>` : '';
         const metricStr = h.latest_metric ? `${escapeHtml(h.latest_metric)}: ${escapeHtml(h.latest_value || '-')}` : '-';
         const impBadge = h.importance ? `<span style=\"background:#1e293b;color:${impColor[h.importance]||'#94a3b8'};padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700\">${escapeHtml(h.importance)}</span>` : '-';
-        const ownerStr = [h.owner, h.team].filter(Boolean).join(' / ') || '<span style=\"color:#475569\">-</span>';
+        const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
+        const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>
+          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}')\"
+            style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
         return `<tr>
           <td><strong>${escapeHtml(h.hostname)}</strong>${zabbixLink ? '<br>' + zabbixLink : ''}</td>
           <td style=\"font-size:12px\">${escapeHtml(h.category || '-')}</td>
@@ -2145,7 +2177,7 @@ def render_user_dashboard_html(
           <td>${escapeHtml(h.primary_ip)}</td>
           <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
           <td style=\"font-size:12px;color:#94a3b8\">${metricStr}</td>
-          <td style=\"color:#a3e635;font-size:12px\">${ownerStr}</td>
+          <td>${ownerStr}</td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
@@ -2216,6 +2248,42 @@ def render_user_dashboard_html(
       document.getElementById('plan_modal').style.display = 'flex';
     }
     function closePlanModal() { document.getElementById('plan_modal').style.display = 'none'; }
+
+    /* ── 담당자 편집 모달 (운영자용) ──────────────────────────────────────── */
+    function openOwnerModal(hostname, owner, team) {
+      document.getElementById('owner_modal_hostname').value = hostname;
+      document.getElementById('owner_modal_owner').value = owner || '';
+      document.getElementById('owner_modal_team').value = team || '';
+      document.getElementById('owner_modal_status').textContent = '';
+      document.getElementById('owner_modal_title').textContent = `담당자 수정 — ${hostname}`;
+      document.getElementById('owner_modal').style.display = 'flex';
+    }
+    function closeOwnerModal() { document.getElementById('owner_modal').style.display = 'none'; }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const ownerSaveBtn = document.getElementById('owner_modal_save');
+      if (ownerSaveBtn) ownerSaveBtn.addEventListener('click', async () => {
+        const hostname = document.getElementById('owner_modal_hostname').value;
+        const owner = document.getElementById('owner_modal_owner').value.trim();
+        const team = document.getElementById('owner_modal_team').value.trim();
+        const statusEl = document.getElementById('owner_modal_status');
+        statusEl.textContent = '저장 중...';
+        try {
+          const res = await fetch('/assets/owners', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ hostname, owner, team })
+          });
+          if (!res.ok) throw new Error(await res.text());
+          statusEl.style.color = '#86efac';
+          statusEl.textContent = '✅ 저장되었습니다.';
+          setTimeout(() => { closeOwnerModal(); loadAssets(); }, 800);
+        } catch(e) {
+          statusEl.style.color = '#fca5a5';
+          statusEl.textContent = `오류: ${e.message}`;
+        }
+      });
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
       const saveBtn = document.getElementById('plan_modal_save');
       if (saveBtn) saveBtn.addEventListener('click', async () => {
@@ -2437,6 +2505,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     .guide-dialog-head h3 { margin: 0; font-size: 20px; }
     .guide-dialog-copy { color: #94a3b8; font-size: 14px; line-height: 1.5; }
     .dialog-body { padding: 0 20px 20px; max-height: 60vh; overflow: auto; }
+    /* Admin tabs */
+    .atab-panel { display: none; margin-top: 16px; }
+    .atab-panel.active { display: block; }
+    #admin_tabs_nav { margin: 16px 0 0; }
     @media (max-width: 1240px) {
       .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .layout { grid-template-columns: 1fr; }
@@ -2468,9 +2540,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       </div>
     </section>
 
-    <section class=\"metrics\" id=\"overview_cards\"></section>
+    <!-- ── Admin Tab Nav ────────────────────────────────────────────────── -->
+    <nav class=\"tabs-nav\" id=\"admin_tabs_nav\">
+      <button class=\"active\" data-atab=\"monitoring\" onclick=\"switchAdminTab('monitoring')\">📊 모니터링</button>
+      <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\">👤 자산 관리</button>
+      <button data-atab=\"query\" onclick=\"switchAdminTab('query')\">🔍 쿼리</button>
+      <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\">⚙️ 설정</button>
+    </nav>
 
-    <div class=\"layout\">
+    <!-- ── Tab: 모니터링 ─────────────────────────────────────────────────── -->
+    <div class=\"atab-panel active\" id=\"atab_monitoring\">
+      <section class=\"metrics\" id=\"overview_cards\"></section>
       <div class=\"stack\">
         <section class=\"card\">
           <h2>Source Coverage</h2>
@@ -2478,120 +2558,55 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"coverage\" id=\"source_coverage\"></div>
           <div class=\"status-line\" id=\"dashboard_status\">dashboard loading...</div>
         </section>
-
         <section class=\"card\">
           <h2>Latest Host Status</h2>
           <div class=\"subtext\">offline / unknown 호스트를 우선 배치합니다.</div>
           <div class=\"table-wrap\" id=\"latest_status\"></div>
         </section>
-
         <section class=\"card\">
           <h2>Risk Summary</h2>
           <div class=\"subtext\">24시간 alert와 누적 취약점 기준 상위 호스트입니다.</div>
           <div class=\"table-wrap\" id=\"risk_summary\"></div>
         </section>
-
         <section class=\"card\">
           <h2>Recent Activity</h2>
           <div class=\"subtext\">최근 alert / observation / fleet query 결과를 시간순으로 합쳐 보여줍니다.</div>
           <div class=\"list\" id=\"recent_activity\"></div>
         </section>
-
       </div>
+    </div>
 
-      <aside class=\"stack\">
-        <section class=\"card\">
-          <h2>User Dashboard Controls</h2>
-          <div class=\"subtext\">`18000/ui` 에서 사용자에게 보이는 카드와 섹션을 제어합니다. 현재 설정은 애플리케이션 메모리에 저장되므로 프로세스 재시작 시 초기값으로 돌아갑니다.</div>
-          <div class=\"row\">
-            <label for=\"docs_portal_url\">문서 / 포털 URL</label>
-            <input id=\"docs_portal_url\" value=\"__DOCS_PORTAL_URL__\" />
-          </div>
-          <div class=\"row\">
-            <label>User Overview Cards</label>
-            <div class=\"toggle-grid\" id=\"user_dashboard_cards\"></div>
-          </div>
-          <div class=\"row\">
-            <label>User Sections</label>
-            <div class=\"toggle-grid\" id=\"user_dashboard_sections\"></div>
-          </div>
-          <div class=\"actions\">
-            <button id=\"save_dashboard_preferences\">Save User View</button>
-            <a href=\"/ui\">Open User View</a>
-          </div>
-          <div class=\"status-line\" id=\"dashboard_preferences_status\">user dashboard settings loading...</div>
-        </section>
-
-        <section class=\"card\">
-          <h2>Quick Actions</h2>
-          <div class=\"subtext\">자주 쓰는 질의를 클릭하면 아래 폼에 바로 채워집니다.</div>
-          <div class=\"quick-actions\" id=\"quick_queries\"></div>
-        </section>
-
-        <section class=\"card\">
-          <h2>👤 자산 담당자 관리</h2>
-          <div class=\"subtext\">서버·PC 자산의 담당자와 팀을 등록합니다. 호스트명과 정확히 일치해야 합니다.</div>
-          <div id=\"owners_list\" class=\"list\" style=\"margin-bottom:12px;max-height:200px;overflow-y:auto\"><span class=\"empty\">로딩 중…</span></div>
+    <!-- ── Tab: 자산 관리 ────────────────────────────────────────────────── -->
+    <div class=\"atab-panel\" id=\"atab_assets\">
+      <section class=\"card\">
+        <h2>👤 자산 담당자 관리</h2>
+        <div class=\"subtext\">서버·PC 자산의 담당자와 팀을 등록합니다. 호스트명과 정확히 일치해야 합니다.</div>
+        <div id=\"owners_list\" class=\"list\" style=\"margin-bottom:16px;max-height:320px;overflow-y:auto\"><span class=\"empty\">로딩 중…</span></div>
+        <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
           <div class=\"row\"><label>호스트명</label><input id=\"own_hostname\" placeholder=\"예: db-prod-01\" /></div>
           <div class=\"row\"><label>담당자</label><input id=\"own_owner\" placeholder=\"예: 홍길동\" /></div>
           <div class=\"row\"><label>이메일</label><input id=\"own_email\" placeholder=\"예: hong@company.com\" /></div>
           <div class=\"row\"><label>팀</label><input id=\"own_team\" placeholder=\"예: 인프라팀\" /></div>
-          <div class=\"actions\">
-            <button id=\"add_owner\">등록 / 수정</button>
-            <button id=\"reload_owners\" class=\"secondary\">새로고침</button>
-          </div>
-          <div class=\"status-line\" id=\"owner_status\"></div>
-        </section>
+        </div>
+        <div class=\"actions\">
+          <button id=\"add_owner\">등록 / 수정</button>
+          <button id=\"reload_owners\" class=\"secondary\">목록 새로고침</button>
+        </div>
+        <div class=\"status-line\" id=\"owner_status\"></div>
+      </section>
+    </div>
 
+    <!-- ── Tab: 쿼리 ─────────────────────────────────────────────────────── -->
+    <div class=\"atab-panel\" id=\"atab_query\">
+      <div class=\"stack\">
         <section class=\"card\">
-          <h2>🔔 Slack Webhook 관리</h2>
-          <div class=\"subtext\">Critical 경보 발생 시 자동으로 알림을 전송할 Slack Incoming Webhook을 등록합니다.</div>
-          <div id=\"webhooks_list\" class=\"list\" style=\"margin-bottom:12px\"><span class=\"empty\">로딩 중…</span></div>
-          <div class=\"row\">
-            <label for=\"wh_name\">채널 이름 (식별용)</label>
-            <input id=\"wh_name\" placeholder=\"예: #soc-alerts\" />
-          </div>
-          <div class=\"row\">
-            <label for=\"wh_url\">Webhook URL</label>
-            <input id=\"wh_url\" placeholder=\"https://hooks.slack.com/services/...\" />
-          </div>
-          <div class=\"actions\">
-            <button id=\"add_webhook\">추가</button>
-            <button id=\"reload_webhooks\" class=\"secondary\">새로고침</button>
-          </div>
-          <div class=\"status-line\" id=\"webhook_status\"></div>
+          <h2>⚡ Quick Actions</h2>
+          <div class=\"subtext\">자주 쓰는 질의를 클릭하면 아래 폼에 바로 채워집니다.</div>
+          <div class=\"quick-actions\" id=\"quick_queries\"></div>
         </section>
-
         <section class=\"card\">
-          <h2>📖 가이드 &amp; 메뉴얼 편집</h2>
-          <div class=\"subtext\">사용자 UI에 표시되는 가이드 내용을 수정합니다. 마크다운 형식을 지원합니다.</div>
-          <div class=\"row\">
-            <label for=\"guide_edit_select\">가이드 선택</label>
-            <select id=\"guide_edit_select\">
-              <option value=\"zabbix_setup\">🖧 Zabbix 에이전트 설정</option>
-              <option value=\"fleet_install\">🖥️ Fleet 에이전트 설치</option>
-              <option value=\"isms_criteria\">📋 ISMS-P 심사 기준</option>
-              <option value=\"iso27001_criteria\">🌐 ISO 27001 심사 기준</option>
-            </select>
-          </div>
-          <div class=\"row\">
-            <label for=\"guide_edit_title\">제목</label>
-            <input id=\"guide_edit_title\" placeholder=\"가이드 제목\" />
-          </div>
-          <div class=\"row\">
-            <label for=\"guide_edit_content\">내용 (마크다운)</label>
-            <textarea id=\"guide_edit_content\" style=\"min-height:280px;font-family:monospace;font-size:12px\"></textarea>
-          </div>
-          <div class=\"actions\">
-            <button id=\"guide_edit_load\" class=\"secondary\">불러오기</button>
-            <button id=\"guide_edit_save\">저장</button>
-          </div>
-          <div class=\"status-line\" id=\"guide_edit_status\"></div>
-        </section>
-
-        <section class=\"card\">
-          <h2>Natural Language Query</h2>
-          <div class=\"subtext\">자연스럽게 질문해도 되며, Run Query는 마지막으로 수정한 입력 영역(자연어/구조화)을 우선 사용합니다. CSV는 원할 때만 별도로 다운로드합니다.</div>
+          <h2>🗣️ Natural Language Query</h2>
+          <div class=\"subtext\">자연스럽게 질문하면 의도를 해석해 실행합니다. <a href=\"#\" id=\"query_guide_link\" style=\"color:#7dd3fc;\">질의 가이드 보기 ↗</a></div>
           <div class=\"row\">
             <label for=\"nlp_text\">질문</label>
             <textarea id=\"nlp_text\">오프라인 호스트 보여줘</textarea>
@@ -2605,55 +2620,79 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div id=\"interpretation_hint\"></div>
           <div class=\"status-line\" id=\"query_status\">catalog loading...</div>
         </section>
-
         <section class=\"card\">
-          <h2>Structured Query Builder</h2>
-          <div class=\"row\">
-            <label for=\"intent\">Intent</label>
-            <select id=\"intent\"></select>
+          <h2>🔧 Structured Query Builder</h2>
+          <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
+            <div class=\"row\"><label for=\"intent\">Intent</label><select id=\"intent\"></select></div>
+            <div class=\"row\"><label for=\"time_range\">time_range</label><input id=\"time_range\" value=\"24h\" /></div>
+            <div class=\"row\"><label for=\"host_id\">host_id</label><input id=\"host_id\" placeholder=\"예: host-1\" /></div>
+            <div class=\"row\"><label for=\"hostname\">hostname</label><input id=\"hostname\" placeholder=\"예: mbp-01\" /></div>
+            <div class=\"row\"><label for=\"severity\">severity</label><input id=\"severity\" placeholder=\"예: high,critical\" /></div>
+            <div class=\"row\"><label for=\"source\">source</label><input id=\"source\" placeholder=\"예: wazuh\" /></div>
           </div>
-          <div class=\"row\">
-            <label for=\"time_range\">time_range</label>
-            <input id=\"time_range\" value=\"24h\" />
-          </div>
-          <div class=\"row\">
-            <label for=\"host_id\">host_id</label>
-            <input id=\"host_id\" placeholder=\"예: host-1\" />
-          </div>
-          <div class=\"row\">
-            <label for=\"hostname\">hostname</label>
-            <input id=\"hostname\" placeholder=\"예: mbp-01\" />
-          </div>
-          <div class=\"row\">
-            <label for=\"severity\">severity</label>
-            <input id=\"severity\" placeholder=\"예: high,critical\" />
-          </div>
-          <div class=\"row\">
-            <label for=\"source\">source</label>
-            <input id=\"source\" placeholder=\"예: wazuh\" />
-          </div>
-          <div class=\"row\">
-            <label for=\"filters\">filters (JSON)</label>
-            <textarea id=\"filters\">{}</textarea>
-          </div>
+          <div class=\"row\"><label for=\"filters\">filters (JSON)</label><textarea id=\"filters\">{}</textarea></div>
           <div class=\"actions\">
             <button id=\"reset\" class=\"secondary\">Reset</button>
             <button id=\"copy_payload\" class=\"ghost\">Copy Payload</button>
           </div>
         </section>
-
         <section class=\"card\">
-          <h2>Request / Response</h2>
-          <div class=\"row\">
-            <label for=\"payload\">Request Payload</label>
-            <textarea id=\"payload\">__PAYLOAD_JSON__</textarea>
-          </div>
-          <div class=\"row\">
-            <label>Response</label>
-            <div id=\"result\" class=\"query-result-area\"><span class=\"result-placeholder\">아직 실행 전입니다.</span></div>
-          </div>
+          <h2>📨 Request / Response</h2>
+          <div class=\"row\"><label for=\"payload\">Request Payload</label><textarea id=\"payload\">__PAYLOAD_JSON__</textarea></div>
+          <div class=\"row\"><label>Response</label><div id=\"result\" class=\"query-result-area\"><span class=\"result-placeholder\">아직 실행 전입니다.</span></div></div>
         </section>
-      </aside>
+      </div>
+    </div>
+
+    <!-- ── Tab: 설정 ─────────────────────────────────────────────────────── -->
+    <div class=\"atab-panel\" id=\"atab_settings\">
+      <div class=\"stack\">
+        <section class=\"card\">
+          <h2>🖥️ 사용자 대시보드 설정</h2>
+          <div class=\"subtext\">`/ui` 에서 사용자에게 보이는 카드와 섹션을 제어합니다. 재시작 시 초기값으로 돌아갑니다.</div>
+          <div class=\"row\"><label for=\"docs_portal_url\">문서 / 포털 URL</label><input id=\"docs_portal_url\" value=\"__DOCS_PORTAL_URL__\" /></div>
+          <div class=\"row\"><label>User Overview Cards</label><div class=\"toggle-grid\" id=\"user_dashboard_cards\"></div></div>
+          <div class=\"row\"><label>User Sections</label><div class=\"toggle-grid\" id=\"user_dashboard_sections\"></div></div>
+          <div class=\"actions\">
+            <button id=\"save_dashboard_preferences\">Save User View</button>
+            <a href=\"/ui\">Open User View</a>
+          </div>
+          <div class=\"status-line\" id=\"dashboard_preferences_status\">user dashboard settings loading...</div>
+        </section>
+        <section class=\"card\">
+          <h2>🔔 Slack Webhook 관리</h2>
+          <div class=\"subtext\">Critical 경보 발생 시 자동으로 알림을 전송할 Slack Incoming Webhook을 등록합니다.</div>
+          <div id=\"webhooks_list\" class=\"list\" style=\"margin-bottom:12px\"><span class=\"empty\">로딩 중…</span></div>
+          <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
+            <div class=\"row\"><label for=\"wh_name\">채널 이름 (식별용)</label><input id=\"wh_name\" placeholder=\"예: #soc-alerts\" /></div>
+            <div class=\"row\"><label for=\"wh_url\">Webhook URL</label><input id=\"wh_url\" placeholder=\"https://hooks.slack.com/services/...\" /></div>
+          </div>
+          <div class=\"actions\">
+            <button id=\"add_webhook\">추가</button>
+            <button id=\"reload_webhooks\" class=\"secondary\">새로고침</button>
+          </div>
+          <div class=\"status-line\" id=\"webhook_status\"></div>
+        </section>
+        <section class=\"card\">
+          <h2>📖 가이드 &amp; 메뉴얼 편집</h2>
+          <div class=\"subtext\">사용자 UI에 표시되는 가이드 내용을 수정합니다. 마크다운 형식을 지원합니다.</div>
+          <div class=\"row\"><label for=\"guide_edit_select\">가이드 선택</label>
+            <select id=\"guide_edit_select\">
+              <option value=\"zabbix_setup\">🖧 Zabbix 에이전트 설정</option>
+              <option value=\"fleet_install\">🖥️ Fleet 에이전트 설치</option>
+              <option value=\"isms_criteria\">📋 ISMS-P 심사 기준</option>
+              <option value=\"iso27001_criteria\">🌐 ISO 27001 심사 기준</option>
+            </select>
+          </div>
+          <div class=\"row\"><label for=\"guide_edit_title\">제목</label><input id=\"guide_edit_title\" placeholder=\"가이드 제목\" /></div>
+          <div class=\"row\"><label for=\"guide_edit_content\">내용 (마크다운)</label><textarea id=\"guide_edit_content\" style=\"min-height:280px;font-family:monospace;font-size:12px\"></textarea></div>
+          <div class=\"actions\">
+            <button id=\"guide_edit_load\" class=\"secondary\">불러오기</button>
+            <button id=\"guide_edit_save\">저장</button>
+          </div>
+          <div class=\"status-line\" id=\"guide_edit_status\"></div>
+        </section>
+      </div>
     </div>
   </div>
 
@@ -3612,6 +3651,16 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         guideEditStatusEl.textContent = '저장 완료 ✓';
       } catch(e) { guideEditStatusEl.textContent = `오류: ${e.message}`; }
     });
+
+    /* ── Admin Tab switching ──────────────────────────────── */
+    function switchAdminTab(tab) {
+      document.querySelectorAll('.atab-panel').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('#admin_tabs_nav button').forEach(btn => btn.classList.remove('active'));
+      const panel = document.getElementById('atab_' + tab);
+      if (panel) panel.classList.add('active');
+      const btn = document.querySelector('#admin_tabs_nav button[data-atab="' + tab + '"]');
+      if (btn) btn.classList.add('active');
+    }
 
     async function initialize() {
       await loadDashboardPreferences();
