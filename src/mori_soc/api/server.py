@@ -2129,37 +2129,37 @@ def render_user_dashboard_html(
 
     <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
     <div class=\"tab-panel active\" id=\"tab_dashboard\">
-      <section class=\"metrics\" id=\"overview_cards\"></section>
+      <section class=\"metrics\" id=\"overview_cards\"><div class=\"empty\" style=\"padding:16px;color:#64748b\">⏳ 요약 카드를 불러오는 중…</div></section>
       <div class=\"layout\">
         <div class=\"stack\">
           <section class=\"card\" id=\"source_coverage_section\">
             <h2>Source Coverage</h2>
             <div class=\"subtext\">운영자가 노출을 허용한 경우에만 source 상태를 표시합니다.</div>
-            <div class=\"coverage\" id=\"source_coverage\"></div>
+            <div class=\"coverage\" id=\"source_coverage\"><span class=\"empty\">⏳ 로딩 중…</span></div>
           </section>
 
           <section class=\"card\" id=\"latest_status_section\">
             <h2>Latest Host Status</h2>
             <div class=\"subtext\">조치가 필요한 offline / unknown 호스트를 우선 확인합니다.</div>
-            <div class=\"table-wrap\" id=\"latest_status\"></div>
+            <div class=\"table-wrap\" id=\"latest_status\"><span class=\"empty\">⏳ 로딩 중…</span></div>
           </section>
 
           <section class=\"card\" id=\"risk_summary_section\">
             <h2>Risk Summary</h2>
             <div class=\"subtext\">alert, 취약점, 상태를 기준으로 우선 대응 대상을 확인합니다.</div>
-            <div class=\"table-wrap\" id=\"risk_summary\"></div>
+            <div class=\"table-wrap\" id=\"risk_summary\"><span class=\"empty\">⏳ 로딩 중…</span></div>
           </section>
 
           <section class=\"card\" id=\"recent_activity_section\">
             <h2>Recent Activity</h2>
             <div class=\"subtext\">운영자가 허용한 범위에서 최근 이벤트와 관측값을 보여줍니다.</div>
-            <div class=\"list\" id=\"recent_activity\"></div>
+            <div class=\"list\" id=\"recent_activity\"><span class=\"empty\">⏳ 로딩 중…</span></div>
           </section>
 
           <!-- NLQ section moved to floating button -->
         </div>
       </div>
-      <div class=\"status-line\" id=\"dashboard_status\">dashboard loading...</div>
+      <div class=\"status-line\" id=\"dashboard_status\">⏳ 초기화 중…</div>
     </div>
 
     <!-- ── Tab: Alert Triage ───────────────────────────────────────────── -->
@@ -2905,14 +2905,17 @@ def render_user_dashboard_html(
     }
 
     async function loadDashboard() {
-      dashboardStatusEl.textContent = 'dashboard loading...';
+      dashboardStatusEl.textContent = '📡 대시보드 데이터 요청 중…';
       try {
         const response = await fetch('/dashboard/summary');
-        const data = await response.json();
         if (!response.ok) {
-          dashboardStatusEl.textContent = `dashboard load failed: HTTP ${response.status}`;
+          let detail = `HTTP ${response.status}`;
+          try { const e = await response.json(); detail = e.detail || detail; } catch(_){}
+          dashboardStatusEl.textContent = `❌ 대시보드 로드 실패: ${detail}`;
+          overviewCardsEl.innerHTML = '<div class=\"empty\" style=\"padding:16px;color:#fca5a5\">⚠️ 서버가 데이터를 반환하지 못했습니다 (' + escapeHtml(detail) + ')</div>';
           return;
         }
+        const data = await response.json();
         dashboardDetails = data.overview_details || {};
         renderOverview(data.overview || {});
         renderSourceCoverage(data.source_coverage || []);
@@ -2920,9 +2923,11 @@ def render_user_dashboard_html(
         renderRiskSummary(data.risk_summary || []);
         renderRecentActivity(data.recent_activity || []);
         applyUserPreferences();
-        dashboardStatusEl.textContent = `dashboard updated at ${formatTime(data.generated_at)}`;
+        dashboardStatusEl.textContent = `✅ dashboard updated at ${formatTime(data.generated_at)}`;
       } catch (error) {
-        dashboardStatusEl.textContent = `dashboard load failed: ${error.message}`;
+        console.error('[MORI] loadDashboard fetch error:', error);
+        dashboardStatusEl.textContent = `❌ 대시보드 로드 실패: ${error.message}`;
+        overviewCardsEl.innerHTML = '<div class=\"empty\" style=\"padding:16px;color:#fca5a5\">⚠️ 네트워크 오류 — 서버 연결을 확인하세요.</div>';
       }
     }
 
@@ -3546,15 +3551,21 @@ def render_user_dashboard_html(
     });
 
     async function initialize() {
-      await loadPreferences();
-      await applyRoleBasedTabs();
-      await loadDashboard();
+      try { await loadPreferences(); } catch(e) { console.error('[MORI] loadPreferences error:', e); }
+      try { await applyRoleBasedTabs(); } catch(e) { console.error('[MORI] applyRoleBasedTabs error:', e); }
+      try { await loadDashboard(); } catch(e) {
+        console.error('[MORI] loadDashboard error:', e);
+        dashboardStatusEl.textContent = `❌ 대시보드 로드 실패: ${e.message}`;
+        // 빈 데이터라도 placeholder 표시
+        if (!sourceCoverageEl.children.length) sourceCoverageEl.innerHTML = '<div class=\"empty\">데이터 소스가 아직 연결되지 않았습니다.</div>';
+        if (!latestStatusEl.children.length || latestStatusEl.querySelector('.empty')) latestStatusEl.innerHTML = '<div class=\"empty\">호스트 데이터 없음 — API 연결을 확인하세요.</div>';
+        if (!riskSummaryEl.children.length || riskSummaryEl.querySelector('.empty')) riskSummaryEl.innerHTML = '<div class=\"empty\">위험 요약 데이터 없음</div>';
+        if (!recentActivityEl.children.length || recentActivityEl.querySelector('.empty')) recentActivityEl.innerHTML = '<div class=\"empty\">최근 활동 데이터 없음</div>';
+        overviewCardsEl.innerHTML = '<div class=\"empty\" style=\"padding:16px;color:#fca5a5\">⚠️ 대시보드 데이터를 불러올 수 없습니다. 서버 상태를 확인하세요.</div>';
+      }
     }
 
-    initialize().catch(err => {
-      console.error('[MORI] initialize error:', err);
-      if (dashboardStatusEl) dashboardStatusEl.textContent = `초기화 오류: ${err.message}`;
-    });
+    initialize();
   </script>
 
   <!-- ── NLQ Floating Action Button ───────────────────────────────────── -->
