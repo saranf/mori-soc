@@ -18,7 +18,7 @@ from mori_soc.services.query_service import InMemoryQueryStore, QueryService, qu
 from mori_soc.services.views import host_risk_summary_view, latest_host_status_view
 
 try:
-    from fastapi import FastAPI, HTTPException
+    from fastapi import FastAPI, HTTPException, Request
     from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 except ImportError:  # pragma: no cover - exercised by runtime guard tests
     FastAPI = None
@@ -678,13 +678,29 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     _admin_password = os.environ.get("MORI_ADMIN_PASSWORD", "1234")
     _auth_enabled = bool(os.environ.get("MORI_AUTH_ENABLED", "") or _ldap_enabled)
 
+    # Predefined local accounts: username -> {password, role}
+    local_users: dict[str, dict[str, str]] = {
+        _admin_user: {"password": _admin_password, "role": "admin"},
+        "security": {"password": "1234", "role": "security"},
+        "moniter": {"password": "1234", "role": "monitor"},
+    }
+
     # Sessions: token -> {username, role, created_at}
     sessions: dict[str, dict[str, Any]] = {}
     # Signup requests: [{id, name, email, department, reason, status, created_at}]
     signup_requests: list[dict[str, Any]] = []
 
+    # Role permissions: role -> list of allowed tab ids
+    _DEFAULT_ROLE_PERMISSIONS: dict[str, list[str]] = {
+        "admin": ["dashboard", "triage", "incidents", "assets", "guides"],
+        "security": ["dashboard", "triage", "incidents", "assets", "guides"],
+        "monitor": ["dashboard", "assets", "guides"],
+        "user": ["dashboard", "assets", "guides"],
+    }
+    role_permissions: dict[str, list[str]] = {k: list(v) for k, v in _DEFAULT_ROLE_PERMISSIONS.items()}
+
     def _verify_credentials(username: str, password: str) -> bool:
-        """LDAP(설정 시) → 로컬 admin 순으로 인증."""
+        """LDAP(설정 시) → 로컬 계정 순으로 인증."""
         if _ldap_enabled:
             try:
                 ok = _ldap_verify(username, password, _ldap_url, _ldap_bind_dn, _ldap_bind_pw, _ldap_base_dn, _ldap_user_attr)
@@ -692,7 +708,8 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
                     return True
             except Exception:
                 pass
-        return username == _admin_user and password == _admin_password
+        user = local_users.get(username)
+        return user is not None and user["password"] == password
 
     if _auth_enabled:
         from starlette.middleware.base import BaseHTTPMiddleware
@@ -1299,9 +1316,10 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         if not _verify_credentials(username, password):
             raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다.")
         token = str(uuid.uuid4())
+        _role = local_users.get(username, {}).get("role", "user")
         sessions[token] = {
             "username": username,
-            "role": "admin" if username == _admin_user else "user",
+            "role": _role,
             "created_at": _isoformat(datetime.now(tz=timezone.utc)),
         }
         from fastapi.responses import JSONResponse
@@ -1359,6 +1377,36 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
                 req["reviewed_at"] = _isoformat(datetime.now(tz=timezone.utc))
                 return req
         raise HTTPException(status_code=404, detail="가입 요청을 찾을 수 없습니다.")
+
+    @app.get("/auth/me", tags=["Auth"])
+    def auth_me(request: Request) -> dict[str, Any]:
+        """현재 로그인한 사용자 정보 조회."""
+        token = request.cookies.get("mori_session", "")
+        sess = sessions.get(token)
+        if not sess:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        role = sess.get("role", "user")
+        return {
+            "username": sess["username"],
+            "role": role,
+            "allowed_tabs": role_permissions.get(role, _DEFAULT_ROLE_PERMISSIONS.get(role, ["dashboard", "assets", "guides"])),
+        }
+
+    @app.get("/admin/role-permissions", tags=["Admin"])
+    def get_role_permissions_api() -> dict[str, Any]:
+        """역할별 탭 권한 조회."""
+        return {"permissions": role_permissions}
+
+    @app.post("/admin/role-permissions", tags=["Admin"])
+    def update_role_permissions_api(payload: dict[str, Any]) -> dict[str, Any]:
+        """역할별 탭 권한 업데이트. {role: [tab_id, ...]}"""
+        nonlocal role_permissions
+        valid_tabs = {"dashboard", "triage", "incidents", "assets", "guides"}
+        for role_key, tabs in payload.items():
+            if not isinstance(tabs, list):
+                raise HTTPException(status_code=400, detail=f"tabs for {role_key} must be a list")
+            role_permissions[role_key] = [t for t in tabs if t in valid_tabs]
+        return {"permissions": role_permissions}
 
     @app.get("/", include_in_schema=False)
     def index() -> Any:
@@ -1948,6 +1996,12 @@ def render_user_dashboard_html(
     .result-badge.fleet { background: rgba(52,211,153,.15); color: #6ee7b7; }
     .result-badge.trivy { background: rgba(251,146,60,.15); color: #fdba74; }
     .result-badge.hosts { background: rgba(148,163,184,.15); color: #cbd5e1; }
+    /* ── NLQ FAB ── */
+    .nlq-fab { position: fixed; bottom: 88px; right: 20px; z-index: 999; background: linear-gradient(135deg,#1d4ed8,#0ea5e9); color: #fff; border: none; border-radius: 999px; padding: 14px 20px; font-size: 14px; font-weight: 700; box-shadow: 0 6px 24px rgba(14,165,233,.45); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.15s, box-shadow 0.15s; }
+    .nlq-fab:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(14,165,233,.55); }
+    @media (min-width: 769px) { .nlq-fab { bottom: 32px; } }
+    .nlq-dialog { width: min(640px, calc(100vw - 24px)); }
+    .nlq-dialog-body { padding: 20px; }
     /* ── Bottom Nav (mobile only) ── */
     .bottom-nav { display: none; }
     @media (max-width: 960px) {
@@ -1956,14 +2010,14 @@ def render_user_dashboard_html(
     }
     @media (max-width: 768px) {
       html, body { overflow-x: hidden; }
-      .wrap { padding: 16px 12px 80px; max-width: 100%; }
+      .wrap { padding: 16px 12px 80px; max-width: 100%; box-sizing: border-box; }
       .hero { flex-direction: column; gap: 10px; margin-bottom: 12px; }
       .hero h1 { font-size: 22px; }
       .hero p { font-size: 13px; }
       .links, .top-actions { flex-wrap: wrap; gap: 8px; }
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .coverage { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .card { padding: 14px 12px; border-radius: 12px; }
+      .card { padding: 14px 12px; border-radius: 12px; box-sizing: border-box; }
       .card h2 { font-size: 15px; }
       .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       table { min-width: 480px; }
@@ -2060,18 +2114,7 @@ def render_user_dashboard_html(
             <div class=\"list\" id=\"recent_activity\"></div>
           </section>
 
-          <section class=\"card\" id=\"nlq_section\">
-            <h2>자연어 질의 (NLQ)</h2>
-            <div class=\"subtext\">자연스럽게 질문하거나 아래 예시 형식으로 입력하면 더 정확하게 해석합니다. <a href=\"#\" id=\"nlq_guide_link\" style=\"color:#7dd3fc;\">질의 가이드 보기 ↗</a></div>
-            <textarea id=\"nlq_textarea\" rows=\"3\" style=\"width:100%;box-sizing:border-box;background:#0b1220;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:10px;font-size:14px;resize:vertical;\" placeholder=\"예: 오프라인 호스트 보여줘 / 최근 24시간 wazuh high alert 요약\"></textarea>
-            <div id=\"nlq_interpret_result\" style=\"margin:8px 0;color:#7dd3fc;font-size:13px;\"></div>
-            <div style=\"display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;\">
-              <button type=\"button\" id=\"nlq_interpret_btn\" class=\"secondary\">Interpret</button>
-              <button type=\"button\" id=\"nlq_run_btn\">Run Query</button>
-              <button type=\"button\" id=\"nlq_csv_btn\" class=\"secondary\" style=\"display:none;\">Download CSV</button>
-            </div>
-            <div id=\"nlq_result_area\" style=\"margin-top:12px;\"></div>
-          </section>
+          <!-- NLQ section moved to floating button -->
         </div>
       </div>
       <div class=\"status-line\" id=\"dashboard_status\">dashboard loading...</div>
@@ -2895,6 +2938,22 @@ def render_user_dashboard_html(
       } catch (err) { triageModalStatusLineEl.textContent = `오류: ${err.message}`; }
     });
 
+    // Auto-save triage status when dropdown changes
+    triageModalStatusEl.addEventListener('change', async () => {
+      if (!currentTriageAlertId) return;
+      const body = { status: triageModalStatusEl.value, analyst: triageModalAnalystEl.value, note: triageModalNoteEl.value };
+      triageModalStatusLineEl.textContent = '자동 저장 중...';
+      try {
+        const res = await fetch(`/alerts/${encodeURIComponent(currentTriageAlertId)}/triage`, {
+          method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
+        });
+        if (!res.ok) { const d = await res.json(); triageModalStatusLineEl.textContent = `오류: ${d.detail || res.status}`; return; }
+        triageModalStatusLineEl.style.color = '#86efac';
+        triageModalStatusLineEl.textContent = '✅ 자동 저장됨';
+        loadTriage();
+      } catch (err) { triageModalStatusLineEl.textContent = `오류: ${err.message}`; }
+    });
+
     document.getElementById('reload_triage').addEventListener('click', loadTriage);
 
     // ── Incidents ────────────────────────────────────────────────────────────
@@ -3352,13 +3411,68 @@ def render_user_dashboard_html(
       }
     }
 
+    // ── Role-based tab visibility ─────────────────────────────────────────────
+    const ROLE_LABELS = { admin: '어드민', security: '보안담당자', monitor: '서버모니터', user: '사용자' };
+    async function applyRoleBasedTabs() {
+      try {
+        const res = await fetch('/auth/me');
+        if (!res.ok) return;
+        const me = await res.json();
+        const allowed = me.allowed_tabs || [];
+        ['triage', 'incidents', 'assets', 'guides'].forEach(tab => {
+          const navBtn = document.querySelector(`.tabs-nav [data-tab="${tab}"]`);
+          const bnBtn = document.querySelector(`.bottom-nav [data-tab="${tab}"]`);
+          const visible = allowed.includes(tab);
+          if (navBtn) navBtn.style.display = visible ? '' : 'none';
+          if (bnBtn) bnBtn.style.display = visible ? '' : 'none';
+        });
+        const roleLabel = ROLE_LABELS[me.role] || me.role;
+        const heroP = document.querySelector('.hero p');
+        if (heroP && me.username) {
+          heroP.innerHTML = `환영합니다, <strong style="color:#38bdf8">${escapeHtml(me.username)}</strong> <span style="background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:6px;font-size:12px">${escapeHtml(roleLabel)}</span>`;
+        }
+      } catch(e) { /* 비로그인 상태에서도 대시보드는 동작 */ }
+    }
+
+    // ── NLQ FAB ──────────────────────────────────────────────────────────────
+    const nlqFabDialog = document.getElementById('nlq_fab_dialog');
+    document.getElementById('nlq_fab_btn')?.addEventListener('click', () => {
+      if (typeof nlqFabDialog.showModal === 'function') nlqFabDialog.showModal();
+      else nlqFabDialog.setAttribute('open', 'open');
+    });
+    document.getElementById('nlq_fab_close')?.addEventListener('click', () => {
+      if (nlqFabDialog.open) nlqFabDialog.close();
+    });
+
     async function initialize() {
       await loadPreferences();
+      await applyRoleBasedTabs();
       await loadDashboard();
     }
 
     initialize();
   </script>
+
+  <!-- ── NLQ Floating Action Button ───────────────────────────────────── -->
+  <button class=\"nlq-fab\" id=\"nlq_fab_btn\" title=\"자연어 질의 (NLQ)\">💬 NLQ 질의</button>
+
+  <dialog id=\"nlq_fab_dialog\" class=\"nlq-dialog\">
+    <div class=\"nlq-dialog-body\">
+      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px\">
+        <h3 style=\"margin:0;font-size:18px\">💬 자연어 질의 (NLQ)</h3>
+        <button id=\"nlq_fab_close\" class=\"secondary\" style=\"padding:4px 12px\">닫기</button>
+      </div>
+      <div style=\"color:#94a3b8;font-size:13px;margin-bottom:10px\">자연스럽게 질문하거나 예시 형식으로 입력하면 해석합니다. <a href=\"#\" id=\"nlq_guide_link\" style=\"color:#7dd3fc;\">가이드 ↗</a></div>
+      <textarea id=\"nlq_textarea\" rows=\"3\" style=\"width:100%;box-sizing:border-box;background:#0b1220;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:10px;font-size:14px;resize:vertical;\" placeholder=\"예: 오프라인 호스트 보여줘 / 최근 24시간 wazuh high alert 요약\"></textarea>
+      <div id=\"nlq_interpret_result\" style=\"margin:8px 0;color:#7dd3fc;font-size:13px;\"></div>
+      <div style=\"display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;\">
+        <button type=\"button\" id=\"nlq_interpret_btn\" class=\"secondary\">Interpret</button>
+        <button type=\"button\" id=\"nlq_run_btn\">Run Query</button>
+        <button type=\"button\" id=\"nlq_csv_btn\" class=\"secondary\" style=\"display:none;\">Download CSV</button>
+      </div>
+      <div id=\"nlq_result_area\" style=\"margin-top:12px;\"></div>
+    </div>
+  </dialog>
 </body>
 </html>"""
     return (
@@ -3571,6 +3685,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\">⚙️ 설정</button>
       <button data-atab=\"users\" onclick=\"switchAdminTab('users')\">🙋 가입 요청</button>
       <button data-atab=\"auditlog\" onclick=\"switchAdminTab('auditlog')\">📝 변경 이력</button>
+      <button data-atab=\"roleperm\" onclick=\"switchAdminTab('roleperm')\">🔐 권한 관리</button>
     </nav>
 
     <!-- ── Tab: 모니터링 ─────────────────────────────────────────────────── -->
@@ -3761,6 +3876,22 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
       </div>
     </div>
+
+    <!-- ── Tab: 권한 관리 ───────────────────────────────────────────────── -->
+    <div class=\"atab-panel\" id=\"atab_roleperm\">
+      <div class=\"stack\">
+        <section class=\"card\">
+          <h2>🔐 역할별 탭 권한 관리</h2>
+          <div class=\"subtext\">각 계정 역할에서 보이는 탭을 설정합니다. 저장 후 다음 로그인부터 적용됩니다.</div>
+          <div id=\"roleperm_list\" style=\"display:grid;gap:16px;margin-bottom:16px\"><span class=\"empty\">로딩 중…</span></div>
+          <div class=\"actions\">
+            <button id=\"save_roleperm\">저장</button>
+            <button id=\"reload_roleperm\" class=\"secondary\">새로고침</button>
+          </div>
+          <div class=\"status-line\" id=\"roleperm_status\"></div>
+        </section>
+      </div>
+    </div>
   </div>
 
   <!-- ── 어드민 하단 탭 바 (모바일 전용) ────────────────────────────────── -->
@@ -3782,6 +3913,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     </button>
     <button data-atab=\"auditlog\" onclick=\"switchAdminTab('auditlog')\">
       <span class=\"bn-icon\">📝</span>이력
+    </button>
+    <button data-atab=\"roleperm\" onclick=\"switchAdminTab('roleperm')\">
+      <span class=\"bn-icon\">🔐</span>권한
     </button>
   </nav>
 
@@ -4874,6 +5008,78 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       document.getElementById('audit_search_btn').addEventListener('click', loadAuditLog);
     }
 
+    // ── Role Permissions ─────────────────────────────────────────────────────
+    const ROLE_PERM_TABS = [
+      { id: 'dashboard', label: '📊 대시보드' },
+      { id: 'triage', label: '🚨 Alert Triage' },
+      { id: 'incidents', label: '📋 인시던트' },
+      { id: 'assets', label: '📡 자산 현황' },
+      { id: 'guides', label: '📖 가이드' },
+    ];
+    const ROLE_PERM_ROLES = [
+      { key: 'security', label: '보안담당자 (security)' },
+      { key: 'monitor', label: '서버모니터 (moniter)' },
+      { key: 'user', label: '일반사용자 (user)' },
+    ];
+
+    async function loadRolePermissions() {
+      const listEl = document.getElementById('roleperm_list');
+      const statusEl = document.getElementById('roleperm_status');
+      if (!listEl) return;
+      listEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      try {
+        const res = await fetch('/admin/role-permissions');
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+        const perms = data.permissions || {};
+        listEl.innerHTML = ROLE_PERM_ROLES.map(role => {
+          const allowed = perms[role.key] || [];
+          const checks = ROLE_PERM_TABS.map(tab => {
+            const checked = allowed.includes(tab.id) ? 'checked' : '';
+            return `<label style=\"display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #223148;border-radius:8px;background:#0b1220;cursor:pointer\">
+              <input type=\"checkbox\" data-role=\"${role.key}\" data-tab=\"${tab.id}\" ${checked} style=\"width:auto;margin:0\" />
+              <span style=\"font-size:13px\">${tab.label}</span>
+            </label>`;
+          }).join('');
+          return `<div style=\"background:#0f172a;border:1px solid #233046;border-radius:12px;padding:14px\">
+            <div style=\"font-weight:700;color:#38bdf8;margin-bottom:10px\">${escapeHtml(role.label)}</div>
+            <div style=\"display:flex;flex-wrap:wrap;gap:8px\">${checks}</div>
+          </div>`;
+        }).join('');
+      } catch(e) {
+        listEl.innerHTML = `<span class=\"empty\">로드 실패: ${escapeHtml(e.message)}</span>`;
+      }
+    }
+
+    if (document.getElementById('reload_roleperm')) {
+      document.getElementById('reload_roleperm').addEventListener('click', loadRolePermissions);
+    }
+    if (document.getElementById('save_roleperm')) {
+      document.getElementById('save_roleperm').addEventListener('click', async () => {
+        const statusEl = document.getElementById('roleperm_status');
+        const checkboxes = document.querySelectorAll('#roleperm_list input[type=checkbox]');
+        const payload = {};
+        checkboxes.forEach(cb => {
+          const role = cb.dataset.role;
+          const tab = cb.dataset.tab;
+          if (!payload[role]) payload[role] = [];
+          if (cb.checked) payload[role].push(tab);
+        });
+        statusEl.textContent = '저장 중...';
+        try {
+          const res = await fetch('/admin/role-permissions', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          statusEl.style.color = '#86efac';
+          statusEl.textContent = '✅ 권한이 저장되었습니다. 해당 역할 사용자 재로그인 후 적용됩니다.';
+        } catch(e) {
+          statusEl.style.color = '#fca5a5';
+          statusEl.textContent = `오류: ${e.message}`;
+        }
+      });
+    }
+
     async function initialize() {
       await loadDashboardPreferences();
       await loadCatalog();
@@ -4882,6 +5088,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       await loadWebhooks();
       await loadGuideForEdit(guideEditSelectEl.value);
       await loadSignupRequests();
+      await loadRolePermissions();
     }
 
     initialize();
