@@ -7,6 +7,7 @@ from unittest.mock import patch
 from mori_soc.api.server import (
     DEFAULT_UI_PAYLOAD,
     build_dashboard_payload,
+    build_pdca_payload,
     build_query_request,
     create_app,
     create_query_service,
@@ -15,7 +16,7 @@ from mori_soc.api.server import (
     render_query_console_html,
     render_user_dashboard_html,
 )
-from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, SourceSync, Vulnerability
+from mori_soc.models import Alert, ControlCheckResult, Host, HostAlias, HostObservation, QueryResult, SourceSync, Vulnerability
 from mori_soc.services.query_service import InMemoryQueryStore, QueryService
 
 FASTAPI_AVAILABLE = importlib.util.find_spec("fastapi") is not None
@@ -486,3 +487,153 @@ class FastAPIAppTests(unittest.TestCase):
         response = self.client.get("/admin")
         self.assertIn("가입 요청", response.text)
         self.assertIn("atab_users", response.text)
+
+
+# ---------------------------------------------------------------------------
+# PDCA Dashboard Tests
+# ---------------------------------------------------------------------------
+
+
+class BuildPdcaPayloadTests(unittest.TestCase):
+    """build_pdca_payload 함수 단위 테스트."""
+
+    def setUp(self) -> None:
+        self.now = datetime.now(tz=timezone.utc)
+
+    def _make_check(self, check_id: str, control_id: str, status: str, **kw) -> ControlCheckResult:
+        return ControlCheckResult(
+            check_id=check_id,
+            control_id=control_id,
+            entity_type=kw.get("entity_type", "host"),
+            entity_id=kw.get("entity_id", "host-1"),
+            status=status,
+            checked_at=self.now,
+            owner=kw.get("owner"),
+            note=kw.get("note"),
+            remediation_due_at=kw.get("remediation_due_at"),
+            resolved_at=kw.get("resolved_at"),
+        )
+
+    def test_empty_store_returns_zero_counts(self) -> None:
+        store = InMemoryQueryStore()
+        payload = build_pdca_payload(QueryService(store))
+        self.assertEqual(payload["total_checks"], 0)
+        self.assertEqual(payload["pass_rate"], 0.0)
+        self.assertEqual(payload["pending_count"], 0)
+        self.assertEqual(payload["overdue_count"], 0)
+
+    def test_status_counts_are_correct(self) -> None:
+        checks = [
+            self._make_check("c1", "A.8.1", "pass"),
+            self._make_check("c2", "A.8.1", "pass"),
+            self._make_check("c3", "A.8.2", "fail"),
+            self._make_check("c4", "A.9.1", "warning"),
+            self._make_check("c5", "A.9.2", "not_checked"),
+            self._make_check("c6", "A.9.2", "not_applicable"),
+        ]
+        store = InMemoryQueryStore(control_checks=checks)
+        payload = build_pdca_payload(QueryService(store))
+
+        self.assertEqual(payload["total_checks"], 6)
+        sc = payload["status_counts"]
+        self.assertEqual(sc["pass"], 2)
+        self.assertEqual(sc["fail"], 1)
+        self.assertEqual(sc["warning"], 1)
+        self.assertEqual(sc["not_checked"], 1)
+        self.assertEqual(sc["not_applicable"], 1)
+
+    def test_pass_rate_calculation(self) -> None:
+        checks = [
+            self._make_check("c1", "A.8.1", "pass"),
+            self._make_check("c2", "A.8.1", "fail"),
+            self._make_check("c3", "A.8.2", "pass"),
+            self._make_check("c4", "A.8.3", "not_applicable"),  # 제외
+        ]
+        store = InMemoryQueryStore(control_checks=checks)
+        payload = build_pdca_payload(QueryService(store))
+        # checked = 4 - 0 (not_checked) - 1 (not_applicable) = 3
+        # pass_rate = 2 / 3 * 100 = 66.7
+        self.assertAlmostEqual(payload["pass_rate"], 66.7, places=1)
+
+    def test_pdca_cycle_mapping(self) -> None:
+        checks = [
+            self._make_check("c1", "A.8.1", "pass"),
+            self._make_check("c2", "A.8.2", "fail"),
+            self._make_check("c3", "A.9.1", "warning"),
+            self._make_check("c4", "A.9.2", "not_checked"),
+        ]
+        store = InMemoryQueryStore(control_checks=checks)
+        payload = build_pdca_payload(QueryService(store))
+        pdca = payload["pdca"]
+        self.assertEqual(pdca["plan"], 1)   # not_checked
+        self.assertEqual(pdca["do"], 2)     # fail + warning
+        self.assertEqual(pdca["check"], 3)  # total - not_checked - not_applicable
+        self.assertEqual(pdca["act"], 1)    # pass
+
+    def test_categories_grouped_by_control_prefix(self) -> None:
+        checks = [
+            self._make_check("c1", "A.8.1", "pass"),
+            self._make_check("c2", "A.8.2", "fail"),
+            self._make_check("c3", "A.9.1", "pass"),
+        ]
+        store = InMemoryQueryStore(control_checks=checks)
+        payload = build_pdca_payload(QueryService(store))
+        cats = {c["category"]: c for c in payload["categories"]}
+        self.assertIn("A.8", cats)
+        self.assertIn("A.9", cats)
+        self.assertEqual(cats["A.8"]["pass"], 1)
+        self.assertEqual(cats["A.8"]["fail"], 1)
+        self.assertEqual(cats["A.9"]["pass"], 1)
+
+    def test_pending_remediations_includes_fail_and_warning(self) -> None:
+        from datetime import timedelta
+        past = self.now - timedelta(days=7)
+        checks = [
+            self._make_check("c1", "A.8.1", "pass"),
+            self._make_check("c2", "A.8.2", "fail", owner="보안팀", remediation_due_at=past),
+            self._make_check("c3", "A.9.1", "warning", note="검토 필요"),
+        ]
+        store = InMemoryQueryStore(control_checks=checks)
+        payload = build_pdca_payload(QueryService(store))
+        self.assertEqual(payload["pending_count"], 2)
+        self.assertEqual(payload["overdue_count"], 1)
+        # 기한 초과 항목이 먼저 정렬
+        self.assertEqual(payload["pending_remediations"][0]["check_id"], "c2")
+        self.assertTrue(payload["pending_remediations"][0]["overdue"])
+
+
+@unittest.skipUnless(FASTAPI_AVAILABLE, "fastapi is not installed")
+class CompliancePdcaEndpointTests(unittest.TestCase):
+    """GET /compliance/pdca 엔드포인트 통합 테스트."""
+
+    def setUp(self) -> None:
+        from fastapi.testclient import TestClient
+
+        now = datetime.now(tz=timezone.utc)
+        store = InMemoryQueryStore(
+            hosts=[Host(host_id="host-1", hostname="srv-01", status="online", last_seen_at=now)],
+            control_checks=[
+                ControlCheckResult(check_id="c1", control_id="A.8.1", entity_type="host", entity_id="host-1", status="pass", checked_at=now),
+                ControlCheckResult(check_id="c2", control_id="A.8.2", entity_type="host", entity_id="host-1", status="fail", checked_at=now, owner="보안팀"),
+            ],
+        )
+        self.client = TestClient(create_app(QueryService(store)))
+
+    def test_pdca_endpoint_returns_200(self) -> None:
+        response = self.client.get("/compliance/pdca")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["total_checks"], 2)
+        self.assertIn("status_counts", data)
+        self.assertIn("pdca", data)
+        self.assertIn("categories", data)
+        self.assertIn("pending_remediations", data)
+
+    def test_pdca_endpoint_pass_rate(self) -> None:
+        data = self.client.get("/compliance/pdca").json()
+        self.assertAlmostEqual(data["pass_rate"], 50.0, places=1)
+
+    def test_ui_contains_compliance_tab(self) -> None:
+        response = self.client.get("/ui")
+        self.assertIn("tab_compliance", response.text)
+        self.assertIn("Compliance PDCA", response.text)
