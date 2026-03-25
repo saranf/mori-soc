@@ -89,14 +89,14 @@ class QueryRequestBuilderTests(unittest.TestCase):
 
     def test_render_user_dashboard_html_hides_query_console_controls(self) -> None:
         html = render_user_dashboard_html()
-        self.assertIn("MORI Security Dashboard", html)
+        self.assertIn("MORI — 보안 점검 현황", html)
         self.assertIn("http://mori.rmstudio.co.kr:37854/", html)
         self.assertIn("/dashboard/summary", html)
         self.assertIn("/dashboard/preferences", html)
         self.assertIn("overview_modal", html)
         self.assertNotIn("Natural Language Query", html)
         self.assertNotIn("Structured Query Builder", html)
-        self.assertNotIn("MORI Security Dashboard", html)
+        self.assertNotIn("MORI — 점검·통제 운영 콘솔", html)
         self.assertNotIn("Open User Dashboard", html)
         # NLQ section present in /ui
         self.assertIn("자연어 질의 (NLQ)", html)
@@ -266,7 +266,7 @@ class FastAPIAppTests(unittest.TestCase):
     def test_admin_endpoint(self) -> None:
         response = self.client.get("/admin")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("MORI Admin Console", response.text)
+        self.assertIn("MORI — 점검·통제 운영 콘솔", response.text)
         self.assertIn("사용자 대시보드 설정", response.text)
 
     def test_root_redirects_to_ui(self) -> None:
