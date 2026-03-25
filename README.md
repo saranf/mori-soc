@@ -107,8 +107,6 @@ Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리�
 
 ### 🚧 Phase 2: 관제 질의 엔진 — **진행 중**
 
-현재는 MVC 1~4의 초안이 연결된 상태입니다.
-
 | 항목 | 상태 | 내용 |
 |---|---|---|
 | **MVC 1 / FastAPI HTTP 서버** | ✅ 완료 | `GET /health`, `GET /catalog`, `POST /query`, `POST /interpret`, `GET /ui` |
@@ -116,13 +114,20 @@ Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리�
 | **MVC 3 / Docker Compose 배포선** | ✅ 완료 | `mori-api`, `soc-postgres`, `Dockerfile`, `.env.example`, 배포 문서 |
 | **MVC 4 / 자연어 질의 변환** | ✅ 초안 완료 | 한국어/영문 질문 → `intent + scope + filters` 변환 |
 | **운영 대시보드형 UI** | ✅ 완료 | `/ui`에서 상태/위험/최근 활동/빠른 질의/자연어 질의 제공 |
-| **실시간 수집 연동** | 🔲 남음 | Wazuh/Fleet/Zabbix API 폴링 또는 webhook 수신 |
+| **LDAP/AD 계정·권한 체크** | ✅ 완료 | 계정/그룹/권한 바인딩 수집·점검 |
+| **Worker 서비스 분리 (Poller)** | ✅ 완료 | Zabbix/Fleet/Wazuh/Trivy/LDAP 독립 폴러, 통합 워커 |
+| **Intent Registry 리팩터링** | ✅ 완료 | `_INTENT_HANDLERS` 딕셔너리 디스패치 패턴 |
+| **Compliance PDCA 대시보드** | ✅ 완료 | Plan-Do-Check-Act 주기 시각화, 통제 항목 현황 |
+| **증적 Export 리포트** | ✅ 완료 | 자산/계정/로그/취약점/월간 5종 리포트 (JSON·CSV) |
+| **Cross-verification 화면** | ✅ 완료 | Zabbix×Fleet 교차 검증, Shadow IT 탐지 |
+| **원커맨드 데모** | ✅ 완료 | `mori-start-demo.sh`, 샘플 데이터 시딩, 워커 관리 |
+| **실시간 수집 연동** | 🔲 남음 | 운영 환경 Wazuh/Fleet/Zabbix API 실시간 폴링 |
 
 중요:
 
 - 현재 `/dashboard/summary` 와 `/ui` 는 **원본 Zabbix/Fleet UI를 직접 읽는 것이 아니라 MORI 저장소에 적재된 데이터**를 보여줍니다.
-- 따라서 **실시간 ingestion worker가 아직 없으면** Zabbix UI에는 host가 보여도 MORI API에서는 `0` 으로 보일 수 있습니다.
-- 즉, 현재 단계는 **MVC 4 초안까지는 맞지만 데이터 정확성은 다음 우선순위 작업**입니다.
+- 데모 모드에서는 `mori-seed-sample-data.sh`로 샘플 데이터를 자동 삽입하여 전체 기능을 체험할 수 있습니다.
+- 운영 환경에서는 Worker(Poller)가 각 소스에서 실시간으로 데이터를 수집합니다.
 
 ### 권장 운영 모델
 
@@ -144,6 +149,132 @@ Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리�
 - host/user/ip 기준 다단계 pivot
 - 여러 소스 cross-check
 - 조사형 질문 지원 + 다음 확인 포인트 추천
+
+---
+
+## 🚀 Quick Start (데모)
+
+Docker와 Docker Compose가 설치된 환경에서 한 줄로 전체 데모를 실행할 수 있습니다.
+
+```bash
+# 원커맨드 데모: .env 생성 → DB/API 기동 → 샘플 데이터 시딩 → Worker 시작
+./scripts/mori-start-demo.sh
+```
+
+실행 완료 후 브라우저에서 `http://localhost:18000/ui`에 접속하면 아래 기능을 모두 체험할 수 있습니다:
+
+- 📊 **운영 대시보드**: 자산 현황, 위험도, 최근 활동
+- ✅ **Compliance PDCA**: 통제 항목 점검 현황 (Plan → Do → Check → Act)
+- 🔀 **Cross-verification**: Zabbix × Fleet 교차 검증, Shadow IT 탐지
+- 📥 **증적 리포트**: 자산/계정/로그/취약점/월간 5종 CSV 다운로드
+- 💬 **자연어 질의**: `오프라인 호스트 보여줘`, `최근 24시간 high alert 요약`
+
+### 개별 스크립트
+
+```bash
+# 샘플 데이터만 (재)삽입
+./scripts/mori-seed-sample-data.sh
+
+# 워커(Poller) 관리
+./scripts/mori-run-workers.sh start     # 워커 시작
+./scripts/mori-run-workers.sh status    # 상태 확인
+./scripts/mori-run-workers.sh cycle     # 수동 1회 수집 사이클
+./scripts/mori-run-workers.sh logs      # 로그 확인
+./scripts/mori-run-workers.sh stop      # 워커 중지
+```
+
+### 시딩되는 샘플 데이터
+
+| 항목 | 수량 | 설명 |
+|---|---|---|
+| Hosts | 10 | 서버, PC, 방화벽, VPN 등 다양한 자산 |
+| Host Aliases | 13 | Zabbix/Fleet/Trivy 소스별 매핑 |
+| Alerts | 8 | SSH brute force, rootkit, disk/CPU 경보 등 |
+| Vulnerabilities | 8 | CVE 기반 critical~medium 취약점 |
+| Observations | 9 | CPU, Disk, Memory, 암호화 상태 메트릭 |
+| Control Checks | 12 | ISO 27001 / ISMS-P 통제 항목 점검 결과 |
+| Directory Accounts | 7 | LDAP 사용자 (관리자, 개발자, DBA 등) |
+| Privilege Bindings | 6 | sudo, domain_admin, db_admin 권한 |
+| Group Memberships | 8 | Domain Admins, Developers, DBA 등 |
+| Source Syncs | 4 | Zabbix/Fleet/Trivy/Wazuh 수집 상태 |
+
+---
+
+## 🧪 테스트
+
+### 단위 테스트 (Docker 환경)
+
+컨테이너 안에서 pytest를 실행합니다. (로컬에 Python 3.12이 없어도 됩니다)
+
+```bash
+# pytest 설치 + 전체 테스트 실행
+docker compose run --rm \
+  -v "$(pwd)/tests:/app/tests:ro" \
+  mori-api \
+  sh -c "pip install pytest && python -m pytest /app/tests/ -v"
+```
+
+```bash
+# 특정 테스트 파일만
+docker compose run --rm \
+  -v "$(pwd)/tests:/app/tests:ro" \
+  mori-api \
+  sh -c "pip install pytest && python -m pytest /app/tests/test_api_server.py -v"
+```
+
+```bash
+# PDCA/Compliance 테스트만
+docker compose run --rm \
+  -v "$(pwd)/tests:/app/tests:ro" \
+  mori-api \
+  sh -c "pip install pytest && python -m pytest /app/tests/test_api_server.py -v -k 'Pdca or Compliance'"
+```
+
+### 테스트 파일 목록
+
+| 파일 | 대상 |
+|---|---|
+| `tests/test_api_server.py` | FastAPI 엔드포인트, PDCA payload, Compliance 통합 |
+| `tests/test_query_service.py` | 12개 질의 인텐트 + 뷰 집계 |
+| `tests/test_fleet_logs.py` | Fleet osquery 로그 수집기 |
+| `tests/test_wazuh_alerts.py` | Wazuh alert 수집기 |
+| `tests/test_zabbix_events.py` | Zabbix trigger/item 수집기 |
+| `tests/test_trivy_collector.py` | Trivy 취약점 수집기 |
+| `tests/test_ingestion.py` | 인제스천 파이프라인 |
+| `tests/test_intent_parser.py` | 자연어 → intent 파서 |
+| `tests/test_postgres_repository.py` | Postgres 저장소 (DB 필요) |
+
+### API 수동 테스트
+
+```bash
+# Health check
+curl http://localhost:18000/health
+
+# 대시보드 요약 JSON
+curl http://localhost:18000/dashboard/summary
+
+# PDCA 현황
+curl http://localhost:18000/compliance/pdca
+
+# Cross-verification
+curl http://localhost:18000/compliance/crosscheck
+
+# 리포트 목록
+curl http://localhost:18000/compliance/reports
+
+# 자산 점검 리포트 (CSV)
+curl http://localhost:18000/compliance/reports/asset?format=csv
+
+# 자연어 질의 해석
+curl -X POST http://localhost:18000/interpret \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"오프라인 호스트 보여줘"}'
+
+# 구조화 질의 실행
+curl -X POST http://localhost:18000/query \
+  -H 'Content-Type: application/json' \
+  -d '{"intent":"offline_hosts","scope":{"time_range":"24h"}}'
+```
 
 ---
 
@@ -240,6 +371,11 @@ Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리�
 - `config/portal/index.html`: 메인 포털 페이지
 - `scripts/trivy-fs-scan.sh`: 파일시스템 취약점 스캔 스크립트
 - `scripts/trivy-image-scan.sh`: 이미지 취약점 스캔 스크립트
+- `scripts/mori-start-demo.sh`: 원커맨드 데모 실행 (env 생성 → 기동 → 시딩 → 워커)
+- `scripts/mori-seed-sample-data.sh`: 샘플 데이터 SQL 시딩 (10 hosts, 8 alerts, 8 vulns, 12 checks, 7 accounts)
+- `scripts/mori-run-workers.sh`: Worker/Poller 관리 유틸리티 (start/stop/status/cycle/logs)
+- `src/mori_soc/services/reports.py`: 5종 감사 증적 리포트 생성 (자산/계정/로그/취약점/월간)
+- `schema/002_phase2_compliance_identity.sql`: Phase 2 Compliance/Identity DDL
 - `config/*`: 각 서비스별 설정 파일
 
 ## 5. 배포 방식
@@ -571,6 +707,6 @@ Starter dashboard에도 아래 패널이 표시됩니다.
 
 ---
 
-이 저장소는 **초기 배포 스캐폴드 + Phase 1 데이터 처리 로직**까지 정리된 상태입니다.
-실서비스 배포를 위해서는 Phase 2(HTTP API + DB 연결 + Docker화)가 필요하며,
-그 전에는 서버 리소스, 인증서, 초기 계정/비밀번호 정책에 맞춘 추가 보완도 필요합니다.
+이 저장소는 **Phase 1 완료 + Phase 2 대부분 완료** 상태입니다.
+`./scripts/mori-start-demo.sh` 한 줄로 전체 기능(대시보드, PDCA, 교차검증, 증적 리포트)을 체험할 수 있으며,
+운영 환경 배포 시에는 `.env`에 실제 소스 연결 정보를 설정하고 Worker를 가동하면 됩니다.
