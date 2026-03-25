@@ -990,6 +990,21 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     .quick-actions { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .status-line { color: #94a3b8; font-size: 13px; margin-top: 8px; }
     .mono { font-family: ui-monospace, SFMono-Regular, monospace; }
+    .query-result-area { min-height: 80px; background: #0b1220; border: 1px solid #334155; border-radius: 12px; padding: 12px; overflow: auto; font-size: 13px; }
+    .result-placeholder { color: #64748b; font-style: italic; }
+    .result-error { color: #f87171; font-family: ui-monospace, SFMono-Regular, monospace; white-space: pre-wrap; font-size: 12px; }
+    .result-summary { color: #7dd3fc; font-size: 13px; margin-bottom: 10px; padding: 8px 12px; background: #0f2035; border-radius: 8px; border-left: 3px solid #3b82f6; }
+    .result-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+    .result-table th { background: #0f2035; color: #93c5fd; font-weight: 600; text-align: left; padding: 8px 10px; border-bottom: 1px solid #1e3a5f; }
+    .result-table td { padding: 7px 10px; border-bottom: 1px solid #1a2d45; color: #e5e7eb; vertical-align: top; word-break: break-all; }
+    .result-table tr:last-child td { border-bottom: none; }
+    .result-table tr:hover td { background: #0d1d30; }
+    .result-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: #1e3a5f; color: #93c5fd; }
+    .result-badge.wazuh { background: #2d1f5e; color: #c4b5fd; }
+    .result-badge.zabbix { background: #1e3a5f; color: #93c5fd; }
+    .result-badge.fleet { background: #1a3324; color: #6ee7b7; }
+    .result-badge.trivy { background: #3b1f0e; color: #fbbf24; }
+    .result-badge.hosts { background: #0f2035; color: #7dd3fc; }
     .top-actions button, .guide-chips button, .guide-list button { width: auto; }
     .guide-chips, .guide-list { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
     .chip { padding: 8px 12px; border-radius: 999px; }
@@ -1157,8 +1172,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <textarea id=\"payload\">__PAYLOAD_JSON__</textarea>
           </div>
           <div class=\"row\">
-            <label for=\"result\">Response</label>
-            <textarea id=\"result\" class=\"mono\" readonly>아직 실행 전입니다.</textarea>
+            <label>Response</label>
+            <div id=\"result\" class=\"query-result-area\"><span class=\"result-placeholder\">아직 실행 전입니다.</span></div>
           </div>
         </section>
       </aside>
@@ -1298,7 +1313,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const data = await response.json();
         if (!response.ok) {
           dashboardPreferencesStatusEl.textContent = `settings save failed: HTTP ${response.status}`;
-          resultEl.value = JSON.stringify(data, null, 2);
+          setResultError(JSON.stringify(data, null, 2));
           return;
         }
         docsPortalUrlEl.value = data.docs_url || payload.docs_url;
@@ -1696,7 +1711,6 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           body: JSON.stringify({ text }),
         });
         const data = await response.json();
-        resultEl.value = JSON.stringify(data, null, 2);
         if (!response.ok) {
           queryStatusEl.textContent = `interpret failed: HTTP ${response.status}`;
           return null;
@@ -1716,7 +1730,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         queryStatusEl.textContent = (data.warnings || []).length ? 'interpret completed with hints' : 'interpret completed';
         return { recognized: true, data, payload };
       } catch (error) {
-        resultEl.value = error.stack || String(error);
+        setResultError(error.stack || String(error));
         queryStatusEl.textContent = `interpret failed: ${error.message}`;
         return null;
       }
@@ -1769,6 +1783,59 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       URL.revokeObjectURL(url);
     }
 
+    function setResultText(msg) {
+      resultEl.innerHTML = `<span class=\"result-placeholder\">${escapeHtml(String(msg))}</span>`;
+    }
+
+    function setResultError(msg) {
+      resultEl.innerHTML = `<div class=\"result-error\">${escapeHtml(String(msg))}</div>`;
+    }
+
+    function renderQueryResult(data) {
+      const evidence = Array.isArray(data?.evidence) ? data.evidence : [];
+      const summary = typeof data?.summary === 'string' ? data.summary : '';
+      const count = typeof data?.meta?.count === 'number' ? data.meta.count : evidence.length;
+
+      let html = '';
+      if (summary) {
+        html += `<div class=\"result-summary\">${escapeHtml(summary)}</div>`;
+      }
+      if (!evidence.length) {
+        html += `<span class=\"result-placeholder\">조회 결과가 없습니다.</span>`;
+        resultEl.innerHTML = html;
+        return;
+      }
+
+      const badgeClass = (src) => {
+        const s = (src || '').toLowerCase();
+        if (s.includes('wazuh')) return 'wazuh';
+        if (s.includes('zabbix')) return 'zabbix';
+        if (s.includes('fleet')) return 'fleet';
+        if (s.includes('trivy')) return 'trivy';
+        if (s.includes('host')) return 'hosts';
+        return '';
+      };
+
+      html += `
+        <table class=\"result-table\">
+          <thead><tr>
+            <th>#</th><th>Source</th><th>Summary</th><th>Record ID</th>
+          </tr></thead>
+          <tbody>
+            ${evidence.map((ev, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td><span class=\"result-badge ${escapeHtml(badgeClass(ev.source))}\">${escapeHtml(ev.source || '-')}</span></td>
+                <td>${escapeHtml(ev.summary || ev.raw_ref || '-')}</td>
+                <td><span class=\"mono\" style=\"font-size:11px;color:#64748b;\">${escapeHtml(ev.record_id || '-')}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div class=\"status-line\" style=\"margin-top:8px;\">총 ${escapeHtml(String(count))}건 조회됨</div>`;
+      resultEl.innerHTML = html;
+    }
+
     async function runQuery() {
       const payload = await resolvePayloadForRun();
       if (!payload) return;
@@ -1783,24 +1850,24 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           const contentType = response.headers.get('content-type') || '';
           if (contentType.includes('application/json')) {
             const data = await response.json();
-            resultEl.value = JSON.stringify(data, null, 2);
+            setResultError(JSON.stringify(data, null, 2));
           } else {
-            resultEl.value = await response.text();
+            setResultError(await response.text());
           }
           queryStatusEl.textContent = `query failed: HTTP ${response.status}`;
           return;
         }
         const data = await response.json();
         if (!hasQueryResults(data)) {
-          resultEl.value = '조회 결과가 없습니다.';
+          setResultText('조회 결과가 없습니다.');
           queryStatusEl.textContent = 'query returned no results';
           showNoResultsAlert(data);
           return;
         }
-        resultEl.value = JSON.stringify(data, null, 2);
+        renderQueryResult(data);
         queryStatusEl.textContent = 'query completed';
       } catch (error) {
-        resultEl.value = error.stack || String(error);
+        setResultError(error.stack || String(error));
         queryStatusEl.textContent = `query failed: ${error.message}`;
       }
     }
@@ -1817,12 +1884,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         });
         const previewData = await previewResponse.json();
         if (!previewResponse.ok) {
-          resultEl.value = JSON.stringify(previewData, null, 2);
+          setResultError(JSON.stringify(previewData, null, 2));
           queryStatusEl.textContent = `query failed: HTTP ${previewResponse.status}`;
           return;
         }
         if (!hasQueryResults(previewData)) {
-          resultEl.value = '조회 결과가 없습니다.';
+          setResultText('조회 결과가 없습니다.');
           queryStatusEl.textContent = 'csv download skipped: no results';
           showNoResultsAlert(previewData);
           return;
@@ -1837,9 +1904,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           const contentType = response.headers.get('content-type') || '';
           if (contentType.includes('application/json')) {
             const data = await response.json();
-            resultEl.value = JSON.stringify(data, null, 2);
+            setResultError(JSON.stringify(data, null, 2));
           } else {
-            resultEl.value = await response.text();
+            setResultError(await response.text());
           }
           queryStatusEl.textContent = `csv download failed: HTTP ${response.status}`;
           return;
@@ -1847,10 +1914,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const csvText = await response.text();
         const filename = extractFilename(response);
         downloadTextFile(csvText, filename, response.headers.get('content-type') || 'text/csv;charset=utf-8');
-        resultEl.value = JSON.stringify(previewData, null, 2);
+        renderQueryResult(previewData);
         queryStatusEl.textContent = `csv download started: ${filename}`;
       } catch (error) {
-        resultEl.value = error.stack || String(error);
+        setResultError(error.stack || String(error));
         queryStatusEl.textContent = `csv download failed: ${error.message}`;
       }
     }
@@ -1862,7 +1929,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     function resetForm() {
       nlpTextEl.value = '오프라인 호스트 보여줘';
       populateFormFromPayload(defaultPayload, { mode: 'natural' });
-      resultEl.value = '아직 실행 전입니다.';
+      setResultText('아직 실행 전입니다.');
       interpretationHintEl.innerHTML = '';
       queryStatusEl.textContent = 'form reset';
     }
