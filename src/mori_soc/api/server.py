@@ -682,7 +682,7 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     local_users: dict[str, dict[str, str]] = {
         _admin_user: {"password": _admin_password, "role": "admin"},
         "security": {"password": "1234", "role": "security"},
-        "moniter": {"password": "1234", "role": "monitor"},
+        "monitor": {"password": "1234", "role": "monitor"},
     }
 
     # Sessions: token -> {username, role, created_at}
@@ -2726,30 +2726,16 @@ def render_user_dashboard_html(
       nlqInterpretResult.textContent = '';
       if (nlqGuideModalEl.open) nlqGuideModalEl.close();
     });
-    document.getElementById('nlq_guide_link').addEventListener('click', (e) => { e.preventDefault(); openNlqGuideModal(); });
-
     // --- NLQ section ---
-    const nlqTextarea = document.getElementById('nlq_textarea');
-    const nlqInterpretBtn = document.getElementById('nlq_interpret_btn');
-    const nlqRunBtn = document.getElementById('nlq_run_btn');
-    const nlqCsvBtn = document.getElementById('nlq_csv_btn');
-    const nlqInterpretResult = document.getElementById('nlq_interpret_result');
-    const nlqResultArea = document.getElementById('nlq_result_area');
+    // NLQ 요소들은 </script> 이후 <dialog> 안에 있으므로 스크립트 실행 시점에는 존재하지 않음.
+    // 변수는 let으로 선언하고 DOMContentLoaded에서 할당·핸들러 등록 (아래 참조).
+    let nlqTextarea = null;
+    let nlqInterpretBtn = null;
+    let nlqRunBtn = null;
+    let nlqCsvBtn = null;
+    let nlqInterpretResult = null;
+    let nlqResultArea = null;
     let lastInterpretedPayload = null;
-
-    nlqInterpretBtn.addEventListener('click', async () => {
-      const text = nlqTextarea.value.trim();
-      if (!text) { showInfoModal('입력 필요', '질의할 내용을 입력해 주세요.'); return; }
-      nlqInterpretResult.textContent = '해석 중...';
-      try {
-        const res = await fetch('/interpret', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text}) });
-        const data = await res.json();
-        if (!res.ok) { nlqInterpretResult.textContent = `오류: ${data.detail || res.status}`; return; }
-        lastInterpretedPayload = { intent: data.intent, scope: data.scope || {time_range:'24h'}, filters: data.filters || {} };
-        nlqInterpretResult.textContent = `해석 결과: ${data.intent} (${data.recognized ? '인식됨' : '유사 매칭'})${data.warnings?.length ? ' ⚠ ' + data.warnings.join(', ') : ''}`;
-        if (!data.recognized) { openNlqGuideModal(); }
-      } catch (err) { nlqInterpretResult.textContent = `오류: ${err.message}`; }
-    });
 
     async function runNlqQuery(format) {
       const text = nlqTextarea.value.trim();
@@ -2823,16 +2809,7 @@ def render_user_dashboard_html(
         <div style=\"color:#94a3b8;font-size:13px;margin-top:8px\">총 ${count}건 조회됨</div>`;
     }
 
-    nlqRunBtn.addEventListener('click', async () => {
-      nlqResultArea.textContent = '실행 중...';
-      const result = await runNlqQuery('json');
-      if (!result) { nlqResultArea.textContent = ''; return; }
-      renderNlqResult(result);
-    });
-
-    nlqCsvBtn.addEventListener('click', async () => {
-      await runNlqQuery('csv');
-    });
+    // nlqRunBtn / nlqCsvBtn 핸들러는 DOMContentLoaded 블록에서 등록 (아래 참조)
 
     async function loadPreferences() {
       try {
@@ -3419,13 +3396,19 @@ def render_user_dashboard_html(
         if (!res.ok) return;
         const me = await res.json();
         const allowed = me.allowed_tabs || [];
-        ['triage', 'incidents', 'assets', 'guides'].forEach(tab => {
+        ['dashboard', 'triage', 'incidents', 'assets', 'guides'].forEach(tab => {
           const navBtn = document.querySelector(`.tabs-nav [data-tab="${tab}"]`);
           const bnBtn = document.querySelector(`.bottom-nav [data-tab="${tab}"]`);
           const visible = allowed.includes(tab);
           if (navBtn) navBtn.style.display = visible ? '' : 'none';
           if (bnBtn) bnBtn.style.display = visible ? '' : 'none';
         });
+        // 현재 활성 탭이 허용되지 않으면 첫 번째 허용 탭으로 전환
+        const activeNavBtn = document.querySelector('.tabs-nav button.active');
+        const activeTab = activeNavBtn ? activeNavBtn.dataset.tab : 'dashboard';
+        if (allowed.length > 0 && !allowed.includes(activeTab)) {
+          switchTab(allowed[0]);
+        }
         const roleLabel = ROLE_LABELS[me.role] || me.role;
         const heroP = document.querySelector('.hero p');
         if (heroP && me.username) {
@@ -3434,14 +3417,53 @@ def render_user_dashboard_html(
       } catch(e) { /* 비로그인 상태에서도 대시보드는 동작 */ }
     }
 
-    // ── NLQ FAB ──────────────────────────────────────────────────────────────
-    const nlqFabDialog = document.getElementById('nlq_fab_dialog');
-    document.getElementById('nlq_fab_btn')?.addEventListener('click', () => {
-      if (typeof nlqFabDialog.showModal === 'function') nlqFabDialog.showModal();
-      else nlqFabDialog.setAttribute('open', 'open');
-    });
-    document.getElementById('nlq_fab_close')?.addEventListener('click', () => {
-      if (nlqFabDialog.open) nlqFabDialog.close();
+    // ── NLQ 핸들러 ─────────────────────────────────────────────────────────
+    // nlq_textarea, nlq_interpret_btn 등 모든 NLQ 요소는 </script> 이후의 <dialog> 안에 있음.
+    // DOMContentLoaded 이후(전체 HTML 파싱 완료)에 요소를 얻고 핸들러를 등록한다.
+    document.addEventListener('DOMContentLoaded', () => {
+      nlqTextarea      = document.getElementById('nlq_textarea');
+      nlqInterpretBtn  = document.getElementById('nlq_interpret_btn');
+      nlqRunBtn        = document.getElementById('nlq_run_btn');
+      nlqCsvBtn        = document.getElementById('nlq_csv_btn');
+      nlqInterpretResult = document.getElementById('nlq_interpret_result');
+      nlqResultArea    = document.getElementById('nlq_result_area');
+
+      document.getElementById('nlq_guide_link')?.addEventListener('click', (e) => { e.preventDefault(); openNlqGuideModal(); });
+
+      nlqInterpretBtn?.addEventListener('click', async () => {
+        const text = nlqTextarea.value.trim();
+        if (!text) { showInfoModal('입력 필요', '질의할 내용을 입력해 주세요.'); return; }
+        nlqInterpretResult.textContent = '해석 중...';
+        try {
+          const res = await fetch('/interpret', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text}) });
+          const data = await res.json();
+          if (!res.ok) { nlqInterpretResult.textContent = `오류: ${data.detail || res.status}`; return; }
+          lastInterpretedPayload = { intent: data.intent, scope: data.scope || {time_range:'24h'}, filters: data.filters || {} };
+          nlqInterpretResult.textContent = `해석 결과: ${data.intent} (${data.recognized ? '인식됨' : '유사 매칭'})${data.warnings?.length ? ' ⚠ ' + data.warnings.join(', ') : ''}`;
+          if (!data.recognized) { openNlqGuideModal(); }
+        } catch (err) { nlqInterpretResult.textContent = `오류: ${err.message}`; }
+      });
+
+      nlqRunBtn?.addEventListener('click', async () => {
+        nlqResultArea.textContent = '실행 중...';
+        const result = await runNlqQuery('json');
+        if (!result) { nlqResultArea.textContent = ''; return; }
+        renderNlqResult(result);
+      });
+
+      nlqCsvBtn?.addEventListener('click', async () => {
+        await runNlqQuery('csv');
+      });
+
+      // NLQ FAB 열기/닫기
+      const nlqFabDialog = document.getElementById('nlq_fab_dialog');
+      document.getElementById('nlq_fab_btn')?.addEventListener('click', () => {
+        if (nlqFabDialog && typeof nlqFabDialog.showModal === 'function') nlqFabDialog.showModal();
+        else if (nlqFabDialog) nlqFabDialog.setAttribute('open', 'open');
+      });
+      document.getElementById('nlq_fab_close')?.addEventListener('click', () => {
+        if (nlqFabDialog && nlqFabDialog.open) nlqFabDialog.close();
+      });
     });
 
     async function initialize() {
