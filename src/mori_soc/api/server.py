@@ -689,6 +689,20 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     sessions: dict[str, dict[str, Any]] = {}
     # Signup requests: [{id, name, email, department, reason, status, created_at}]
     signup_requests: list[dict[str, Any]] = []
+    # User action audit log: [{ts, username, action, detail}]
+    action_audit_log: list[dict[str, Any]] = []
+
+    def _log_action(username: str, action: str, detail: str = "") -> None:
+        """사용자 행동을 action_audit_log에 기록 (최근 2000건 유지)."""
+        entry = {
+            "ts": _isoformat(datetime.now(tz=timezone.utc)),
+            "username": username,
+            "action": action,
+            "detail": detail,
+        }
+        action_audit_log.append(entry)
+        if len(action_audit_log) > 2000:
+            del action_audit_log[:-2000]
 
     # Role permissions: role -> list of allowed tab ids
     _DEFAULT_ROLE_PERMISSIONS: dict[str, list[str]] = {
@@ -1314,6 +1328,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         if not username or not password:
             raise HTTPException(status_code=400, detail="아이디와 비밀번호를 입력하세요.")
         if not _verify_credentials(username, password):
+            _log_action(username, "LOGIN_FAIL", "잘못된 비밀번호")
             raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다.")
         token = str(uuid.uuid4())
         _role = local_users.get(username, {}).get("role", "user")
@@ -1322,6 +1337,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             "role": _role,
             "created_at": _isoformat(datetime.now(tz=timezone.utc)),
         }
+        _log_action(username, "LOGIN", f"role={_role}")
         from fastapi.responses import JSONResponse
         resp = JSONResponse({"ok": True, "username": username})
         resp.set_cookie("mori_session", token, httponly=True, samesite="lax", max_age=86400 * 7)
@@ -1331,6 +1347,11 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     def auth_logout(request: Any = None) -> Any:
         """로그아웃: 세션 쿠키 삭제 후 /login 리디렉션."""
         from fastapi import Request as _FRequest
+        token = ""
+        if hasattr(request, "cookies"):
+            token = request.cookies.get("mori_session", "")
+        sess = sessions.pop(token, {})
+        _log_action(sess.get("username", "unknown"), "LOGOUT", "")
         resp = RedirectResponse(url="/login", status_code=302)
         resp.delete_cookie("mori_session")
         return resp
@@ -1407,6 +1428,27 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
                 raise HTTPException(status_code=400, detail=f"tabs for {role_key} must be a list")
             role_permissions[role_key] = [t for t in tabs if t in valid_tabs]
         return {"permissions": role_permissions}
+
+    @app.get("/admin/action-audit-log", tags=["Admin"])
+    def get_action_audit_log(limit: int = 500, username: str = "") -> dict[str, Any]:
+        """사용자 행동 감사 로그 조회 (최신순). ?username=xxx 로 필터 가능."""
+        logs = list(reversed(action_audit_log))
+        if username:
+            logs = [e for e in logs if e["username"] == username]
+        return {"logs": logs[:limit], "total": len(logs)}
+
+    @app.post("/admin/action-audit-log", tags=["Admin"])
+    def record_action_audit(payload: dict[str, Any], request: Any = None) -> dict[str, Any]:
+        """프런트엔드에서 탭 전환·쿼리 실행 등을 기록할 때 호출."""
+        token = ""
+        if hasattr(request, "cookies"):
+            token = request.cookies.get("mori_session", "")
+        sess = sessions.get(token, {})
+        uname = sess.get("username", "anonymous")
+        action = str(payload.get("action", "UNKNOWN"))
+        detail = str(payload.get("detail", ""))
+        _log_action(uname, action, detail)
+        return {"ok": True}
 
     @app.get("/", include_in_schema=False)
     def index() -> Any:
@@ -2460,6 +2502,14 @@ def render_user_dashboard_html(
     const INC_STATUS_COLORS = {open:'#f59e0b', investigating:'#a78bfa', resolved:'#6ee7b7', closed:'#94a3b8'};
 
     // ── Tab Navigation ─────────────────────────────────────────────────────
+    function logUserAction(action, detail) {
+      fetch('/admin/action-audit-log', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action, detail }),
+      }).catch(() => {});
+    }
+
     function switchTab(tabName) {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       // 상단 탭 + 하단 탭 모두 active 동기화
@@ -2469,6 +2519,7 @@ def render_user_dashboard_html(
       document.querySelectorAll(`[data-tab="${tabName}"]`).forEach(b => b.classList.add('active'));
       // 페이지 상단으로 스크롤 (모바일에서 탭 전환 시 편의)
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      logUserAction('TAB_SWITCH', tabName);
       if (tabName === 'triage') loadTriage();
       if (tabName === 'incidents') loadIncidents();
       if (tabName === 'assets') loadAssets();
@@ -3440,12 +3491,14 @@ def render_user_dashboard_html(
           if (!res.ok) { nlqInterpretResult.textContent = `오류: ${data.detail || res.status}`; return; }
           lastInterpretedPayload = { intent: data.intent, scope: data.scope || {time_range:'24h'}, filters: data.filters || {} };
           nlqInterpretResult.textContent = `해석 결과: ${data.intent} (${data.recognized ? '인식됨' : '유사 매칭'})${data.warnings?.length ? ' ⚠ ' + data.warnings.join(', ') : ''}`;
+          logUserAction('INTERPRET', text.substring(0, 200));
           if (!data.recognized) { openNlqGuideModal(); }
         } catch (err) { nlqInterpretResult.textContent = `오류: ${err.message}`; }
       });
 
       nlqRunBtn?.addEventListener('click', async () => {
         nlqResultArea.textContent = '실행 중...';
+        logUserAction('QUERY', (nlqTextarea?.value||'').substring(0, 200));
         const result = await runNlqQuery('json');
         if (!result) { nlqResultArea.textContent = ''; return; }
         renderNlqResult(result);
@@ -3465,6 +3518,21 @@ def render_user_dashboard_html(
         if (nlqFabDialog && nlqFabDialog.open) nlqFabDialog.close();
       });
     });
+
+    // ── 전역 함수 노출 (onclick 속성에서 직접 호출되는 함수는 window 객체에 명시적 등록) ──
+    window.switchTab         = switchTab;
+    window.switchAssetTab    = switchAssetTab;
+    window.downloadAssetsCSV = downloadAssetsCSV;
+    window.openTriageModal   = openTriageModal;
+    window.openIncidentModal = openIncidentModal;
+    window.openOwnerModal    = openOwnerModal;
+    window.openPlanModal     = openPlanModal;
+    window.closePlanModal    = closePlanModal;
+    window.closeOwnerModal   = closeOwnerModal;
+    window.loadTriage        = loadTriage;
+    window.loadIncidents     = loadIncidents;
+    window.loadAssets        = loadAssets;
+    window.loadDashboard     = loadDashboard;
 
     async function initialize() {
       await loadPreferences();
@@ -3708,6 +3776,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <button data-atab=\"users\" onclick=\"switchAdminTab('users')\">🙋 가입 요청</button>
       <button data-atab=\"auditlog\" onclick=\"switchAdminTab('auditlog')\">📝 변경 이력</button>
       <button data-atab=\"roleperm\" onclick=\"switchAdminTab('roleperm')\">🔐 권한 관리</button>
+      <button data-atab=\"userlog\" onclick=\"switchAdminTab('userlog')\">👤 사용자 로그</button>
     </nav>
 
     <!-- ── Tab: 모니터링 ─────────────────────────────────────────────────── -->
@@ -3914,6 +3983,31 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
       </div>
     </div>
+
+    <!-- ── Tab: 사용자 로그 ─────────────────────────────────────────────── -->
+    <div class=\"atab-panel\" id=\"atab_userlog\">
+      <div class=\"stack\">
+        <section class=\"card\">
+          <h2>👤 사용자 행동 로그</h2>
+          <div class=\"subtext\">로그인·로그아웃·탭 전환·쿼리 실행 등 모든 사용자 행동이 기록됩니다.</div>
+          <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
+            <input id=\"userlog_filter_user\" placeholder=\"사용자명으로 검색\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:180px\" />
+            <select id=\"userlog_filter_action\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px\">
+              <option value=\"\">전체 액션</option>
+              <option value=\"LOGIN\">LOGIN</option>
+              <option value=\"LOGIN_FAIL\">LOGIN_FAIL</option>
+              <option value=\"LOGOUT\">LOGOUT</option>
+              <option value=\"TAB_SWITCH\">TAB_SWITCH</option>
+              <option value=\"QUERY\">QUERY</option>
+              <option value=\"INTERPRET\">INTERPRET</option>
+            </select>
+            <button id=\"userlog_search_btn\" class=\"secondary\" style=\"padding:6px 14px\">🔍 검색</button>
+            <button id=\"reload_userlog\" class=\"secondary\" style=\"padding:6px 14px\">새로고침</button>
+          </div>
+          <div id=\"userlog_list\" class=\"list\"><span class=\"empty\">로딩 중…</span></div>
+        </section>
+      </div>
+    </div>
   </div>
 
   <!-- ── 어드민 하단 탭 바 (모바일 전용) ────────────────────────────────── -->
@@ -3938,6 +4032,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     </button>
     <button data-atab=\"roleperm\" onclick=\"switchAdminTab('roleperm')\">
       <span class=\"bn-icon\">🔐</span>권한
+    </button>
+    <button data-atab=\"userlog\" onclick=\"switchAdminTab('userlog')\">
+      <span class=\"bn-icon\">👤</span>로그
     </button>
   </nav>
 
@@ -4025,6 +4122,14 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
+    }
+
+    function logUserAction(action, detail) {
+      fetch('/admin/action-audit-log', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action, detail }),
+      }).catch(() => {});
     }
 
     function formatTime(value) {
@@ -4522,6 +4627,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         }
         const payload = { intent: data.intent, scope: data.scope || {}, filters: data.filters || {} };
         populateFormFromPayload(payload, { mode: 'natural' });
+        logUserAction('INTERPRET', text.substring(0, 200));
         queryStatusEl.textContent = (data.warnings || []).length ? 'interpret completed with hints' : 'interpret completed';
         return { recognized: true, data, payload };
       } catch (error) {
@@ -5040,7 +5146,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     ];
     const ROLE_PERM_ROLES = [
       { key: 'security', label: '보안담당자 (security)' },
-      { key: 'monitor', label: '서버모니터 (moniter)' },
+      { key: 'monitor', label: '서버모니터 (monitor)' },
       { key: 'user', label: '일반사용자 (user)' },
     ];
 
@@ -5102,6 +5208,68 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       });
     }
 
+    // ── 사용자 행동 로그 ──────────────────────────────────────────────────
+    async function loadUserActivityLog(filterUser, filterAction) {
+      const listEl = document.getElementById('userlog_list');
+      if (!listEl) return;
+      listEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      try {
+        let url = '/admin/action-audit-log?limit=500';
+        if (filterUser) url += `&username=${encodeURIComponent(filterUser)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+        let logs = data.logs || [];
+        if (filterAction) logs = logs.filter(e => e.action === filterAction);
+        if (!logs.length) { listEl.innerHTML = '<span class=\"empty\">로그 없음</span>'; return; }
+        const ACTION_COLOR = {
+          LOGIN:'#86efac', LOGIN_FAIL:'#fca5a5', LOGOUT:'#94a3b8',
+          TAB_SWITCH:'#7dd3fc', QUERY:'#fbbf24', INTERPRET:'#c4b5fd', UNKNOWN:'#cbd5e1',
+        };
+        listEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
+          <thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155\">
+            <th style=\"text-align:left;padding:6px 10px;white-space:nowrap\">시각</th>
+            <th style=\"text-align:left;padding:6px 10px\">사용자</th>
+            <th style=\"text-align:left;padding:6px 10px\">액션</th>
+            <th style=\"text-align:left;padding:6px 10px\">상세</th>
+          </tr></thead>
+          <tbody>${logs.map(e => {
+            const col = ACTION_COLOR[e.action] || ACTION_COLOR.UNKNOWN;
+            return `<tr style=\"border-bottom:1px solid #1e293b\">
+              <td style=\"padding:5px 10px;color:#64748b;white-space:nowrap\">${escapeHtml(e.ts)}</td>
+              <td style=\"padding:5px 10px;color:#f1f5f9;font-weight:600\">${escapeHtml(e.username)}</td>
+              <td style=\"padding:5px 10px\"><span style=\"color:${col};font-weight:700\">${escapeHtml(e.action)}</span></td>
+              <td style=\"padding:5px 10px;color:#94a3b8\">${escapeHtml(e.detail||'')}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>`;
+      } catch(e) {
+        listEl.innerHTML = `<span class=\"empty\">로드 실패: ${escapeHtml(e.message)}</span>`;
+      }
+    }
+
+    if (document.getElementById('reload_userlog')) {
+      document.getElementById('reload_userlog').addEventListener('click', () => {
+        const u = (document.getElementById('userlog_filter_user')||{}).value||'';
+        const a = (document.getElementById('userlog_filter_action')||{}).value||'';
+        loadUserActivityLog(u, a);
+      });
+    }
+    if (document.getElementById('userlog_search_btn')) {
+      document.getElementById('userlog_search_btn').addEventListener('click', () => {
+        const u = (document.getElementById('userlog_filter_user')||{}).value||'';
+        const a = (document.getElementById('userlog_filter_action')||{}).value||'';
+        loadUserActivityLog(u, a);
+      });
+    }
+
+    // ── 전역 함수 노출 (onclick 속성에서 직접 호출되는 함수는 window 객체에 명시적 등록) ──
+    window.switchAdminTab      = switchAdminTab;
+    window.deleteOwner         = deleteOwner;
+    window.testWebhook         = testWebhook;
+    window.deleteWebhook       = deleteWebhook;
+    window.handleSignupRequest = handleSignupRequest;
+
     async function initialize() {
       await loadDashboardPreferences();
       await loadCatalog();
@@ -5111,6 +5279,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       await loadGuideForEdit(guideEditSelectEl.value);
       await loadSignupRequests();
       await loadRolePermissions();
+      await loadUserActivityLog();
     }
 
     initialize();
