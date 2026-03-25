@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import uuid
+import urllib.request
+import urllib.error
 from urllib.parse import quote as _url_quote
 from collections import Counter
 from collections.abc import Mapping
@@ -71,11 +74,11 @@ def create_query_service(store: InMemoryQueryStore | None = None) -> QueryServic
 
 
 def create_query_service_from_env() -> QueryService:
-    backend = os.getenv("MORI_QUERY_BACKEND", "memory").strip().lower()
+    database_url = os.getenv("MORI_DATABASE_URL", "").strip()
+    backend = os.getenv("MORI_QUERY_BACKEND", "postgres" if database_url else "memory").strip().lower()
     if backend == "memory":
         return create_query_service()
     if backend == "postgres":
-        database_url = os.getenv("MORI_DATABASE_URL")
         if not database_url:
             raise RuntimeError("MORI_DATABASE_URL must be set when MORI_QUERY_BACKEND=postgres")
         from mori_soc.repositories import PostgresRepository, snapshot_to_query_store
@@ -254,6 +257,13 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     app = FastAPI(title="MORI SOC Query API", version="0.1.0")
     dashboard_preferences = _default_dashboard_preferences()
 
+    # Triage: alert_id -> {status, analyst, note, updated_at}
+    triage_store: dict[str, dict[str, Any]] = {}
+    # Slack webhooks: [{id, name, url, created_at}]
+    webhooks: list[dict[str, Any]] = []
+    # Incidents: incident_id -> {incident_id, title, status, alert_ids, notes, created_at, updated_at}
+    incidents: dict[str, dict[str, Any]] = {}
+
     def get_query_service() -> QueryService:
         if service is not None:
             return service
@@ -351,6 +361,132 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
             return interpret_query_text(text)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # ── Alert Triage ────────────────────────────────────────────────────────────
+    @app.get("/alerts")
+    def alerts_list() -> dict[str, Any]:
+        store = get_query_service().store
+        hostnames = {host.host_id: host.hostname for host in store.hosts}
+        rows = _alert_detail_rows(store.alerts, hostnames)
+        for row in rows:
+            row["triage"] = triage_store.get(row["alert_id"], {"status": "new"})
+        return {"alerts": rows, "total": len(rows)}
+
+    @app.patch("/alerts/{alert_id}/triage")
+    def alert_triage_update(alert_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        status = payload.get("status", "")
+        valid_statuses = {"new", "acknowledged", "investigating", "closed", "false_positive"}
+        if status not in valid_statuses:
+            raise HTTPException(status_code=400, detail=f"status must be one of: {', '.join(sorted(valid_statuses))}")
+        entry = triage_store.setdefault(alert_id, {})
+        entry["status"] = status
+        entry["analyst"] = payload.get("analyst", "")
+        entry["note"] = payload.get("note", entry.get("note", ""))
+        entry["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
+        # Trigger Slack for acknowledged/investigating transitions
+        if status in {"acknowledged", "investigating"} and webhooks:
+            store = get_query_service().store
+            alert_obj = next((a for a in store.alerts if a.alert_id == alert_id), None)
+            if alert_obj:
+                msg = f":mag: [MORI Triage] `{alert_id}` → *{status.upper()}*\n*Alert:* {alert_obj.message}\n*Analyst:* {entry['analyst'] or 'unknown'}"
+                _notify_all_webhooks(webhooks, msg)
+        return {"alert_id": alert_id, "triage": entry}
+
+    # ── Slack Webhooks ───────────────────────────────────────────────────────────
+    @app.get("/webhooks")
+    def webhooks_list() -> dict[str, Any]:
+        return {"webhooks": webhooks}
+
+    @app.post("/webhooks")
+    def webhooks_add(payload: dict[str, Any]) -> dict[str, Any]:
+        name = str(payload.get("name", "")).strip()
+        url = str(payload.get("url", "")).strip()
+        if not url.startswith("https://hooks.slack.com/") and not url.startswith("http"):
+            raise HTTPException(status_code=400, detail="url must be a valid webhook URL")
+        entry: dict[str, Any] = {
+            "id": str(uuid.uuid4()),
+            "name": name or "Slack Webhook",
+            "url": url,
+            "created_at": _isoformat(datetime.now(tz=timezone.utc)),
+        }
+        webhooks.append(entry)
+        return entry
+
+    @app.delete("/webhooks/{webhook_id}")
+    def webhooks_delete(webhook_id: str) -> dict[str, Any]:
+        idx = next((i for i, w in enumerate(webhooks) if w["id"] == webhook_id), None)
+        if idx is None:
+            raise HTTPException(status_code=404, detail="webhook not found")
+        removed = webhooks.pop(idx)
+        return {"deleted": removed["id"]}
+
+    @app.post("/webhooks/{webhook_id}/test")
+    def webhooks_test(webhook_id: str) -> dict[str, Any]:
+        wh = next((w for w in webhooks if w["id"] == webhook_id), None)
+        if wh is None:
+            raise HTTPException(status_code=404, detail="webhook not found")
+        ok, err = _send_slack_message(wh["url"], ":white_check_mark: MORI SOC 알림 테스트 메시지입니다.")
+        if not ok:
+            raise HTTPException(status_code=502, detail=f"slack delivery failed: {err}")
+        return {"ok": True}
+
+    # ── Incidents ────────────────────────────────────────────────────────────────
+    @app.get("/incidents")
+    def incidents_list() -> dict[str, Any]:
+        return {"incidents": list(incidents.values())}
+
+    @app.post("/incidents")
+    def incidents_create(payload: dict[str, Any]) -> dict[str, Any]:
+        title = str(payload.get("title", "")).strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="title is required")
+        now_str = _isoformat(datetime.now(tz=timezone.utc))
+        incident: dict[str, Any] = {
+            "incident_id": str(uuid.uuid4()),
+            "title": title,
+            "status": "open",
+            "alert_ids": list(payload.get("alert_ids") or []),
+            "notes": [],
+            "created_at": now_str,
+            "updated_at": now_str,
+        }
+        incidents[incident["incident_id"]] = incident
+        return incident
+
+    @app.patch("/incidents/{incident_id}")
+    def incidents_update(incident_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        incident = incidents.get(incident_id)
+        if incident is None:
+            raise HTTPException(status_code=404, detail="incident not found")
+        valid_statuses = {"open", "investigating", "resolved", "closed"}
+        if "status" in payload:
+            if payload["status"] not in valid_statuses:
+                raise HTTPException(status_code=400, detail=f"status must be one of: {', '.join(sorted(valid_statuses))}")
+            incident["status"] = payload["status"]
+        if "title" in payload:
+            incident["title"] = str(payload["title"]).strip()
+        if "alert_ids" in payload:
+            incident["alert_ids"] = list(payload["alert_ids"] or [])
+        incident["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
+        return incident
+
+    @app.post("/incidents/{incident_id}/notes")
+    def incidents_add_note(incident_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        incident = incidents.get(incident_id)
+        if incident is None:
+            raise HTTPException(status_code=404, detail="incident not found")
+        text = str(payload.get("text", "")).strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="text is required")
+        note: dict[str, Any] = {
+            "note_id": str(uuid.uuid4()),
+            "text": text,
+            "analyst": str(payload.get("analyst", "")).strip() or "unknown",
+            "created_at": _isoformat(datetime.now(tz=timezone.utc)),
+        }
+        incident["notes"].append(note)
+        incident["updated_at"] = note["created_at"]
+        return note
 
     return app
 
@@ -853,19 +989,50 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       } catch (err) { showInfoModal('오류', err.message); return null; }
     }
 
-    nlqRunBtn.addEventListener('click', async () => {
-      nlqResultArea.textContent = '실행 중...';
-      const result = await runNlqQuery('json');
-      if (!result) { nlqResultArea.textContent = ''; return; }
+    function renderNlqResult(result) {
       const evidence = result.evidence || [];
+      const summary = result.summary || '';
+      const count = result.meta?.count ?? evidence.length;
       if (!evidence.length) {
         nlqResultArea.textContent = '';
-        showInfoModal('결과 없음', '조건에 맞는 데이터가 없습니다.');
+        showInfoModal('결과 없음', summary || '조건에 맞는 데이터가 없습니다.');
         nlqCsvBtn.style.display = 'none';
         return;
       }
       nlqCsvBtn.style.display = '';
-      nlqResultArea.innerHTML = `<pre style=\"background:#0b1220;border:1px solid #233046;border-radius:8px;padding:12px;overflow:auto;font-size:12px;color:#e5e7eb;max-height:320px;\">${escapeHtml(JSON.stringify(result, null, 2))}</pre>`;
+      const srcBadge = (src) => {
+        const s = (src || '').toLowerCase();
+        const cls = s.includes('wazuh') ? 'wazuh' : s.includes('zabbix') ? 'zabbix' : s.includes('fleet') ? 'fleet' : s.includes('trivy') ? 'trivy' : s.includes('host') ? 'hosts' : '';
+        return `<span style=\"display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#1e3a5f;color:#93c5fd;\" class=\"${cls}\">${escapeHtml(src||'-')}</span>`;
+      };
+      const rows = evidence.map((ev, i) => `
+        <tr style=\"border-bottom:1px solid #1a2d45;\">
+          <td style=\"padding:7px 10px;color:#64748b\">${i+1}</td>
+          <td style=\"padding:7px 10px\">${srcBadge(ev.source)}</td>
+          <td style=\"padding:7px 10px;font-size:13px\">${escapeHtml(ev.summary || ev.raw_ref || '-')}</td>
+          <td style=\"padding:7px 10px;font-size:11px;color:#64748b;font-family:monospace\">${escapeHtml(ev.record_id || '-')}</td>
+        </tr>`).join('');
+      nlqResultArea.innerHTML = `
+        ${summary ? `<div style=\"color:#7dd3fc;font-size:13px;margin-bottom:10px;padding:8px 12px;background:#0f2035;border-radius:8px;border-left:3px solid #3b82f6\">${escapeHtml(summary)}</div>` : ''}
+        <div style=\"overflow:auto\">
+          <table style=\"width:100%;border-collapse:collapse;font-size:13px\">
+            <thead><tr style=\"background:#0f2035\">
+              <th style=\"padding:8px 10px;color:#93c5fd;font-weight:600;text-align:left\">#</th>
+              <th style=\"padding:8px 10px;color:#93c5fd;font-weight:600;text-align:left\">Source</th>
+              <th style=\"padding:8px 10px;color:#93c5fd;font-weight:600;text-align:left\">Summary</th>
+              <th style=\"padding:8px 10px;color:#93c5fd;font-weight:600;text-align:left\">Record ID</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div style=\"color:#94a3b8;font-size:13px;margin-top:8px\">총 ${count}건 조회됨</div>`;
+    }
+
+    nlqRunBtn.addEventListener('click', async () => {
+      nlqResultArea.textContent = '실행 중...';
+      const result = await runNlqQuery('json');
+      if (!result) { nlqResultArea.textContent = ''; return; }
+      renderNlqResult(result);
     });
 
     nlqCsvBtn.addEventListener('click', async () => {
@@ -1081,6 +1248,28 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"subtext\">최근 alert / observation / fleet query 결과를 시간순으로 합쳐 보여줍니다.</div>
           <div class=\"list\" id=\"recent_activity\"></div>
         </section>
+
+        <section class=\"card\">
+          <h2>🚨 Alert Triage</h2>
+          <div class=\"subtext\">최근 24h 경보 목록입니다. 상태를 클릭해 Triage 처리하세요.</div>
+          <div class=\"table-wrap\" id=\"triage_table\"><span class=\"empty\">로딩 중…</span></div>
+          <div style=\"margin-top:8px\"><button id=\"reload_triage\" class=\"secondary\">새로고침</button></div>
+        </section>
+
+        <section class=\"card\">
+          <h2>📋 인시던트 관리</h2>
+          <div class=\"subtext\">여러 경보를 하나의 인시던트로 묶고 조사 노트를 남깁니다.</div>
+          <div id=\"incidents_list\" class=\"list\" style=\"margin-bottom:12px\"><span class=\"empty\">로딩 중…</span></div>
+          <div class=\"row\">
+            <label for=\"inc_title\">인시던트 제목</label>
+            <input id=\"inc_title\" placeholder=\"예: 특정 서버 무단 접근 시도\" />
+          </div>
+          <div class=\"actions\">
+            <button id=\"create_incident\">인시던트 생성</button>
+            <button id=\"reload_incidents\" class=\"secondary\">새로고침</button>
+          </div>
+          <div class=\"status-line\" id=\"incident_status\"></div>
+        </section>
       </div>
 
       <aside class=\"stack\">
@@ -1110,6 +1299,25 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <h2>Quick Actions</h2>
           <div class=\"subtext\">자주 쓰는 질의를 클릭하면 아래 폼에 바로 채워집니다.</div>
           <div class=\"quick-actions\" id=\"quick_queries\"></div>
+        </section>
+
+        <section class=\"card\">
+          <h2>🔔 Slack Webhook 관리</h2>
+          <div class=\"subtext\">Critical 경보 발생 시 자동으로 알림을 전송할 Slack Incoming Webhook을 등록합니다.</div>
+          <div id=\"webhooks_list\" class=\"list\" style=\"margin-bottom:12px\"><span class=\"empty\">로딩 중…</span></div>
+          <div class=\"row\">
+            <label for=\"wh_name\">채널 이름 (식별용)</label>
+            <input id=\"wh_name\" placeholder=\"예: #soc-alerts\" />
+          </div>
+          <div class=\"row\">
+            <label for=\"wh_url\">Webhook URL</label>
+            <input id=\"wh_url\" placeholder=\"https://hooks.slack.com/services/...\" />
+          </div>
+          <div class=\"actions\">
+            <button id=\"add_webhook\">추가</button>
+            <button id=\"reload_webhooks\" class=\"secondary\">새로고침</button>
+          </div>
+          <div class=\"status-line\" id=\"webhook_status\"></div>
         </section>
 
         <section class=\"card\">
@@ -1202,6 +1410,61 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"dialog-body\" id=\"overview_modal_body\"></div>
   </dialog>
 
+  <dialog id=\"triage_modal\">
+    <div class=\"guide-dialog\">
+      <div class=\"guide-dialog-head\">
+        <h3>Alert Triage</h3>
+        <form method=\"dialog\"><button class=\"secondary\">닫기</button></form>
+      </div>
+      <div class=\"guide-dialog-copy\">
+        <div id=\"triage_modal_alert_info\" style=\"margin-bottom:12px\"></div>
+        <div class=\"row\"><label>상태</label>
+          <select id=\"triage_modal_status\">
+            <option value=\"new\">new</option>
+            <option value=\"acknowledged\">acknowledged</option>
+            <option value=\"investigating\">investigating</option>
+            <option value=\"closed\">closed</option>
+            <option value=\"false_positive\">false_positive</option>
+          </select>
+        </div>
+        <div class=\"row\"><label>담당자</label><input id=\"triage_modal_analyst\" placeholder=\"예: alice\" /></div>
+        <div class=\"row\"><label>메모</label><textarea id=\"triage_modal_note\" style=\"min-height:80px\"></textarea></div>
+        <div class=\"actions\">
+          <button id=\"triage_modal_save\">저장</button>
+          <form method=\"dialog\"><button class=\"secondary\">취소</button></form>
+        </div>
+        <div class=\"status-line\" id=\"triage_modal_status_line\"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id=\"incident_modal\">
+    <div class=\"guide-dialog\">
+      <div class=\"guide-dialog-head\">
+        <h3 id=\"incident_modal_title\">인시던트 상세</h3>
+        <form method=\"dialog\"><button class=\"secondary\">닫기</button></form>
+      </div>
+      <div class=\"guide-dialog-copy\">
+        <div id=\"incident_modal_info\" style=\"margin-bottom:12px;font-size:13px;color:#94a3b8\"></div>
+        <div class=\"row\"><label>상태 변경</label>
+          <select id=\"incident_modal_status\">
+            <option value=\"open\">open</option>
+            <option value=\"investigating\">investigating</option>
+            <option value=\"resolved\">resolved</option>
+            <option value=\"closed\">closed</option>
+          </select>
+        </div>
+        <button id=\"incident_modal_update_status\" style=\"margin-bottom:12px\">상태 저장</button>
+        <hr style=\"border-color:#334155;margin:12px 0\" />
+        <div id=\"incident_modal_notes\" style=\"margin-bottom:12px\"></div>
+        <div class=\"row\"><label>조사 노트 추가</label><textarea id=\"incident_modal_note_text\" style=\"min-height:72px\"></textarea></div>
+        <div class=\"row\"><label>작성자</label><input id=\"incident_modal_analyst\" placeholder=\"예: alice\" /></div>
+        <button id=\"incident_modal_add_note\">노트 추가</button>
+        <div class=\"status-line\" id=\"incident_modal_status_line\"></div>
+      </div>
+    </div>
+  </dialog>
+
   <script>
     const defaultPayload = __DEFAULT_PAYLOAD_JSON__;
     const guideExamples = __GUIDE_EXAMPLES__;
@@ -1236,6 +1499,42 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const userDashboardCardsEl = document.getElementById('user_dashboard_cards');
     const userDashboardSectionsEl = document.getElementById('user_dashboard_sections');
     const dashboardPreferencesStatusEl = document.getElementById('dashboard_preferences_status');
+
+    // Triage
+    const triageTableEl = document.getElementById('triage_table');
+    const triageModalEl = document.getElementById('triage_modal');
+    const triageModalAlertInfoEl = document.getElementById('triage_modal_alert_info');
+    const triageModalStatusEl = document.getElementById('triage_modal_status');
+    const triageModalAnalystEl = document.getElementById('triage_modal_analyst');
+    const triageModalNoteEl = document.getElementById('triage_modal_note');
+    const triageModalSaveEl = document.getElementById('triage_modal_save');
+    const triageModalStatusLineEl = document.getElementById('triage_modal_status_line');
+
+    // Webhooks
+    const webhooksListEl = document.getElementById('webhooks_list');
+    const whNameEl = document.getElementById('wh_name');
+    const whUrlEl = document.getElementById('wh_url');
+    const webhookStatusEl = document.getElementById('webhook_status');
+
+    // Incidents
+    const incidentsListEl = document.getElementById('incidents_list');
+    const incTitleEl = document.getElementById('inc_title');
+    const incidentStatusEl = document.getElementById('incident_status');
+    const incidentModalEl = document.getElementById('incident_modal');
+    const incidentModalTitleEl = document.getElementById('incident_modal_title');
+    const incidentModalInfoEl = document.getElementById('incident_modal_info');
+    const incidentModalStatusEl = document.getElementById('incident_modal_status');
+    const incidentModalNotesEl = document.getElementById('incident_modal_notes');
+    const incidentModalNoteTextEl = document.getElementById('incident_modal_note_text');
+    const incidentModalAnalystEl = document.getElementById('incident_modal_analyst');
+    const incidentModalStatusLineEl = document.getElementById('incident_modal_status_line');
+
+    let currentTriageAlertId = null;
+    let currentIncidentId = null;
+    const TRIAGE_STATUS_COLORS = {
+      new: '#f59e0b', acknowledged: '#38bdf8', investigating: '#a78bfa',
+      closed: '#6ee7b7', false_positive: '#94a3b8'
+    };
     const defaultUserDashboardPreferences = __USER_DASHBOARD_PREFS_JSON__;
     const userDashboardCardLabels = __CARD_LABELS_JSON__;
     const userDashboardSectionLabels = __SECTION_LABELS_JSON__;
@@ -1471,6 +1770,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       ], items, '표시할 호스트가 없습니다.');
     }
 
+    const UI_TRIAGE_COLORS = {new:'#f59e0b', acknowledged:'#38bdf8', investigating:'#a78bfa', closed:'#6ee7b7', false_positive:'#94a3b8'};
+    let uiTriageData = {};
+    async function loadUiTriageData() {
+      try { const r = await fetch('/alerts'); const d = await r.json(); (d.alerts||[]).forEach(a => { uiTriageData[a.alert_id] = a.triage || {status:'new'}; }); } catch(_) {}
+    }
+
     function renderAlertDetailTable(items) {
       return renderDetailTable([
         { label: 'Time', render: (item) => escapeHtml(formatTime(item.observed_at)) },
@@ -1481,6 +1786,15 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'Severity', render: (item) => escapeHtml(item.severity) },
         { label: 'Message', render: (item) => escapeHtml(item.message) },
+        {
+          label: 'Triage',
+          render: (item) => {
+            const tr = uiTriageData[item.alert_id] || {status:'new'};
+            const st = tr.status || 'new';
+            const color = UI_TRIAGE_COLORS[st] || '#94a3b8';
+            return `<span style="background:${color}22;color:${color};padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">${escapeHtml(st)}</span>`;
+          }
+        },
       ], items, '최근 24시간 high / critical alert가 없습니다.');
     }
 
@@ -1514,7 +1828,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       ], items, '수집된 레코드가 없습니다.');
     }
 
-    function showOverviewDetail(key, label) {
+    async function showOverviewDetail(key, label) {
       const items = Array.isArray(dashboardDetails[key]) ? dashboardDetails[key] : [];
       const renderers = {
         total_hosts: [renderStatusDetailTable, '현재 알려진 전체 호스트 목록입니다.'],
@@ -1525,6 +1839,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         sources_healthy: [renderSourceDetailTable, '최근 sync가 success인 collector 목록입니다.'],
         ingested_records: [renderIngestedDetailTable, '저장된 엔터티 타입별 레코드 수입니다.'],
       };
+      if (key === 'alerts_24h') await loadUiTriageData();
       const [renderer, description] = renderers[key] || [renderIngestedDetailTable, '선택한 카드의 상세 데이터입니다.'];
       openOverviewModal(label, description, renderer(items));
     }
@@ -1967,10 +2282,190 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     filtersEl.value = JSON.stringify(defaultPayload.filters, null, 2);
     renderGuideButtons(guideExamplesEl, guideExamples);
 
+    // ── Triage ─────────────────────────────────────────────────────────────
+    const TRIAGE_LABELS = {new:'🆕 new', acknowledged:'👀 acknowledged', investigating:'🔍 investigating', closed:'✅ closed', false_positive:'🚫 false_positive'};
+    async function loadTriage() {
+      triageTableEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      try {
+        const res = await fetch('/alerts');
+        const data = await res.json();
+        const rows = data.alerts || [];
+        if (!rows.length) { triageTableEl.innerHTML = '<span class=\"empty\">경보 없음</span>'; return; }
+        const rowsHtml = rows.map(r => {
+          const tr = r.triage || {};
+          const st = tr.status || 'new';
+          const color = TRIAGE_STATUS_COLORS[st] || '#94a3b8';
+          return `<tr>
+            <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(formatTime(r.occurred_at || r.alert_id))}</td>
+            <td><span class=\"result-badge ${escapeHtml(r.source||'')}\">${escapeHtml(r.source||'-')}</span></td>
+            <td style=\"font-size:13px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\" title=\"${escapeHtml(r.message||'')}\">${escapeHtml(r.message||'-')}</td>
+            <td><span style=\"background:${color}22;color:${color};padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700\">${escapeHtml(TRIAGE_LABELS[st]||st)}</span></td>
+            <td><button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"openTriageModal('${escapeHtml(r.alert_id)}','${escapeHtml(r.message||'')}','${escapeHtml(st)}','${escapeHtml(tr.analyst||'')}','${escapeHtml(tr.note||'')}')\">Triage</button></td>
+          </tr>`;
+        }).join('');
+        triageTableEl.innerHTML = `<table><thead><tr><th>시각</th><th>소스</th><th>내용</th><th>상태</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+      } catch(e) { triageTableEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(e.message)}</span>`; }
+    }
+    function openTriageModal(alertId, message, status, analyst, note) {
+      currentTriageAlertId = alertId;
+      triageModalAlertInfoEl.innerHTML = `<strong style=\"font-size:14px\">${escapeHtml(message)}</strong><br><span style=\"color:#94a3b8;font-size:12px\">${escapeHtml(alertId)}</span>`;
+      triageModalStatusEl.value = status || 'new';
+      triageModalAnalystEl.value = analyst || '';
+      triageModalNoteEl.value = note || '';
+      triageModalStatusLineEl.textContent = '';
+      triageModalEl.showModal();
+    }
+    triageModalSaveEl.addEventListener('click', async () => {
+      if (!currentTriageAlertId) return;
+      triageModalStatusLineEl.textContent = '저장 중…';
+      try {
+        const res = await fetch(`/alerts/${encodeURIComponent(currentTriageAlertId)}/triage`, {
+          method: 'PATCH',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({status: triageModalStatusEl.value, analyst: triageModalAnalystEl.value.trim(), note: triageModalNoteEl.value.trim()}),
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        triageModalStatusLineEl.textContent = '저장 완료 ✓';
+        setTimeout(() => { triageModalEl.close(); loadTriage(); }, 600);
+      } catch(e) { triageModalStatusLineEl.textContent = `오류: ${escapeHtml(e.message)}`; }
+    });
+    document.getElementById('reload_triage').addEventListener('click', loadTriage);
+
+    // ── Webhooks ───────────────────────────────────────────────────────────
+    async function loadWebhooks() {
+      webhooksListEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      try {
+        const res = await fetch('/webhooks');
+        const data = await res.json();
+        const whs = data.webhooks || [];
+        if (!whs.length) { webhooksListEl.innerHTML = '<span class=\"empty\">등록된 webhook 없음</span>'; return; }
+        webhooksListEl.innerHTML = whs.map(w => `
+          <div class=\"list-item\">
+            <div class=\"top\"><strong>${escapeHtml(w.name)}</strong><span class=\"meta\">${escapeHtml(w.created_at||'')}</span></div>
+            <div class=\"meta mono\" style=\"word-break:break-all\">${escapeHtml(w.url)}</div>
+            <div style=\"margin-top:8px;display:flex;gap:8px\">
+              <button class=\"secondary\" style=\"width:auto;padding:4px 12px;font-size:12px\" onclick=\"testWebhook('${escapeHtml(w.id)}', this)\">테스트</button>
+              <button class=\"ghost\" style=\"width:auto;padding:4px 12px;font-size:12px;border-color:#ef4444;color:#fca5a5\" onclick=\"deleteWebhook('${escapeHtml(w.id)}', this)\">삭제</button>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) { webhooksListEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(e.message)}</span>`; }
+    }
+    async function testWebhook(id, btn) {
+      btn.textContent = '전송 중…'; btn.disabled = true;
+      try {
+        const res = await fetch(`/webhooks/${id}/test`, {method:'POST'});
+        btn.textContent = res.ok ? '✓ 성공' : '✗ 실패';
+      } catch(e) { btn.textContent = '✗ 오류'; }
+      setTimeout(() => { btn.textContent = '테스트'; btn.disabled = false; }, 2000);
+    }
+    async function deleteWebhook(id, btn) {
+      if (!confirm('이 webhook을 삭제하시겠습니까?')) return;
+      btn.textContent = '삭제 중…'; btn.disabled = true;
+      try {
+        const res = await fetch(`/webhooks/${id}`, {method:'DELETE'});
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        await loadWebhooks();
+      } catch(e) { webhookStatusEl.textContent = `삭제 실패: ${e.message}`; btn.disabled = false; btn.textContent = '삭제'; }
+    }
+    document.getElementById('add_webhook').addEventListener('click', async () => {
+      const url = whUrlEl.value.trim();
+      if (!url) { webhookStatusEl.textContent = 'URL을 입력하세요.'; return; }
+      webhookStatusEl.textContent = '추가 중…';
+      try {
+        const res = await fetch('/webhooks', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name: whNameEl.value.trim() || 'Slack Webhook', url})});
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        whNameEl.value = ''; whUrlEl.value = '';
+        webhookStatusEl.textContent = '추가 완료 ✓';
+        await loadWebhooks();
+      } catch(e) { webhookStatusEl.textContent = `오류: ${e.message}`; }
+    });
+    document.getElementById('reload_webhooks').addEventListener('click', loadWebhooks);
+
+    // ── Incidents ──────────────────────────────────────────────────────────
+    const INC_STATUS_COLORS = {open:'#f59e0b', investigating:'#a78bfa', resolved:'#6ee7b7', closed:'#94a3b8'};
+    async function loadIncidents() {
+      incidentsListEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      try {
+        const res = await fetch('/incidents');
+        const data = await res.json();
+        const items = data.incidents || [];
+        if (!items.length) { incidentsListEl.innerHTML = '<span class=\"empty\">인시던트 없음</span>'; return; }
+        items.sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
+        incidentsListEl.innerHTML = items.map(inc => {
+          const color = INC_STATUS_COLORS[inc.status] || '#94a3b8';
+          return `<div class=\"list-item\">
+            <div class=\"top\">
+              <strong>${escapeHtml(inc.title)}</strong>
+              <span style=\"background:${color}22;color:${color};padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700\">${escapeHtml(inc.status)}</span>
+            </div>
+            <div class=\"meta\">${escapeHtml(formatTime(inc.created_at))} · 노트 ${(inc.notes||[]).length}개</div>
+            <button class=\"ghost\" style=\"margin-top:8px;width:auto;padding:4px 12px;font-size:12px\" onclick=\"openIncidentModal('${escapeHtml(inc.incident_id)}','${escapeHtml(inc.title)}','${escapeHtml(inc.status)}',${escapeHtml(JSON.stringify(inc.notes||[]))})\">상세 / 노트</button>
+          </div>`;
+        }).join('');
+      } catch(e) { incidentsListEl.innerHTML = `<span class=\"empty\">오류: ${e.message}</span>`; }
+    }
+    function openIncidentModal(id, title, status, notes) {
+      currentIncidentId = id;
+      incidentModalTitleEl.textContent = title;
+      incidentModalInfoEl.textContent = `ID: ${id}`;
+      incidentModalStatusEl.value = status;
+      incidentModalStatusLineEl.textContent = '';
+      incidentModalNoteTextEl.value = '';
+      const notesArr = typeof notes === 'string' ? JSON.parse(notes) : notes;
+      if (!notesArr.length) { incidentModalNotesEl.innerHTML = '<span class=\"empty\">노트 없음</span>'; }
+      else { incidentModalNotesEl.innerHTML = notesArr.map(n => `<div class=\"list-item\"><div class=\"top\"><strong>${escapeHtml(n.analyst||'unknown')}</strong><span class=\"meta\">${escapeHtml(formatTime(n.created_at))}</span></div><div style=\"font-size:13px\">${escapeHtml(n.text)}</div></div>`).join(''); }
+      incidentModalEl.showModal();
+    }
+    document.getElementById('incident_modal_update_status').addEventListener('click', async () => {
+      if (!currentIncidentId) return;
+      incidentModalStatusLineEl.textContent = '저장 중…';
+      try {
+        const res = await fetch(`/incidents/${currentIncidentId}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status: incidentModalStatusEl.value})});
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        incidentModalStatusLineEl.textContent = '상태 저장 완료 ✓';
+        await loadIncidents();
+      } catch(e) { incidentModalStatusLineEl.textContent = `오류: ${e.message}`; }
+    });
+    document.getElementById('incident_modal_add_note').addEventListener('click', async () => {
+      if (!currentIncidentId) return;
+      const text = incidentModalNoteTextEl.value.trim();
+      if (!text) { incidentModalStatusLineEl.textContent = '노트 내용을 입력하세요.'; return; }
+      incidentModalStatusLineEl.textContent = '저장 중…';
+      try {
+        const res = await fetch(`/incidents/${currentIncidentId}/notes`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, analyst: incidentModalAnalystEl.value.trim() || 'unknown'})});
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        incidentModalNoteTextEl.value = '';
+        incidentModalStatusLineEl.textContent = '노트 추가 완료 ✓';
+        await loadIncidents();
+        // 노트 목록 새로고침을 위해 모달 재오픈
+        const reloadRes = await fetch('/incidents');
+        const reloadData = await reloadRes.json();
+        const updatedInc = (reloadData.incidents||[]).find(i => i.incident_id === currentIncidentId);
+        if (updatedInc) openIncidentModal(updatedInc.incident_id, updatedInc.title, updatedInc.status, updatedInc.notes);
+      } catch(e) { incidentModalStatusLineEl.textContent = `오류: ${e.message}`; }
+    });
+    document.getElementById('create_incident').addEventListener('click', async () => {
+      const title = incTitleEl.value.trim();
+      if (!title) { incidentStatusEl.textContent = '제목을 입력하세요.'; return; }
+      incidentStatusEl.textContent = '생성 중…';
+      try {
+        const res = await fetch('/incidents', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({title})});
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        incTitleEl.value = '';
+        incidentStatusEl.textContent = '인시던트 생성 완료 ✓';
+        await loadIncidents();
+      } catch(e) { incidentStatusEl.textContent = `오류: ${e.message}`; }
+    });
+    document.getElementById('reload_incidents').addEventListener('click', loadIncidents);
+
     async function initialize() {
       await loadDashboardPreferences();
       await loadCatalog();
       await loadDashboard();
+      await loadTriage();
+      await loadWebhooks();
+      await loadIncidents();
     }
 
     initialize();
@@ -2237,6 +2732,33 @@ def _optional_string(value: object) -> str | None:
         raise ValueError("query scope values must be strings")
     value = value.strip()
     return value or None
+
+
+def _send_slack_message(webhook_url: str, text: str) -> tuple[bool, str]:
+    """Slack Incoming Webhook으로 메시지를 전송한다. (ok, error_message) 반환."""
+    try:
+        data = json.dumps({"text": text}).encode("utf-8")
+        req = urllib.request.Request(
+            webhook_url,
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return resp.status == 200, ""
+    except urllib.error.HTTPError as exc:
+        return False, f"HTTP {exc.code}: {exc.reason}"
+    except Exception as exc:
+        return False, str(exc)
+
+
+def _notify_all_webhooks(webhooks: list[dict], message: str) -> None:
+    """설정된 모든 Slack webhook으로 메시지를 전송한다. 실패는 무시."""
+    for wh in webhooks:
+        try:
+            _send_slack_message(wh["url"], message)
+        except Exception:
+            pass
 
 
 __all__ = [
