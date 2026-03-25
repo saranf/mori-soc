@@ -2363,6 +2363,10 @@ def render_user_dashboard_html(
       .card h2 { font-size: 15px; }
       .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       table { min-width: 480px; }
+      .list-item { padding: 10px; }
+      .list-item .top { flex-direction: column; gap: 4px; }
+      .list-item .top .meta { font-size: 11px; }
+      .list-item .meta { font-size: 11px; word-break: break-all; overflow-wrap: break-word; }
       .asset-sub-nav button { padding: 8px 14px; font-size: 13px; }
       /* 인라인 flex 필터 바 모바일 처리 */
       [style*=\"display:flex\"][style*=\"gap:10px\"] { flex-wrap: wrap !important; }
@@ -2406,6 +2410,7 @@ def render_user_dashboard_html(
       .metric-value { font-size: 22px; }
       .hero h1 { font-size: 18px; }
       .card { padding: 10px 8px; }
+      .list-item .top strong { font-size: 13px; line-height: 1.4; }
     }
   </style>
 </head>
