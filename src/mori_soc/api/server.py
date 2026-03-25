@@ -178,7 +178,15 @@ def build_dashboard_payload(service: QueryService) -> dict[str, Any]:
     }
 
 
-def build_assets_payload(service: QueryService) -> dict[str, Any]:
+def build_assets_payload(
+    service: QueryService,
+    owners: dict[str, dict[str, Any]] | None = None,
+    plans: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    from mori_soc.services.asset_classifier import classify_server_as_dict
+
+    owners = owners or {}
+    plans = plans or {}
     store = service.store
     now = datetime.now(tz=timezone.utc)
 
@@ -201,12 +209,13 @@ def build_assets_payload(service: QueryService) -> dict[str, Any]:
 
     hostnames = {h.host_id: h.hostname for h in store.hosts}
 
-    # Fleet hosts (PC assets)
+    # Fleet hosts (PC assets) — PC는 자산 분류 불필요, 담당자만 표시
     fleet_hosts = []
     for host in store.hosts:
         if host.host_id not in fleet_host_ids:
             continue
         qr_count = sum(1 for qr in store.query_results if qr.host_id == host.host_id)
+        owner_info = owners.get(host.hostname, {})
         fleet_hosts.append({
             "host_id": host.host_id,
             "hostname": host.hostname,
@@ -217,20 +226,28 @@ def build_assets_payload(service: QueryService) -> dict[str, Any]:
             "risk_score": host.risk_score,
             "last_seen_at": _isoformat(host.last_seen_at) if host.last_seen_at else None,
             "query_result_count": qr_count,
+            "owner": owner_info.get("owner", ""),
+            "team": owner_info.get("team", ""),
         })
     fleet_hosts.sort(key=lambda h: (h["status"] != "offline", h["hostname"]))
 
-    # Zabbix hosts (Server assets)
+    # Zabbix hosts (Server assets) — 호스트명 기반 자동 분류 + 담당자
     zabbix_hosts = []
     for host in store.hosts:
         if host.host_id not in zabbix_host_ids:
             continue
         obs = [o for o in store.observations if o.host_id == host.host_id and o.source == "zabbix"]
         obs.sort(key=lambda o: o.observed_at, reverse=True)
+        classification = classify_server_as_dict(host.hostname)
+        owner_info = owners.get(host.hostname, {})
         zabbix_hosts.append({
             "host_id": host.host_id,
             "hostname": host.hostname,
             "asset_type": "Server",
+            "category": classification["category"],
+            "importance": classification["importance"],
+            "isms_control": classification["isms_control"],
+            "iso27001_control": classification.get("iso27001_control", ""),
             "platform": host.platform or "-",
             "primary_ip": host.primary_ip or "-",
             "status": host.status,
@@ -239,16 +256,23 @@ def build_assets_payload(service: QueryService) -> dict[str, Any]:
             "latest_metric": obs[0].metric_name if obs else None,
             "latest_value": obs[0].metric_value if obs else None,
             "observation_count": len(obs),
+            "owner": owner_info.get("owner", ""),
+            "team": owner_info.get("team", ""),
         })
-    zabbix_hosts.sort(key=lambda h: (h["status"] != "offline", h["hostname"]))
+    zabbix_hosts.sort(key=lambda h: (
+        {"상": 0, "중": 1, "하": 2}.get(h["importance"], 1),
+        h["status"] != "offline",
+        h["hostname"],
+    ))
 
-    # Trivy vulnerabilities grouped by host
+    # Trivy vulnerabilities grouped by host — 조치계획 포함
     vuln_by_host: dict[str, dict] = {}
     for vuln in store.vulnerabilities:
         if vuln.source != "trivy":
             continue
         hid = vuln.host_id
         if hid not in vuln_by_host:
+            plan = plans.get(hid, {})
             vuln_by_host[hid] = {
                 "host_id": hid,
                 "hostname": hostnames.get(hid, hid),
@@ -256,6 +280,9 @@ def build_assets_payload(service: QueryService) -> dict[str, Any]:
                 "total": 0,
                 "latest_cve": None,
                 "latest_detected_at": None,
+                "action_plan": plan.get("text", ""),
+                "action_target_date": plan.get("target_date", ""),
+                "action_updated_by": plan.get("updated_by", ""),
             }
         entry = vuln_by_host[hid]
         sev = vuln.severity
@@ -295,20 +322,42 @@ def build_assets_payload(service: QueryService) -> dict[str, Any]:
 
 
 def _assets_csv(payload: dict[str, Any], source: str) -> str:
+    import csv
     import io
     out = io.StringIO()
+    writer = csv.writer(out, quoting=csv.QUOTE_MINIMAL)
     if source == "fleet":
-        out.write("host_id,hostname,asset_type,platform,primary_ip,status,risk_score,last_seen_at,query_result_count\n")
+        writer.writerow(["host_id", "hostname", "asset_type", "platform", "primary_ip", "status",
+                         "risk_score", "last_seen_at", "query_result_count", "owner", "team"])
         for h in payload["fleet"]["hosts"]:
-            out.write(f"{h['host_id']},{h['hostname']},{h['asset_type']},{h['platform']},{h['primary_ip']},{h['status']},{h['risk_score']},{h['last_seen_at'] or ''},{h['query_result_count']}\n")
+            writer.writerow([
+                h["host_id"], h["hostname"], h["asset_type"], h["platform"], h["primary_ip"],
+                h["status"], h["risk_score"], h["last_seen_at"] or "", h["query_result_count"],
+                h.get("owner", ""), h.get("team", ""),
+            ])
     elif source == "zabbix":
-        out.write("host_id,hostname,asset_type,platform,primary_ip,status,risk_score,last_seen_at,observation_count,latest_metric,latest_value\n")
+        writer.writerow(["host_id", "hostname", "category", "importance", "isms_control",
+                         "iso27001_control", "platform", "primary_ip", "status", "risk_score",
+                         "last_seen_at", "observation_count", "latest_metric", "latest_value",
+                         "owner", "team"])
         for h in payload["zabbix"]["hosts"]:
-            out.write(f"{h['host_id']},{h['hostname']},{h['asset_type']},{h['platform']},{h['primary_ip']},{h['status']},{h['risk_score']},{h['last_seen_at'] or ''},{h['observation_count']},{h['latest_metric'] or ''},{h['latest_value'] or ''}\n")
+            writer.writerow([
+                h["host_id"], h["hostname"], h.get("category", ""), h.get("importance", ""),
+                h.get("isms_control", ""), h.get("iso27001_control", ""),
+                h["platform"], h["primary_ip"],
+                h["status"], h["risk_score"], h["last_seen_at"] or "",
+                h["observation_count"], h["latest_metric"] or "", h["latest_value"] or "",
+                h.get("owner", ""), h.get("team", ""),
+            ])
     elif source == "trivy":
-        out.write("host_id,hostname,critical,high,medium,low,info,total,latest_cve,latest_detected_at\n")
+        writer.writerow(["host_id", "hostname", "critical", "high", "medium", "low", "info", "total",
+                         "latest_cve", "latest_detected_at", "action_plan", "action_target_date", "action_updated_by"])
         for r in payload["trivy"]["rows"]:
-            out.write(f"{r['host_id']},{r['hostname']},{r['critical']},{r['high']},{r['medium']},{r['low']},{r['info']},{r['total']},{r['latest_cve'] or ''},{r['latest_detected_at'] or ''}\n")
+            writer.writerow([
+                r["host_id"], r["hostname"], r["critical"], r["high"], r["medium"],
+                r["low"], r["info"], r["total"], r["latest_cve"] or "", r["latest_detected_at"] or "",
+                r.get("action_plan", ""), r.get("action_target_date", ""), r.get("action_updated_by", ""),
+            ])
     return out.getvalue()
 
 
@@ -399,6 +448,230 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     webhooks: list[dict[str, Any]] = []
     # Incidents: incident_id -> {incident_id, title, status, alert_ids, notes, created_at, updated_at}
     incidents: dict[str, dict[str, Any]] = {}
+    # Asset owners: hostname -> {owner, email, team, updated_at}
+    asset_owners: dict[str, dict[str, Any]] = {}
+    # Action plans: host_id -> {text, target_date, updated_by, updated_at}
+    action_plans: dict[str, dict[str, Any]] = {}
+    # Guides: guide_id -> {id, title, content, updated_at}
+    guides: dict[str, dict[str, Any]] = {
+        "zabbix_setup": {
+            "id": "zabbix_setup",
+            "title": "Zabbix 에이전트 설정 방법",
+            "content": """## Zabbix 에이전트 설치 가이드
+
+### 1. 에이전트 다운로드
+- Zabbix 공식 사이트(https://www.zabbix.com/download)에서 OS에 맞는 에이전트를 다운로드합니다.
+
+### 2. 설치 (Linux - Ubuntu/Debian)
+```bash
+wget https://repo.zabbix.com/zabbix/6.4/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.4-1+ubuntu22.04_all.deb
+dpkg -i zabbix-release_6.4-1+ubuntu22.04_all.deb
+apt update && apt install -y zabbix-agent2
+```
+
+### 3. 설정 파일 편집
+```bash
+vi /etc/zabbix/zabbix_agent2.conf
+```
+주요 설정:
+- `Server=<ZABBIX_SERVER_IP>` — Zabbix 서버 IP 입력
+- `ServerActive=<ZABBIX_SERVER_IP>` — Active 모드 서버 IP
+- `Hostname=<서버_호스트명>` — 서버 고유 이름 (대소문자 주의)
+
+### 4. 서비스 시작
+```bash
+systemctl enable zabbix-agent2
+systemctl start zabbix-agent2
+```
+
+### 5. Zabbix 웹 콘솔에서 호스트 등록
+1. Configuration → Hosts → Create host
+2. Host name: 에이전트의 Hostname 값과 동일하게 입력
+3. Groups: 적절한 그룹 선택
+4. Agent interface에 서버 IP 입력
+
+### 6. 확인
+```bash
+systemctl status zabbix-agent2
+zabbix_agent2 -t system.uptime
+```
+
+> **ISMS 관련**: 서버 자산 등록 및 모니터링은 ISMS-P 2.10 시스템 및 서비스 보안, ISO 27001 A.8.16 모니터링활동에 해당합니다.""",
+            "updated_at": None,
+        },
+        "fleet_install": {
+            "id": "fleet_install",
+            "title": "Fleet(osquery) 에이전트 설치 방법",
+            "content": """## Fleet osquery 에이전트 설치 가이드
+
+### 개요
+Fleet는 osquery 기반 PC/서버 자산 관리 도구입니다. 설치 후 자동으로 Fleet 서버에 등록되어 자산 현황 대시보드에 표시됩니다.
+
+### 1. Fleet 서버 주소 확인
+IT 담당자에게 Fleet 서버 Enrollment 패키지 또는 URL을 요청합니다.
+
+### 2. Windows 설치
+1. Fleet 서버 콘솔 → Hosts → Add Hosts → Windows 선택
+2. 제공되는 PowerShell 명령어를 관리자 권한으로 실행:
+```powershell
+# 예시 (실제 명령어는 Fleet 서버에서 생성)
+Invoke-WebRequest -Uri "https://<FLEET_SERVER>/enroll" -OutFile "fleet-osquery.msi"
+msiexec /i fleet-osquery.msi /quiet
+```
+
+### 3. macOS 설치
+```bash
+# Fleet 서버 콘솔에서 생성된 명령어 실행
+sudo installer -pkg fleet-osquery.pkg -target /
+```
+
+### 4. Linux 설치 (Ubuntu/Debian)
+```bash
+sudo dpkg -i fleet-osquery_*.deb
+sudo systemctl enable orbit
+sudo systemctl start orbit
+```
+
+### 5. 설치 확인
+- Fleet 콘솔 → Hosts 에서 해당 PC가 등록되었는지 확인
+- 대시보드 → PC 자산(Fleet) 탭에서 온라인 상태 확인
+
+### 6. 오프라인 PC 조치
+오프라인 표시 시:
+- PC가 켜져 있는지 확인
+- orbit 서비스 재시작: `sudo systemctl restart orbit`
+- 방화벽에서 Fleet 서버로의 아웃바운드 허용 확인
+
+> **ISMS 관련**: PC 자산 관리는 ISMS-P 2.1 정보자산 식별, ISO 27001 A.8.1 사용자단말기 정책에 해당합니다.""",
+            "updated_at": None,
+        },
+        "isms_criteria": {
+            "id": "isms_criteria",
+            "title": "ISMS-P 인증 심사 대비 기준",
+            "content": """## ISMS-P 인증 심사 대비 체크리스트
+
+### 2.1 정보자산 식별 및 관리
+- [ ] 전체 IT 자산 목록 (서버, PC, 네트워크 장비) 보유 여부
+- [ ] 자산별 중요도(상/중/하) 분류 여부
+- [ ] 자산별 담당자/소유자 지정 여부
+- [ ] 자산 목록 최신화 주기 (분기/반기)
+
+**증적 방법**: 대시보드 → 자산 현황 → CSV 내보내기 (분류·중요도·담당자 포함)
+
+---
+
+### 2.5 인증 및 접근통제
+- [ ] 서버 접근 계정 목록 관리
+- [ ] 퇴사자 계정 즉시 비활성화 절차
+- [ ] 특수권한(관리자) 계정 별도 관리
+
+**증적 방법**: Zabbix → 도메인컨트롤러/인증서버 모니터링 데이터
+
+---
+
+### 2.6 네트워크 보안
+- [ ] 방화벽 정책 현황 문서화
+- [ ] 내/외부 네트워크 분리 여부
+- [ ] VPN 사용 현황
+
+**증적 방법**: Zabbix → 네트워크 보안 장비 자산 목록
+
+---
+
+### 2.9 데이터베이스 보안
+- [ ] DB 접근 계정 관리
+- [ ] DB 접근 로그 보존
+- [ ] 중요 데이터 암호화 여부
+
+**증적 방법**: Trivy → DB 서버 취약점 스캔 결과 + 조치계획
+
+---
+
+### 2.10 시스템 및 서비스 보안
+- [ ] 서버별 취약점 점검 주기 (분기 1회 이상)
+- [ ] 패치 관리 현황
+- [ ] 불필요 서비스 비활성화
+
+**증적 방법**: Trivy 스캔 결과 CSV + 조치계획 등록
+
+---
+
+### 2.11 이벤트 처리
+- [ ] 보안 이벤트 모니터링 현황
+- [ ] 경보 발생 시 대응 절차 문서화
+- [ ] 이벤트 로그 보존 기간 (최소 1년)
+
+**증적 방법**: Alert Triage 현황 + 인시던트 목록
+
+---
+
+### 2.12 업무연속성 보안
+- [ ] 백업 서버 운영 현황
+- [ ] 백업 주기 및 복구 테스트 이력
+
+**증적 방법**: Zabbix → 백업 서버 자산 모니터링 데이터""",
+            "updated_at": None,
+        },
+        "iso27001_criteria": {
+            "id": "iso27001_criteria",
+            "title": "ISO/IEC 27001:2022 대비 기준",
+            "content": """## ISO/IEC 27001:2022 심사 대비 체크리스트
+
+### A.5 조직 통제 (Organizational Controls)
+#### A.5.12 정보 분류 / A.5.13 정보 레이블링
+- [ ] 정보자산 중요도 분류 체계 수립 (상/중/하 또는 기밀/내부/공개)
+- [ ] 서버/PC 자산에 중요도 레이블 부여
+
+**증적**: 자산 현황 CSV (importance 컬럼)
+
+#### A.5.15 접근통제 / A.5.16 신원 관리
+- [ ] 접근통제 정책 문서화
+- [ ] 사용자 계정 생애주기 관리 절차
+
+---
+
+### A.8 기술 통제 (Technological Controls)
+#### A.8.1 사용자 단말기 정책
+- [ ] PC 자산 전수 등록 및 모니터링
+- [ ] 오프라인 PC 발생 시 조치 절차
+
+**증적**: Fleet PC 자산 목록 + 오프라인 현황 CSV
+
+#### A.8.2 특수 접근권한
+- [ ] 관리자 계정 목록 및 주기적 검토
+
+#### A.8.8 기술적 취약점 관리
+- [ ] 분기별 취약점 스캔 실시
+- [ ] CVE 기반 위험 평가 (Critical/High 우선)
+- [ ] 취약점별 조치계획 수립 및 이행 추적
+
+**증적**: Trivy 스캔 결과 CSV + 조치계획 (target_date, 담당자 포함)
+
+#### A.8.13 정보 백업
+- [ ] 백업 주기 및 보존 기간 정의
+- [ ] 복구 테스트 주기적 실시
+
+**증적**: 백업 서버 Zabbix 모니터링 데이터
+
+#### A.8.15 로깅 / A.8.16 모니터링 활동
+- [ ] 보안 이벤트 로그 수집 및 보존
+- [ ] 이상 징후 모니터링 현황
+
+**증적**: Alert Triage 이력 + Zabbix 이벤트 데이터
+
+#### A.8.20 네트워크 보안 / A.8.22 네트워크 분리
+- [ ] 네트워크 보안 장비 운영 현황
+- [ ] 내/외부 네트워크 분리 구성
+
+**증적**: Zabbix 네트워크 보안장비 자산 목록
+
+#### A.8.31 개발·운영 환경 분리
+- [ ] 개발/테스트 서버와 운영 서버 분리 여부
+
+**증적**: 자산 현황 → 개발/테스트 서버 분류 확인""",
+            "updated_at": None,
+        },
+    }
 
     def get_query_service() -> QueryService:
         if service is not None:
@@ -628,11 +901,79 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
         incident["updated_at"] = note["created_at"]
         return note
 
+    # ── Asset Owners ─────────────────────────────────────────────────────────
+    @app.get("/assets/owners")
+    def owners_list() -> Any:
+        return {"owners": list(asset_owners.values())}
+
+    @app.post("/assets/owners")
+    def owners_upsert(payload: dict[str, Any]) -> Any:
+        hostname = str(payload.get("hostname", "")).strip()
+        if not hostname:
+            raise HTTPException(status_code=400, detail="hostname is required")
+        owner_name = str(payload.get("owner", "")).strip()
+        entry = {
+            "hostname": hostname,
+            "owner": owner_name,
+            "email": str(payload.get("email", "")).strip(),
+            "team": str(payload.get("team", "")).strip(),
+            "updated_at": _isoformat(datetime.now(tz=timezone.utc)),
+        }
+        asset_owners[hostname] = entry
+        return entry
+
+    @app.delete("/assets/owners/{hostname}")
+    def owners_delete(hostname: str) -> Any:
+        if hostname not in asset_owners:
+            raise HTTPException(status_code=404, detail="owner not found")
+        asset_owners.pop(hostname)
+        return {"deleted": hostname}
+
+    # ── Action Plans ──────────────────────────────────────────────────────────
+    @app.get("/assets/plans/{host_id}")
+    def plan_get(host_id: str) -> Any:
+        return action_plans.get(host_id, {"host_id": host_id, "text": "", "target_date": "", "updated_by": "", "updated_at": None})
+
+    @app.put("/assets/plans/{host_id}")
+    def plan_upsert(host_id: str, payload: dict[str, Any]) -> Any:
+        entry = {
+            "host_id": host_id,
+            "text": str(payload.get("text", "")).strip(),
+            "target_date": str(payload.get("target_date", "")).strip(),
+            "updated_by": str(payload.get("updated_by", "")).strip() or "unknown",
+            "updated_at": _isoformat(datetime.now(tz=timezone.utc)),
+        }
+        action_plans[host_id] = entry
+        return entry
+
+    # ── Guides ───────────────────────────────────────────────────────────────
+    @app.get("/guides")
+    def guides_list() -> Any:
+        return {"guides": list(guides.values())}
+
+    @app.get("/guides/{guide_id}")
+    def guide_get(guide_id: str) -> Any:
+        if guide_id not in guides:
+            raise HTTPException(status_code=404, detail="guide not found")
+        return guides[guide_id]
+
+    @app.put("/guides/{guide_id}")
+    def guide_upsert(guide_id: str, payload: dict[str, Any]) -> Any:
+        existing = guides.get(guide_id, {"id": guide_id})
+        entry = {
+            **existing,
+            "title": str(payload.get("title", existing.get("title", guide_id))).strip(),
+            "content": str(payload.get("content", existing.get("content", ""))),
+            "updated_at": _isoformat(datetime.now(tz=timezone.utc)),
+        }
+        guides[guide_id] = entry
+        return entry
+
     # ── Asset Collection Board ───────────────────────────────────────────────
     @app.get("/assets")
     def assets_get(format: str = "json", source: str = "all") -> Any:
         try:
-            payload = build_assets_payload(get_query_service())
+            payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans)
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"assets unavailable: {exc}") from exc
         if format == "csv":
@@ -774,6 +1115,7 @@ def render_user_dashboard_html(
       <button data-tab=\"triage\" onclick=\"switchTab('triage')\">🚨 Alert Triage</button>
       <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\">📋 인시던트</button>
       <button data-tab=\"assets\" onclick=\"switchTab('assets')\">📡 자산 현황</button>
+      <button data-tab=\"guides\" onclick=\"switchTab('guides')\">📖 가이드 &amp; 기준</button>
     </nav>
 
     <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
@@ -956,11 +1298,9 @@ def render_user_dashboard_html(
         <div id=\"triage_modal_alert_info\" style=\"margin-bottom:12px\"></div>
         <div class=\"row\"><label>상태</label>
           <select id=\"triage_modal_status\">
-            <option value=\"new\">new</option>
-            <option value=\"acknowledged\">acknowledged</option>
-            <option value=\"investigating\">investigating</option>
-            <option value=\"closed\">closed</option>
-            <option value=\"false_positive\">false_positive</option>
+            <option value=\"pending\">🔴 미확인 (Pending)</option>
+            <option value=\"reviewing\">🟡 검토중 (Reviewing)</option>
+            <option value=\"resolved\">🟢 조치예정/완료 (Resolved)</option>
           </select>
         </div>
         <div class=\"row\"><label>담당자</label><input id=\"triage_modal_analyst\" placeholder=\"예: alice\" /></div>
@@ -1000,6 +1340,55 @@ def render_user_dashboard_html(
       </div>
     </div>
   </dialog>
+
+    <!-- ── Tab: 가이드 & 기준 ────────────────────────────────────────── -->
+    <div class=\"tab-panel\" id=\"tab_guides\">
+      <!-- Sub-nav -->
+      <div style=\"display:flex;gap:0;border-bottom:1px solid #233046;margin-bottom:20px;flex-wrap:wrap;\">
+        <button class=\"active\" id=\"guide_tab_zabbix_setup\" onclick=\"switchGuideTab('zabbix_setup')\"
+          style=\"background:none;border:none;border-bottom:2px solid #38bdf8;padding:8px 18px;color:#38bdf8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🖧 Zabbix 설정</button>
+        <button id=\"guide_tab_fleet_install\" onclick=\"switchGuideTab('fleet_install')\"
+          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🖥️ Fleet 설치</button>
+        <button id=\"guide_tab_isms_criteria\" onclick=\"switchGuideTab('isms_criteria')\"
+          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">📋 ISMS-P 기준</button>
+        <button id=\"guide_tab_iso27001_criteria\" onclick=\"switchGuideTab('iso27001_criteria')\"
+          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🌐 ISO 27001 기준</button>
+      </div>
+      <section class=\"card\" style=\"padding:0\">
+        <div style=\"display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0;\">
+          <h2 id=\"guide_content_title\" style=\"margin:0;font-size:16px\"></h2>
+          <span id=\"guide_updated_at\" style=\"font-size:12px;color:#64748b\"></span>
+        </div>
+        <div id=\"guide_content_body\" style=\"padding:16px 20px 20px;color:#cbd5e1;line-height:1.8;white-space:pre-wrap;font-size:14px;font-family:inherit\"></div>
+      </section>
+    </div>
+
+  <!-- 조치 계획 모달 -->
+  <div id=\"plan_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
+    <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:28px 32px;width:500px;max-width:95vw\">
+      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
+        <h3 id=\"plan_modal_title\" style=\"color:#a3e635;margin:0\">조치 계획</h3>
+        <button onclick=\"closePlanModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+      </div>
+      <div style=\"display:flex;flex-direction:column;gap:12px\">
+        <div><label style=\"color:#94a3b8;font-size:13px\">조치 계획 내용</label>
+          <textarea id=\"plan_text\" rows=\"4\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 2024년 2분기 내 패키지 업그레이드 예정\"></textarea>
+        </div>
+        <div style=\"display:flex;gap:12px\">
+          <div style=\"flex:1\"><label style=\"color:#94a3b8;font-size:13px\">목표 완료일</label>
+            <input type=\"date\" id=\"plan_target_date\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+          </div>
+          <div style=\"flex:1\"><label style=\"color:#94a3b8;font-size:13px\">작성자</label>
+            <input id=\"plan_updated_by\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 김보안\" />
+          </div>
+        </div>
+        <div style=\"display:flex;gap:10px;justify-content:flex-end;margin-top:4px\">
+          <button id=\"plan_modal_save\" style=\"background:#16a34a;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\">저장</button>
+          <button onclick=\"closePlanModal()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\">취소</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     const defaultPreferences = __USER_DASHBOARD_PREFS_JSON__;
@@ -1045,9 +1434,12 @@ def render_user_dashboard_html(
     let currentTriageAlertId = null;
     let currentIncidentId = null;
     const TRIAGE_STATUS_COLORS = {
-      new: '#f59e0b', acknowledged: '#38bdf8', investigating: '#a78bfa',
-      closed: '#6ee7b7', false_positive: '#94a3b8'
+      pending: '#ef4444', reviewing: '#f59e0b', resolved: '#22c55e',
+      // legacy (backward compat)
+      new: '#ef4444', acknowledged: '#f59e0b', investigating: '#f59e0b',
+      closed: '#22c55e', false_positive: '#94a3b8'
     };
+    const TRIAGE_STATUS_LABELS = { pending:'🔴 미확인', reviewing:'🟡 검토중', resolved:'🟢 조치예정/완료' };
     const INC_STATUS_COLORS = {open:'#f59e0b', investigating:'#a78bfa', resolved:'#6ee7b7', closed:'#94a3b8'};
 
     // ── Tab Navigation ─────────────────────────────────────────────────────
@@ -1061,6 +1453,7 @@ def render_user_dashboard_html(
       if (tabName === 'triage') loadTriage();
       if (tabName === 'incidents') loadIncidents();
       if (tabName === 'assets') loadAssets();
+      if (tabName === 'guides') loadGuide(currentGuideId || 'zabbix_setup');
     }
 
     function escapeHtml(value) {
@@ -1466,24 +1859,28 @@ def render_user_dashboard_html(
         const alerts = data.alerts || [];
         if (!alerts.length) { triageTableEl.innerHTML = '<span class=\"empty\">최근 24h 경보 없음</span>'; return; }
         const rows = alerts.map(a => {
-          const color = TRIAGE_STATUS_COLORS[a.triage_status] || '#6b7280';
+          const rawStatus = a.triage_status || 'pending';
+          const color = TRIAGE_STATUS_COLORS[rawStatus] || '#6b7280';
+          const label = TRIAGE_STATUS_LABELS[rawStatus] || rawStatus;
           return `<tr>
             <td>${escapeHtml(formatTime(a.observed_at))}</td>
             <td><span style=\"background:#1e293b;color:#93c5fd;padding:2px 8px;border-radius:4px;font-size:12px\">${escapeHtml(a.source)}</span></td>
             <td><strong>${escapeHtml(a.hostname || a.host_id || '-')}</strong></td>
             <td><span style=\"background:#111827;padding:2px 6px;border-radius:4px;font-size:12px\">${escapeHtml(a.severity)}</span></td>
-            <td style=\"max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">${escapeHtml(a.message)}</td>
-            <td><button onclick=\"openTriageModal('${escapeHtml(a.alert_id)}','${escapeHtml(a.triage_status||'new')}','${escapeHtml(a.triage_analyst||'')}','${escapeHtml(a.triage_note||'')}','${escapeHtml(a.message||'').replace(/'/g,\"&#39;\")}')\" style=\"background:${color};color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px\">${escapeHtml(a.triage_status || 'new')}</button></td>
+            <td style=\"max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">${escapeHtml(a.message)}</td>
+            <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(a.triage_analyst || '-')}</td>
+            <td><button onclick=\"openTriageModal('${escapeHtml(a.alert_id)}','${escapeHtml(rawStatus)}','${escapeHtml(a.triage_analyst||'')}','${escapeHtml(a.triage_note||'')}','${escapeHtml(a.message||'').replace(/'/g,\"&#39;\")}')\" style=\"background:${color};color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;white-space:nowrap\">${label}</button></td>
           </tr>`;
         }).join('');
-        triageTableEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse\">
+        triageTableEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
           <thead><tr style=\"background:#0f2035\">
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">시각</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">소스</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">호스트</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">심각도</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">메시지</th>
-            <th style=\"padding:8px;color:#93c5fd;text-align:left\">Triage</th>
+            <th style=\"padding:8px;color:#a3e635;text-align:left\">담당자</th>
+            <th style=\"padding:8px;color:#93c5fd;text-align:left\">상태</th>
           </tr></thead><tbody>${rows}</tbody></table>`;
       } catch (err) { triageTableEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(err.message)}</span>`; }
     }
@@ -1491,7 +1888,7 @@ def render_user_dashboard_html(
     function openTriageModal(alertId, status, analyst, note, message) {
       currentTriageAlertId = alertId;
       triageModalAlertInfoEl.innerHTML = `<strong>Alert ID:</strong> ${escapeHtml(alertId)}<br><span style=\"color:#94a3b8\">${escapeHtml(message)}</span>`;
-      triageModalStatusEl.value = status || 'new';
+      triageModalStatusEl.value = status || 'pending';
       triageModalAnalystEl.value = analyst || '';
       triageModalNoteEl.value = note || '';
       triageModalStatusLineEl.textContent = '';
@@ -1634,6 +2031,7 @@ def render_user_dashboard_html(
       const rows = hosts.map(h => {
         const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
         const fleetLink = FLEET_URL ? `<a href=\"${escapeHtml(FLEET_URL)}/hosts?query=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#6ee7b7;font-size:12px;\">Fleet ↗</a>` : '';
+        const ownerStr = [h.owner, h.team].filter(Boolean).join(' / ') || '<span style=\"color:#475569\">-</span>';
         return `<tr>
           <td><strong>${escapeHtml(h.hostname)}</strong>${fleetLink ? '<br>' + fleetLink : ''}</td>
           <td><span style=\"background:#0d2137;color:#6ee7b7;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;\">🖥️ PC</span></td>
@@ -1642,7 +2040,7 @@ def render_user_dashboard_html(
           <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
           <td>${escapeHtml(h.risk_score)}</td>
           <td>${escapeHtml(formatTime(h.last_seen_at))}</td>
-          <td style=\"color:#64748b\">${escapeHtml(h.query_result_count)}</td>
+          <td style=\"color:#a3e635;font-size:12px\">${ownerStr}</td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
@@ -1654,7 +2052,7 @@ def render_user_dashboard_html(
           <th style=\"padding:8px;color:#93c5fd\">상태</th>
           <th style=\"padding:8px;color:#93c5fd\">리스크</th>
           <th style=\"padding:8px;color:#93c5fd\">마지막 확인</th>
-          <th style=\"padding:8px;color:#64748b\">쿼리 결과 수</th>
+          <th style=\"padding:8px;color:#a3e635\">담당자 / 팀</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
@@ -1662,31 +2060,36 @@ def render_user_dashboard_html(
 
     function renderZabbixTable(hosts, containerEl) {
       if (!hosts.length) { containerEl.innerHTML = '<div class=\"empty\">Zabbix에서 수집된 서버 자산이 없습니다.</div>'; return; }
+      const impColor = { '상': '#fca5a5', '중': '#fde68a', '하': '#86efac' };
       const rows = hosts.map(h => {
         const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
         const zabbixLink = ZABBIX_URL ? `<a href=\"${escapeHtml(ZABBIX_URL)}/zabbix.php?action=host.list&filter_set=1&filter_host=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#7dd3fc;font-size:12px;\">Zabbix ↗</a>` : '';
         const metricStr = h.latest_metric ? `${escapeHtml(h.latest_metric)}: ${escapeHtml(h.latest_value || '-')}` : '-';
+        const impBadge = h.importance ? `<span style=\"background:#1e293b;color:${impColor[h.importance]||'#94a3b8'};padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700\">${escapeHtml(h.importance)}</span>` : '-';
+        const ownerStr = [h.owner, h.team].filter(Boolean).join(' / ') || '<span style=\"color:#475569\">-</span>';
         return `<tr>
           <td><strong>${escapeHtml(h.hostname)}</strong>${zabbixLink ? '<br>' + zabbixLink : ''}</td>
-          <td><span style=\"background:#0d1e37;color:#7dd3fc;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;\">🖧 서버</span></td>
-          <td>${escapeHtml(h.platform)}</td>
+          <td style=\"font-size:12px\">${escapeHtml(h.category || '-')}</td>
+          <td>${impBadge}</td>
+          <td style=\"font-size:11px;color:#7dd3fc\">${escapeHtml(h.isms_control || '-')}</td>
+          <td style=\"font-size:11px;color:#a78bfa\">${escapeHtml(h.iso27001_control || '-')}</td>
           <td>${escapeHtml(h.primary_ip)}</td>
           <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
-          <td>${escapeHtml(h.risk_score)}</td>
-          <td>${escapeHtml(formatTime(h.last_seen_at))}</td>
           <td style=\"font-size:12px;color:#94a3b8\">${metricStr}</td>
+          <td style=\"color:#a3e635;font-size:12px\">${ownerStr}</td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
         <thead><tr style=\"background:#0f2035;\">
           <th style=\"padding:8px;color:#7dd3fc\">호스트명</th>
-          <th style=\"padding:8px;color:#7dd3fc\">유형</th>
-          <th style=\"padding:8px;color:#93c5fd\">플랫폼</th>
+          <th style=\"padding:8px;color:#7dd3fc\">분류</th>
+          <th style=\"padding:8px;color:#fde68a\">중요도</th>
+          <th style=\"padding:8px;color:#7dd3fc\">ISMS-P 통제</th>
+          <th style=\"padding:8px;color:#a78bfa\">ISO 27001</th>
           <th style=\"padding:8px;color:#93c5fd\">IP</th>
           <th style=\"padding:8px;color:#93c5fd\">상태</th>
-          <th style=\"padding:8px;color:#93c5fd\">리스크</th>
-          <th style=\"padding:8px;color:#93c5fd\">마지막 확인</th>
           <th style=\"padding:8px;color:#94a3b8\">최근 메트릭</th>
+          <th style=\"padding:8px;color:#a3e635\">담당자 / 팀</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
@@ -1695,16 +2098,23 @@ def render_user_dashboard_html(
     function renderTrivyTable(rows, containerEl) {
       if (!rows.length) { containerEl.innerHTML = '<div class=\"empty\">Trivy 취약점 데이터가 없습니다.</div>'; return; }
       const sevColor = { critical:'#fca5a5', high:'#fdba74', medium:'#fde68a', low:'#86efac', info:'#94a3b8' };
-      const tableRows = rows.map(r => `<tr>
-        <td><strong>${escapeHtml(r.hostname)}</strong><br><span style=\"color:#64748b;font-size:11px\">${escapeHtml(r.host_id)}</span></td>
-        <td style=\"color:${sevColor.critical};font-weight:700\">${escapeHtml(r.critical)}</td>
-        <td style=\"color:${sevColor.high};font-weight:700\">${escapeHtml(r.high)}</td>
-        <td style=\"color:${sevColor.medium}\">${escapeHtml(r.medium)}</td>
-        <td style=\"color:${sevColor.low}\">${escapeHtml(r.low)}</td>
-        <td>${escapeHtml(r.total)}</td>
-        <td style=\"font-size:12px;color:#94a3b8\">${escapeHtml(r.latest_cve || '-')}</td>
-        <td style=\"font-size:12px;color:#64748b\">${escapeHtml(formatTime(r.latest_detected_at))}</td>
-      </tr>`).join('');
+      const tableRows = rows.map(r => {
+        const planText = r.action_plan ? escapeHtml(r.action_plan).substring(0, 40) + (r.action_plan.length > 40 ? '…' : '') : '';
+        const planCell = r.action_plan
+          ? `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(r.action_plan)}\">${planText}</span>${r.action_target_date ? '<br><span style=\"color:#64748b;font-size:11px\">~' + escapeHtml(r.action_target_date) + '</span>' : ''}`
+          : `<button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e3a5f;border:1px solid #334155;border-radius:4px;color:#7dd3fc;cursor:pointer\">+ 계획 추가</button>`;
+        return `<tr>
+          <td><strong>${escapeHtml(r.hostname)}</strong><br><span style=\"color:#64748b;font-size:11px\">${escapeHtml(r.host_id)}</span></td>
+          <td style=\"color:${sevColor.critical};font-weight:700;text-align:center\">${r.critical}</td>
+          <td style=\"color:${sevColor.high};font-weight:700;text-align:center\">${r.high}</td>
+          <td style=\"color:${sevColor.medium};text-align:center\">${r.medium}</td>
+          <td style=\"color:${sevColor.low};text-align:center\">${r.low}</td>
+          <td style=\"text-align:center\">${r.total}</td>
+          <td style=\"font-size:12px;color:#94a3b8\">${escapeHtml(r.latest_cve || '-')}</td>
+          <td style=\"font-size:12px;color:#64748b\">${escapeHtml(formatTime(r.latest_detected_at))}</td>
+          <td style=\"min-width:140px\">${planCell}</td>
+        </tr>`;
+      }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
         <thead><tr style=\"background:#0f2035;\">
           <th style=\"padding:8px;color:#fdba74\">호스트</th>
@@ -1715,10 +2125,44 @@ def render_user_dashboard_html(
           <th style=\"padding:8px;color:#93c5fd\">합계</th>
           <th style=\"padding:8px;color:#94a3b8\">최근 CVE</th>
           <th style=\"padding:8px;color:#64748b\">탐지일</th>
+          <th style=\"padding:8px;color:#a3e635\">조치 계획</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
       </table>`;
     }
+
+    // 조치계획 모달
+    let _planHostId = null, _planHostname = null;
+    function openPlanModal(hostId, hostname) {
+      _planHostId = hostId; _planHostname = hostname;
+      document.getElementById('plan_modal_title').textContent = hostname + ' 조치 계획';
+      document.getElementById('plan_text').value = '';
+      document.getElementById('plan_target_date').value = '';
+      document.getElementById('plan_updated_by').value = '';
+      fetch(`/assets/plans/${encodeURIComponent(hostId)}`).then(r=>r.json()).then(d=>{
+        document.getElementById('plan_text').value = d.text || '';
+        document.getElementById('plan_target_date').value = d.target_date || '';
+        document.getElementById('plan_updated_by').value = d.updated_by || '';
+      }).catch(()=>{});
+      document.getElementById('plan_modal').style.display = 'flex';
+    }
+    function closePlanModal() { document.getElementById('plan_modal').style.display = 'none'; }
+    document.addEventListener('DOMContentLoaded', () => {
+      const saveBtn = document.getElementById('plan_modal_save');
+      if (saveBtn) saveBtn.addEventListener('click', async () => {
+        if (!_planHostId) return;
+        await fetch(`/assets/plans/${encodeURIComponent(_planHostId)}`, {
+          method: 'PUT', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            text: document.getElementById('plan_text').value,
+            target_date: document.getElementById('plan_target_date').value,
+            updated_by: document.getElementById('plan_updated_by').value || '운영자',
+          })
+        });
+        closePlanModal();
+        loadAssets();
+      });
+    });
 
     async function loadAssets() {
       const statusEl = document.getElementById('assets_status');
@@ -1752,6 +2196,61 @@ def render_user_dashboard_html(
       a.href = `/assets?format=csv&source=${encodeURIComponent(source)}`;
       a.download = '';
       a.click();
+    }
+
+    // ── Guide Tab ─────────────────────────────────────────────────────────
+    let currentGuideId = 'zabbix_setup';
+    const guideSubBtns = {
+      zabbix_setup: document.getElementById('guide_tab_zabbix_setup'),
+      fleet_install: document.getElementById('guide_tab_fleet_install'),
+      isms_criteria: document.getElementById('guide_tab_isms_criteria'),
+      iso27001_criteria: document.getElementById('guide_tab_iso27001_criteria'),
+    };
+
+    function switchGuideTab(guideId) {
+      currentGuideId = guideId;
+      Object.entries(guideSubBtns).forEach(([id, btn]) => {
+        if (!btn) return;
+        const active = id === guideId;
+        btn.style.borderBottomColor = active ? '#38bdf8' : 'transparent';
+        btn.style.color = active ? '#38bdf8' : '#94a3b8';
+        if (!btn.classList) return;
+      });
+      loadGuide(guideId);
+    }
+
+    function renderMarkdownLite(text) {
+      // 매우 간단한 마크다운 렌더러: 헤더/볼드/코드블록/체크박스 지원
+      return escapeHtml(text)
+        .replace(/^### (.+)$/gm, '<h3 style="color:#a3e635;margin:16px 0 6px;font-size:14px">$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2 style="color:#38bdf8;margin:20px 0 8px;font-size:16px">$1</h2>')
+        .replace(/^#### (.+)$/gm, '<h4 style="color:#94a3b8;margin:12px 0 4px;font-size:13px">$1</h4>')
+        .replace(/\\*\\*(.+?)\\*\\*/g, '<strong style="color:#f1f5f9">$1</strong>')
+        .replace(/`([^`]+)`/g, '<code style="background:#1e293b;padding:1px 6px;border-radius:4px;color:#a3e635;font-size:12px">$1</code>')
+        .replace(/^```[\\s\\S]*?```/gm, m => `<pre style="background:#0f2035;border:1px solid #334155;border-radius:6px;padding:12px 14px;overflow-x:auto;font-size:12px;color:#86efac;margin:8px 0">${m.slice(m.indexOf('\\n')+1, m.lastIndexOf('\\n'))}</pre>`)
+        .replace(/^- \\[ \\] (.+)$/gm, '<div style="display:flex;gap:8px;align-items:flex-start;padding:2px 0"><span style="color:#fde68a;margin-top:1px">☐</span><span>$1</span></div>')
+        .replace(/^- \\[x\\] (.+)$/gm, '<div style="display:flex;gap:8px;align-items:flex-start;padding:2px 0"><span style="color:#86efac;margin-top:1px">☑</span><span style="color:#64748b;text-decoration:line-through">$1</span></div>')
+        .replace(/^- (.+)$/gm, '<div style="padding:2px 0 2px 12px;color:#cbd5e1">• $1</div>')
+        .replace(/^---$/gm, '<hr style="border:none;border-top:1px solid #334155;margin:16px 0">')
+        .replace(/\\n/g, '\\n');
+    }
+
+    async function loadGuide(guideId) {
+      const titleEl = document.getElementById('guide_content_title');
+      const bodyEl = document.getElementById('guide_content_body');
+      const updatedEl = document.getElementById('guide_updated_at');
+      if (!titleEl || !bodyEl) return;
+      bodyEl.innerHTML = '<span style="color:#64748b">로딩 중…</span>';
+      try {
+        const res = await fetch(`/guides/${encodeURIComponent(guideId)}`);
+        if (!res.ok) throw new Error(res.status);
+        const g = await res.json();
+        titleEl.textContent = g.title || guideId;
+        updatedEl.textContent = g.updated_at ? `수정: ${g.updated_at.slice(0,10)}` : '(기본 내용)';
+        bodyEl.innerHTML = renderMarkdownLite(g.content || '');
+      } catch(e) {
+        bodyEl.innerHTML = `<span style="color:#fca5a5">오류: ${escapeHtml(e.message)}</span>`;
+      }
     }
 
     async function initialize() {
@@ -1961,6 +2460,21 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
 
         <section class=\"card\">
+          <h2>👤 자산 담당자 관리</h2>
+          <div class=\"subtext\">서버·PC 자산의 담당자와 팀을 등록합니다. 호스트명과 정확히 일치해야 합니다.</div>
+          <div id=\"owners_list\" class=\"list\" style=\"margin-bottom:12px;max-height:200px;overflow-y:auto\"><span class=\"empty\">로딩 중…</span></div>
+          <div class=\"row\"><label>호스트명</label><input id=\"own_hostname\" placeholder=\"예: db-prod-01\" /></div>
+          <div class=\"row\"><label>담당자</label><input id=\"own_owner\" placeholder=\"예: 홍길동\" /></div>
+          <div class=\"row\"><label>이메일</label><input id=\"own_email\" placeholder=\"예: hong@company.com\" /></div>
+          <div class=\"row\"><label>팀</label><input id=\"own_team\" placeholder=\"예: 인프라팀\" /></div>
+          <div class=\"actions\">
+            <button id=\"add_owner\">등록 / 수정</button>
+            <button id=\"reload_owners\" class=\"secondary\">새로고침</button>
+          </div>
+          <div class=\"status-line\" id=\"owner_status\"></div>
+        </section>
+
+        <section class=\"card\">
           <h2>🔔 Slack Webhook 관리</h2>
           <div class=\"subtext\">Critical 경보 발생 시 자동으로 알림을 전송할 Slack Incoming Webhook을 등록합니다.</div>
           <div id=\"webhooks_list\" class=\"list\" style=\"margin-bottom:12px\"><span class=\"empty\">로딩 중…</span></div>
@@ -1977,6 +2491,33 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <button id=\"reload_webhooks\" class=\"secondary\">새로고침</button>
           </div>
           <div class=\"status-line\" id=\"webhook_status\"></div>
+        </section>
+
+        <section class=\"card\">
+          <h2>📖 가이드 &amp; 메뉴얼 편집</h2>
+          <div class=\"subtext\">사용자 UI에 표시되는 가이드 내용을 수정합니다. 마크다운 형식을 지원합니다.</div>
+          <div class=\"row\">
+            <label for=\"guide_edit_select\">가이드 선택</label>
+            <select id=\"guide_edit_select\">
+              <option value=\"zabbix_setup\">🖧 Zabbix 에이전트 설정</option>
+              <option value=\"fleet_install\">🖥️ Fleet 에이전트 설치</option>
+              <option value=\"isms_criteria\">📋 ISMS-P 심사 기준</option>
+              <option value=\"iso27001_criteria\">🌐 ISO 27001 심사 기준</option>
+            </select>
+          </div>
+          <div class=\"row\">
+            <label for=\"guide_edit_title\">제목</label>
+            <input id=\"guide_edit_title\" placeholder=\"가이드 제목\" />
+          </div>
+          <div class=\"row\">
+            <label for=\"guide_edit_content\">내용 (마크다운)</label>
+            <textarea id=\"guide_edit_content\" style=\"min-height:280px;font-family:monospace;font-size:12px\"></textarea>
+          </div>
+          <div class=\"actions\">
+            <button id=\"guide_edit_load\" class=\"secondary\">불러오기</button>
+            <button id=\"guide_edit_save\">저장</button>
+          </div>
+          <div class=\"status-line\" id=\"guide_edit_status\"></div>
         </section>
 
         <section class=\"card\">
@@ -2860,6 +3401,58 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     filtersEl.value = JSON.stringify(defaultPayload.filters, null, 2);
     renderGuideButtons(guideExamplesEl, guideExamples);
 
+    // ── Asset Owners ───────────────────────────────────────────────────────
+    const ownersListEl = document.getElementById('owners_list');
+    const ownerStatusEl = document.getElementById('owner_status');
+    const ownHostnameEl = document.getElementById('own_hostname');
+    const ownOwnerEl = document.getElementById('own_owner');
+    const ownEmailEl = document.getElementById('own_email');
+    const ownTeamEl = document.getElementById('own_team');
+
+    async function loadOwners() {
+      ownersListEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      try {
+        const res = await fetch('/assets/owners');
+        const data = await res.json();
+        const list = data.owners || [];
+        if (!list.length) { ownersListEl.innerHTML = '<span class=\"empty\">등록된 담당자 없음</span>'; return; }
+        ownersListEl.innerHTML = list.map(o => `
+          <div style=\"display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-bottom:1px solid #1e293b;font-size:13px\">
+            <div>
+              <strong style=\"color:#e2e8f0\">${escapeHtml(o.hostname)}</strong>
+              <span style=\"color:#a3e635;margin-left:8px\">${escapeHtml(o.owner||'-')}</span>
+              ${o.team ? `<span style=\"color:#64748b;margin-left:6px\">(${escapeHtml(o.team)})</span>` : ''}
+              ${o.email ? `<span style=\"color:#64748b;font-size:11px;margin-left:6px\">${escapeHtml(o.email)}</span>` : ''}
+            </div>
+            <button onclick=\"deleteOwner('${escapeHtml(o.hostname)}')\" style=\"background:#7f1d1d;border:none;color:#fca5a5;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px\">삭제</button>
+          </div>`).join('');
+      } catch(e) { ownersListEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(e.message)}</span>`; }
+    }
+
+    async function deleteOwner(hostname) {
+      try {
+        await fetch(`/assets/owners/${encodeURIComponent(hostname)}`, {method:'DELETE'});
+        await loadOwners();
+      } catch(e) { ownerStatusEl.textContent = `삭제 실패: ${e.message}`; }
+    }
+
+    document.getElementById('add_owner').addEventListener('click', async () => {
+      const hostname = ownHostnameEl.value.trim();
+      if (!hostname) { ownerStatusEl.textContent = '호스트명을 입력하세요.'; return; }
+      ownerStatusEl.textContent = '저장 중…';
+      try {
+        const res = await fetch('/assets/owners', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({hostname, owner: ownOwnerEl.value.trim(), email: ownEmailEl.value.trim(), team: ownTeamEl.value.trim()})
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        ownHostnameEl.value = ''; ownOwnerEl.value = ''; ownEmailEl.value = ''; ownTeamEl.value = '';
+        ownerStatusEl.textContent = '저장 완료 ✓';
+        await loadOwners();
+      } catch(e) { ownerStatusEl.textContent = `오류: ${e.message}`; }
+    });
+    document.getElementById('reload_owners').addEventListener('click', loadOwners);
+
     // ── Webhooks ───────────────────────────────────────────────────────────
     async function loadWebhooks() {
       webhooksListEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
@@ -2911,11 +3504,53 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     });
     document.getElementById('reload_webhooks').addEventListener('click', loadWebhooks);
 
+    // ── Guide Editor ───────────────────────────────────────────────────────
+    const guideEditSelectEl = document.getElementById('guide_edit_select');
+    const guideEditTitleEl = document.getElementById('guide_edit_title');
+    const guideEditContentEl = document.getElementById('guide_edit_content');
+    const guideEditStatusEl = document.getElementById('guide_edit_status');
+
+    async function loadGuideForEdit(guideId) {
+      guideEditStatusEl.textContent = '불러오는 중…';
+      try {
+        const res = await fetch(`/guides/${encodeURIComponent(guideId)}`);
+        if (!res.ok) throw new Error(res.status);
+        const g = await res.json();
+        guideEditTitleEl.value = g.title || '';
+        guideEditContentEl.value = g.content || '';
+        guideEditStatusEl.textContent = g.updated_at ? `마지막 저장: ${g.updated_at.slice(0,19).replace('T',' ')}` : '(기본 내용)';
+      } catch(e) { guideEditStatusEl.textContent = `불러오기 실패: ${e.message}`; }
+    }
+
+    document.getElementById('guide_edit_load').addEventListener('click', () => {
+      loadGuideForEdit(guideEditSelectEl.value);
+    });
+    guideEditSelectEl.addEventListener('change', () => {
+      loadGuideForEdit(guideEditSelectEl.value);
+    });
+    document.getElementById('guide_edit_save').addEventListener('click', async () => {
+      const guideId = guideEditSelectEl.value;
+      const title = guideEditTitleEl.value.trim();
+      const content = guideEditContentEl.value;
+      if (!title) { guideEditStatusEl.textContent = '제목을 입력하세요.'; return; }
+      guideEditStatusEl.textContent = '저장 중…';
+      try {
+        const res = await fetch(`/guides/${encodeURIComponent(guideId)}`, {
+          method: 'PUT', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({title, content}),
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        guideEditStatusEl.textContent = '저장 완료 ✓';
+      } catch(e) { guideEditStatusEl.textContent = `오류: ${e.message}`; }
+    });
+
     async function initialize() {
       await loadDashboardPreferences();
       await loadCatalog();
       await loadDashboard();
+      await loadOwners();
       await loadWebhooks();
+      await loadGuideForEdit(guideEditSelectEl.value);
     }
 
     initialize();
