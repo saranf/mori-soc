@@ -216,6 +216,74 @@ def build_dashboard_payload(service: QueryService) -> dict[str, Any]:
     }
 
 
+def build_pdca_payload(service: QueryService) -> dict[str, Any]:
+    """Compliance PDCA 대시보드용 집계 데이터를 생성한다."""
+    store = service.store
+    checks = store.control_checks
+    now = datetime.now(tz=timezone.utc)
+
+    # Status 별 카운트
+    status_counts: dict[str, int] = {"pass": 0, "fail": 0, "warning": 0, "not_applicable": 0, "not_checked": 0}
+    for c in checks:
+        status_counts[c.status] = status_counts.get(c.status, 0) + 1
+
+    total = len(checks)
+    checked = total - status_counts["not_checked"] - status_counts["not_applicable"]
+    pass_rate = round(status_counts["pass"] / checked * 100, 1) if checked > 0 else 0.0
+
+    # Control category 별 집계 (control_id 첫 부분 — e.g. "A.8" or "2.5")
+    by_category: dict[str, dict[str, int]] = {}
+    for c in checks:
+        parts = c.control_id.rsplit(".", 1)
+        cat = parts[0] if len(parts) > 1 else c.control_id
+        bucket = by_category.setdefault(cat, {"pass": 0, "fail": 0, "warning": 0, "not_applicable": 0, "not_checked": 0, "total": 0})
+        bucket[c.status] = bucket.get(c.status, 0) + 1
+        bucket["total"] += 1
+
+    categories = [
+        {"category": cat, **counts}
+        for cat, counts in sorted(by_category.items())
+    ]
+
+    # 미조치 항목 (fail + warning, remediation_due_at 기준 정렬)
+    pending = []
+    for c in checks:
+        if c.status in {"fail", "warning"}:
+            pending.append({
+                "check_id": c.check_id,
+                "control_id": c.control_id,
+                "entity_type": c.entity_type,
+                "entity_id": c.entity_id,
+                "status": c.status,
+                "checked_at": _isoformat(c.checked_at),
+                "owner": c.owner or "",
+                "note": c.note or "",
+                "remediation_due_at": _isoformat(c.remediation_due_at) if c.remediation_due_at else None,
+                "overdue": c.remediation_due_at is not None and c.remediation_due_at < now and c.resolved_at is None,
+            })
+    pending.sort(key=lambda x: (0 if x["overdue"] else 1, x.get("remediation_due_at") or "9999"))
+
+    # PDCA 단계 매핑
+    pdca = {
+        "plan": status_counts["not_checked"],
+        "do": status_counts["warning"] + status_counts["fail"],
+        "check": checked,
+        "act": status_counts["pass"],
+    }
+
+    return {
+        "generated_at": _isoformat(now),
+        "total_checks": total,
+        "status_counts": status_counts,
+        "pass_rate": pass_rate,
+        "pdca": pdca,
+        "categories": categories,
+        "pending_remediations": pending,
+        "pending_count": len(pending),
+        "overdue_count": sum(1 for p in pending if p["overdue"]),
+    }
+
+
 def build_assets_payload(
     service: QueryService,
     owners: dict[str, dict[str, Any]] | None = None,
@@ -711,9 +779,9 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
 
     # Role permissions: role -> list of allowed tab ids
     _DEFAULT_ROLE_PERMISSIONS: dict[str, list[str]] = {
-        "admin": ["dashboard", "triage", "incidents", "assets", "guides"],
-        "security": ["dashboard", "triage", "incidents", "assets", "guides"],
-        "monitor": ["dashboard", "assets", "guides"],
+        "admin": ["dashboard", "triage", "incidents", "assets", "compliance", "guides"],
+        "security": ["dashboard", "triage", "incidents", "assets", "compliance", "guides"],
+        "monitor": ["dashboard", "assets", "compliance", "guides"],
         "user": ["dashboard", "assets", "guides"],
     }
     role_permissions: dict[str, list[str]] = {k: list(v) for k, v in _DEFAULT_ROLE_PERMISSIONS.items()}
@@ -1427,7 +1495,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     def update_role_permissions_api(payload: dict[str, Any]) -> dict[str, Any]:
         """역할별 탭 권한 업데이트. {role: [tab_id, ...]}"""
         nonlocal role_permissions
-        valid_tabs = {"dashboard", "triage", "incidents", "assets", "guides"}
+        valid_tabs = {"dashboard", "triage", "incidents", "assets", "compliance", "guides"}
         for role_key, tabs in payload.items():
             if not isinstance(tabs, list):
                 raise HTTPException(status_code=400, detail=f"tabs for {role_key} must be a list")
@@ -1505,6 +1573,14 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             return build_dashboard_payload(get_query_service())
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"dashboard summary unavailable: {exc}") from exc
+
+    @app.get("/compliance/pdca", tags=["Compliance"])
+    def compliance_pdca_summary() -> dict[str, Any]:
+        """Compliance PDCA 대시보드 요약 데이터."""
+        try:
+            return build_pdca_payload(get_query_service())
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"compliance pdca unavailable: {exc}") from exc
 
     def _get_session_username(request: Request) -> str | None:
         """현재 세션의 사용자명을 반환 (미인증 시 None)."""
@@ -2211,6 +2287,7 @@ def render_user_dashboard_html(
       <button data-tab=\"triage\" onclick=\"switchTab('triage')\">🚨 Alert Triage</button>
       <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\">📋 인시던트</button>
       <button data-tab=\"assets\" onclick=\"switchTab('assets')\">📡 자산 현황</button>
+      <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\">✅ Compliance PDCA</button>
       <button data-tab=\"guides\" onclick=\"switchTab('guides')\">📖 가이드 &amp; 기준</button>
     </nav>
 
@@ -2367,6 +2444,44 @@ def render_user_dashboard_html(
         </section>
       </div>
       <div class=\"status-line\" id=\"assets_status\"></div>
+    </div>
+
+    <!-- ── Tab: Compliance PDCA ──────────────────────────────────────── -->
+    <div class=\"tab-panel\" id=\"tab_compliance\">
+      <section class=\"card\">
+        <h2>✅ Compliance PDCA 대시보드</h2>
+        <div class=\"subtext\">ISMS-P / ISO 27001 통제 항목 점검 현황을 PDCA(Plan-Do-Check-Act) 관점으로 요약합니다.</div>
+      </section>
+
+      <!-- PDCA Summary Cards -->
+      <section class=\"metrics\" id=\"pdca_cards\">
+        <div class=\"empty\" style=\"padding:16px;color:#64748b\">⏳ PDCA 데이터를 불러오는 중…</div>
+      </section>
+
+      <!-- Status Donut + Pass Rate -->
+      <div class=\"layout\">
+        <div class=\"stack\">
+          <section class=\"card\">
+            <h2>📊 통제 항목 상태</h2>
+            <div id=\"pdca_status_chart\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin-top:12px\"></div>
+          </section>
+          <section class=\"card\">
+            <h2>📈 카테고리별 현황</h2>
+            <div id=\"pdca_category_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
+          </section>
+        </div>
+        <div class=\"stack\">
+          <section class=\"card\">
+            <h2>🔄 PDCA Cycle</h2>
+            <div id=\"pdca_cycle_chart\" style=\"margin-top:12px\"></div>
+          </section>
+          <section class=\"card\">
+            <h2>⚠️ 미조치 / 기한 초과 항목</h2>
+            <div class=\"subtext\">fail 또는 warning 상태인 통제 항목입니다. 기한 초과는 🔴로 표시됩니다.</div>
+            <div id=\"pdca_pending_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
+          </section>
+        </div>
+      </div>
     </div>
 
     <!-- ── Tab: 가이드 & 기준 ────────────────────────────────────────── -->
@@ -2548,6 +2663,9 @@ def render_user_dashboard_html(
     <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\">
       <span class=\"bn-icon\">📋</span>인시던트
     </button>
+    <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\">
+      <span class=\"bn-icon\">✅</span>PDCA
+    </button>
     <button data-tab=\"guides\" onclick=\"switchTab('guides')\">
       <span class=\"bn-icon\">📖</span>가이드
     </button>
@@ -2649,6 +2767,7 @@ def render_user_dashboard_html(
       if (tabName === 'triage') loadTriage();
       if (tabName === 'incidents') loadIncidents();
       if (tabName === 'assets') loadAssets();
+      if (tabName === 'compliance') loadCompliance();
       if (tabName === 'guides') {
         buildGuideSubTabs();
         if (currentGuideId) switchGuideTab(currentGuideId);
@@ -3592,6 +3711,138 @@ def render_user_dashboard_html(
     }
 
     // ── Guide Tab ─────────────────────────────────────────────────────────
+    // ── Compliance PDCA ──────────────────────────────────────────────────────
+    async function loadCompliance() {
+      const cardsEl = document.getElementById('pdca_cards');
+      const statusEl = document.getElementById('pdca_status_chart');
+      const categoryEl = document.getElementById('pdca_category_table');
+      const cycleEl = document.getElementById('pdca_cycle_chart');
+      const pendingEl = document.getElementById('pdca_pending_table');
+      if (cardsEl) cardsEl.innerHTML = '<div class=\"empty\" style=\"padding:16px;color:#64748b\">⏳ 로딩 중…</div>';
+      try {
+        const res = await fetch('/compliance/pdca');
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+        const sc = data.status_counts || {};
+        const pdca = data.pdca || {};
+        // Summary cards
+        if (cardsEl) {
+          cardsEl.innerHTML = [
+            _metricCard('📋 전체 점검', data.total_checks, '#38bdf8'),
+            _metricCard('✅ Pass', sc.pass || 0, '#22c55e'),
+            _metricCard('❌ Fail', sc.fail || 0, '#ef4444'),
+            _metricCard('⚠️ Warning', sc.warning || 0, '#f59e0b'),
+            _metricCard('📊 Pass Rate', data.pass_rate + '%', '#a78bfa'),
+            _metricCard('🔴 기한초과', data.overdue_count || 0, '#f43f5e'),
+          ].join('');
+        }
+        // Status bars
+        if (statusEl) {
+          const total = data.total_checks || 1;
+          const bars = ['pass','fail','warning','not_applicable','not_checked'].map(s => {
+            const cnt = sc[s] || 0;
+            const pct = (cnt / total * 100).toFixed(1);
+            const colors = {pass:'#22c55e',fail:'#ef4444',warning:'#f59e0b',not_applicable:'#64748b',not_checked:'#334155'};
+            const labels = {pass:'Pass',fail:'Fail',warning:'Warning',not_applicable:'N/A',not_checked:'미점검'};
+            return `<div style=\"flex:1;min-width:100px\">
+              <div style=\"font-size:12px;color:#94a3b8;margin-bottom:4px\">${labels[s]}</div>
+              <div style=\"background:#0f172a;border-radius:6px;height:24px;overflow:hidden;position:relative\">
+                <div style=\"background:${colors[s]};width:${pct}%;height:100%;border-radius:6px;transition:width .5s\"></div>
+                <span style=\"position:absolute;top:3px;left:8px;font-size:12px;font-weight:700;color:#fff\">${cnt} (${pct}%)</span>
+              </div>
+            </div>`;
+          });
+          statusEl.innerHTML = bars.join('');
+        }
+        // PDCA Cycle
+        if (cycleEl) {
+          const steps = [
+            {label:'Plan', desc:'미점검 항목', val: pdca.plan || 0, color:'#38bdf8', icon:'📝'},
+            {label:'Do', desc:'조치 필요', val: pdca.do || 0, color:'#f59e0b', icon:'🔧'},
+            {label:'Check', desc:'점검 완료', val: pdca.check || 0, color:'#a78bfa', icon:'🔍'},
+            {label:'Act', desc:'통과 (Pass)', val: pdca.act || 0, color:'#22c55e', icon:'✅'},
+          ];
+          cycleEl.innerHTML = `<div style=\"display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center\">`
+            + steps.map(s => `<div style=\"background:#0b1220;border:2px solid ${s.color};border-radius:12px;padding:16px 8px\">
+                <div style=\"font-size:24px\">${s.icon}</div>
+                <div style=\"font-size:18px;font-weight:800;color:${s.color};margin:4px 0\">${s.val}</div>
+                <div style=\"font-size:13px;font-weight:700;color:#e2e8f0\">${s.label}</div>
+                <div style=\"font-size:11px;color:#64748b\">${s.desc}</div>
+              </div>`).join('')
+            + '</div>';
+        }
+        // Category table
+        if (categoryEl) {
+          const cats = data.categories || [];
+          if (cats.length === 0) {
+            categoryEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:12px\">점검 데이터가 없습니다.</div>';
+          } else {
+            categoryEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
+              <thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155\">
+                <th style=\"text-align:left;padding:6px 8px\">카테고리</th>
+                <th style=\"text-align:right;padding:6px 8px\">Pass</th>
+                <th style=\"text-align:right;padding:6px 8px\">Fail</th>
+                <th style=\"text-align:right;padding:6px 8px\">Warning</th>
+                <th style=\"text-align:right;padding:6px 8px\">미점검</th>
+                <th style=\"text-align:right;padding:6px 8px\">합계</th>
+              </tr></thead><tbody>`
+              + cats.map(c => `<tr style=\"border-bottom:1px solid #1e293b\">
+                <td style=\"padding:6px 8px;color:#e2e8f0;font-weight:600\">${escapeHtml(c.category)}</td>
+                <td style=\"text-align:right;padding:6px 8px;color:#22c55e\">${c.pass}</td>
+                <td style=\"text-align:right;padding:6px 8px;color:#ef4444\">${c.fail}</td>
+                <td style=\"text-align:right;padding:6px 8px;color:#f59e0b\">${c.warning}</td>
+                <td style=\"text-align:right;padding:6px 8px;color:#64748b\">${c.not_checked}</td>
+                <td style=\"text-align:right;padding:6px 8px;color:#94a3b8\">${c.total}</td>
+              </tr>`).join('')
+              + '</tbody></table>';
+          }
+        }
+        // Pending remediations
+        if (pendingEl) {
+          const items = data.pending_remediations || [];
+          if (items.length === 0) {
+            pendingEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:12px\">미조치 항목이 없습니다. 🎉</div>';
+          } else {
+            pendingEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
+              <thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155\">
+                <th style=\"text-align:left;padding:6px 8px\">통제 ID</th>
+                <th style=\"text-align:left;padding:6px 8px\">대상</th>
+                <th style=\"text-align:center;padding:6px 8px\">상태</th>
+                <th style=\"text-align:left;padding:6px 8px\">담당자</th>
+                <th style=\"text-align:left;padding:6px 8px\">조치 기한</th>
+                <th style=\"text-align:left;padding:6px 8px\">비고</th>
+              </tr></thead><tbody>`
+              + items.map(i => {
+                const statusBadge = i.status === 'fail'
+                  ? '<span style=\"background:#450a0a;color:#fca5a5;padding:2px 8px;border-radius:999px;font-size:11px\">Fail</span>'
+                  : '<span style=\"background:#451a03;color:#fbbf24;padding:2px 8px;border-radius:999px;font-size:11px\">Warning</span>';
+                const due = i.remediation_due_at ? new Date(i.remediation_due_at).toLocaleDateString('ko-KR') : '-';
+                const overdueFlag = i.overdue ? ' 🔴' : '';
+                return `<tr style=\"border-bottom:1px solid #1e293b\">
+                  <td style=\"padding:6px 8px;color:#38bdf8;font-weight:600\">${escapeHtml(i.control_id)}</td>
+                  <td style=\"padding:6px 8px;color:#e2e8f0\">${escapeHtml(i.entity_type)}:${escapeHtml(i.entity_id)}</td>
+                  <td style=\"text-align:center;padding:6px 8px\">${statusBadge}</td>
+                  <td style=\"padding:6px 8px;color:#94a3b8\">${escapeHtml(i.owner) || '-'}</td>
+                  <td style=\"padding:6px 8px;color:#e2e8f0\">${due}${overdueFlag}</td>
+                  <td style=\"padding:6px 8px;color:#64748b\">${escapeHtml(i.note) || ''}</td>
+                </tr>`;
+              }).join('')
+              + '</tbody></table>';
+          }
+        }
+      } catch(e) {
+        if (cardsEl) cardsEl.innerHTML = '<div class=\"empty\" style=\"color:#f87171;padding:16px\">❌ Compliance 데이터를 불러올 수 없습니다.</div>';
+      }
+    }
+
+    function _metricCard(label, value, color) {
+      return `<div class=\"metric-card\" style=\"cursor:default\">
+        <div class=\"metric-value\" style=\"color:${color}\">${value}</div>
+        <div class=\"metric-label\">${label}</div>
+      </div>`;
+    }
+
+    // ── Guides ───────────────────────────────────────────────────────────────
     let currentGuideId = null;
     const guideSubBtns = {};
     const guideSubTabsEl = document.getElementById('guide_sub_tabs');
@@ -3666,7 +3917,7 @@ def render_user_dashboard_html(
         if (!res.ok) return;
         const me = await res.json();
         const allowed = me.allowed_tabs || [];
-        ['dashboard', 'triage', 'incidents', 'assets', 'guides'].forEach(tab => {
+        ['dashboard', 'triage', 'incidents', 'assets', 'compliance', 'guides'].forEach(tab => {
           const navBtn = document.querySelector(`.tabs-nav [data-tab="${tab}"]`);
           const bnBtn = document.querySelector(`.bottom-nav [data-tab="${tab}"]`);
           const visible = allowed.includes(tab);
@@ -5440,6 +5691,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       { id: 'triage', label: '🚨 Alert Triage' },
       { id: 'incidents', label: '📋 인시던트' },
       { id: 'assets', label: '📡 자산 현황' },
+      { id: 'compliance', label: '✅ Compliance PDCA' },
       { id: 'guides', label: '📖 가이드' },
     ];
     const ROLE_PERM_ROLES = [

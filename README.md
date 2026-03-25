@@ -70,6 +70,41 @@ Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리�
 | 11 | `login_failure_spike` | 로그인 실패 급증 호스트 |
 | 12 | `collection_errors` | 수집 오류 반복 호스트 |
 
+#### 새 Intent 추가 방법 (Intent Registry)
+
+`QueryService`는 `_INTENT_HANDLERS` 딕셔너리로 intent → handler 메서드를 디스패치합니다.
+새 intent를 추가할 때는 아래 **3단계**만 수행하면 됩니다.
+
+1. **`services/query_catalog.py`** — `PHASE1_QUERY_CATALOG`에 `TemplateQuery` 추가
+   ```python
+   TemplateQuery(
+       query_id="my_new_intent",
+       name="새 인텐트 이름",
+       description="설명",
+       intent="my_new_intent",
+       default_window="24h",
+       required_filters=("time_range",),
+       evidence_sources=("alerts",),
+   ),
+   ```
+
+2. **`services/query_service.py`** — `_INTENT_HANDLERS`에 한 줄 추가 + 핸들러 메서드 구현
+   ```python
+   _INTENT_HANDLERS: dict[str, str] = {
+       ...
+       "my_new_intent": "_my_new_intent",   # ← 추가
+   }
+
+   def _my_new_intent(self, request: QueryRequest, query_id: str) -> QueryResponse:
+       # 구현
+       ...
+   ```
+
+3. **`tests/test_query_service.py`** — 핸들러 동작 테스트 추가
+
+> 기존 12개 분기 `if-else` 체인이 레지스트리 패턴으로 교체되었으므로,
+> `execute()` 메서드를 수정할 필요 없이 위 두 곳만 변경하면 자동으로 라우팅됩니다.
+
 ### 🚧 Phase 2: 관제 질의 엔진 — **진행 중**
 
 현재는 MVC 1~4의 초안이 연결된 상태입니다.
