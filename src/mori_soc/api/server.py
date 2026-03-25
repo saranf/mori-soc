@@ -550,7 +550,7 @@ def render_login_html(error: str = "", next_url: str = "/ui") -> str:
   <div class="login-card">
     <div class="login-logo">
       <h1>🛡️ MORI SOC</h1>
-      <p>Security Operations Center</p>
+      <p>Audit-Ready Security Operations</p>
     </div>
     {error_html}
     <div class="field"><label>아이디</label><input id="username" type="text" autocomplete="username" placeholder="admin" /></div>
@@ -667,7 +667,7 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
             "FastAPI is not installed. Install fastapi and uvicorn to run MVC 1 HTTP server."
         )
 
-    app = FastAPI(title="MORI SOC Query API", version="0.1.0")
+    app = FastAPI(title="MORI SOC — Audit-Ready Security Operations API", version="0.2.0")
     admin_dashboard_preferences = _default_dashboard_preferences()
     # Per-user dashboard preferences: username -> preferences dict
     user_dashboard_prefs: dict[str, dict[str, Any]] = {}
@@ -2193,8 +2193,8 @@ def render_user_dashboard_html(
   <div class=\"wrap\">
     <section class=\"hero\">
       <div>
-        <h1>MORI Security Dashboard</h1>
-        <p>사용자에게 필요한 보안 현황과 조치 우선순위를 빠르게 보여주는 대시보드입니다. 상세한 수집 데이터는 운영자 화면에서 더 깊게 확인하고, 어떤 정보를 사용자 화면에 노출할지 운영자가 제어할 수 있습니다.</p>
+        <h1>MORI — 보안 점검 현황</h1>
+        <p>ISMS-P / ISO 27001 통제 항목 기준으로 자산·경보·취약점 현황을 한눈에 확인하고, 증적 데이터를 내보낼 수 있는 대시보드입니다.</p>
         <div class=\"links\">
           <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\">운영 문서 / 포털</a>
           <a href=\"/docs\" target=\"_blank\" rel=\"noreferrer\">📋 API 문서 (Swagger)</a>
@@ -3963,8 +3963,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
   <div class=\"wrap\">
     <section class=\"hero\">
       <div>
-        <h1>MORI Admin Console</h1>
-        <p>사용자용 대시보드에 노출할 정보 범위를 운영자가 통제하고, 더 상세한 수집 데이터와 자연어/구조화 질의를 함께 다루는 운영 콘솔입니다.</p>
+        <h1>MORI — 점검·통제 운영 콘솔</h1>
+        <p>통제 항목 점검 결과를 관리하고, 수집 데이터를 교차 검증하며, 사용자 대시보드 노출 범위를 제어하는 관리자 운영 콘솔입니다.</p>
         <div class=\"links\">
           <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\">운영 문서 / 포털</a>
           <a href=\"/health\" target=\"_blank\" rel=\"noreferrer\">Health JSON</a>

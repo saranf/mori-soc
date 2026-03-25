@@ -3,7 +3,20 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, SourceSync, Vulnerability
+from mori_soc.models import (
+    AccountObservation,
+    Alert,
+    ControlCheckResult,
+    DirectoryAccount,
+    GroupMembership,
+    Host,
+    HostAlias,
+    HostObservation,
+    PrivilegeBinding,
+    QueryResult,
+    SourceSync,
+    Vulnerability,
+)
 from mori_soc.services.query_service import InMemoryQueryStore
 
 from .base import BaseRepository, RepositorySnapshot
@@ -28,6 +41,11 @@ def snapshot_to_query_store(snapshot: RepositorySnapshot) -> InMemoryQueryStore:
         observations=list(snapshot.observations),
         host_aliases=list(snapshot.host_aliases),
         source_syncs=list(snapshot.source_syncs),
+        control_checks=list(snapshot.control_checks),
+        directory_accounts=list(snapshot.directory_accounts),
+        privilege_bindings=list(snapshot.privilege_bindings),
+        group_memberships=list(snapshot.group_memberships),
+        account_observations=list(snapshot.account_observations),
     )
 
 

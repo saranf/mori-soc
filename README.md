@@ -1,29 +1,27 @@
-# MORI SOC-lite
+# MORI SOC — Audit-Ready Security Operations
 
-오픈소스 기반 **Security Visibility Platform (SOC-lite)** 배포 스캐폴드입니다.
+오픈소스 보안 도구를 통합하여 **ISMS-P / ISO 27001 인증 심사에 필요한 증적과 통제 점검 결과를 자동으로 수집·관리**하는 경량 SOC 플랫폼입니다.
 
-이 저장소는 중소 규모 조직(SME)을 위한 보안 가시성 플랫폼을 `docker compose` 기반으로 구성하며,
-다음 영역을 한 번에 묶어 운영할 수 있도록 설계했습니다.
+중소 규모 조직(SME)이 `docker compose` 한 줄로 배포하여, 아래 영역의 데이터를 하나의 대시보드에서 **통제 항목(Control) 기준**으로 조회·증적화할 수 있도록 설계했습니다.
 
-- Infrastructure Monitoring: Zabbix
-- Log Centralization: Loki + Fluent Bit
-- Endpoint Security / Compliance: FleetDM
-- Security Event Detection: Wazuh
-- Visualization: Grafana
-- Vulnerability Scan: Trivy
+| 영역 | 도구 | MORI 역할 |
+|---|---|---|
+| 인프라 모니터링 | Zabbix | 자산 현황·가용성 증적 |
+| 로그 중앙화 | Loki + Fluent Bit | 로그 수집·보관 증적 |
+| 엔드포인트 보안 | FleetDM | 자산 식별·구성 점검 |
+| 보안 이벤트 | Wazuh | 경보 탐지·대응 증적 |
+| 취약점 스캔 | Trivy | 취약점 점검·조치 증적 |
+| 시각화 | Grafana | 운영 현황 대시보드 |
 
-## 프로젝트 확장 방향
+## 핵심 가치
 
-이 저장소의 다음 목표는 단순 배포 스캐폴드를 넘어,
-**관제 운영자가 보안 데이터를 모으고, 묻고, 근거와 함께 답을 받는 Security Data Query Platform** 으로 확장하는 것입니다.
+> **"점검 결과를 보여주고, 증적을 내보내고, 미비 사항을 알려주는"** Compliance-Evidence Platform
 
-핵심 방향은 아래와 같습니다.
-
-- FleetDM / Wazuh / Zabbix / 호스트 로그를 한 곳으로 수집
-- 호스트 / 사용자 / IP / 프로세스 / 경보 / 취약점을 공통 모델로 정규화
-- 자연어 질문을 구조화된 질의로 변환해 관제 데이터를 조회
-- 답변은 항상 로그/이벤트/자산 정보 등 **근거 기반**으로 반환
-- 초기에는 **non-agent core**, 이후 조사 보조용 **limited agent**를 제한적으로 추가
+- 통제 항목별 **Pass / Fail / Warning** 자동 점검 결과 관리
+- PDCA(Plan-Do-Check-Act) 주기에 맞춘 운영 대시보드
+- Zabbix × Fleet × Wazuh **교차 검증**으로 커버리지 Gap 탐지
+- 자산·계정·권한·취약점 데이터를 **증적 리포트(CSV/PDF)** 로 즉시 내보내기
+- 자연어 질의로 통제 점검 현황을 빠르게 조회
 
 상세 설계와 단계별 구현 계획은 `docs/SECURITY_DATA_QUERY_PLATFORM.md`를 참고하세요.
 Phase 1 입력 소스/스키마/질의 초안은 `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md`에 정리합니다.
