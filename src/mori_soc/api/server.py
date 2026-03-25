@@ -35,6 +35,8 @@ DEFAULT_UI_PAYLOAD = {
 }
 
 DOCS_PORTAL_URL = os.getenv("MORI_DOCS_PORTAL_URL", "http://mori.rmstudio.co.kr:37854/")
+FLEET_UI_URL = os.getenv("MORI_FLEET_UI_URL", "")
+ZABBIX_UI_URL = os.getenv("MORI_ZABBIX_UI_URL", "")
 USER_DASHBOARD_CARD_LABELS = {
     "total_hosts": "Total Hosts",
     "offline_hosts": "Offline Hosts",
@@ -176,6 +178,140 @@ def build_dashboard_payload(service: QueryService) -> dict[str, Any]:
     }
 
 
+def build_assets_payload(service: QueryService) -> dict[str, Any]:
+    store = service.store
+    now = datetime.now(tz=timezone.utc)
+
+    # Build sets of host IDs by source using aliases
+    fleet_host_ids: set[str] = set()
+    zabbix_host_ids: set[str] = set()
+    for alias in store.host_aliases:
+        if alias.source == "fleet":
+            fleet_host_ids.add(alias.host_id)
+        elif alias.source == "zabbix":
+            zabbix_host_ids.add(alias.host_id)
+
+    # Also classify by host_id prefix for hosts without aliases
+    for host in store.hosts:
+        hid = host.host_id
+        if hid.startswith("pc-") and hid not in fleet_host_ids and hid not in zabbix_host_ids:
+            fleet_host_ids.add(hid)
+        elif hid.startswith("server-") and hid not in zabbix_host_ids and hid not in fleet_host_ids:
+            zabbix_host_ids.add(hid)
+
+    hostnames = {h.host_id: h.hostname for h in store.hosts}
+
+    # Fleet hosts (PC assets)
+    fleet_hosts = []
+    for host in store.hosts:
+        if host.host_id not in fleet_host_ids:
+            continue
+        qr_count = sum(1 for qr in store.query_results if qr.host_id == host.host_id)
+        fleet_hosts.append({
+            "host_id": host.host_id,
+            "hostname": host.hostname,
+            "asset_type": "PC",
+            "platform": host.platform or "-",
+            "primary_ip": host.primary_ip or "-",
+            "status": host.status,
+            "risk_score": host.risk_score,
+            "last_seen_at": _isoformat(host.last_seen_at) if host.last_seen_at else None,
+            "query_result_count": qr_count,
+        })
+    fleet_hosts.sort(key=lambda h: (h["status"] != "offline", h["hostname"]))
+
+    # Zabbix hosts (Server assets)
+    zabbix_hosts = []
+    for host in store.hosts:
+        if host.host_id not in zabbix_host_ids:
+            continue
+        obs = [o for o in store.observations if o.host_id == host.host_id and o.source == "zabbix"]
+        obs.sort(key=lambda o: o.observed_at, reverse=True)
+        zabbix_hosts.append({
+            "host_id": host.host_id,
+            "hostname": host.hostname,
+            "asset_type": "Server",
+            "platform": host.platform or "-",
+            "primary_ip": host.primary_ip or "-",
+            "status": host.status,
+            "risk_score": host.risk_score,
+            "last_seen_at": _isoformat(host.last_seen_at) if host.last_seen_at else None,
+            "latest_metric": obs[0].metric_name if obs else None,
+            "latest_value": obs[0].metric_value if obs else None,
+            "observation_count": len(obs),
+        })
+    zabbix_hosts.sort(key=lambda h: (h["status"] != "offline", h["hostname"]))
+
+    # Trivy vulnerabilities grouped by host
+    vuln_by_host: dict[str, dict] = {}
+    for vuln in store.vulnerabilities:
+        if vuln.source != "trivy":
+            continue
+        hid = vuln.host_id
+        if hid not in vuln_by_host:
+            vuln_by_host[hid] = {
+                "host_id": hid,
+                "hostname": hostnames.get(hid, hid),
+                "critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0,
+                "total": 0,
+                "latest_cve": None,
+                "latest_detected_at": None,
+            }
+        entry = vuln_by_host[hid]
+        sev = vuln.severity
+        entry[sev] = entry.get(sev, 0) + 1
+        entry["total"] += 1
+        if entry["latest_detected_at"] is None or vuln.detected_at > entry["latest_detected_at"]:
+            entry["latest_detected_at"] = vuln.detected_at
+            entry["latest_cve"] = vuln.cve
+
+    trivy_rows = sorted(vuln_by_host.values(), key=lambda r: (-r["critical"], -r["high"], -r["total"]))
+    for row in trivy_rows:
+        if row["latest_detected_at"]:
+            row["latest_detected_at"] = _isoformat(row["latest_detected_at"])
+
+    return {
+        "generated_at": _isoformat(now),
+        "fleet": {
+            "hosts": fleet_hosts,
+            "total": len(fleet_hosts),
+            "online": sum(1 for h in fleet_hosts if h["status"] == "online"),
+            "offline": sum(1 for h in fleet_hosts if h["status"] == "offline"),
+        },
+        "zabbix": {
+            "hosts": zabbix_hosts,
+            "total": len(zabbix_hosts),
+            "online": sum(1 for h in zabbix_hosts if h["status"] == "online"),
+            "offline": sum(1 for h in zabbix_hosts if h["status"] == "offline"),
+        },
+        "trivy": {
+            "rows": trivy_rows,
+            "total_vulns": sum(r["total"] for r in trivy_rows),
+            "critical": sum(r["critical"] for r in trivy_rows),
+            "high": sum(r["high"] for r in trivy_rows),
+            "affected_hosts": len(trivy_rows),
+        },
+    }
+
+
+def _assets_csv(payload: dict[str, Any], source: str) -> str:
+    import io
+    out = io.StringIO()
+    if source == "fleet":
+        out.write("host_id,hostname,asset_type,platform,primary_ip,status,risk_score,last_seen_at,query_result_count\n")
+        for h in payload["fleet"]["hosts"]:
+            out.write(f"{h['host_id']},{h['hostname']},{h['asset_type']},{h['platform']},{h['primary_ip']},{h['status']},{h['risk_score']},{h['last_seen_at'] or ''},{h['query_result_count']}\n")
+    elif source == "zabbix":
+        out.write("host_id,hostname,asset_type,platform,primary_ip,status,risk_score,last_seen_at,observation_count,latest_metric,latest_value\n")
+        for h in payload["zabbix"]["hosts"]:
+            out.write(f"{h['host_id']},{h['hostname']},{h['asset_type']},{h['platform']},{h['primary_ip']},{h['status']},{h['risk_score']},{h['last_seen_at'] or ''},{h['observation_count']},{h['latest_metric'] or ''},{h['latest_value'] or ''}\n")
+    elif source == "trivy":
+        out.write("host_id,hostname,critical,high,medium,low,info,total,latest_cve,latest_detected_at\n")
+        for r in payload["trivy"]["rows"]:
+            out.write(f"{r['host_id']},{r['hostname']},{r['critical']},{r['high']},{r['medium']},{r['low']},{r['info']},{r['total']},{r['latest_cve'] or ''},{r['latest_detected_at'] or ''}\n")
+    return out.getvalue()
+
+
 def _default_dashboard_preferences() -> dict[str, Any]:
     return {
         "docs_url": DOCS_PORTAL_URL,
@@ -277,7 +413,11 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
 
     @app.get("/ui", include_in_schema=False, response_class=HTMLResponse)
     def ui() -> str:
-        return render_user_dashboard_html(dashboard_preferences["docs_url"])
+        return render_user_dashboard_html(
+            docs_url=dashboard_preferences["docs_url"],
+            fleet_ui_url=FLEET_UI_URL,
+            zabbix_ui_url=ZABBIX_UI_URL,
+        )
 
     @app.get("/admin", include_in_schema=False, response_class=HTMLResponse)
     def admin() -> str:
@@ -488,6 +628,27 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
         incident["updated_at"] = note["created_at"]
         return note
 
+    # ── Asset Collection Board ───────────────────────────────────────────────
+    @app.get("/assets")
+    def assets_get(format: str = "json", source: str = "all") -> Any:
+        try:
+            payload = build_assets_payload(get_query_service())
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"assets unavailable: {exc}") from exc
+        if format == "csv":
+            valid_sources = {"fleet", "zabbix", "trivy"}
+            if source not in valid_sources:
+                raise HTTPException(status_code=400, detail=f"source must be one of: {', '.join(sorted(valid_sources))}")
+            csv_content = _assets_csv(payload, source)
+            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            filename = f"mori-assets-{source}-{timestamp}.csv"
+            return StreamingResponse(
+                iter([csv_content]),
+                media_type="text/csv; charset=utf-8",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            )
+        return payload
+
     return app
 
 
@@ -503,7 +664,11 @@ def _query_csv_filename(intent: str) -> str:
     return f"mori-query-{safe_intent}-{timestamp}.csv"
 
 
-def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
+def render_user_dashboard_html(
+    docs_url: str = DOCS_PORTAL_URL,
+    fleet_ui_url: str = FLEET_UI_URL,
+    zabbix_ui_url: str = ZABBIX_UI_URL,
+) -> str:
     default_preferences_json = json.dumps(DEFAULT_USER_DASHBOARD_PREFERENCES, ensure_ascii=False)
     card_labels_json = json.dumps(USER_DASHBOARD_CARD_LABELS, ensure_ascii=False)
     section_labels_json = json.dumps(USER_DASHBOARD_SECTION_LABELS, ensure_ascii=False)
@@ -608,6 +773,7 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\">📊 대시보드</button>
       <button data-tab=\"triage\" onclick=\"switchTab('triage')\">🚨 Alert Triage</button>
       <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\">📋 인시던트</button>
+      <button data-tab=\"assets\" onclick=\"switchTab('assets')\">📡 자산 현황</button>
     </nav>
 
     <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
@@ -682,6 +848,69 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </div>
         <div class=\"status-line\" id=\"incident_status\"></div>
       </section>
+    </div>
+
+    <!-- ── Tab: 자산 현황 ─────────────────────────────────────────────── -->
+    <div class=\"tab-panel\" id=\"tab_assets\">
+      <!-- Sub-nav -->
+      <div style=\"display:flex;gap:0;border-bottom:1px solid #233046;margin-bottom:16px;\">
+        <button class=\"active\" id=\"asset_tab_fleet\" onclick=\"switchAssetTab('fleet')\" style=\"background:none;border:none;border-bottom:2px solid #38bdf8;padding:8px 20px;color:#38bdf8;font-size:14px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🖥️ PC 자산 (Fleet)</button>
+        <button id=\"asset_tab_zabbix\" onclick=\"switchAssetTab('zabbix')\" style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 20px;color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🖧 서버 자산 (Zabbix)</button>
+        <button id=\"asset_tab_trivy\" onclick=\"switchAssetTab('trivy')\" style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 20px;color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🔍 취약점 (Trivy)</button>
+      </div>
+
+      <!-- Fleet PC Section -->
+      <div id=\"assets_fleet_section\">
+        <div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;\">
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">전체 PC</div><div class=\"metric-value\" id=\"fleet_total\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">온라인</div><div class=\"metric-value\" style=\"color:#86efac\" id=\"fleet_online\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">오프라인</div><div class=\"metric-value\" style=\"color:#fca5a5\" id=\"fleet_offline\">-</div></section>
+        </div>
+        <section class=\"card\">
+          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;\">
+            <h2 style=\"margin:0\">🖥️ PC 자산 목록 (Fleet)</h2>
+            <button onclick=\"downloadAssetsCSV('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
+          </div>
+          <div class=\"subtext\">Fleet에서 관리되는 PC 엔드포인트 현황입니다.</div>
+          <div class=\"table-wrap\" id=\"fleet_table\"><span class=\"empty\">로딩 중…</span></div>
+        </section>
+      </div>
+
+      <!-- Zabbix Server Section -->
+      <div id=\"assets_zabbix_section\" class=\"hidden\">
+        <div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;\">
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">전체 서버</div><div class=\"metric-value\" id=\"zabbix_total\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">온라인</div><div class=\"metric-value\" style=\"color:#86efac\" id=\"zabbix_online\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">오프라인</div><div class=\"metric-value\" style=\"color:#fca5a5\" id=\"zabbix_offline\">-</div></section>
+        </div>
+        <section class=\"card\">
+          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;\">
+            <h2 style=\"margin:0\">🖧 서버 자산 목록 (Zabbix)</h2>
+            <button onclick=\"downloadAssetsCSV('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
+          </div>
+          <div class=\"subtext\">Zabbix에서 모니터링 중인 서버 현황과 최근 메트릭입니다.</div>
+          <div class=\"table-wrap\" id=\"zabbix_table\"><span class=\"empty\">로딩 중…</span></div>
+        </section>
+      </div>
+
+      <!-- Trivy Vulnerability Section -->
+      <div id=\"assets_trivy_section\" class=\"hidden\">
+        <div style=\"display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;\">
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">영향받는 호스트</div><div class=\"metric-value\" id=\"trivy_affected_hosts\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">전체 취약점</div><div class=\"metric-value\" id=\"trivy_total_vulns\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">Critical</div><div class=\"metric-value\" style=\"color:#fca5a5\" id=\"trivy_critical\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">High</div><div class=\"metric-value\" style=\"color:#fdba74\" id=\"trivy_high\">-</div></section>
+        </div>
+        <section class=\"card\">
+          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;\">
+            <h2 style=\"margin:0\">🔍 취약점 현황 (Trivy)</h2>
+            <button onclick=\"downloadAssetsCSV('trivy')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
+          </div>
+          <div class=\"subtext\">Trivy가 탐지한 취약점을 호스트별로 집계한 현황입니다. Critical/High 우선 정렬.</div>
+          <div class=\"table-wrap\" id=\"trivy_table\"><span class=\"empty\">로딩 중…</span></div>
+        </section>
+      </div>
+      <div class=\"status-line\" id=\"assets_status\"></div>
     </div>
   </div>
 
@@ -831,6 +1060,7 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       if (btn) btn.classList.add('active');
       if (tabName === 'triage') loadTriage();
       if (tabName === 'incidents') loadIncidents();
+      if (tabName === 'assets') loadAssets();
     }
 
     function escapeHtml(value) {
@@ -1380,6 +1610,150 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     document.getElementById('reload_incidents').addEventListener('click', loadIncidents);
 
+    // ── Asset Collection Board ────────────────────────────────────────────────
+    let currentAssetTab = 'fleet';
+
+    function switchAssetTab(tab) {
+      currentAssetTab = tab;
+      ['fleet', 'zabbix', 'trivy'].forEach(t => {
+        const sec = document.getElementById(`assets_${t}_section`);
+        const btn = document.getElementById(`asset_tab_${t}`);
+        if (sec) sec.classList.toggle('hidden', t !== tab);
+        if (btn) {
+          btn.style.color = t === tab ? '#38bdf8' : '#94a3b8';
+          btn.style.borderBottomColor = t === tab ? '#38bdf8' : 'transparent';
+        }
+      });
+    }
+
+    const FLEET_URL = '__FLEET_UI_URL__';
+    const ZABBIX_URL = '__ZABBIX_UI_URL__';
+
+    function renderFleetTable(hosts, containerEl) {
+      if (!hosts.length) { containerEl.innerHTML = '<div class=\"empty\">Fleet에서 수집된 PC 자산이 없습니다.</div>'; return; }
+      const rows = hosts.map(h => {
+        const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
+        const fleetLink = FLEET_URL ? `<a href=\"${escapeHtml(FLEET_URL)}/hosts?query=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#6ee7b7;font-size:12px;\">Fleet ↗</a>` : '';
+        return `<tr>
+          <td><strong>${escapeHtml(h.hostname)}</strong>${fleetLink ? '<br>' + fleetLink : ''}</td>
+          <td><span style=\"background:#0d2137;color:#6ee7b7;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;\">🖥️ PC</span></td>
+          <td>${escapeHtml(h.platform)}</td>
+          <td>${escapeHtml(h.primary_ip)}</td>
+          <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
+          <td>${escapeHtml(h.risk_score)}</td>
+          <td>${escapeHtml(formatTime(h.last_seen_at))}</td>
+          <td style=\"color:#64748b\">${escapeHtml(h.query_result_count)}</td>
+        </tr>`;
+      }).join('');
+      containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
+        <thead><tr style=\"background:#0f2035;\">
+          <th style=\"padding:8px;color:#6ee7b7\">호스트명</th>
+          <th style=\"padding:8px;color:#6ee7b7\">유형</th>
+          <th style=\"padding:8px;color:#93c5fd\">플랫폼</th>
+          <th style=\"padding:8px;color:#93c5fd\">IP</th>
+          <th style=\"padding:8px;color:#93c5fd\">상태</th>
+          <th style=\"padding:8px;color:#93c5fd\">리스크</th>
+          <th style=\"padding:8px;color:#93c5fd\">마지막 확인</th>
+          <th style=\"padding:8px;color:#64748b\">쿼리 결과 수</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    function renderZabbixTable(hosts, containerEl) {
+      if (!hosts.length) { containerEl.innerHTML = '<div class=\"empty\">Zabbix에서 수집된 서버 자산이 없습니다.</div>'; return; }
+      const rows = hosts.map(h => {
+        const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
+        const zabbixLink = ZABBIX_URL ? `<a href=\"${escapeHtml(ZABBIX_URL)}/zabbix.php?action=host.list&filter_set=1&filter_host=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#7dd3fc;font-size:12px;\">Zabbix ↗</a>` : '';
+        const metricStr = h.latest_metric ? `${escapeHtml(h.latest_metric)}: ${escapeHtml(h.latest_value || '-')}` : '-';
+        return `<tr>
+          <td><strong>${escapeHtml(h.hostname)}</strong>${zabbixLink ? '<br>' + zabbixLink : ''}</td>
+          <td><span style=\"background:#0d1e37;color:#7dd3fc;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;\">🖧 서버</span></td>
+          <td>${escapeHtml(h.platform)}</td>
+          <td>${escapeHtml(h.primary_ip)}</td>
+          <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
+          <td>${escapeHtml(h.risk_score)}</td>
+          <td>${escapeHtml(formatTime(h.last_seen_at))}</td>
+          <td style=\"font-size:12px;color:#94a3b8\">${metricStr}</td>
+        </tr>`;
+      }).join('');
+      containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
+        <thead><tr style=\"background:#0f2035;\">
+          <th style=\"padding:8px;color:#7dd3fc\">호스트명</th>
+          <th style=\"padding:8px;color:#7dd3fc\">유형</th>
+          <th style=\"padding:8px;color:#93c5fd\">플랫폼</th>
+          <th style=\"padding:8px;color:#93c5fd\">IP</th>
+          <th style=\"padding:8px;color:#93c5fd\">상태</th>
+          <th style=\"padding:8px;color:#93c5fd\">리스크</th>
+          <th style=\"padding:8px;color:#93c5fd\">마지막 확인</th>
+          <th style=\"padding:8px;color:#94a3b8\">최근 메트릭</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    function renderTrivyTable(rows, containerEl) {
+      if (!rows.length) { containerEl.innerHTML = '<div class=\"empty\">Trivy 취약점 데이터가 없습니다.</div>'; return; }
+      const sevColor = { critical:'#fca5a5', high:'#fdba74', medium:'#fde68a', low:'#86efac', info:'#94a3b8' };
+      const tableRows = rows.map(r => `<tr>
+        <td><strong>${escapeHtml(r.hostname)}</strong><br><span style=\"color:#64748b;font-size:11px\">${escapeHtml(r.host_id)}</span></td>
+        <td style=\"color:${sevColor.critical};font-weight:700\">${escapeHtml(r.critical)}</td>
+        <td style=\"color:${sevColor.high};font-weight:700\">${escapeHtml(r.high)}</td>
+        <td style=\"color:${sevColor.medium}\">${escapeHtml(r.medium)}</td>
+        <td style=\"color:${sevColor.low}\">${escapeHtml(r.low)}</td>
+        <td>${escapeHtml(r.total)}</td>
+        <td style=\"font-size:12px;color:#94a3b8\">${escapeHtml(r.latest_cve || '-')}</td>
+        <td style=\"font-size:12px;color:#64748b\">${escapeHtml(formatTime(r.latest_detected_at))}</td>
+      </tr>`).join('');
+      containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
+        <thead><tr style=\"background:#0f2035;\">
+          <th style=\"padding:8px;color:#fdba74\">호스트</th>
+          <th style=\"padding:8px;color:#fca5a5\">Critical</th>
+          <th style=\"padding:8px;color:#fdba74\">High</th>
+          <th style=\"padding:8px;color:#fde68a\">Medium</th>
+          <th style=\"padding:8px;color:#86efac\">Low</th>
+          <th style=\"padding:8px;color:#93c5fd\">합계</th>
+          <th style=\"padding:8px;color:#94a3b8\">최근 CVE</th>
+          <th style=\"padding:8px;color:#64748b\">탐지일</th>
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>`;
+    }
+
+    async function loadAssets() {
+      const statusEl = document.getElementById('assets_status');
+      statusEl.textContent = '자산 데이터 로딩 중...';
+      try {
+        const res = await fetch('/assets');
+        if (!res.ok) { statusEl.textContent = '자산 데이터 로드 실패'; return; }
+        const data = await res.json();
+        // Fleet
+        document.getElementById('fleet_total').textContent = data.fleet?.total ?? '-';
+        document.getElementById('fleet_online').textContent = data.fleet?.online ?? '-';
+        document.getElementById('fleet_offline').textContent = data.fleet?.offline ?? '-';
+        renderFleetTable(data.fleet?.hosts || [], document.getElementById('fleet_table'));
+        // Zabbix
+        document.getElementById('zabbix_total').textContent = data.zabbix?.total ?? '-';
+        document.getElementById('zabbix_online').textContent = data.zabbix?.online ?? '-';
+        document.getElementById('zabbix_offline').textContent = data.zabbix?.offline ?? '-';
+        renderZabbixTable(data.zabbix?.hosts || [], document.getElementById('zabbix_table'));
+        // Trivy
+        document.getElementById('trivy_affected_hosts').textContent = data.trivy?.affected_hosts ?? '-';
+        document.getElementById('trivy_total_vulns').textContent = data.trivy?.total_vulns ?? '-';
+        document.getElementById('trivy_critical').textContent = data.trivy?.critical ?? '-';
+        document.getElementById('trivy_high').textContent = data.trivy?.high ?? '-';
+        renderTrivyTable(data.trivy?.rows || [], document.getElementById('trivy_table'));
+        statusEl.textContent = `자산 현황 업데이트: ${formatTime(data.generated_at)}`;
+      } catch (err) { statusEl.textContent = `오류: ${err.message}`; }
+    }
+
+    function downloadAssetsCSV(source) {
+      const a = document.createElement('a');
+      a.href = `/assets?format=csv&source=${encodeURIComponent(source)}`;
+      a.download = '';
+      a.click();
+    }
+
     async function initialize() {
       await loadPreferences();
       await loadDashboard();
@@ -1395,6 +1769,8 @@ def render_user_dashboard_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         .replace("__CARD_LABELS_JSON__", card_labels_json)
         .replace("__SECTION_LABELS_JSON__", section_labels_json)
         .replace("__NLQ_GUIDE_EXAMPLES__", nlq_guide_examples_json)
+        .replace("__FLEET_UI_URL__", fleet_ui_url)
+        .replace("__ZABBIX_UI_URL__", zabbix_ui_url)
     )
 
 
