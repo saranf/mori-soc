@@ -899,7 +899,7 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
 
         _AUTH_PUBLIC_PATHS = {
             "/login", "/signup-request",
-            "/auth/login", "/auth/logout", "/auth/signup-request",
+            "/auth/login", "/auth/logout", "/auth/signup-request", "/auth/me",
             "/docs", "/openapi.json", "/redoc", "/health",
         }
 
@@ -1572,7 +1572,11 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         token = request.cookies.get("mori_session", "")
         sess = sessions.get(token)
         if not sess:
-            raise HTTPException(status_code=401, detail="Not authenticated")
+            return {
+                "username": "anonymous",
+                "role": "user",
+                "allowed_tabs": _DEFAULT_ROLE_PERMISSIONS.get("user", ["dashboard", "assets", "guides"]),
+            }
         role = sess.get("role", "user")
         return {
             "username": sess["username"],
