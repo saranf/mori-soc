@@ -73,6 +73,7 @@ services:
       retries: 10
     networks: [soc]
 
+  # ── Unified worker (runs all enabled pollers in a single loop) ──
   mori-worker:
     build:
       context: .
@@ -95,6 +96,79 @@ services:
       MORI_ZABBIX_TIMEOUT_SECONDS: ${MORI_ZABBIX_TIMEOUT_SECONDS:-10}
       MORI_ZABBIX_HOST_LIMIT: ${MORI_ZABBIX_HOST_LIMIT:-500}
       MORI_ZABBIX_PROBLEM_LIMIT: ${MORI_ZABBIX_PROBLEM_LIMIT:-500}
+      MORI_ENABLE_TRIVY: ${MORI_ENABLE_TRIVY:-false}
+      MORI_TRIVY_REPORT_GLOB: ${MORI_TRIVY_REPORT_GLOB:-reports/trivy/*.json}
+      MORI_ENABLE_LDAP_SYNC: ${MORI_ENABLE_LDAP_SYNC:-false}
+      MORI_LDAP_URL: ${MORI_LDAP_URL:-ldap://openldap:389}
+      MORI_LDAP_BIND_DN: ${MORI_LDAP_BIND_DN:-}
+      MORI_LDAP_BIND_PASSWORD: ${MORI_LDAP_BIND_PASSWORD:-}
+      MORI_LDAP_SYNC_BASE_DN: ${MORI_LDAP_SYNC_BASE_DN:-}
+    networks: [soc]
+
+  # ── Individual poller services (activate with: docker compose --profile pollers up) ──
+  mori-poller-zabbix:
+    profiles: ["pollers"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      soc-postgres:
+        condition: service_healthy
+      zabbix-web:
+        condition: service_started
+    command: ["python", "-m", "mori_soc.pollers.zabbix"]
+    environment:
+      MORI_DATABASE_URL: postgresql://${MORI_DB_USER:-mori}:${MORI_DB_PASSWORD:-mori}@soc-postgres:5432/${MORI_DB_NAME:-mori_soc}
+      MORI_WORKER_INTERVAL_SECONDS: ${MORI_WORKER_INTERVAL_SECONDS:-60}
+      MORI_ENABLE_ZABBIX: ${MORI_ENABLE_ZABBIX:-true}
+      MORI_ZABBIX_API_URL: ${MORI_ZABBIX_API_URL:-http://zabbix-web:8080/api_jsonrpc.php}
+      MORI_ZABBIX_API_TOKEN: ${MORI_ZABBIX_API_TOKEN:-}
+      MORI_ZABBIX_USER: ${MORI_ZABBIX_USER:-Admin}
+      MORI_ZABBIX_PASSWORD: ${MORI_ZABBIX_PASSWORD:-zabbix}
+      MORI_ZABBIX_TIMEOUT_SECONDS: ${MORI_ZABBIX_TIMEOUT_SECONDS:-10}
+      MORI_ZABBIX_HOST_LIMIT: ${MORI_ZABBIX_HOST_LIMIT:-500}
+      MORI_ZABBIX_PROBLEM_LIMIT: ${MORI_ZABBIX_PROBLEM_LIMIT:-500}
+    networks: [soc]
+
+  mori-poller-trivy:
+    profiles: ["pollers"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      soc-postgres:
+        condition: service_healthy
+    command: ["python", "-m", "mori_soc.pollers.trivy"]
+    environment:
+      MORI_DATABASE_URL: postgresql://${MORI_DB_USER:-mori}:${MORI_DB_PASSWORD:-mori}@soc-postgres:5432/${MORI_DB_NAME:-mori_soc}
+      MORI_WORKER_INTERVAL_SECONDS: ${MORI_WORKER_INTERVAL_SECONDS:-60}
+      MORI_ENABLE_TRIVY: ${MORI_ENABLE_TRIVY:-true}
+      MORI_TRIVY_REPORT_GLOB: ${MORI_TRIVY_REPORT_GLOB:-reports/trivy/*.json}
+    networks: [soc]
+
+  mori-poller-ldap:
+    profiles: ["pollers"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      soc-postgres:
+        condition: service_healthy
+    command: ["python", "-m", "mori_soc.pollers.ldap_sync"]
+    environment:
+      MORI_DATABASE_URL: postgresql://${MORI_DB_USER:-mori}:${MORI_DB_PASSWORD:-mori}@soc-postgres:5432/${MORI_DB_NAME:-mori_soc}
+      MORI_WORKER_INTERVAL_SECONDS: ${MORI_WORKER_INTERVAL_SECONDS:-60}
+      MORI_ENABLE_LDAP_SYNC: ${MORI_ENABLE_LDAP_SYNC:-true}
+      MORI_LDAP_URL: ${MORI_LDAP_URL:-ldap://openldap:389}
+      MORI_LDAP_BIND_DN: ${MORI_LDAP_BIND_DN:-}
+      MORI_LDAP_BIND_PASSWORD: ${MORI_LDAP_BIND_PASSWORD:-}
+      MORI_LDAP_SYNC_BASE_DN: ${MORI_LDAP_SYNC_BASE_DN:-}
+      MORI_LDAP_SYNC_USER_FILTER: ${MORI_LDAP_SYNC_USER_FILTER:-(objectClass=user)}
+      MORI_LDAP_SYNC_GROUP_FILTER: ${MORI_LDAP_SYNC_GROUP_FILTER:-(objectClass=group)}
+      MORI_LDAP_SYNC_TIMEOUT_SECONDS: ${MORI_LDAP_SYNC_TIMEOUT_SECONDS:-10}
     networks: [soc]
 
   portal:

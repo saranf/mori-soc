@@ -1,63 +1,69 @@
+"""Unified MORI worker — delegates to source-specific :mod:`pollers`.
+
+Backward-compatible: ``python -m mori_soc.worker`` still works.
+Individual pollers can also be run standalone::
+
+    python -m mori_soc.pollers.zabbix
+    python -m mori_soc.pollers.trivy
+    python -m mori_soc.pollers.ldap_sync
+"""
+
 from __future__ import annotations
 
-import glob
+import logging
 import os
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable
 
-from mori_soc.collectors import BaseCollector, TrivyCollector, ZabbixEventCollector
+from mori_soc.collectors.base import BaseCollector
 from mori_soc.models import SourceSync
-from mori_soc.repositories import BaseRepository, InMemoryRepository, PostgresRepository
+from mori_soc.pollers.base import BasePollerService, PollerCycleResult, _env_flag, _repository_from_env
+from mori_soc.pollers.ldap_sync import LdapSyncPoller
+from mori_soc.pollers.trivy import TrivyPoller
+from mori_soc.pollers.zabbix import ZabbixPoller
+from mori_soc.repositories import BaseRepository
 from mori_soc.services import CollectorIngestionService, EnvelopeEntityMapper, IngestionReport
 
+logger = logging.getLogger("mori.worker")
 
-@dataclass(slots=True)
-class WorkerCycleResult:
-    source: str
-    status: str
-    report: IngestionReport | None = None
-    message: str | None = None
+# ── backward-compatible aliases ────────────────────────────────────
+
+# Re-export so callers that import ``from mori_soc.worker import ...``
+# still work without changes.
+WorkerCycleResult = PollerCycleResult
+create_repository_from_env = _repository_from_env
+
+# ── registry of all known pollers ──────────────────────────────────
+
+ALL_POLLERS: list[type[BasePollerService]] = [
+    ZabbixPoller,
+    TrivyPoller,
+    LdapSyncPoller,
+]
 
 
-def create_repository_from_env() -> BaseRepository:
-    database_url = os.getenv("MORI_DATABASE_URL", "").strip()
-    if database_url:
-        return PostgresRepository(database_url)
-    return InMemoryRepository()
+def build_pollers() -> list[BasePollerService]:
+    """Return an instance of every registered poller."""
+    return [cls() for cls in ALL_POLLERS]
 
 
 def build_collectors_from_env() -> list[BaseCollector]:
+    """Legacy helper — returns a flat list of collectors from all pollers.
+
+    This is kept for backward compatibility with test code that calls
+    ``run_ingestion_cycle(repo, collectors, ...)``.
+    """
     collectors: list[BaseCollector] = []
-    if _env_flag("MORI_ENABLE_ZABBIX", default=True):
-        api_url = os.getenv("MORI_ZABBIX_API_URL", "").strip()
-        token = os.getenv("MORI_ZABBIX_API_TOKEN", "").strip() or None
-        username = os.getenv("MORI_ZABBIX_USER", "").strip() or None
-        password = os.getenv("MORI_ZABBIX_PASSWORD", "").strip() or None
-        if api_url and (token or (username and password)):
-            collectors.append(
-                ZabbixEventCollector(
-                    api_url=api_url,
-                    username=username,
-                    password=password,
-                    token=token,
-                    request_timeout=int(os.getenv("MORI_ZABBIX_TIMEOUT_SECONDS", "10")),
-                    host_limit=int(os.getenv("MORI_ZABBIX_HOST_LIMIT", "500")),
-                    problem_limit=int(os.getenv("MORI_ZABBIX_PROBLEM_LIMIT", "500")),
-                )
-            )
-    if _env_flag("MORI_ENABLE_TRIVY", default=False):
-        report_glob = os.getenv("MORI_TRIVY_REPORT_GLOB", "reports/trivy/*.json").strip() or "reports/trivy/*.json"
-        collectors.append(
-            TrivyCollector(
-                report_paths=sorted(glob.glob(report_glob)),
-                host_aliases=_split_csv_env("MORI_TRIVY_HOST_ALIASES"),
-                hostname=os.getenv("MORI_TRIVY_HOSTNAME", "").strip() or None,
-            )
-        )
+    for poller in build_pollers():
+        collector = poller.build_collector()
+        if collector is not None:
+            collectors.append(collector)
     return collectors
 
+
+# ── legacy run_ingestion_cycle (delegates to poller run_cycle) ─────
 
 def run_ingestion_cycle(
     repository: BaseRepository,
@@ -65,12 +71,17 @@ def run_ingestion_cycle(
     *,
     mapper: EnvelopeEntityMapper | None = None,
     started_at: datetime | None = None,
-) -> list[WorkerCycleResult]:
+) -> list[PollerCycleResult]:
+    """Backward-compatible ingestion cycle.
+
+    Kept for callers (tests, scripts) that still pass raw collectors.
+    New code should use ``poller.run_cycle(...)`` directly.
+    """
     mapper = mapper or EnvelopeEntityMapper()
     service = CollectorIngestionService(mapper, repository)
     cycle_started_at = started_at or datetime.now(tz=timezone.utc)
     existing_syncs = {item.source: item for item in repository.snapshot().source_syncs}
-    results: list[WorkerCycleResult] = []
+    results: list[PollerCycleResult] = []
 
     for collector in collectors:
         previous_sync = existing_syncs.get(collector.source_name)
@@ -89,7 +100,7 @@ def run_ingestion_cycle(
             )
             repository.save(sync)
             existing_syncs[collector.source_name] = sync
-            results.append(WorkerCycleResult(source=collector.source_name, status="success", report=report, message=sync.message))
+            results.append(PollerCycleResult(source=collector.source_name, status="success", report=report, message=sync.message))
         except Exception as exc:
             message = _truncate_message(f"{type(exc).__name__}: {exc}")
             sync = SourceSync(
@@ -105,41 +116,41 @@ def run_ingestion_cycle(
             )
             repository.save(sync)
             existing_syncs[collector.source_name] = sync
-            results.append(WorkerCycleResult(source=collector.source_name, status="error", message=message))
+            results.append(PollerCycleResult(source=collector.source_name, status="error", message=message))
     return results
 
 
+# ── main loop ──────────────────────────────────────────────────────
+
 def run_forever() -> None:
-    repository = create_repository_from_env()
+    """Run all enabled pollers in a single loop (unified worker mode)."""
+    repository = _repository_from_env()
     mapper = EnvelopeEntityMapper()
-    collectors = build_collectors_from_env()
-    if not collectors:
-        raise RuntimeError("No MORI collectors are enabled. Set MORI_ZABBIX_* or MORI_TRIVY_* environment variables.")
+    pollers = build_pollers()
+
+    # Filter to pollers that can actually produce a collector
+    active = [p for p in pollers if p.build_collector() is not None]
+    if not active:
+        raise RuntimeError(
+            "No MORI pollers are enabled. "
+            "Set MORI_ENABLE_ZABBIX, MORI_ENABLE_TRIVY, or MORI_ENABLE_LDAP_SYNC environment variables."
+        )
 
     poll_interval = max(1, int(os.getenv("MORI_WORKER_INTERVAL_SECONDS", "60")))
     run_once = _env_flag("MORI_WORKER_RUN_ONCE", default=False)
+    source_names = ", ".join(p.source_name for p in active)
+    logger.info("Unified worker starting — pollers=[%s], interval=%ds", source_names, poll_interval)
 
     while True:
-        run_ingestion_cycle(repository, collectors, mapper=mapper)
+        for poller in active:
+            poller.run_cycle(repository, mapper)
         if run_once:
             return
         time.sleep(poll_interval)
 
 
-def _env_flag(name: str, *, default: bool) -> bool:
-    value = os.getenv(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
 def _truncate_message(message: str, limit: int = 500) -> str:
     return message if len(message) <= limit else message[: limit - 3] + "..."
-
-
-def _split_csv_env(name: str) -> list[str]:
-    value = os.getenv(name, "")
-    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 if __name__ == "__main__":

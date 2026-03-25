@@ -5,7 +5,19 @@ import re
 from dataclasses import dataclass, field
 
 from mori_soc.collectors.base import NormalizedEnvelope
-from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, Vulnerability
+from mori_soc.models import (
+    AccountObservation,
+    Alert,
+    ControlCheckResult,
+    DirectoryAccount,
+    GroupMembership,
+    Host,
+    HostAlias,
+    HostObservation,
+    PrivilegeBinding,
+    QueryResult,
+    Vulnerability,
+)
 
 
 ASSET_BUCKET_BY_SOURCE = {
@@ -43,6 +55,17 @@ class EnvelopeEntityMapper:
             return self._map_alert(envelope)
         if envelope.entity_type == "vulnerability":
             return self._map_vulnerability(envelope)
+        # Phase 2 — identity / compliance entities (pass-through mapping)
+        if envelope.entity_type == "directory_account":
+            return self._map_directory_account(envelope)
+        if envelope.entity_type == "group_membership":
+            return self._map_group_membership(envelope)
+        if envelope.entity_type == "privilege_binding":
+            return self._map_privilege_binding(envelope)
+        if envelope.entity_type == "account_observation":
+            return self._map_account_observation(envelope)
+        if envelope.entity_type == "control_check":
+            return self._map_control_check(envelope)
         raise ValueError(f"Unsupported envelope entity_type: {envelope.entity_type}")
 
     def _map_host_observation(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
@@ -239,6 +262,88 @@ class EnvelopeEntityMapper:
             )
         )
         return tuple(records)
+
+    # ------------------------------------------------------------------
+    # Phase 2 — Identity / Compliance entity mappers
+    # ------------------------------------------------------------------
+
+    def _map_directory_account(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
+        n = envelope.normalized
+        return (DirectoryAccount(
+            account_id=n.get("account_id") or envelope.entity_id,
+            username=n.get("username") or "unknown",
+            display_name=self._string_value(n.get("display_name")),
+            email=self._string_value(n.get("email")),
+            department=self._string_value(n.get("department")),
+            status=n.get("status") or "active",
+            is_privileged=bool(n.get("is_privileged")),
+            last_login_at=self._parse_iso(n.get("last_login_at")),
+            password_last_set=self._parse_iso(n.get("password_last_set")),
+            created_at=self._parse_iso(n.get("created_at")),
+        ),)
+
+    def _map_group_membership(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
+        n = envelope.normalized
+        return (GroupMembership(
+            membership_id=n.get("membership_id") or envelope.entity_id,
+            account_id=n.get("account_id") or "unknown",
+            group_name=n.get("group_name") or "unknown",
+            source=n.get("source") or "ldap",
+            synced_at=envelope.observed_at,
+        ),)
+
+    def _map_privilege_binding(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
+        n = envelope.normalized
+        return (PrivilegeBinding(
+            binding_id=n.get("binding_id") or envelope.entity_id,
+            account_id=n.get("account_id") or "unknown",
+            privilege_type=n.get("privilege_type") or "unknown",
+            target=self._string_value(n.get("target")),
+            granted_at=envelope.observed_at,
+            granted_by=self._string_value(n.get("granted_by")),
+        ),)
+
+    def _map_account_observation(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
+        n = envelope.normalized
+        return (AccountObservation(
+            observation_id=n.get("observation_id") or envelope.entity_id,
+            account_id=n.get("account_id") or "unknown",
+            observation_type=n.get("observation_type") or "unknown",
+            source=n.get("source") or "ldap",
+            observed_at=envelope.observed_at,
+            detail=self._string_value(n.get("detail")),
+            severity=self._string_value(n.get("severity")),
+        ),)
+
+    def _map_control_check(self, envelope: NormalizedEnvelope) -> tuple[object, ...]:
+        n = envelope.normalized
+        return (ControlCheckResult(
+            check_id=n.get("check_id") or envelope.entity_id,
+            control_id=n.get("control_id") or "unknown",
+            entity_type=n.get("entity_type") or "host",
+            entity_id=n.get("entity_id") or "unknown",
+            status=n.get("status") or "not_checked",
+            checked_at=envelope.observed_at,
+            evidence_refs=n.get("evidence_refs") or [],
+            owner=self._string_value(n.get("owner")),
+            note=self._string_value(n.get("note")),
+        ),)
+
+    @staticmethod
+    def _parse_iso(value: object) -> datetime | None:
+        """Parse ISO timestamp string to datetime, or return None."""
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str) and value:
+            try:
+                from datetime import timezone as _tz
+                dt = datetime.fromisoformat(value)
+                return dt if dt.tzinfo else dt.replace(tzinfo=_tz.utc)
+            except (ValueError, TypeError):
+                return None
+        return None
 
     def _extract_aliases(self, normalized: dict[str, object]) -> tuple[str | None, list[str]]:
         aliases: list[str] = []
