@@ -278,12 +278,15 @@ def build_assets_payload(
         obs.sort(key=lambda o: o.observed_at, reverse=True)
         classification = classify_server_as_dict(host.hostname)
         owner_info = owners.get(host.hostname, {})
+        # Admin-set importance/category override auto-classification
+        effective_category = owner_info.get("category") or classification["category"]
+        effective_importance = owner_info.get("importance") or classification["importance"]
         zabbix_hosts.append({
             "host_id": host.host_id,
             "hostname": host.hostname,
             "asset_type": "Server",
-            "category": classification["category"],
-            "importance": classification["importance"],
+            "category": effective_category,
+            "importance": effective_importance,
             "isms_control": classification["isms_control"],
             "iso27001_control": classification.get("iso27001_control", ""),
             "platform": host.platform or "-",
@@ -665,7 +668,9 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
         )
 
     app = FastAPI(title="MORI SOC Query API", version="0.1.0")
-    dashboard_preferences = _default_dashboard_preferences()
+    admin_dashboard_preferences = _default_dashboard_preferences()
+    # Per-user dashboard preferences: username -> preferences dict
+    user_dashboard_prefs: dict[str, dict[str, Any]] = {}
 
     # ── Auth configuration ────────────────────────────────────────────────────
     _ldap_url = os.environ.get("LDAP_URL", "").strip()
@@ -1457,14 +1462,14 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     @app.get("/ui", include_in_schema=False, response_class=HTMLResponse)
     def ui() -> str:
         return render_user_dashboard_html(
-            docs_url=dashboard_preferences["docs_url"],
+            docs_url=admin_dashboard_preferences["docs_url"],
             fleet_ui_url=FLEET_UI_URL,
             zabbix_ui_url=ZABBIX_UI_URL,
         )
 
     @app.get("/admin", include_in_schema=False, response_class=HTMLResponse)
     def admin() -> str:
-        return render_query_console_html(dashboard_preferences["docs_url"])
+        return render_query_console_html(admin_dashboard_preferences["docs_url"])
 
     @app.get("/health")
     def health() -> dict[str, Any]:
@@ -1501,18 +1506,69 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"dashboard summary unavailable: {exc}") from exc
 
+    def _get_session_username(request: Request) -> str | None:
+        """현재 세션의 사용자명을 반환 (미인증 시 None)."""
+        token = request.cookies.get("mori_session", "")
+        sess = sessions.get(token)
+        return sess.get("username") if sess else None
+
     @app.get("/dashboard/preferences")
-    def dashboard_preferences_get() -> dict[str, Any]:
-        return _dashboard_preferences_response(dashboard_preferences)
+    def dashboard_preferences_get(request: Request) -> dict[str, Any]:
+        """현재 사용자의 대시보드 설정 조회 (개인 설정 → 관리자 기본값 순)."""
+        username = _get_session_username(request)
+        if username and username in user_dashboard_prefs:
+            return _dashboard_preferences_response(user_dashboard_prefs[username])
+        return _dashboard_preferences_response(admin_dashboard_preferences)
 
     @app.post("/dashboard/preferences")
-    def dashboard_preferences_update(payload: dict[str, Any]) -> dict[str, Any]:
-        nonlocal dashboard_preferences
+    def dashboard_preferences_update(request: Request, payload: dict[str, Any]) -> dict[str, Any]:
+        """현재 사용자의 대시보드 설정 저장 (개인별)."""
+        nonlocal admin_dashboard_preferences
+        username = _get_session_username(request)
+        if username:
+            base = user_dashboard_prefs.get(username, dict(admin_dashboard_preferences))
+            try:
+                user_dashboard_prefs[username] = _merge_dashboard_preferences(base, payload)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return _dashboard_preferences_response(user_dashboard_prefs[username])
+        # 인증 미사용 환경: 글로벌 설정 업데이트
         try:
-            dashboard_preferences = _merge_dashboard_preferences(dashboard_preferences, payload)
+            admin_dashboard_preferences = _merge_dashboard_preferences(admin_dashboard_preferences, payload)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return _dashboard_preferences_response(dashboard_preferences)
+        return _dashboard_preferences_response(admin_dashboard_preferences)
+
+    @app.get("/admin/dashboard/preferences", tags=["Admin"])
+    def admin_dashboard_preferences_get() -> dict[str, Any]:
+        """관리자 기본 대시보드 설정 조회 (모든 사용자 기본값)."""
+        return _dashboard_preferences_response(admin_dashboard_preferences)
+
+    @app.post("/admin/dashboard/preferences", tags=["Admin"])
+    def admin_dashboard_preferences_update(payload: dict[str, Any]) -> dict[str, Any]:
+        """관리자 기본 대시보드 설정 변경 (모든 사용자 기본값)."""
+        nonlocal admin_dashboard_preferences
+        try:
+            admin_dashboard_preferences = _merge_dashboard_preferences(admin_dashboard_preferences, payload)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return _dashboard_preferences_response(admin_dashboard_preferences)
+
+    @app.get("/admin/dashboard/user-preferences", tags=["Admin"])
+    def admin_user_prefs_list() -> dict[str, Any]:
+        """모든 사용자의 개인 설정 목록 조회 (관리자용)."""
+        return {
+            "users": {
+                uname: _dashboard_preferences_response(prefs)
+                for uname, prefs in user_dashboard_prefs.items()
+            }
+        }
+
+    @app.delete("/admin/dashboard/user-preferences/{username}", tags=["Admin"])
+    def admin_user_prefs_reset(username: str) -> dict[str, Any]:
+        """특정 사용자의 개인 설정 초기화 (관리자 기본값으로 복원)."""
+        removed = user_dashboard_prefs.pop(username, None)
+        return {"username": username, "reset": removed is not None}
 
     @app.post("/query")
     def query(payload: dict[str, Any], format: str = "json") -> Any:
@@ -1756,16 +1812,18 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         now_str = _isoformat(datetime.now(tz=timezone.utc))
         old_entry = asset_owners.get(hostname, {})
         new_category = str(payload.get("category", old_entry.get("category", ""))).strip()
+        new_importance = str(payload.get("importance", old_entry.get("importance", ""))).strip()
         entry = {
             "hostname": hostname,
             "owner": owner_name,
             "category": new_category,
+            "importance": new_importance,
             "email": str(payload.get("email", "")).strip(),
             "team": str(payload.get("team", "")).strip(),
             "updated_at": now_str,
         }
-        # Audit log: record changes for owner and category fields
-        for field in ("owner", "category"):
+        # Audit log: record changes for owner, category, importance fields
+        for field in ("owner", "category", "importance"):
             old_val = old_entry.get(field, "")
             new_val = entry[field]
             if new_val != old_val:
@@ -2044,27 +2102,52 @@ def render_user_dashboard_html(
     @media (min-width: 769px) { .nlq-fab { bottom: 32px; } }
     .nlq-dialog { width: min(640px, calc(100vw - 24px)); }
     .nlq-dialog-body { padding: 20px; }
+    /* ── Logout button ── */
+    .logout-btn { background: rgba(239,68,68,.12); color: #fca5a5; border: 1px solid rgba(239,68,68,.3); border-radius: 999px; padding: 7px 16px; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; transition: background .15s; white-space: nowrap; }
+    .logout-btn:hover { background: rgba(239,68,68,.22); }
+    /* ── Asset sub-tabs (scrollable on mobile) ── */
+    .asset-sub-nav { display: flex; gap: 0; border-bottom: 1px solid #233046; margin-bottom: 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .asset-sub-nav button { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 20px; color: #94a3b8; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 0; margin-bottom: -1px; white-space: nowrap; }
+    .asset-sub-nav button.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+    /* ── Asset search bar ── */
+    .asset-search-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; padding: 8px 10px; background: #0b1220; border: 1px solid #1e293b; border-radius: 8px; }
+    .asset-search-bar input[type="text"] { flex: 1; min-width: 140px; background: #1e293b; border: 1px solid #334155; color: #f1f5f9; border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+    .asset-search-bar input[type="text"]::placeholder { color: #64748b; }
+    .asset-search-bar select { background: #1e293b; border: 1px solid #334155; color: #f1f5f9; border-radius: 6px; padding: 6px 8px; font-size: 13px; cursor: pointer; }
+    .asset-search-count { color: #64748b; font-size: 12px; white-space: nowrap; }
+    /* ── Responsive summary grids (asset/trivy) ── */
+    .summary-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    .summary-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
     /* ── Bottom Nav (mobile only) ── */
     .bottom-nav { display: none; }
     @media (max-width: 960px) {
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .coverage { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .summary-grid-4 { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 768px) {
       html, body { overflow-x: hidden; }
-      .wrap { padding: 16px 12px 80px; max-width: 100%; box-sizing: border-box; }
-      .hero { flex-direction: column; gap: 10px; margin-bottom: 12px; }
-      .hero h1 { font-size: 22px; }
-      .hero p { font-size: 13px; }
-      .links, .top-actions { flex-wrap: wrap; gap: 8px; }
-      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .coverage { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .card { padding: 14px 12px; border-radius: 12px; box-sizing: border-box; }
+      .wrap { padding: 16px 10px 84px; max-width: 100vw; box-sizing: border-box; overflow-x: hidden; }
+      .hero { flex-direction: column; gap: 8px; margin-bottom: 12px; }
+      .hero h1 { font-size: 20px; }
+      .hero p { font-size: 12px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+      .hero .links { gap: 6px; margin-top: 8px; }
+      .hero .links a { font-size: 12px; padding: 6px 10px; }
+      .top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+      .top-actions button { font-size: 12px; padding: 6px 12px; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .coverage { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .summary-grid-3 { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .summary-grid-4 { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .card { padding: 12px 10px; border-radius: 12px; box-sizing: border-box; overflow: hidden; }
       .card h2 { font-size: 15px; }
       .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       table { min-width: 480px; }
+      .asset-sub-nav button { padding: 8px 14px; font-size: 13px; }
+      /* 인라인 flex 필터 바 모바일 처리 */
+      [style*=\"display:flex\"][style*=\"gap:10px\"] { flex-wrap: wrap !important; }
       /* 상단 탭 숨기고 하단 탭 표시 */
-      .tabs-nav { display: none; }
+      .tabs-nav { display: none !important; }
       .bottom-nav {
         display: flex;
         position: fixed;
@@ -2096,9 +2179,13 @@ def render_user_dashboard_html(
       .bottom-nav button.active { color: #38bdf8; border-top-color: #38bdf8; }
     }
     @media (max-width: 480px) {
-      .metrics { grid-template-columns: 1fr 1fr; }
-      .coverage { grid-template-columns: 1fr 1fr; }
+      .metrics { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .coverage { grid-template-columns: 1fr; }
+      .summary-grid-3 { grid-template-columns: 1fr 1fr; }
+      .summary-grid-4 { grid-template-columns: 1fr 1fr; }
       .metric-value { font-size: 22px; }
+      .hero h1 { font-size: 18px; }
+      .card { padding: 10px 8px; }
     }
   </style>
 </head>
@@ -2114,8 +2201,8 @@ def render_user_dashboard_html(
         </div>
       </div>
       <div class=\"top-actions\">
-        <button id=\"refresh_dashboard\" type=\"button\">Refresh Dashboard</button>
-        <a href=\"/auth/logout\" style=\"color:#ef4444;font-size:13px;\">로그아웃</a>
+        <button id=\"refresh_dashboard\" type=\"button\">🔄 새로고침</button>
+        <a href=\"/auth/logout\" class=\"logout-btn\">🚪 로그아웃</a>
       </div>
     </section>
 
@@ -2206,23 +2293,28 @@ def render_user_dashboard_html(
     <!-- ── Tab: 자산 현황 ─────────────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_assets\">
       <!-- Sub-nav -->
-      <div style=\"display:flex;gap:0;border-bottom:1px solid #233046;margin-bottom:16px;\">
-        <button class=\"active\" id=\"asset_tab_fleet\" onclick=\"switchAssetTab('fleet')\" style=\"background:none;border:none;border-bottom:2px solid #38bdf8;padding:8px 20px;color:#38bdf8;font-size:14px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🖥️ PC 자산 (Fleet)</button>
-        <button id=\"asset_tab_zabbix\" onclick=\"switchAssetTab('zabbix')\" style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 20px;color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🖧 서버 자산 (Zabbix)</button>
-        <button id=\"asset_tab_trivy\" onclick=\"switchAssetTab('trivy')\" style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 20px;color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🔍 취약점 (Trivy)</button>
-      </div>
+      <nav class=\"asset-sub-nav\">
+        <button class=\"active\" id=\"asset_tab_fleet\" onclick=\"switchAssetTab('fleet')\">🖥️ PC 자산 (Fleet)</button>
+        <button id=\"asset_tab_zabbix\" onclick=\"switchAssetTab('zabbix')\">🖧 서버 자산 (Zabbix)</button>
+        <button id=\"asset_tab_trivy\" onclick=\"switchAssetTab('trivy')\">🔍 취약점 (Trivy)</button>
+      </nav>
 
       <!-- Fleet PC Section -->
       <div id=\"assets_fleet_section\">
-        <div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;\">
+        <div class=\"summary-grid-3\">
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">전체 PC</div><div class=\"metric-value\" id=\"fleet_total\">-</div></section>
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">온라인</div><div class=\"metric-value\" style=\"color:#86efac\" id=\"fleet_online\">-</div></section>
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">오프라인</div><div class=\"metric-value\" style=\"color:#fca5a5\" id=\"fleet_offline\">-</div></section>
         </div>
         <section class=\"card\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;\">
+          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
             <h2 style=\"margin:0\">🖥️ PC 자산 목록 (Fleet)</h2>
             <button onclick=\"downloadAssetsCSV('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
+          </div>
+          <div class=\"asset-search-bar\">
+            <input type=\"text\" id=\"fleet_search_hostname\" placeholder=\"호스트명 검색…\" oninput=\"filterAssetTable('fleet')\" />
+            <select id=\"fleet_search_status\" onchange=\"filterAssetTable('fleet')\"><option value=\"\">전체 상태</option><option value=\"online\">온라인</option><option value=\"offline\">오프라인</option><option value=\"unknown\">알 수 없음</option></select>
+            <span class=\"asset-search-count\" id=\"fleet_search_count\"></span>
           </div>
           <div class=\"subtext\">Fleet에서 관리되는 PC 엔드포인트 현황입니다.</div>
           <div class=\"table-wrap\" id=\"fleet_table\"><span class=\"empty\">로딩 중…</span></div>
@@ -2231,15 +2323,21 @@ def render_user_dashboard_html(
 
       <!-- Zabbix Server Section -->
       <div id=\"assets_zabbix_section\" class=\"hidden\">
-        <div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;\">
+        <div class=\"summary-grid-3\">
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">전체 서버</div><div class=\"metric-value\" id=\"zabbix_total\">-</div></section>
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">온라인</div><div class=\"metric-value\" style=\"color:#86efac\" id=\"zabbix_online\">-</div></section>
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">오프라인</div><div class=\"metric-value\" style=\"color:#fca5a5\" id=\"zabbix_offline\">-</div></section>
         </div>
         <section class=\"card\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;\">
+          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
             <h2 style=\"margin:0\">🖧 서버 자산 목록 (Zabbix)</h2>
             <button onclick=\"downloadAssetsCSV('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
+          </div>
+          <div class=\"asset-search-bar\">
+            <input type=\"text\" id=\"zabbix_search_hostname\" placeholder=\"호스트명 검색…\" oninput=\"filterAssetTable('zabbix')\" />
+            <select id=\"zabbix_search_category\" onchange=\"filterAssetTable('zabbix')\"><option value=\"\">전체 분류</option></select>
+            <select id=\"zabbix_search_status\" onchange=\"filterAssetTable('zabbix')\"><option value=\"\">전체 상태</option><option value=\"online\">온라인</option><option value=\"offline\">오프라인</option><option value=\"unknown\">알 수 없음</option></select>
+            <span class=\"asset-search-count\" id=\"zabbix_search_count\"></span>
           </div>
           <div class=\"subtext\">Zabbix에서 모니터링 중인 서버 현황과 최근 메트릭입니다.</div>
           <div class=\"table-wrap\" id=\"zabbix_table\"><span class=\"empty\">로딩 중…</span></div>
@@ -2248,16 +2346,21 @@ def render_user_dashboard_html(
 
       <!-- Trivy Vulnerability Section -->
       <div id=\"assets_trivy_section\" class=\"hidden\">
-        <div style=\"display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;\">
+        <div class=\"summary-grid-4\">
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">영향받는 호스트</div><div class=\"metric-value\" id=\"trivy_affected_hosts\">-</div></section>
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">전체 취약점</div><div class=\"metric-value\" id=\"trivy_total_vulns\">-</div></section>
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">Critical</div><div class=\"metric-value\" style=\"color:#fca5a5\" id=\"trivy_critical\">-</div></section>
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">High</div><div class=\"metric-value\" style=\"color:#fdba74\" id=\"trivy_high\">-</div></section>
         </div>
         <section class=\"card\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;\">
+          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
             <h2 style=\"margin:0\">🔍 취약점 현황 (Trivy)</h2>
             <button onclick=\"downloadAssetsCSV('trivy')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
+          </div>
+          <div class=\"asset-search-bar\">
+            <input type=\"text\" id=\"trivy_search_hostname\" placeholder=\"호스트명 검색…\" oninput=\"filterAssetTable('trivy')\" />
+            <select id=\"trivy_search_severity\" onchange=\"filterAssetTable('trivy')\"><option value=\"\">전체 심각도</option><option value=\"critical\">Critical &gt; 0</option><option value=\"high\">High &gt; 0</option><option value=\"medium\">Medium &gt; 0</option></select>
+            <span class=\"asset-search-count\" id=\"trivy_search_count\"></span>
           </div>
           <div class=\"subtext\">Trivy가 탐지한 취약점을 호스트별로 집계한 현황입니다. Critical/High 우선 정렬.</div>
           <div class=\"table-wrap\" id=\"trivy_table\"><span class=\"empty\">로딩 중…</span></div>
@@ -2333,6 +2436,9 @@ def render_user_dashboard_html(
           <form method=\"dialog\"><button class=\"secondary\">취소</button></form>
         </div>
         <div class=\"status-line\" id=\"triage_modal_status_line\"></div>
+        <hr style=\"border-color:#334155;margin:12px 0\" />
+        <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#7dd3fc\">📋 상태 변경 히스토리</div>
+        <div id=\"triage_modal_history\" style=\"max-height:200px;overflow-y:auto\"><div style=\"color:#64748b;font-size:13px\">변경 이력 없음</div></div>
       </div>
     </div>
   </dialog>
@@ -2492,6 +2598,7 @@ def render_user_dashboard_html(
     let dashboardDetails = {};
     let currentTriageAlertId = null;
     let currentIncidentId = null;
+    let triageDataCache = {};
     const TRIAGE_STATUS_COLORS = {
       pending: '#ef4444', reviewing: '#f59e0b', resolved: '#22c55e',
       // legacy (backward compat)
@@ -2505,6 +2612,7 @@ def render_user_dashboard_html(
     window.switchTab         = switchTab;
     window.switchAssetTab    = switchAssetTab;
     window.downloadAssetsCSV = downloadAssetsCSV;
+    window.filterAssetTable  = filterAssetTable;
     window.openTriageModal   = openTriageModal;
     window.openIncidentModal = openIncidentModal;
     window.openOwnerModal    = openOwnerModal;
@@ -2942,6 +3050,8 @@ def render_user_dashboard_html(
         const data = await res.json();
         const alerts = data.alerts || [];
         if (!alerts.length) { triageTableEl.innerHTML = '<span class=\"empty\">최근 24h 경보 없음</span>'; return; }
+        // Cache triage data for history display in modal
+        alerts.forEach(a => { if (a.triage) triageDataCache[a.alert_id] = a.triage; });
         const rows = alerts.map(a => {
           const triage = a.triage || {};
           const rawStatus = triage.status || 'pending';
@@ -2979,6 +3089,24 @@ def render_user_dashboard_html(
       triageModalAnalystEl.value = analyst || '';
       triageModalNoteEl.value = note || '';
       triageModalStatusLineEl.textContent = '';
+      // Render triage history
+      const cached = triageDataCache[alertId] || {};
+      const history = cached.history || [];
+      const historyEl = document.getElementById('triage_modal_history');
+      if (historyEl) {
+        historyEl.innerHTML = history.length
+          ? [...history].reverse().map(h => {
+              const fromLabel = TRIAGE_STATUS_LABELS[h.from_status] || h.from_status;
+              const toLabel = TRIAGE_STATUS_LABELS[h.to_status] || h.to_status;
+              const arrow = `${fromLabel} → <strong>${toLabel}</strong>`;
+              const noteText = h.note ? `<div style=\"color:#cbd5e1;margin-top:2px;font-size:11px\">📝 ${escapeHtml(h.note)}</div>` : '';
+              return `<div style=\"background:#0c1827;border-left:3px solid #334155;padding:7px 12px;margin-bottom:5px;border-radius:4px;font-size:12px\">
+                <div style=\"color:#64748b\">${escapeHtml(formatTime(h.changed_at))} &nbsp;·&nbsp; ${escapeHtml(h.analyst || '-')}</div>
+                <div style=\"color:#e2e8f0;margin-top:2px\">${arrow}</div>${noteText}
+              </div>`;
+            }).join('')
+          : '<div style=\"color:#64748b;font-size:13px\">변경 이력 없음</div>';
+      }
       if (typeof triageModalEl.showModal === 'function') triageModalEl.showModal();
       else triageModalEl.setAttribute('open', 'open');
     }
@@ -3170,10 +3298,7 @@ def render_user_dashboard_html(
         const sec = document.getElementById(`assets_${t}_section`);
         const btn = document.getElementById(`asset_tab_${t}`);
         if (sec) sec.classList.toggle('hidden', t !== tab);
-        if (btn) {
-          btn.style.color = t === tab ? '#38bdf8' : '#94a3b8';
-          btn.style.borderBottomColor = t === tab ? '#38bdf8' : 'transparent';
-        }
+        if (btn) btn.classList.toggle('active', t === tab);
       });
     }
 
@@ -3369,6 +3494,9 @@ def render_user_dashboard_html(
       });
     });
 
+    // ── Asset data cache for search/filter ──
+    let _assetCache = { fleet: [], zabbix: [], trivy: [] };
+
     async function loadAssets() {
       const statusEl = document.getElementById('assets_status');
       statusEl.textContent = '자산 데이터 로딩 중...';
@@ -3376,24 +3504,84 @@ def render_user_dashboard_html(
         const res = await fetch('/assets');
         if (!res.ok) { statusEl.textContent = '자산 데이터 로드 실패'; return; }
         const data = await res.json();
-        // Fleet
+        // Cache raw data
+        _assetCache.fleet = data.fleet?.hosts || [];
+        _assetCache.zabbix = data.zabbix?.hosts || [];
+        _assetCache.trivy = data.trivy?.rows || [];
+        // Fleet summary
         document.getElementById('fleet_total').textContent = data.fleet?.total ?? '-';
         document.getElementById('fleet_online').textContent = data.fleet?.online ?? '-';
         document.getElementById('fleet_offline').textContent = data.fleet?.offline ?? '-';
-        renderFleetTable(data.fleet?.hosts || [], document.getElementById('fleet_table'));
-        // Zabbix
+        renderFleetTable(_assetCache.fleet, document.getElementById('fleet_table'));
+        // Zabbix summary
         document.getElementById('zabbix_total').textContent = data.zabbix?.total ?? '-';
         document.getElementById('zabbix_online').textContent = data.zabbix?.online ?? '-';
         document.getElementById('zabbix_offline').textContent = data.zabbix?.offline ?? '-';
-        renderZabbixTable(data.zabbix?.hosts || [], document.getElementById('zabbix_table'));
-        // Trivy
+        renderZabbixTable(_assetCache.zabbix, document.getElementById('zabbix_table'));
+        // Populate Zabbix category dropdown
+        _populateZabbixCategories(_assetCache.zabbix);
+        // Trivy summary
         document.getElementById('trivy_affected_hosts').textContent = data.trivy?.affected_hosts ?? '-';
         document.getElementById('trivy_total_vulns').textContent = data.trivy?.total_vulns ?? '-';
         document.getElementById('trivy_critical').textContent = data.trivy?.critical ?? '-';
         document.getElementById('trivy_high').textContent = data.trivy?.high ?? '-';
-        renderTrivyTable(data.trivy?.rows || [], document.getElementById('trivy_table'));
+        renderTrivyTable(_assetCache.trivy, document.getElementById('trivy_table'));
+        // Reset search counts
+        _updateSearchCount('fleet', _assetCache.fleet.length, _assetCache.fleet.length);
+        _updateSearchCount('zabbix', _assetCache.zabbix.length, _assetCache.zabbix.length);
+        _updateSearchCount('trivy', _assetCache.trivy.length, _assetCache.trivy.length);
         statusEl.textContent = `자산 현황 업데이트: ${formatTime(data.generated_at)}`;
       } catch (err) { statusEl.textContent = `오류: ${err.message}`; }
+    }
+
+    function _populateZabbixCategories(hosts) {
+      const sel = document.getElementById('zabbix_search_category');
+      if (!sel) return;
+      const cats = [...new Set(hosts.map(h => h.category).filter(Boolean))].sort();
+      // keep first option (전체 분류), remove the rest
+      while (sel.options.length > 1) sel.remove(1);
+      cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+    }
+
+    function _updateSearchCount(tab, shown, total) {
+      const el = document.getElementById(`${tab}_search_count`);
+      if (el) el.textContent = shown === total ? `총 ${total}건` : `${shown} / ${total}건`;
+    }
+
+    function filterAssetTable(tab) {
+      const hostnameVal = (document.getElementById(`${tab}_search_hostname`)?.value || '').trim().toLowerCase();
+      if (tab === 'fleet') {
+        const statusVal = document.getElementById('fleet_search_status')?.value || '';
+        const filtered = _assetCache.fleet.filter(h => {
+          if (hostnameVal && !h.hostname.toLowerCase().includes(hostnameVal)) return false;
+          if (statusVal && h.status !== statusVal) return false;
+          return true;
+        });
+        renderFleetTable(filtered, document.getElementById('fleet_table'));
+        _updateSearchCount('fleet', filtered.length, _assetCache.fleet.length);
+      } else if (tab === 'zabbix') {
+        const statusVal = document.getElementById('zabbix_search_status')?.value || '';
+        const catVal = document.getElementById('zabbix_search_category')?.value || '';
+        const filtered = _assetCache.zabbix.filter(h => {
+          if (hostnameVal && !h.hostname.toLowerCase().includes(hostnameVal)) return false;
+          if (statusVal && h.status !== statusVal) return false;
+          if (catVal && h.category !== catVal) return false;
+          return true;
+        });
+        renderZabbixTable(filtered, document.getElementById('zabbix_table'));
+        _updateSearchCount('zabbix', filtered.length, _assetCache.zabbix.length);
+      } else if (tab === 'trivy') {
+        const sevVal = document.getElementById('trivy_search_severity')?.value || '';
+        const filtered = _assetCache.trivy.filter(r => {
+          if (hostnameVal && !r.hostname.toLowerCase().includes(hostnameVal)) return false;
+          if (sevVal === 'critical' && !(r.critical > 0)) return false;
+          if (sevVal === 'high' && !(r.high > 0)) return false;
+          if (sevVal === 'medium' && !(r.medium > 0)) return false;
+          return true;
+        });
+        renderTrivyTable(filtered, document.getElementById('trivy_table'));
+        _updateSearchCount('trivy', filtered.length, _assetCache.trivy.length);
+      }
     }
 
     function downloadAssetsCSV(source) {
@@ -3837,15 +4025,19 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <section class=\"card\">
         <h2>👤 자산 담당자 관리</h2>
         <div class=\"subtext\">서버·PC 자산의 담당자와 팀을 등록합니다. 호스트명과 정확히 일치해야 합니다.</div>
-        <div id=\"owners_list\" class=\"list\" style=\"margin-bottom:16px;max-height:320px;overflow-y:auto\"><span class=\"empty\">로딩 중…</span></div>
+        <div id=\"owners_list\" class=\"list\" style=\"margin-bottom:16px;max-height:360px;overflow-y:auto\"><span class=\"empty\">로딩 중…</span></div>
+        <div id=\"owner_form_title\" style=\"font-size:14px;font-weight:700;color:#38bdf8;margin-bottom:8px;\">➕ 새 자산 등록</div>
         <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
           <div class=\"row\"><label>호스트명</label><input id=\"own_hostname\" placeholder=\"예: db-prod-01\" /></div>
           <div class=\"row\"><label>담당자</label><input id=\"own_owner\" placeholder=\"예: 홍길동\" /></div>
           <div class=\"row\"><label>이메일</label><input id=\"own_email\" placeholder=\"예: hong@company.com\" /></div>
           <div class=\"row\"><label>팀</label><input id=\"own_team\" placeholder=\"예: 인프라팀\" /></div>
+          <div class=\"row\"><label>분류 (카테고리)</label><input id=\"own_category\" placeholder=\"예: DB서버, 웹서버, AP서버\" /></div>
+          <div class=\"row\"><label>중요도</label><select id=\"own_importance\"><option value=\"\">자동 (기본)</option><option value=\"상\">상</option><option value=\"중\">중</option><option value=\"하\">하</option></select></div>
         </div>
         <div class=\"actions\">
           <button id=\"add_owner\">등록 / 수정</button>
+          <button id=\"cancel_edit_owner\" class=\"ghost\" style=\"display:none\">취소</button>
           <button id=\"reload_owners\" class=\"secondary\">목록 새로고침</button>
         </div>
         <div class=\"status-line\" id=\"owner_status\"></div>
@@ -4143,6 +4335,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     // ── 전역 함수 노출 (onclick 속성에서 직접 호출 — 함수 선언은 호이스팅됨) ──
     window.switchAdminTab       = switchAdminTab;
     window.deleteOwner          = deleteOwner;
+    window.editOwner            = editOwner;
     window.testWebhook          = testWebhook;
     window.deleteWebhook        = deleteWebhook;
     window.handleSignupRequest  = handleSignupRequest;
@@ -4194,7 +4387,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     async function loadDashboardPreferences() {
       dashboardPreferencesStatusEl.textContent = 'user dashboard settings loading...';
       try {
-        const response = await fetch('/dashboard/preferences');
+        const response = await fetch('/admin/dashboard/preferences');
         const data = await response.json();
         if (!response.ok) {
           dashboardPreferencesStatusEl.textContent = `settings load failed: HTTP ${response.status}`;
@@ -4221,7 +4414,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         },
       };
       try {
-        const response = await fetch('/dashboard/preferences', {
+        const response = await fetch('/admin/dashboard/preferences', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -4915,6 +5108,14 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const ownOwnerEl = document.getElementById('own_owner');
     const ownEmailEl = document.getElementById('own_email');
     const ownTeamEl = document.getElementById('own_team');
+    const ownCategoryEl = document.getElementById('own_category');
+    const ownImportanceEl = document.getElementById('own_importance');
+    const ownerFormTitleEl = document.getElementById('owner_form_title');
+    const cancelEditBtn = document.getElementById('cancel_edit_owner');
+    let _editingHostname = null; // track if we are editing
+
+    const impLabel = { '\uc0c1':'상', '\uc911':'중', '\ud558':'하' };
+    const impColor = { '\uc0c1':'#fca5a5', '\uc911':'#fde68a', '\ud558':'#86efac' };
 
     async function loadOwners() {
       ownersListEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
@@ -4923,22 +5124,72 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const data = await res.json();
         const list = data.owners || [];
         if (!list.length) { ownersListEl.innerHTML = '<span class=\"empty\">등록된 담당자 없음</span>'; return; }
-        ownersListEl.innerHTML = list.map(o => `
-          <div style=\"display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-bottom:1px solid #1e293b;font-size:13px\">
-            <div>
-              <strong style=\"color:#e2e8f0\">${escapeHtml(o.hostname)}</strong>
-              <span style=\"color:#a3e635;margin-left:8px\">${escapeHtml(o.owner||'-')}</span>
-              ${o.team ? `<span style=\"color:#64748b;margin-left:6px\">(${escapeHtml(o.team)})</span>` : ''}
+        ownersListEl.innerHTML = list.map(o => {
+          const imp = o.importance || '';
+          const impBadge = imp ? `<span style=\"background:#1e293b;color:${impColor[imp]||'#94a3b8'};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px\">${escapeHtml(imp)}</span>` : '';
+          const catBadge = o.category ? `<span style=\"color:#7dd3fc;font-size:11px;margin-left:6px\">[${escapeHtml(o.category)}]</span>` : '';
+          return `<div style=\"display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid #1e293b;font-size:13px;gap:8px\">
+            <div style=\"flex:1;min-width:0\">
+              <strong style=\"color:#e2e8f0\">${escapeHtml(o.hostname)}</strong>${catBadge}${impBadge}
+              <br><span style=\"color:#a3e635;font-size:12px\">${escapeHtml(o.owner||'-')}</span>
+              ${o.team ? `<span style=\"color:#64748b;margin-left:6px;font-size:12px\">(${escapeHtml(o.team)})</span>` : ''}
               ${o.email ? `<span style=\"color:#64748b;font-size:11px;margin-left:6px\">${escapeHtml(o.email)}</span>` : ''}
             </div>
-            <button onclick=\"deleteOwner('${escapeHtml(o.hostname)}')\" style=\"background:#7f1d1d;border:none;color:#fca5a5;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px\">삭제</button>
-          </div>`).join('');
+            <div style=\"display:flex;gap:6px;flex-shrink:0\">
+              <button onclick=\"editOwner('${escapeHtml(o.hostname)}')\" style=\"background:#1e3a5f;border:1px solid #334155;color:#93c5fd;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px\">✏️ 수정</button>
+              <button onclick=\"deleteOwner('${escapeHtml(o.hostname)}')\" style=\"background:#7f1d1d;border:none;color:#fca5a5;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px\">삭제</button>
+            </div>
+          </div>`;
+        }).join('');
       } catch(e) { ownersListEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(e.message)}</span>`; }
     }
 
+    // ── 자산 정보를 폼에 채워서 수정 모드 진입 ──
+    let _ownersCache = [];
+    async function editOwner(hostname) {
+      // fetch latest owner data
+      try {
+        const res = await fetch('/assets/owners');
+        const data = await res.json();
+        _ownersCache = data.owners || [];
+      } catch(e) { /* use empty */ }
+      const o = _ownersCache.find(x => x.hostname === hostname);
+      if (!o) { ownerStatusEl.textContent = `'${hostname}' 정보를 찾을 수 없습니다.`; return; }
+      _editingHostname = hostname;
+      ownHostnameEl.value = o.hostname;
+      ownHostnameEl.readOnly = true;
+      ownHostnameEl.style.opacity = '0.6';
+      ownOwnerEl.value = o.owner || '';
+      ownEmailEl.value = o.email || '';
+      ownTeamEl.value = o.team || '';
+      ownCategoryEl.value = o.category || '';
+      ownImportanceEl.value = o.importance || '';
+      ownerFormTitleEl.textContent = `✏️ ${hostname} 수정 중`;
+      ownerFormTitleEl.style.color = '#fde68a';
+      cancelEditBtn.style.display = '';
+      ownerStatusEl.textContent = '';
+      // scroll form into view
+      ownerFormTitleEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function _resetOwnerForm() {
+      _editingHostname = null;
+      ownHostnameEl.value = ''; ownOwnerEl.value = ''; ownEmailEl.value = '';
+      ownTeamEl.value = ''; ownCategoryEl.value = ''; ownImportanceEl.value = '';
+      ownHostnameEl.readOnly = false;
+      ownHostnameEl.style.opacity = '1';
+      ownerFormTitleEl.textContent = '➕ 새 자산 등록';
+      ownerFormTitleEl.style.color = '#38bdf8';
+      cancelEditBtn.style.display = 'none';
+    }
+
+    cancelEditBtn?.addEventListener('click', () => { _resetOwnerForm(); ownerStatusEl.textContent = '수정 취소됨'; });
+
     async function deleteOwner(hostname) {
+      if (!confirm(`'${hostname}' 자산 정보를 삭제하시겠습니까?`)) return;
       try {
         await fetch(`/assets/owners/${encodeURIComponent(hostname)}`, {method:'DELETE'});
+        if (_editingHostname === hostname) _resetOwnerForm();
         await loadOwners();
       } catch(e) { ownerStatusEl.textContent = `삭제 실패: ${e.message}`; }
     }
@@ -4950,10 +5201,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       try {
         const res = await fetch('/assets/owners', {
           method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({hostname, owner: ownOwnerEl.value.trim(), email: ownEmailEl.value.trim(), team: ownTeamEl.value.trim()})
+          body: JSON.stringify({
+            hostname,
+            owner: ownOwnerEl.value.trim(),
+            email: ownEmailEl.value.trim(),
+            team: ownTeamEl.value.trim(),
+            category: ownCategoryEl.value.trim(),
+            importance: ownImportanceEl.value,
+          })
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.status);
-        ownHostnameEl.value = ''; ownOwnerEl.value = ''; ownEmailEl.value = ''; ownTeamEl.value = '';
+        _resetOwnerForm();
         ownerStatusEl.textContent = '저장 완료 ✓';
         await loadOwners();
       } catch(e) { ownerStatusEl.textContent = `오류: ${e.message}`; }
