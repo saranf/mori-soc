@@ -15,6 +15,7 @@ from mori_soc.api.contracts import QueryRequest, QueryScope
 from mori_soc.services.intent_parser import QUERY_GUIDE_EXAMPLES, NaturalLanguageQueryParser
 from mori_soc.services.query_catalog import PHASE1_QUERY_CATALOG
 from mori_soc.services.query_service import InMemoryQueryStore, QueryService, query_response_to_csv
+from mori_soc.services.reports import REPORT_TYPES, generate_report, report_to_csv
 from mori_soc.services.views import host_risk_summary_view, latest_host_status_view
 
 try:
@@ -281,6 +282,99 @@ def build_pdca_payload(service: QueryService) -> dict[str, Any]:
         "pending_remediations": pending,
         "pending_count": len(pending),
         "overdue_count": sum(1 for p in pending if p["overdue"]),
+    }
+
+
+def build_crosscheck_payload(service: QueryService) -> dict[str, Any]:
+    """소스 간 교차 검증 데이터를 생성한다."""
+    store = service.store
+    now = datetime.now(tz=timezone.utc)
+
+    # Host IDs grouped by source
+    source_host_ids: dict[str, set[str]] = {}
+    for alias in store.host_aliases:
+        source_host_ids.setdefault(alias.source, set()).add(alias.host_id)
+
+    all_host_ids = {h.host_id for h in store.hosts}
+    hostnames = {h.host_id: h.hostname for h in store.hosts}
+    fleet_ids = source_host_ids.get("fleet", set())
+    zabbix_ids = source_host_ids.get("zabbix", set())
+    trivy_ids = source_host_ids.get("trivy", set())
+    wazuh_ids = source_host_ids.get("wazuh", set())
+
+    # 1) Zabbix vs Fleet
+    zabbix_only = zabbix_ids - fleet_ids
+    fleet_only = fleet_ids - zabbix_ids
+    zabbix_fleet_both = zabbix_ids & fleet_ids
+
+    # 2) Source coverage vs total hosts
+    any_source = set()
+    for ids in source_host_ids.values():
+        any_source |= ids
+    no_source = all_host_ids - any_source
+
+    # 3) Vuln hosts vs recent observation hosts (30d)
+    since_30d = now - timedelta(days=30)
+    vuln_host_ids = {v.host_id for v in store.vulnerabilities}
+    recent_obs_ids = {o.host_id for o in store.observations if o.observed_at >= since_30d}
+    vuln_no_obs = vuln_host_ids - recent_obs_ids
+
+    # 4) LDAP accounts vs host owners (if any directory accounts exist)
+    ldap_accounts = {a.username for a in store.directory_accounts}
+
+    # Sources per host for detail
+    sources_per_host: dict[str, list[str]] = {}
+    for alias in store.host_aliases:
+        sources_per_host.setdefault(alias.host_id, [])
+        if alias.source not in sources_per_host[alias.host_id]:
+            sources_per_host[alias.host_id].append(alias.source)
+
+    def _host_row(hid: str) -> dict[str, Any]:
+        return {"host_id": hid, "hostname": hostnames.get(hid, hid), "sources": sources_per_host.get(hid, [])}
+
+    return {
+        "generated_at": _isoformat(now),
+        "checks": [
+            {
+                "id": "zabbix_vs_fleet",
+                "title": "Zabbix 자산 vs Fleet 자산",
+                "description": "Zabbix(서버)와 Fleet(PC)에서 수집된 자산을 교차 비교합니다.",
+                "zabbix_count": len(zabbix_ids),
+                "fleet_count": len(fleet_ids),
+                "both_count": len(zabbix_fleet_both),
+                "zabbix_only_count": len(zabbix_only),
+                "fleet_only_count": len(fleet_only),
+                "zabbix_only": sorted([_host_row(h) for h in zabbix_only], key=lambda x: x["hostname"])[:50],
+                "fleet_only": sorted([_host_row(h) for h in fleet_only], key=lambda x: x["hostname"])[:50],
+            },
+            {
+                "id": "source_coverage",
+                "title": "소스 커버리지 vs 전체 자산",
+                "description": "모든 수집 소스에서 한 번도 관측되지 않은 자산을 찾습니다.",
+                "total_hosts": len(all_host_ids),
+                "covered_hosts": len(any_source),
+                "uncovered_hosts": len(no_source),
+                "uncovered": sorted([_host_row(h) for h in no_source], key=lambda x: x["hostname"])[:50],
+            },
+            {
+                "id": "vuln_vs_observation",
+                "title": "취약점 자산 vs 최근 관측 자산",
+                "description": "취약점이 존재하지만 최근 30일 내 관측(로그/메트릭)이 없는 자산을 찾습니다.",
+                "vuln_hosts": len(vuln_host_ids),
+                "recent_obs_hosts": len(recent_obs_ids),
+                "vuln_no_observation_count": len(vuln_no_obs),
+                "vuln_no_observation": sorted([_host_row(h) for h in vuln_no_obs], key=lambda x: x["hostname"])[:50],
+            },
+            {
+                "id": "ldap_summary",
+                "title": "LDAP/AD 계정 현황",
+                "description": "디렉터리 계정 수와 권한 바인딩 현황을 요약합니다.",
+                "total_accounts": len(store.directory_accounts),
+                "privileged_accounts": sum(1 for a in store.directory_accounts if a.is_privileged),
+                "total_privilege_bindings": len(store.privilege_bindings),
+                "total_group_memberships": len(store.group_memberships),
+            },
+        ],
     }
 
 
@@ -1582,6 +1676,14 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"compliance pdca unavailable: {exc}") from exc
 
+    @app.get("/compliance/crosscheck", tags=["Compliance"])
+    def compliance_crosscheck() -> dict[str, Any]:
+        """소스 간 교차 검증 데이터."""
+        try:
+            return build_crosscheck_payload(get_query_service())
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"crosscheck unavailable: {exc}") from exc
+
     def _get_session_username(request: Request) -> str | None:
         """현재 세션의 사용자명을 반환 (미인증 시 None)."""
         token = request.cookies.get("mori_session", "")
@@ -2077,6 +2179,44 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             )
         return {"source": "trivy", "severity_filter": severity, "count": len(rows), "by_host": rows}
 
+    # ── Compliance Reports (증적 Export) ────────────────────────────────────
+    @app.get("/compliance/reports", tags=["Compliance"])
+    def compliance_reports_list() -> dict[str, Any]:
+        """사용 가능한 증적 리포트 타입 목록."""
+        labels = {
+            "asset_inspection": "자산 점검 리포트",
+            "account_privilege": "계정/권한 점검 리포트",
+            "log_collection_status": "로그 수집 상태 리포트",
+            "vulnerability_assessment": "취약점 점검 리포트",
+            "monthly_operations": "월간 운영 리포트",
+        }
+        return {
+            "report_types": [
+                {"id": rt, "label": labels.get(rt, rt), "url_json": f"/compliance/reports/{rt}", "url_csv": f"/compliance/reports/{rt}?format=csv"}
+                for rt in REPORT_TYPES
+            ]
+        }
+
+    @app.get("/compliance/reports/{report_type}", tags=["Compliance"])
+    def compliance_report_get(report_type: str, format: str = "json") -> Any:
+        """증적 리포트 생성. format=json|csv"""
+        if report_type not in REPORT_TYPES:
+            raise HTTPException(status_code=400, detail=f"Unknown report type: {report_type}. Valid: {', '.join(REPORT_TYPES)}")
+        try:
+            report = generate_report(report_type, get_query_service())
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"report generation failed: {exc}") from exc
+        if format == "csv":
+            csv_content = report_to_csv(report)
+            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            filename = f"mori-{report_type.replace('_', '-')}-{timestamp}.csv"
+            return StreamingResponse(
+                iter([csv_content]),
+                media_type="text/csv; charset=utf-8",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            )
+        return report
+
     return app
 
 
@@ -2482,6 +2622,23 @@ def render_user_dashboard_html(
           </section>
         </div>
       </div>
+
+      <!-- ── 증적 리포트 다운로드 ────────────────────────────────────── -->
+      <section class=\"card\" style=\"margin-top:20px\">
+        <h2>📥 감사 증적 리포트 다운로드</h2>
+        <div class=\"subtext\">ISMS-P / ISO 27001 감사 증적으로 사용할 수 있는 리포트를 JSON 또는 CSV로 다운로드합니다.</div>
+        <div id=\"report_download_area\" style=\"margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px\">
+        </div>
+      </section>
+
+      <!-- ── 교차 검증 (Cross-verification) ─────────────────────────── -->
+      <section class=\"card\" style=\"margin-top:20px\">
+        <h2>🔀 소스 간 교차 검증</h2>
+        <div class=\"subtext\">서로 다른 수집 소스의 데이터를 교차 비교하여 누락·불일치를 확인합니다.</div>
+        <div id=\"crosscheck_area\" style=\"margin-top:16px\">
+          <div class=\"empty\" style=\"padding:16px;color:#64748b\">⏳ 교차 검증 데이터를 불러오는 중…</div>
+        </div>
+      </section>
     </div>
 
     <!-- ── Tab: 가이드 & 기준 ────────────────────────────────────────── -->
@@ -3832,6 +3989,94 @@ def render_user_dashboard_html(
         }
       } catch(e) {
         if (cardsEl) cardsEl.innerHTML = '<div class=\"empty\" style=\"color:#f87171;padding:16px\">❌ Compliance 데이터를 불러올 수 없습니다.</div>';
+      }
+      // Load report download cards & crosscheck
+      loadReportCards();
+      loadCrosscheck();
+    }
+
+    async function loadReportCards() {
+      const area = document.getElementById('report_download_area');
+      if (!area) return;
+      try {
+        const res = await fetch('/compliance/reports');
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+        const icons = {asset_inspection:'🖥️', account_privilege:'👤', log_collection_status:'📋', vulnerability_assessment:'🛡️', monthly_operations:'📊'};
+        area.innerHTML = (data.report_types || []).map(rt => `
+          <div style=\"background:#0b1220;border:1px solid #233046;border-radius:12px;padding:16px\">
+            <div style=\"font-size:20px;margin-bottom:8px\">${icons[rt.id] || '📄'}</div>
+            <div style=\"font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:4px\">${escapeHtml(rt.label)}</div>
+            <div style=\"display:flex;gap:8px;margin-top:12px\">
+              <a href=\"${rt.url_csv}\" download style=\"flex:1;text-align:center;padding:6px 12px;background:#164e63;color:#67e8f9;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none\">📥 CSV</a>
+              <a href=\"${rt.url_json}\" target=\"_blank\" style=\"flex:1;text-align:center;padding:6px 12px;background:#1e293b;color:#94a3b8;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none\">🔍 JSON</a>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) {
+        area.innerHTML = '<div class=\"empty\" style=\"color:#f87171\">리포트 목록을 불러올 수 없습니다.</div>';
+      }
+
+    async function loadCrosscheck() {
+      const area = document.getElementById('crosscheck_area');
+      if (!area) return;
+      try {
+        const res = await fetch('/compliance/crosscheck');
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+        const checks = data.checks || [];
+        area.innerHTML = checks.map(chk => {
+          let detail = '';
+          if (chk.id === 'zabbix_vs_fleet') {
+            const bar1W = Math.max(5, Math.round(chk.zabbix_count / Math.max(chk.zabbix_count + chk.fleet_count, 1) * 100));
+            detail = `
+              <div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0\">
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#38bdf8\">${chk.zabbix_count}</div><div style=\"font-size:11px;color:#94a3b8\">Zabbix</div></div>
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#22c55e\">${chk.both_count}</div><div style=\"font-size:11px;color:#94a3b8\">양쪽 모두</div></div>
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#f59e0b\">${chk.fleet_count}</div><div style=\"font-size:11px;color:#94a3b8\">Fleet</div></div>
+              </div>
+              ${chk.zabbix_only_count > 0 ? '<div style=\"font-size:12px;color:#fca5a5;margin:4px 0\">⚠️ Zabbix에만 있는 자산: ' + chk.zabbix_only_count + '대</div>' : ''}
+              ${chk.fleet_only_count > 0 ? '<div style=\"font-size:12px;color:#fbbf24;margin:4px 0\">⚠️ Fleet에만 있는 자산: ' + chk.fleet_only_count + '대</div>' : ''}
+            `;
+          } else if (chk.id === 'source_coverage') {
+            const covPct = chk.total_hosts > 0 ? (chk.covered_hosts / chk.total_hosts * 100).toFixed(1) : '0.0';
+            detail = `
+              <div style=\"margin:12px 0\">
+                <div style=\"display:flex;justify-content:space-between;font-size:12px;color:#94a3b8;margin-bottom:4px\">
+                  <span>커버리지</span><span>${covPct}% (${chk.covered_hosts}/${chk.total_hosts})</span>
+                </div>
+                <div style=\"background:#0f172a;border-radius:6px;height:20px;overflow:hidden\">
+                  <div style=\"background:#22c55e;width:${covPct}%;height:100%;border-radius:6px;transition:width .5s\"></div>
+                </div>
+              </div>
+              ${chk.uncovered_hosts > 0 ? '<div style=\"font-size:12px;color:#fca5a5\">⚠️ 미관측 자산: ' + chk.uncovered_hosts + '대</div>' : '<div style=\"font-size:12px;color:#22c55e\">✅ 모든 자산이 최소 1개 소스에서 관측됨</div>'}
+            `;
+          } else if (chk.id === 'vuln_vs_observation') {
+            detail = `
+              <div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0\">
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#ef4444\">${chk.vuln_hosts}</div><div style=\"font-size:11px;color:#94a3b8\">취약점 자산</div></div>
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#22c55e\">${chk.recent_obs_hosts}</div><div style=\"font-size:11px;color:#94a3b8\">최근 관측</div></div>
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#f59e0b\">${chk.vuln_no_observation_count}</div><div style=\"font-size:11px;color:#94a3b8\">관측 없음</div></div>
+              </div>
+              ${chk.vuln_no_observation_count > 0 ? '<div style=\"font-size:12px;color:#fca5a5\">⚠️ 취약점이 있으나 최근 30일간 관측 없는 자산: ' + chk.vuln_no_observation_count + '대</div>' : '<div style=\"font-size:12px;color:#22c55e\">✅ 모든 취약점 자산이 최근 관측됨</div>'}
+            `;
+          } else if (chk.id === 'ldap_summary') {
+            detail = `
+              <div style=\"display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0\">
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#a78bfa\">${chk.total_accounts}</div><div style=\"font-size:11px;color:#94a3b8\">전체 계정</div></div>
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#f59e0b\">${chk.privileged_accounts}</div><div style=\"font-size:11px;color:#94a3b8\">특권 계정</div></div>
+              </div>
+              <div style=\"font-size:12px;color:#94a3b8\">권한 바인딩: ${chk.total_privilege_bindings}건 · 그룹 멤버십: ${chk.total_group_memberships}건</div>
+            `;
+          }
+          return `<div style=\"background:#0b1220;border:1px solid #233046;border-radius:12px;padding:16px;margin-bottom:12px\">
+            <div style=\"font-size:15px;font-weight:700;color:#e2e8f0;margin-bottom:4px\">${escapeHtml(chk.title)}</div>
+            <div style=\"font-size:12px;color:#64748b\">${escapeHtml(chk.description)}</div>
+            ${detail}
+          </div>`;
+        }).join('');
+      } catch(e) {
+        area.innerHTML = '<div class=\"empty\" style=\"color:#f87171\">교차 검증 데이터를 불러올 수 없습니다.</div>';
       }
     }
 
