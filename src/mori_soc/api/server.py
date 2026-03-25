@@ -2804,7 +2804,7 @@ def render_user_dashboard_html(
       if (nlqGuideModalEl.open) nlqGuideModalEl.close();
     });
     // --- NLQ section ---
-    // NLQ 요소들은 </script> 이후 <dialog> 안에 있으므로 스크립트 실행 시점에는 존재하지 않음.
+    // NLQ 요소들은 script 태그 이후 dialog 안에 있으므로 스크립트 실행 시점에는 존재하지 않음.
     // 변수는 let으로 선언하고 DOMContentLoaded에서 할당·핸들러 등록 (아래 참조).
     let nlqTextarea = null;
     let nlqInterpretBtn = null;
@@ -3500,7 +3500,7 @@ def render_user_dashboard_html(
     }
 
     // ── NLQ 핸들러 ─────────────────────────────────────────────────────────
-    // nlq_textarea, nlq_interpret_btn 등 모든 NLQ 요소는 </script> 이후의 <dialog> 안에 있음.
+    // nlq_textarea, nlq_interpret_btn 등 모든 NLQ 요소는 script 태그 이후의 dialog 안에 있음.
     // DOMContentLoaded 이후(전체 HTML 파싱 완료)에 요소를 얻고 핸들러를 등록한다.
     document.addEventListener('DOMContentLoaded', () => {
       nlqTextarea      = document.getElementById('nlq_textarea');
