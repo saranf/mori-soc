@@ -1302,6 +1302,27 @@ def render_user_dashboard_html(
       </div>
       <div class=\"status-line\" id=\"assets_status\"></div>
     </div>
+
+    <!-- ── Tab: 가이드 & 기준 ────────────────────────────────────────── -->
+    <div class=\"tab-panel\" id=\"tab_guides\">
+      <div style=\"display:flex;gap:0;border-bottom:1px solid #233046;margin-bottom:20px;flex-wrap:wrap;\">
+        <button class=\"active\" id=\"guide_tab_zabbix_setup\" onclick=\"switchGuideTab('zabbix_setup')\"
+          style=\"background:none;border:none;border-bottom:2px solid #38bdf8;padding:8px 18px;color:#38bdf8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🖧 Zabbix 설정</button>
+        <button id=\"guide_tab_fleet_install\" onclick=\"switchGuideTab('fleet_install')\"
+          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🖥️ Fleet 설치</button>
+        <button id=\"guide_tab_isms_criteria\" onclick=\"switchGuideTab('isms_criteria')\"
+          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">📋 ISMS-P 기준</button>
+        <button id=\"guide_tab_iso27001_criteria\" onclick=\"switchGuideTab('iso27001_criteria')\"
+          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🌐 ISO 27001 기준</button>
+      </div>
+      <section class=\"card\" style=\"padding:0\">
+        <div style=\"display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0;\">
+          <h2 id=\"guide_content_title\" style=\"margin:0;font-size:16px\"></h2>
+          <span id=\"guide_updated_at\" style=\"font-size:12px;color:#64748b\"></span>
+        </div>
+        <div id=\"guide_content_body\" style=\"padding:16px 20px 20px;color:#cbd5e1;line-height:1.8;white-space:pre-wrap;font-size:14px;font-family:inherit\"></div>
+      </section>
+    </div>
   </div>
 
   <dialog id=\"overview_modal\">
@@ -1388,28 +1409,6 @@ def render_user_dashboard_html(
       </div>
     </div>
   </dialog>
-
-    <!-- ── Tab: 가이드 & 기준 ────────────────────────────────────────── -->
-    <div class=\"tab-panel\" id=\"tab_guides\">
-      <!-- Sub-nav -->
-      <div style=\"display:flex;gap:0;border-bottom:1px solid #233046;margin-bottom:20px;flex-wrap:wrap;\">
-        <button class=\"active\" id=\"guide_tab_zabbix_setup\" onclick=\"switchGuideTab('zabbix_setup')\"
-          style=\"background:none;border:none;border-bottom:2px solid #38bdf8;padding:8px 18px;color:#38bdf8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🖧 Zabbix 설정</button>
-        <button id=\"guide_tab_fleet_install\" onclick=\"switchGuideTab('fleet_install')\"
-          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🖥️ Fleet 설치</button>
-        <button id=\"guide_tab_isms_criteria\" onclick=\"switchGuideTab('isms_criteria')\"
-          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">📋 ISMS-P 기준</button>
-        <button id=\"guide_tab_iso27001_criteria\" onclick=\"switchGuideTab('iso27001_criteria')\"
-          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🌐 ISO 27001 기준</button>
-      </div>
-      <section class=\"card\" style=\"padding:0\">
-        <div style=\"display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0;\">
-          <h2 id=\"guide_content_title\" style=\"margin:0;font-size:16px\"></h2>
-          <span id=\"guide_updated_at\" style=\"font-size:12px;color:#64748b\"></span>
-        </div>
-        <div id=\"guide_content_body\" style=\"padding:16px 20px 20px;color:#cbd5e1;line-height:1.8;white-space:pre-wrap;font-size:14px;font-family:inherit\"></div>
-      </section>
-    </div>
 
   <!-- 조치 계획 모달 -->
   <div id=\"plan_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
@@ -2509,14 +2508,62 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     .atab-panel { display: none; margin-top: 16px; }
     .atab-panel.active { display: block; }
     #admin_tabs_nav { margin: 16px 0 0; }
+    /* Tab nav buttons must never stretch to 100% width */
+    .tabs-nav button { width: auto; display: inline-flex; align-items: center; white-space: nowrap; }
+    /* Bottom nav (mobile only) */
+    .admin-bottom-nav { display: none; }
     @media (max-width: 1240px) {
       .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .layout { grid-template-columns: 1fr; }
     }
-    @media (max-width: 720px) {
-      .hero { flex-direction: column; }
+    @media (max-width: 768px) {
+      html, body { overflow-x: hidden; }
+      .wrap { padding: 16px 12px 80px; max-width: 100%; box-sizing: border-box; }
+      .hero { flex-direction: column; gap: 10px; margin-bottom: 12px; }
+      .hero h1 { font-size: 22px; }
+      .hero p { font-size: 13px; }
+      .links, .top-actions { flex-wrap: wrap; gap: 8px; }
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .coverage, .quick-actions, .actions { grid-template-columns: 1fr; }
+      .card { padding: 14px 12px; border-radius: 12px; }
+      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      table { min-width: 480px; }
+      /* 상단 탭 숨기고 하단 탭 표시 */
+      .tabs-nav { display: none !important; }
+      .admin-bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        z-index: 1000;
+        background: #0f172a;
+        border-top: 1px solid #233046;
+        padding: 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,.4);
+      }
+      .admin-bottom-nav button {
+        flex: 1;
+        width: auto;
+        background: none;
+        border: none;
+        border-top: 2px solid transparent;
+        padding: 8px 4px 10px;
+        color: #64748b;
+        font-size: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        border-radius: 0;
+        transition: color 0.15s;
+      }
+      .admin-bottom-nav button .bn-icon { font-size: 20px; line-height: 1; }
+      .admin-bottom-nav button.active { color: #38bdf8; border-top-color: #38bdf8; }
+    }
+    @media (max-width: 480px) {
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .metric-value { font-size: 22px; }
     }
   </style>
 </head>
@@ -2695,6 +2742,22 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       </div>
     </div>
   </div>
+
+  <!-- ── 어드민 하단 탭 바 (모바일 전용) ────────────────────────────────── -->
+  <nav class=\"admin-bottom-nav\" id=\"admin_bottom_nav\">
+    <button class=\"active\" data-atab=\"monitoring\" onclick=\"switchAdminTab('monitoring')\">
+      <span class=\"bn-icon\">📊</span>모니터링
+    </button>
+    <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\">
+      <span class=\"bn-icon\">👤</span>자산
+    </button>
+    <button data-atab=\"query\" onclick=\"switchAdminTab('query')\">
+      <span class=\"bn-icon\">🔍</span>쿼리
+    </button>
+    <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\">
+      <span class=\"bn-icon\">⚙️</span>설정
+    </button>
+  </nav>
 
   <dialog id=\"query_guide_modal\">
     <div class=\"guide-dialog\">
@@ -3655,11 +3718,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     /* ── Admin Tab switching ──────────────────────────────── */
     function switchAdminTab(tab) {
       document.querySelectorAll('.atab-panel').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('#admin_tabs_nav button').forEach(btn => btn.classList.remove('active'));
+      // 상단 탭 + 하단 탭 모두 active 동기화
+      document.querySelectorAll('#admin_tabs_nav button, #admin_bottom_nav button').forEach(btn => btn.classList.remove('active'));
       const panel = document.getElementById('atab_' + tab);
       if (panel) panel.classList.add('active');
-      const btn = document.querySelector('#admin_tabs_nav button[data-atab="' + tab + '"]');
-      if (btn) btn.classList.add('active');
+      document.querySelectorAll('[data-atab="' + tab + '"]').forEach(btn => btn.classList.add('active'));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     async function initialize() {
