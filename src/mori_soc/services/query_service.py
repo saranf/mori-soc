@@ -44,6 +44,24 @@ class InMemoryQueryStore:
 
 
 class QueryService:
+    """Query execution engine with intent → handler registry dispatch."""
+
+    # ── Intent registry: maps intent name → handler method name ──────────
+    _INTENT_HANDLERS: dict[str, str] = {
+        "alert_summary": "_alert_summary",
+        "offline_hosts": "_offline_hosts",
+        "top_vulnerable_hosts": "_top_vulnerable_hosts",
+        "host_timeline": "_host_timeline",
+        "fleet_checkin_gap": "_fleet_checkin_gap",
+        "host_wazuh_alerts": "_host_wazuh_alerts",
+        "host_fleet_queries": "_host_fleet_queries",
+        "new_high_vulns": "_new_high_vulns",
+        "risky_hosts": "_risky_hosts",
+        "unmapped_assets": "_unmapped_assets",
+        "login_failure_spike": "_login_failure_spike",
+        "collection_errors": "_collection_errors",
+    }
+
     def __init__(self, store: InMemoryQueryStore) -> None:
         self.store = store
 
@@ -57,30 +75,10 @@ class QueryService:
                 meta={"intent": request.intent, "supported": False},
             )
 
-        if template.intent == "alert_summary":
-            return self._alert_summary(request, template.query_id)
-        if template.intent == "offline_hosts":
-            return self._offline_hosts(request, template.query_id)
-        if template.intent == "top_vulnerable_hosts":
-            return self._top_vulnerable_hosts(request, template.query_id)
-        if template.intent == "host_timeline":
-            return self._host_timeline(request, template.query_id)
-        if template.intent == "fleet_checkin_gap":
-            return self._fleet_checkin_gap(request, template.query_id)
-        if template.intent == "host_wazuh_alerts":
-            return self._host_wazuh_alerts(request, template.query_id)
-        if template.intent == "host_fleet_queries":
-            return self._host_fleet_queries(request, template.query_id)
-        if template.intent == "new_high_vulns":
-            return self._new_high_vulns(request, template.query_id)
-        if template.intent == "risky_hosts":
-            return self._risky_hosts(request, template.query_id)
-        if template.intent == "unmapped_assets":
-            return self._unmapped_assets(request, template.query_id)
-        if template.intent == "login_failure_spike":
-            return self._login_failure_spike(request, template.query_id)
-        if template.intent == "collection_errors":
-            return self._collection_errors(request, template.query_id)
+        handler_name = self._INTENT_HANDLERS.get(template.intent)
+        if handler_name is not None:
+            handler = getattr(self, handler_name)
+            return handler(request, template.query_id)
 
         return QueryResponse(
             summary=f"Intent recognized but not implemented: {template.intent}",

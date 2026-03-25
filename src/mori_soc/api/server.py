@@ -602,27 +602,27 @@ def render_signup_request_html(success: bool = False) -> str:
     <div class="status-line" id="status"></div>
     <div class="login-footer"><a href="/login">← 로그인으로 돌아가기</a></div>
     <script>
-      document.getElementById('submit_btn').addEventListener('click', async () => {{
+      document.getElementById('submit_btn').addEventListener('click', async () => {
         const name = document.getElementById('req_name').value.trim();
         const email = document.getElementById('req_email').value.trim();
         const department = document.getElementById('req_dept').value.trim();
         const reason = document.getElementById('req_reason').value.trim();
         const statusEl = document.getElementById('status');
-        if (!name || !email) {{ statusEl.textContent = '이름과 이메일은 필수입니다.'; return; }}
+        if (!name || !email) { statusEl.textContent = '이름과 이메일은 필수입니다.'; return; }
         statusEl.textContent = '제출 중…';
-        try {{
-          const res = await fetch('/auth/signup-request', {{
-            method: 'POST', headers: {{'Content-Type': 'application/json'}},
-            body: JSON.stringify({{name, email, department, reason}})
-          }});
-          if (res.ok) {{
+        try {
+          const res = await fetch('/auth/signup-request', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, email, department, reason})
+          });
+          if (res.ok) {
             document.querySelector('.login-card').innerHTML = '<div style="text-align:center;padding:40px 0"><div style="font-size:48px">✅</div><h2 style="color:#22c55e;margin:16px 0 8px">가입 요청 완료</h2><p style="color:#94a3b8">운영자 승인 후 계정이 생성됩니다.<br>이메일로 안내드리겠습니다.</p><div style="margin-top:24px"><a href="/login" style="color:#7dd3fc">← 로그인으로 돌아가기</a></div></div>';
-          }} else {{
-            const d = await res.json().catch(() => ({{}}));
+          } else {
+            const d = await res.json().catch(() => ({}));
             statusEl.textContent = d.detail || '오류가 발생했습니다.';
-          }}
-        }} catch(e) {{ statusEl.textContent = '네트워크 오류: ' + e.message; }}
-      }});
+          }
+        } catch(e) { statusEl.textContent = '네트워크 오류: ' + e.message; }
+      });
     </script>""" if not success else '<div style="text-align:center;padding:40px 0"><div style="font-size:48px">✅</div><h2 style="color:#22c55e">가입 요청 완료</h2><p style="color:#94a3b8;margin-top:8px">운영자 승인 후 계정이 생성됩니다.</p><div style="margin-top:24px"><a href="/login" style="color:#7dd3fc">← 로그인으로 돌아가기</a></div></div>'
     return f"""<!DOCTYPE html>
 <html lang="ko">
