@@ -1073,8 +1073,8 @@ def render_user_dashboard_html(
     button { cursor: pointer; padding: 8px 16px; border-radius: 999px; border: 1px solid #334155; background: #1d4ed8; color: #fff; font-size: 14px; font-weight: 600; }
     button.secondary { background: #0f172a; color: #cfe3ff; }
     button.ghost { background: transparent; color: #94a3b8; }
-    .tabs-nav { display: flex; gap: 0; border-bottom: 1px solid #233046; margin-bottom: 20px; }
-    .tabs-nav button { background: none; border: none; border-bottom: 2px solid transparent; padding: 10px 22px; color: #94a3b8; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: -1px; border-radius: 0; }
+    .tabs-nav { display: flex; gap: 0; border-bottom: 1px solid #233046; margin-bottom: 20px; overflow-x: auto; }
+    .tabs-nav button { background: none; border: none; border-bottom: 2px solid transparent; padding: 10px 22px; color: #94a3b8; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: -1px; border-radius: 0; white-space: nowrap; }
     .tabs-nav button.active { color: #38bdf8; border-bottom-color: #38bdf8; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
@@ -1084,13 +1084,61 @@ def render_user_dashboard_html(
     .result-badge.fleet { background: rgba(52,211,153,.15); color: #6ee7b7; }
     .result-badge.trivy { background: rgba(251,146,60,.15); color: #fdba74; }
     .result-badge.hosts { background: rgba(148,163,184,.15); color: #cbd5e1; }
+    /* ── Bottom Nav (mobile only) ── */
+    .bottom-nav { display: none; }
     @media (max-width: 960px) {
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .coverage { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
-    @media (max-width: 720px) {
-      .hero { flex-direction: column; }
-      .metrics, .coverage { grid-template-columns: 1fr; }
+    @media (max-width: 768px) {
+      html, body { overflow-x: hidden; }
+      .wrap { padding: 16px 12px 80px; max-width: 100%; }
+      .hero { flex-direction: column; gap: 10px; margin-bottom: 12px; }
+      .hero h1 { font-size: 22px; }
+      .hero p { font-size: 13px; }
+      .links, .top-actions { flex-wrap: wrap; gap: 8px; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .coverage { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .card { padding: 14px 12px; border-radius: 12px; }
+      .card h2 { font-size: 15px; }
+      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      table { min-width: 480px; }
+      /* 상단 탭 숨기고 하단 탭 표시 */
+      .tabs-nav { display: none; }
+      .bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        z-index: 1000;
+        background: #0f172a;
+        border-top: 1px solid #233046;
+        padding: 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,.4);
+      }
+      .bottom-nav button {
+        flex: 1;
+        background: none;
+        border: none;
+        border-top: 2px solid transparent;
+        padding: 8px 4px 10px;
+        color: #64748b;
+        font-size: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        border-radius: 0;
+        transition: color 0.15s;
+      }
+      .bottom-nav button .bn-icon { font-size: 20px; line-height: 1; }
+      .bottom-nav button.active { color: #38bdf8; border-top-color: #38bdf8; }
+    }
+    @media (max-width: 480px) {
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .coverage { grid-template-columns: 1fr 1fr; }
+      .metric-value { font-size: 22px; }
     }
   </style>
 </head>
@@ -1390,6 +1438,25 @@ def render_user_dashboard_html(
     </div>
   </div>
 
+  <!-- ── 하단 탭 바 (모바일 전용) ────────────────────────────────────────── -->
+  <nav class=\"bottom-nav\" id=\"bottom_nav\">
+    <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\">
+      <span class=\"bn-icon\">📊</span>대시보드
+    </button>
+    <button data-tab=\"triage\" onclick=\"switchTab('triage')\">
+      <span class=\"bn-icon\">🚨</span>Triage
+    </button>
+    <button data-tab=\"assets\" onclick=\"switchTab('assets')\">
+      <span class=\"bn-icon\">📡</span>자산
+    </button>
+    <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\">
+      <span class=\"bn-icon\">📋</span>인시던트
+    </button>
+    <button data-tab=\"guides\" onclick=\"switchTab('guides')\">
+      <span class=\"bn-icon\">📖</span>가이드
+    </button>
+  </nav>
+
   <script>
     const defaultPreferences = __USER_DASHBOARD_PREFS_JSON__;
     const cardLabels = __CARD_LABELS_JSON__;
@@ -1445,11 +1512,13 @@ def render_user_dashboard_html(
     // ── Tab Navigation ─────────────────────────────────────────────────────
     function switchTab(tabName) {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.tabs-nav button').forEach(b => b.classList.remove('active'));
+      // 상단 탭 + 하단 탭 모두 active 동기화
+      document.querySelectorAll('.tabs-nav button, .bottom-nav button').forEach(b => b.classList.remove('active'));
       const panel = document.getElementById(`tab_${tabName}`);
       if (panel) panel.classList.add('active');
-      const btn = document.querySelector(`.tabs-nav button[data-tab="${tabName}"]`);
-      if (btn) btn.classList.add('active');
+      document.querySelectorAll(`[data-tab="${tabName}"]`).forEach(b => b.classList.add('active'));
+      // 페이지 상단으로 스크롤 (모바일에서 탭 전환 시 편의)
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       if (tabName === 'triage') loadTriage();
       if (tabName === 'incidents') loadIncidents();
       if (tabName === 'assets') loadAssets();
