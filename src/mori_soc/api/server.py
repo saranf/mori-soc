@@ -27,6 +27,16 @@ except ImportError:  # pragma: no cover - exercised by runtime guard tests
     RedirectResponse = None
     StreamingResponse = None
 
+try:
+    from ldap3 import Server as _LdapServer, Connection as _LdapConnection, ALL as _LDAP_ALL, SUBTREE as _LDAP_SUBTREE
+    _ldap3_available = True
+except ImportError:  # pragma: no cover
+    _LdapServer = None
+    _LdapConnection = None
+    _LDAP_ALL = None
+    _LDAP_SUBTREE = None
+    _ldap3_available = False
+
 
 DEFAULT_UI_PAYLOAD = {
     "intent": "offline_hosts",
@@ -452,6 +462,29 @@ def _merge_dashboard_preferences(current: Mapping[str, Any], payload: Mapping[st
     }
 
 
+def _ldap_verify(username: str, password: str, ldap_url: str, bind_dn: str, bind_pw: str, base_dn: str, user_attr: str) -> bool:
+    """Synchronous LDAP credential verification. Returns True if authenticated."""
+    if not _ldap3_available or _LdapServer is None:
+        return False
+    try:
+        server = _LdapServer(ldap_url, get_info=_LDAP_ALL, connect_timeout=5)
+        user_dn: str
+        if bind_dn and base_dn:
+            # Search-then-bind: use service account to find the user DN
+            admin_conn = _LdapConnection(server, bind_dn, bind_pw, auto_bind=True)
+            admin_conn.search(base_dn, f"({user_attr}={username})", search_scope=_LDAP_SUBTREE, attributes=["dn"])
+            if not admin_conn.entries:
+                return False
+            user_dn = str(admin_conn.entries[0].entry_dn)
+        else:
+            # Simple bind: construct DN directly
+            user_dn = f"{user_attr}={username},{base_dn}" if base_dn else f"{user_attr}={username}"
+        conn = _LdapConnection(server, user_dn, password, auto_bind=True)
+        return conn.bound
+    except Exception:
+        return False
+
+
 def create_app(service: QueryService | None = None, service_factory=None) -> Any:
     if FastAPI is None or HTTPException is None:
         raise RuntimeError(
@@ -460,6 +493,51 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
 
     app = FastAPI(title="MORI SOC Query API", version="0.1.0")
     dashboard_preferences = _default_dashboard_preferences()
+
+    # ── Optional LDAP auth middleware ────────────────────────────────────────
+    _ldap_url = os.environ.get("LDAP_URL", "").strip()
+    _ldap_bind_dn = os.environ.get("LDAP_BIND_DN", "").strip()
+    _ldap_bind_pw = os.environ.get("LDAP_BIND_PASSWORD", "").strip()
+    _ldap_base_dn = os.environ.get("LDAP_BASE_DN", "").strip()
+    _ldap_user_attr = os.environ.get("LDAP_USER_ATTR", "uid").strip()
+    _ldap_enabled = bool(_ldap_url and _ldap3_available)
+
+    if _ldap_enabled:
+        import base64
+        from starlette.middleware.base import BaseHTTPMiddleware
+        from starlette.requests import Request as _StarletteRequest
+        from starlette.responses import Response as _StarletteResponse
+
+        _PUBLIC_PATHS = {"/docs", "/openapi.json", "/redoc", "/health"}
+
+        class _LDAPAuthMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request: _StarletteRequest, call_next):  # type: ignore[override]
+                path = request.url.path
+                if path in _PUBLIC_PATHS or path.startswith("/redoc"):
+                    return await call_next(request)
+                auth_header = request.headers.get("Authorization", "")
+                if not auth_header.startswith("Basic "):
+                    return _StarletteResponse(
+                        status_code=401,
+                        headers={"WWW-Authenticate": 'Basic realm="MORI SOC"'},
+                        content="Unauthorized",
+                    )
+                try:
+                    creds = base64.b64decode(auth_header[6:]).decode("utf-8")
+                    username, password = creds.split(":", 1)
+                except Exception:
+                    return _StarletteResponse(status_code=401, headers={"WWW-Authenticate": 'Basic realm="MORI SOC"'}, content="Unauthorized")
+                try:
+                    import asyncio
+                    loop = asyncio.get_event_loop()
+                    ok = await loop.run_in_executor(None, _ldap_verify, username, password, _ldap_url, _ldap_bind_dn, _ldap_bind_pw, _ldap_base_dn, _ldap_user_attr)
+                    if not ok:
+                        return _StarletteResponse(status_code=401, headers={"WWW-Authenticate": 'Basic realm="MORI SOC"'}, content="Unauthorized")
+                except Exception:
+                    return _StarletteResponse(status_code=401, headers={"WWW-Authenticate": 'Basic realm="MORI SOC"'}, content="Unauthorized")
+                return await call_next(request)
+
+        app.add_middleware(_LDAPAuthMiddleware)
 
     # Triage: alert_id -> {status, analyst, note, updated_at}
     triage_store: dict[str, dict[str, Any]] = {}
@@ -690,6 +768,188 @@ sudo systemctl start orbit
 **증적**: 자산 현황 → 개발/테스트 서버 분류 확인""",
             "updated_at": None,
         },
+        "ldap_setup": {
+            "id": "ldap_setup",
+            "title": "LDAP 통합 인증 설정 가이드",
+            "content": """## LDAP 통합 인증 설정 가이드
+
+Grafana, Zabbix, Fleet, MORI SOC를 하나의 LDAP 서버로 통합 관리하면 계정 하나로 모든 도구에 로그인할 수 있습니다.
+
+---
+
+### Step 1. OpenLDAP 서버 설치 (Docker Compose)
+
+```yaml
+# docker-compose.ldap.yml
+services:
+  openldap:
+    image: osixia/openldap:1.5.0
+    environment:
+      LDAP_ORGANISATION: "My Company"
+      LDAP_DOMAIN: "company.local"
+      LDAP_ADMIN_PASSWORD: "AdminSecret123"
+    ports:
+      - "389:389"
+      - "636:636"
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+
+  phpldapadmin:
+    image: osixia/phpldapadmin:0.9.0
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: openldap
+    ports:
+      - "8080:80"
+
+volumes:
+  ldap_data:
+  ldap_config:
+```
+
+```bash
+docker compose -f docker-compose.ldap.yml up -d
+# 관리 UI: http://localhost:8080  (Login DN: cn=admin,dc=company,dc=local)
+```
+
+---
+
+### Step 2. Zabbix LDAP 설정
+
+1. **Zabbix 웹 → Administration → Authentication → LDAP**
+2. 아래 값 입력:
+
+| 항목 | 값 |
+|---|---|
+| LDAP host | `ldap://openldap` (또는 서버 IP) |
+| Port | 389 |
+| Base DN | `dc=company,dc=local` |
+| Search attribute | `uid` |
+| Bind DN | `cn=admin,dc=company,dc=local` |
+| Bind password | AdminSecret123 |
+
+3. **Enable LDAP authentication** 체크 후 저장
+4. 사용자 계정: Zabbix → Users → 해당 사용자 → **LDAP** 타입 선택
+
+> **ISMS/ISO 27001**: 중앙집중식 접근통제 → A.5.15 / ISMS-P 2.5
+
+---
+
+### Step 3. Grafana LDAP 설정
+
+`/etc/grafana/grafana.ini` 또는 환경변수 추가:
+
+```ini
+[auth.ldap]
+enabled = true
+config_file = /etc/grafana/ldap.toml
+allow_sign_up = true
+```
+
+`/etc/grafana/ldap.toml`:
+
+```toml
+[[servers]]
+host = "openldap"
+port = 389
+use_ssl = false
+bind_dn = "cn=admin,dc=company,dc=local"
+bind_password = "AdminSecret123"
+search_filter = "(uid=%s)"
+search_base_dns = ["dc=company,dc=local"]
+
+[servers.attributes]
+name = "cn"
+username = "uid"
+member_of = "memberOf"
+email = "mail"
+
+[[servers.group_mappings]]
+group_dn = "cn=grafana-admins,ou=groups,dc=company,dc=local"
+org_role = "Admin"
+
+[[servers.group_mappings]]
+group_dn = "*"
+org_role = "Viewer"
+```
+
+```bash
+# Docker 환경이면 환경변수로도 가능
+GF_AUTH_LDAP_ENABLED=true
+GF_AUTH_LDAP_CONFIG_FILE=/etc/grafana/ldap.toml
+```
+
+---
+
+### Step 4. Fleet SSO (SAML/LDAP 대안)
+
+Fleet는 직접 LDAP을 지원하지 않고 **SAML SSO**를 통해 IdP와 연동합니다. OpenLDAP + Keycloak 조합 권장:
+
+1. **Keycloak** 설치 후 OpenLDAP을 User Federation으로 연결
+2. Fleet → Settings → Single Sign-On → SAML 설정:
+   - Identity Provider URL: Keycloak SAML endpoint
+   - Issuer URI: Fleet 서버 URL
+
+> 간단한 구성을 원하면 Keycloak 없이 Google Workspace / Azure AD를 SAML IdP로 사용하는 방법도 있습니다.
+
+---
+
+### Step 5. MORI SOC LDAP 인증 설정
+
+MORI SOC는 환경변수로 LDAP 인증을 활성화합니다. `ldap3` 라이브러리가 필요합니다.
+
+```bash
+# MORI SOC 환경변수 (.env 또는 docker-compose)
+LDAP_URL=ldap://openldap:389
+LDAP_BASE_DN=dc=company,dc=local
+LDAP_BIND_DN=cn=admin,dc=company,dc=local
+LDAP_BIND_PASSWORD=AdminSecret123
+LDAP_USER_ATTR=uid
+```
+
+**Docker Compose 예시 (`docker-compose.yml`):**
+
+```yaml
+services:
+  mori-soc:
+    image: mori-soc:latest
+    environment:
+      LDAP_URL: "ldap://openldap:389"
+      LDAP_BASE_DN: "dc=company,dc=local"
+      LDAP_BIND_DN: "cn=admin,dc=company,dc=local"
+      LDAP_BIND_PASSWORD: "AdminSecret123"
+      LDAP_USER_ATTR: "uid"
+    depends_on:
+      - openldap
+```
+
+LDAP이 설정되면 모든 API/UI 접근에 HTTP Basic Auth가 요구됩니다.
+`/docs`, `/health`, `/openapi.json`은 인증 없이 접근 가능합니다.
+
+---
+
+### LDAP 사용자 추가 (phpLDAPadmin 또는 CLI)
+
+```bash
+# ldif 파일로 사용자 추가
+cat > user.ldif << 'EOF'
+dn: uid=alice,ou=people,dc=company,dc=local
+objectClass: inetOrgPerson
+uid: alice
+cn: Alice Kim
+sn: Kim
+mail: alice@company.local
+userPassword: {SSHA}hashedpassword
+EOF
+
+ldapadd -x -D "cn=admin,dc=company,dc=local" -w AdminSecret123 -f user.ldif
+```
+
+---
+
+> **보안 권고**: 프로덕션 환경에서는 반드시 LDAPS(636포트, TLS) 또는 StartTLS를 사용하세요.""",
+            "updated_at": None,
+        },
     }
 
     def get_query_service() -> QueryService:
@@ -889,6 +1149,7 @@ sudo systemctl start orbit
             "incident_id": str(uuid.uuid4()),
             "title": title,
             "status": "open",
+            "status_updated_at": now_str,
             "alert_ids": list(payload.get("alert_ids") or []),
             "notes": [],
             "history": [{"event": "created", "to_status": "open", "analyst": analyst, "changed_at": now_str}],
@@ -919,6 +1180,7 @@ sudo systemctl start orbit
                     "analyst": analyst,
                     "changed_at": now_str,
                 })
+                incident["status_updated_at"] = now_str
             incident["status"] = new_status
         if "title" in payload:
             incident["title"] = str(payload["title"]).strip()
@@ -1277,6 +1539,7 @@ def render_user_dashboard_html(
         <p>사용자에게 필요한 보안 현황과 조치 우선순위를 빠르게 보여주는 대시보드입니다. 상세한 수집 데이터는 운영자 화면에서 더 깊게 확인하고, 어떤 정보를 사용자 화면에 노출할지 운영자가 제어할 수 있습니다.</p>
         <div class=\"links\">
           <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\">운영 문서 / 포털</a>
+          <a href=\"/docs\" target=\"_blank\" rel=\"noreferrer\">📋 API 문서 (Swagger)</a>
         </div>
       </div>
       <div class=\"top-actions\">
@@ -1440,6 +1703,8 @@ def render_user_dashboard_html(
           style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">📋 ISMS-P 기준</button>
         <button id=\"guide_tab_iso27001_criteria\" onclick=\"switchGuideTab('iso27001_criteria')\"
           style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🌐 ISO 27001 기준</button>
+        <button id=\"guide_tab_ldap_setup\" onclick=\"switchGuideTab('ldap_setup')\"
+          style=\"background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;border-radius:0;margin-bottom:-1px;\">🔐 LDAP 통합 설정</button>
       </div>
       <section class=\"card\" style=\"padding:0\">
         <div style=\"display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0;\">
@@ -2181,7 +2446,10 @@ def render_user_dashboard_html(
         const inc = (data.incidents || []).find(i => i.incident_id === incidentId);
         if (!inc) return;
         document.getElementById('incident_modal_title').textContent = inc.title;
-        document.getElementById('incident_modal_info').innerHTML = `ID: ${escapeHtml(inc.incident_id)}<br>생성: ${escapeHtml(formatTime(inc.created_at))} &nbsp;|&nbsp; 마지막 수정: ${escapeHtml(formatTime(inc.updated_at))}`;
+        const statusUpdatedLine = inc.status_updated_at
+          ? `<br>🕐 <strong style="color:#fbbf24">상태 변경 시각:</strong> ${escapeHtml(formatTime(inc.status_updated_at))}`
+          : '';
+        document.getElementById('incident_modal_info').innerHTML = `<span style="color:#64748b">ID: ${escapeHtml(inc.incident_id)}</span><br>생성: ${escapeHtml(formatTime(inc.created_at))} &nbsp;|&nbsp; 수정: ${escapeHtml(formatTime(inc.updated_at))}${statusUpdatedLine}`;
         document.getElementById('incident_modal_status').value = inc.status;
         // 상태 변경 히스토리
         const history = inc.history || [];
@@ -2496,6 +2764,7 @@ def render_user_dashboard_html(
       fleet_install: document.getElementById('guide_tab_fleet_install'),
       isms_criteria: document.getElementById('guide_tab_isms_criteria'),
       iso27001_criteria: document.getElementById('guide_tab_iso27001_criteria'),
+      ldap_setup: document.getElementById('guide_tab_ldap_setup'),
     };
 
     function switchGuideTab(guideId) {
@@ -2895,6 +3164,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <option value=\"fleet_install\">🖥️ Fleet 에이전트 설치</option>
               <option value=\"isms_criteria\">📋 ISMS-P 심사 기준</option>
               <option value=\"iso27001_criteria\">🌐 ISO 27001 심사 기준</option>
+              <option value=\"ldap_setup\">🔐 LDAP 통합 설정</option>
             </select>
           </div>
           <div class=\"row\"><label for=\"guide_edit_title\">제목</label><input id=\"guide_edit_title\" placeholder=\"가이드 제목\" /></div>

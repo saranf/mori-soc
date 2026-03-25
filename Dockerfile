@@ -13,7 +13,8 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
     && python -m pip install --no-cache-dir \
         fastapi==0.115.12 \
         uvicorn==0.34.0 \
-        psycopg[binary]==3.2.6
+        psycopg[binary]==3.2.6 \
+        ldap3==2.9.1
 
 EXPOSE 8000
 
