@@ -865,6 +865,8 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
         _admin_user: {"password": _admin_password, "role": "admin"},
         "security": {"password": "1234", "role": "security"},
         "monitor": {"password": "1234", "role": "monitor"},
+        "auditor": {"password": "1234", "role": "auditor"},
+        "helpdesk": {"password": "1234", "role": "helpdesk"},
     }
 
     # Sessions: token -> {username, role, created_at}
@@ -890,7 +892,9 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     _DEFAULT_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "admin": ["dashboard", "triage", "incidents", "assets", "compliance", "guides"],
         "security": ["dashboard", "triage", "incidents", "assets", "compliance", "guides"],
-        "monitor": ["dashboard", "assets", "compliance", "guides"],
+        "monitor": ["dashboard", "triage", "assets", "compliance", "guides"],
+        "auditor": ["dashboard", "compliance", "guides"],
+        "helpdesk": ["dashboard", "assets", "guides"],
         "user": ["dashboard", "assets", "guides"],
     }
     role_permissions: dict[str, list[str]] = {k: list(v) for k, v in _DEFAULT_ROLE_PERMISSIONS.items()}
@@ -3317,9 +3321,16 @@ def render_user_dashboard_html(
         return;
       }
       recentActivityEl.innerHTML = items.map((item) => {
-        const grafanaLink = item.grafana_url
-          ? `<a href=\"${escapeHtml(item.grafana_url)}\" target=\"_blank\" rel=\"noreferrer\" style=\"color:#38bdf8;font-size:12px;margin-left:8px;\">Grafana에서 보기 ↗</a>`
-          : '';
+        let grafanaLink = '';
+        if (item.grafana_url) {
+          if (_canViewGrafanaFull()) {
+            grafanaLink = `<a href=\"${escapeHtml(item.grafana_url)}\" target=\"_blank\" rel=\"noreferrer\" style=\"color:#38bdf8;font-size:12px;margin-left:8px;\">Grafana 상세 로그 ↗</a>`;
+          } else if (_canViewGrafanaLimited()) {
+            grafanaLink = `<a href=\"${escapeHtml(item.grafana_url)}\" target=\"_blank\" rel=\"noreferrer\" style=\"color:#94a3b8;font-size:12px;margin-left:8px;\">Grafana 제한 보기 ↗</a>`;
+          } else {
+            grafanaLink = `<span style=\"color:#475569;font-size:11px;margin-left:8px\" title=\"상세 로그 접근 권한 없음\">📊 요약</span>`;
+          }
+        }
         return `
         <div class=\"list-item\">
           <div class=\"top\"><strong>${escapeHtml(item.summary)}</strong><span class=\"meta\">${escapeHtml(formatTime(item.observed_at))}</span></div>
@@ -4517,12 +4528,20 @@ def render_user_dashboard_html(
     }
 
     // ── Role-based tab visibility ─────────────────────────────────────────────
-    const ROLE_LABELS = { admin: '어드민', security: '보안담당자', monitor: '서버모니터', user: '사용자' };
+    const ROLE_LABELS = { admin: '어드민', security: '보안담당자', monitor: '서버모니터', auditor: '감사자', helpdesk: '헬프데스크', user: '사용자' };
+    let _currentUserRole = 'user';
+    // Grafana 접근 등급: admin/monitor → full, security → limited, auditor/helpdesk/user → summary only
+    const _GRAFANA_FULL_ROLES = ['admin', 'monitor'];
+    const _GRAFANA_LIMITED_ROLES = ['security'];
+    function _canViewGrafanaFull() { return _GRAFANA_FULL_ROLES.includes(_currentUserRole); }
+    function _canViewGrafanaLimited() { return _GRAFANA_LIMITED_ROLES.includes(_currentUserRole); }
+    function _canViewGrafana() { return _canViewGrafanaFull() || _canViewGrafanaLimited(); }
     async function applyRoleBasedTabs() {
       try {
         const res = await fetch('/auth/me');
         if (!res.ok) return;
         const me = await res.json();
+        _currentUserRole = me.role || 'user';
         const allowed = me.allowed_tabs || [];
         ['dashboard', 'triage', 'incidents', 'assets', 'compliance', 'guides'].forEach(tab => {
           const navBtn = document.querySelector(`.tabs-nav [data-tab="${tab}"]`);
@@ -6309,6 +6328,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const ROLE_PERM_ROLES = [
       { key: 'security', label: '보안담당자 (security)' },
       { key: 'monitor', label: '서버모니터 (monitor)' },
+      { key: 'auditor', label: '감사자 (auditor)' },
+      { key: 'helpdesk', label: '헬프데스크 (helpdesk)' },
       { key: 'user', label: '일반사용자 (user)' },
     ];
 
@@ -6425,7 +6446,40 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       });
     }
 
+    /* ── 관리자 콘솔 역할별 탭 제한 ────────────────────────────────────────── */
+    // admin: 전체, monitor: 모니터링/자산, security: 모니터링/자산/권한관리,
+    // auditor: 모니터링/변경이력(읽기전용), helpdesk: 모니터링/자산
+    const _ADMIN_TAB_BY_ROLE = {
+      admin:    ['monitoring','assets','query','settings','users','auditlog','roleperm','userlog'],
+      monitor:  ['monitoring','assets'],
+      security: ['monitoring','assets','roleperm'],
+      auditor:  ['monitoring','auditlog'],
+      helpdesk: ['monitoring','assets'],
+      user:     ['monitoring'],
+    };
+    async function applyAdminRoleTabs() {
+      try {
+        const res = await fetch('/auth/me');
+        if (!res.ok) return;
+        const me = await res.json();
+        const role = me.role || 'user';
+        const allowed = _ADMIN_TAB_BY_ROLE[role] || _ADMIN_TAB_BY_ROLE['user'];
+        const allTabs = ['monitoring','assets','query','settings','users','auditlog','roleperm','userlog'];
+        allTabs.forEach(tab => {
+          const visible = allowed.includes(tab);
+          document.querySelectorAll('[data-atab="'+tab+'"]').forEach(btn => btn.style.display = visible ? '' : 'none');
+        });
+        // 현재 활성 탭이 허용되지 않으면 첫 번째 허용 탭으로 전환
+        const activePanel = document.querySelector('.atab-panel.active');
+        const activeId = activePanel ? activePanel.id.replace('atab_','') : 'monitoring';
+        if (!allowed.includes(activeId) && allowed.length > 0) {
+          switchAdminTab(allowed[0]);
+        }
+      } catch(e) { /* ignore */ }
+    }
+
     async function initialize() {
+      await applyAdminRoleTabs();
       await loadDashboardPreferences();
       await loadCatalog();
       await loadDashboard();
