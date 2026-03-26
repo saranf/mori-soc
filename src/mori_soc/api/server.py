@@ -1864,7 +1864,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
 
     # ── Incidents ────────────────────────────────────────────────────────────────
     @app.get("/incidents", tags=["Incidents"])
-    def incidents_list(date_from: str = "", date_to: str = "", format: str = "json") -> Any:
+    def incidents_list(date_from: str = "", date_to: str = "", search: str = "", format: str = "json") -> Any:
         import io, csv as csv_mod
         all_items = list(incidents.values())
         # Date filtering on created_at
@@ -1886,6 +1886,15 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
                 all_items = [i for i in all_items if i.get("created_at", "") <= _isoformat(to_dt)]
             except ValueError:
                 raise HTTPException(status_code=400, detail="date_to must be ISO format (YYYY-MM-DD)")
+        # Text search: title, analyst, status
+        if search:
+            kw = search.lower()
+            all_items = [
+                i for i in all_items
+                if kw in i.get("title", "").lower()
+                or kw in i.get("analyst", "").lower()
+                or kw in i.get("status", "").lower()
+            ]
         if format == "csv":
             buf = io.StringIO()
             fieldnames = ["incident_id", "title", "status", "created_at", "updated_at", "status_updated_at", "alert_count", "note_count"]
@@ -2422,7 +2431,6 @@ def render_user_dashboard_html(
         <p>ISMS-P / ISO 27001 통제 항목 기준으로 자산·경보·취약점 현황을 한눈에 확인하고, 증적 데이터를 내보낼 수 있는 대시보드입니다.</p>
         <div class=\"links\">
           <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\">운영 문서 / 포털</a>
-          <a href=\"/docs\" target=\"_blank\" rel=\"noreferrer\">📋 API 문서 (Swagger)</a>
         </div>
       </div>
       <div class=\"top-actions\">
@@ -2490,8 +2498,9 @@ def render_user_dashboard_html(
       <section class=\"card\">
         <h2>📋 인시던트 관리</h2>
         <div class=\"subtext\">여러 경보를 하나의 인시던트로 묶고 조사 노트를 남깁니다.</div>
-        <!-- 날짜 필터 + CSV 다운로드 -->
+        <!-- 검색 + 날짜 필터 + CSV 다운로드 -->
         <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:#0f172a;border-radius:8px;border:1px solid #1e293b\">
+          <input type=\"text\" id=\"inc_search\" placeholder=\"제목 · 담당자 · 상태 검색\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 10px;font-size:13px;min-width:180px;flex:1\" />
           <div style=\"display:flex;align-items:center;gap:6px\">
             <label style=\"color:#94a3b8;font-size:13px;white-space:nowrap\">시작일</label>
             <input type=\"date\" id=\"inc_date_from\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:13px\" />
@@ -3431,8 +3440,10 @@ def render_user_dashboard_html(
     // ── Incidents ────────────────────────────────────────────────────────────
     function buildIncidentParams() {
       const params = new URLSearchParams();
+      const search = document.getElementById('inc_search')?.value?.trim();
       const from = document.getElementById('inc_date_from')?.value;
       const to = document.getElementById('inc_date_to')?.value;
+      if (search) params.set('search', search);
       if (from) params.set('date_from', from);
       if (to) params.set('date_to', to);
       return params;
@@ -3554,10 +3565,10 @@ def render_user_dashboard_html(
 
     document.getElementById('reload_incidents')?.addEventListener('click', loadIncidents);
 
-    // 날짜 필터 조회 버튼
-    if (document.getElementById('inc_filter_btn')) {
-      document.getElementById('inc_filter_btn')?.addEventListener('click', loadIncidents);
-    }
+    // 검색 + 날짜 필터 조회 버튼
+    document.getElementById('inc_filter_btn')?.addEventListener('click', loadIncidents);
+    // 검색창 Enter 키
+    document.getElementById('inc_search')?.addEventListener('keydown', e => { if (e.key === 'Enter') loadIncidents(); });
 
     // CSV 다운로드
     if (document.getElementById('inc_csv_btn')) {
@@ -4473,6 +4484,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         <p>통제 항목 점검 결과를 관리하고, 수집 데이터를 교차 검증하며, 사용자 대시보드 노출 범위를 제어하는 관리자 운영 콘솔입니다.</p>
         <div class=\"links\">
           <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\">운영 문서 / 포털</a>
+          <a href=\"/docs\" target=\"_blank\" rel=\"noreferrer\">📋 API 문서 (Swagger)</a>
           <a href=\"/health\" target=\"_blank\" rel=\"noreferrer\">Health JSON</a>
           <a href=\"/dashboard/summary\" target=\"_blank\" rel=\"noreferrer\">Dashboard JSON</a>
           <a href=\"/catalog\" target=\"_blank\" rel=\"noreferrer\">Query Catalog JSON</a>
