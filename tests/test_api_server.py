@@ -70,7 +70,7 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertIn("/interpret", html)
         self.assertIn("/dashboard/summary", html)
         self.assertIn("/dashboard/preferences", html)
-        self.assertIn("Open User Dashboard", html)
+        self.assertIn("사용자 대시보드", html)
         self.assertIn("사용자 대시보드 설정", html)
         self.assertIn("Natural Language Query", html)
         self.assertIn("Structured Query Builder", html)
@@ -97,7 +97,7 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertNotIn("Natural Language Query", html)
         self.assertNotIn("Structured Query Builder", html)
         self.assertNotIn("MORI — 점검·통제 운영 콘솔", html)
-        self.assertNotIn("Open User Dashboard", html)
+        self.assertNotIn("Open User Dashboard", html)  # admin uses 사용자 대시보드 now
         # NLQ section present in /ui
         self.assertIn("자연어 질의 (NLQ)", html)
         self.assertIn("nlq_textarea", html)

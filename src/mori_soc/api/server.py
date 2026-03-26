@@ -4854,7 +4854,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </div>
       </div>
       <div class=\"top-actions\">
-        <a href=\"/ui\">Open User Dashboard</a>
+        <span id=\"admin_user_badge\" style=\"font-size:13px;color:#94a3b8\"></span>
+        <a href=\"/ui\">사용자 대시보드</a>
         <button id=\"query_guide\" class=\"ghost\">Query Guide</button>
         <button id=\"refresh_dashboard\" class=\"ghost\">Refresh Dashboard</button>
         <a href=\"/auth/logout\" style=\"color:#ef4444;font-size:13px;margin-left:4px\">로그아웃</a>
@@ -6450,6 +6451,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     }
 
     /* ── 관리자 콘솔 역할별 탭 제한 ────────────────────────────────────────── */
+    const _ADMIN_ROLE_LABELS = { admin: '어드민', security: '보안담당자', monitor: '서버모니터', auditor: '감사자', helpdesk: '헬프데스크', user: '사용자' };
     // admin: 전체, monitor: 모니터링/자산, security: 모니터링/자산/권한관리,
     // auditor: 모니터링/변경이력(읽기전용), helpdesk: 모니터링/자산
     const _ADMIN_TAB_BY_ROLE = {
@@ -6460,12 +6462,14 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       helpdesk: ['monitoring','assets'],
       user:     ['monitoring'],
     };
+    let _adminCurrentRole = 'user';
     async function applyAdminRoleTabs() {
       try {
         const res = await fetch('/auth/me');
         if (!res.ok) return;
         const me = await res.json();
         const role = me.role || 'user';
+        _adminCurrentRole = role;
         const allowed = _ADMIN_TAB_BY_ROLE[role] || _ADMIN_TAB_BY_ROLE['user'];
         const allTabs = ['monitoring','assets','query','settings','users','auditlog','roleperm','userlog'];
         allTabs.forEach(tab => {
@@ -6477,6 +6481,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const activeId = activePanel ? activePanel.id.replace('atab_','') : 'monitoring';
         if (!allowed.includes(activeId) && allowed.length > 0) {
           switchAdminTab(allowed[0]);
+        }
+        // 상단 헤더에 사용자/역할 배지 표시
+        const badge = document.getElementById('admin_user_badge');
+        if (badge && me.username) {
+          const roleLabel = _ADMIN_ROLE_LABELS[role] || role;
+          badge.innerHTML = '<strong style="color:#38bdf8">' + me.username + '</strong> <span style="background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:6px;font-size:12px">' + roleLabel + '</span>';
         }
       } catch(e) { /* ignore */ }
     }
