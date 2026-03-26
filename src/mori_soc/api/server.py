@@ -1994,12 +1994,13 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         return {"owners": list(asset_owners.values())}
 
     @app.post("/assets/owners")
-    def owners_upsert(payload: dict[str, Any]) -> Any:
+    def owners_upsert(payload: dict[str, Any], request: Request) -> Any:
         hostname = str(payload.get("hostname", "")).strip()
         if not hostname:
             raise HTTPException(status_code=400, detail="hostname is required")
         owner_name = str(payload.get("owner", "")).strip()
-        changed_by = str(payload.get("changed_by", "")).strip() or "unknown"
+        # 수정자는 현재 로그인한 사용자로 자동 설정
+        changed_by = _get_session_username(request) or "unknown"
         now_str = _isoformat(datetime.now(tz=timezone.utc))
         old_entry = asset_owners.get(hostname, {})
         new_category = str(payload.get("category", old_entry.get("category", ""))).strip()
@@ -2812,9 +2813,7 @@ def render_user_dashboard_html(
         <div><label style=\"color:#94a3b8;font-size:13px\">팀</label>
           <input id=\"owner_modal_team\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 인프라팀\" />
         </div>
-        <div><label style=\"color:#94a3b8;font-size:13px\">수정자 이름 <span style=\"color:#ef4444\">*</span></label>
-          <input id=\"owner_modal_changed_by\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 홍길동 (이력 기록용)\" />
-        </div>
+
         <div id=\"owner_modal_status\" style=\"font-size:13px;color:#94a3b8;\"></div>
         <div style=\"display:flex;gap:10px;justify-content:flex-end;margin-top:4px\">
           <button id=\"owner_modal_save\" style=\"background:#1d4ed8;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\">저장</button>
@@ -3738,7 +3737,6 @@ def render_user_dashboard_html(
       document.getElementById('owner_modal_owner').value = owner || '';
       document.getElementById('owner_modal_team').value = team || '';
       document.getElementById('owner_modal_category').value = category || '';
-      document.getElementById('owner_modal_changed_by').value = '';
       document.getElementById('owner_modal_status').textContent = '';
       document.getElementById('owner_modal_status').style.color = '#94a3b8';
       document.getElementById('owner_modal_title').textContent = `담당자/카테고리 수정 — ${hostname}`;
@@ -3753,14 +3751,12 @@ def render_user_dashboard_html(
         const owner = document.getElementById('owner_modal_owner').value.trim();
         const team = document.getElementById('owner_modal_team').value.trim();
         const category = document.getElementById('owner_modal_category').value.trim();
-        const changed_by = document.getElementById('owner_modal_changed_by').value.trim();
         const statusEl = document.getElementById('owner_modal_status');
-        if (!changed_by) { statusEl.style.color='#fca5a5'; statusEl.textContent='수정자 이름을 입력하세요.'; return; }
         statusEl.textContent = '저장 중...';
         try {
           const res = await fetch('/assets/owners', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ hostname, owner, team, category, changed_by })
+            body: JSON.stringify({ hostname, owner, team, category })
           });
           if (!res.ok) throw new Error(await res.text());
           statusEl.style.color = '#86efac';
