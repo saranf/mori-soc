@@ -2,6 +2,8 @@
 
 오픈소스 보안 도구를 통합하여 **ISMS-P / ISO 27001 인증 심사에 필요한 증적과 통제 점검 결과를 자동으로 수집·관리**하는 경량 SOC 플랫폼입니다.
 
+> **목표:** "중소형 회사에서 IT 헬프데스크 + 담당자 1명이 ISMS / ISO 27001 준비와 기본 보안 운영을 같이 할 수 있는 SOC-lite 제품"
+
 중소 규모 조직(SME)이 `docker compose` 한 줄로 배포하여, 아래 영역의 데이터를 하나의 대시보드에서 **통제 항목(Control) 기준**으로 조회·증적화할 수 있도록 설계했습니다.
 
 | 영역 | 도구 | MORI 역할 |
@@ -24,9 +26,75 @@
 - 자연어 질의로 통제 점검 현황을 빠르게 조회
 
 상세 설계와 단계별 구현 계획은 `docs/SECURITY_DATA_QUERY_PLATFORM.md`를 참고하세요.
-Phase 1 입력 소스/스키마/질의 초안은 `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md`에 정리합니다.
-Phase 1 논리 테이블 설계 초안은 `docs/PHASE1_LOGICAL_SCHEMA.md`에 정리합니다.
-Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리합니다.
+
+---
+
+## 🗺️ 현재 상태 한눈에 보기
+
+### ✅ 데모 모드에서 동작하는 것
+
+`./scripts/mori-start-demo.sh` 로 실행했을 때 샘플 데이터 기반으로 동작합니다.
+
+| 기능 | 설명 |
+|---|---|
+| 대시보드 요약 카드 | 총 호스트 / 오프라인 / Alert 수 / Critical 취약점 표시 |
+| 위험 호스트 목록 | 경보·오프라인 기준 상위 위험 호스트 |
+| 소스 현황 | Fleet / Zabbix / Trivy 수집 상태 표시 |
+| 자연어 질의 (NLQ) | "오프라인 호스트 보여줘", "최근 24시간 high alert 요약" 등 12개 인텐트 |
+| 자산·경보·취약점 조회 API | `/query`, `/interpret`, `/dashboard/summary` |
+| Compliance PDCA | 통제 항목 현황 시각화 (샘플 데이터) |
+| 증적 리포트 CSV | 자산/계정/로그/취약점/월간 5종 |
+
+> ⚠️ **주의:** 데모 모드는 인메모리 저장소로 동작합니다. **서버 재시작 시 모든 데이터가 초기화**됩니다.
+
+---
+
+### 🏭 운영 모드에서 실제 동작하는 것
+
+현재 배포(`http://mori.rmstudio.co.kr:37854`)에서 실제로 사용 가능한 기능입니다.
+
+| 기능 | 상태 | 계정 |
+|---|---|---|
+| 로그인 / 로그아웃 | ✅ 동작 | admin·security·moniter / 1234 |
+| 역할 기반 탭 제어 (RBAC) | ✅ 동작 | 어드민이 역할별 탭 on/off 설정 가능 |
+| 🚨 Alert Triage | ✅ 동작 | 3단계 상태(🔴🟡🟢) 변경 시 자동 저장, 이력 기록 |
+| 📋 인시던트 관리 | ✅ 동작 | 생성·상태변경·노트·날짜 필터·텍스트 검색·CSV 다운로드 |
+| 자산 담당자/카테고리 수정 | ✅ 동작 | 수정 이력 어드민 감사 로그에 기록 |
+| 가입 요청 / 승인 | ✅ 동작 | 비가입자 요청 → 어드민 승인/거절 |
+| 가이드 7종 노출 제어 | ✅ 동작 | 어드민이 가이드별 on/off 설정 |
+| 자연어 질의 (FAB 버튼) | ✅ 동작 | 인메모리 데이터 기준 (실시간 수집 연동 전) |
+| API 문서 (Swagger) | ✅ 동작 | `/admin` → 📋 API 문서(Swagger) 링크 |
+| CSV 내보내기 | ✅ 동작 | 인시던트·자산 (필터 반영) |
+
+> ⚠️ **주의:** 운영 모드에서도 **데이터 저장소는 인메모리**입니다. 재시작하면 인시던트·Triage 기록 등이 초기화됩니다. 영속성은 PostgreSQL 연동 완료 후 지원 예정입니다.
+
+---
+
+### 🔲 미완 항목 (개발 예정)
+
+| 항목 | 현황 | 우선순위 |
+|---|---|---|
+| **데이터 영속성 (PostgreSQL)** | 인메모리만 동작, Postgres 코드는 준비됨 | 🔴 높음 |
+| **실시간 수집 연동** | Zabbix·Fleet·Wazuh 수집기 코드 존재, API 폴링 미연결 | 🔴 높음 |
+| **LDAP 인증 (운영)** | 코드 준비됨, `LDAP_URL` 환경변수 설정 필요 | 🟡 중간 |
+| **PDF 증적 리포트** | CSV만 지원 | 🟡 중간 |
+| **모바일 UI 완성도** | 기본 대응 완료, 세부 최적화 필요 | 🟢 낮음 |
+| **Phase 3: 조사형 에이전트** | 미착수 | 🟢 낮음 |
+
+---
+
+### 🔌 실시간 연동 범위
+
+| 소스 | 수집기 코드 | 운영 연동 | 비고 |
+|---|---|---|---|
+| **Zabbix** | ✅ 준비됨 | ❌ 미연결 | `ZABBIX_URL` / `ZABBIX_API_KEY` 설정 시 활성화 예정 |
+| **FleetDM** | ✅ 준비됨 | ❌ 미연결 | `FLEET_URL` / `FLEET_API_TOKEN` 설정 시 활성화 예정 |
+| **Wazuh** | ✅ 준비됨 | ❌ 미연결 | `WAZUH_URL` / `WAZUH_API_*` 설정 시 활성화 예정 |
+| **Trivy** | ✅ 준비됨 | 🟡 온디맨드 | `./scripts/trivy-fs-scan.sh` 로 수동 실행 후 결과 적재 |
+| **LDAP** | ✅ 준비됨 | 🟡 선택적 | `LDAP_URL` 환경변수 설정 시 HTTP Basic Auth 활성화 |
+
+> **현재 운영 환경의 대시보드 데이터는 샘플 시딩 또는 수동 입력(Triage·인시던트) 기반입니다.**
+> 실시간 수집이 연결되면 Zabbix/Fleet에서 자동으로 자산·경보 데이터가 유입됩니다.
 
 ---
 
@@ -105,29 +173,33 @@ Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리�
 > 기존 12개 분기 `if-else` 체인이 레지스트리 패턴으로 교체되었으므로,
 > `execute()` 메서드를 수정할 필요 없이 위 두 곳만 변경하면 자동으로 라우팅됩니다.
 
-### 🚧 Phase 2: 관제 질의 엔진 — **진행 중**
+### 🚧 Phase 2: 관제 질의 엔진 — **Alpha (운영 배포 중, 일부 기능 데모 전용)**
 
-| 항목 | 상태 | 내용 |
-|---|---|---|
-| **MVC 1 / FastAPI HTTP 서버** | ✅ 완료 | `GET /health`, `GET /catalog`, `POST /query`, `POST /interpret`, `GET /ui` |
-| **MVC 2 / PostgresRepository** | ✅ 완료 | `schema/001_phase1_initial.sql` 기반 조회 저장소 연결 |
-| **MVC 3 / Docker Compose 배포선** | ✅ 완료 | `mori-api`, `soc-postgres`, `Dockerfile`, `.env.example`, 배포 문서 |
-| **MVC 4 / 자연어 질의 변환** | ✅ 초안 완료 | 한국어/영문 질문 → `intent + scope + filters` 변환 |
-| **운영 대시보드형 UI** | ✅ 완료 | `/ui`에서 상태/위험/최근 활동/빠른 질의/자연어 질의 제공 |
-| **LDAP/AD 계정·권한 체크** | ✅ 완료 | 계정/그룹/권한 바인딩 수집·점검 |
-| **Worker 서비스 분리 (Poller)** | ✅ 완료 | Zabbix/Fleet/Wazuh/Trivy/LDAP 독립 폴러, 통합 워커 |
-| **Intent Registry 리팩터링** | ✅ 완료 | `_INTENT_HANDLERS` 딕셔너리 디스패치 패턴 |
-| **Compliance PDCA 대시보드** | ✅ 완료 | Plan-Do-Check-Act 주기 시각화, 통제 항목 현황 |
-| **증적 Export 리포트** | ✅ 완료 | 자산/계정/로그/취약점/월간 5종 리포트 (JSON·CSV) |
-| **Cross-verification 화면** | ✅ 완료 | Zabbix×Fleet 교차 검증, Shadow IT 탐지 |
-| **원커맨드 데모** | ✅ 완료 | `mori-start-demo.sh`, 샘플 데이터 시딩, 워커 관리 |
-| **실시간 수집 연동** | 🔲 남음 | 운영 환경 Wazuh/Fleet/Zabbix API 실시간 폴링 |
+| 항목 | 상태 | 모드 | 내용 |
+|---|---|---|---|
+| **FastAPI HTTP 서버** | ✅ 완료 | 운영 | `GET /health`, `GET /catalog`, `POST /query`, `POST /interpret` |
+| **로그인 / 세션 인증** | ✅ 완료 | 운영 | 쿠키 기반 세션, admin·security·moniter 3개 기본 계정 |
+| **RBAC (역할별 탭 제어)** | ✅ 완료 | 운영 | 어드민이 역할별 탭 on/off 설정 |
+| **Alert Triage** | ✅ 완료 | 운영¹ | 3단계 상태 자동저장, 담당자·노트·이력 기록 |
+| **인시던트 관리** | ✅ 완료 | 운영¹ | 생성·상태변경·검색·날짜필터·CSV 다운로드 |
+| **자산 담당자/카테고리 편집** | ✅ 완료 | 운영¹ | 수정 이력 감사 로그 기록 |
+| **가입 요청 / 승인** | ✅ 완료 | 운영 | 어드민 승인·거절 |
+| **가이드 시스템 (7종)** | ✅ 완료 | 운영 | 어드민 on/off 제어, 내용 직접 편집 |
+| **자연어 질의 (FAB)** | ✅ 완료 | 데모 | 12개 인텐트, 인메모리 데이터 기준 |
+| **Docker Compose 배포선** | ✅ 완료 | 운영 | `mori-api`, `soc-postgres`, Dockerfile, GitHub Actions |
+| **원커맨드 데모** | ✅ 완료 | 데모 | `mori-start-demo.sh`, 샘플 데이터 시딩 |
+| **PostgresRepository 코드** | ✅ 준비됨 | 미연결 | 코드는 완성, 실제 Postgres 읽기/쓰기는 미연결 |
+| **Worker / Poller 코드** | ✅ 준비됨 | 미연결 | Zabbix·Fleet·Wazuh·Trivy 수집기 코드 완성, API 폴링 미연결 |
+| **데이터 영속성** | 🔲 남음 | — | 현재 인메모리 → 재시작 시 초기화 |
+| **실시간 수집 연동** | 🔲 남음 | — | Zabbix·Fleet·Wazuh API 실시간 폴링 미완 |
+| **LDAP 인증 (운영)** | 🔲 남음 | — | 코드 준비됨, `LDAP_URL` 환경변수 설정 필요 |
 
-중요:
+> ¹ **운영¹** = 실제로 동작하지만 **인메모리 저장소** 기반이라 재시작 시 데이터 초기화됨
 
-- 현재 `/dashboard/summary` 와 `/ui` 는 **원본 Zabbix/Fleet UI를 직접 읽는 것이 아니라 MORI 저장소에 적재된 데이터**를 보여줍니다.
+**핵심 제약:**
+- 현재 `/dashboard/summary` 와 `/ui` 의 자산·경보·취약점 데이터는 **원본 Zabbix/Fleet API에서 직접 읽는 것이 아니라** MORI 인메모리 저장소에 적재된 데이터를 보여줍니다.
 - 데모 모드에서는 `mori-seed-sample-data.sh`로 샘플 데이터를 자동 삽입하여 전체 기능을 체험할 수 있습니다.
-- 운영 환경에서는 Worker(Poller)가 각 소스에서 실시간으로 데이터를 수집합니다.
+- **실시간 연동이 완성되기 전까지** Triage/인시던트는 운영 사용 가능하지만, 대시보드 자산 현황은 샘플 데이터 기반입니다.
 
 ### 권장 운영 모델
 
@@ -152,22 +224,34 @@ Postgres 기준 초기 DDL 초안은 `schema/001_phase1_initial.sql`에 정리�
 
 ---
 
-## 🚀 Quick Start (데모)
+## 🚀 Quick Start
+
+### 데모 모드 (샘플 데이터)
 
 Docker와 Docker Compose가 설치된 환경에서 한 줄로 전체 데모를 실행할 수 있습니다.
 
 ```bash
-# 원커맨드 데모: .env 생성 → DB/API 기동 → 샘플 데이터 시딩 → Worker 시작
+# 원커맨드 데모: .env 생성 → API 기동 → 샘플 데이터 시딩
 ./scripts/mori-start-demo.sh
 ```
 
-실행 완료 후 브라우저에서 `http://localhost:18000/ui`에 접속하면 아래 기능을 모두 체험할 수 있습니다:
+실행 완료 후 `http://localhost:18000/ui` 접속 → `admin / 1234` 로그인 후 체험 가능:
 
-- 📊 **운영 대시보드**: 자산 현황, 위험도, 최근 활동
-- ✅ **Compliance PDCA**: 통제 항목 점검 현황 (Plan → Do → Check → Act)
-- 🔀 **Cross-verification**: Zabbix × Fleet 교차 검증, Shadow IT 탐지
-- 📥 **증적 리포트**: 자산/계정/로그/취약점/월간 5종 CSV 다운로드
-- 💬 **자연어 질의**: `오프라인 호스트 보여줘`, `최근 24시간 high alert 요약`
+| 기능 | 데모 여부 |
+|---|---|
+| 📊 대시보드 (자산·경보·취약점 요약) | ✅ 샘플 데이터 |
+| 🚨 Alert Triage (3단계 상태 관리) | ✅ 실동작 |
+| 📋 인시던트 관리 (검색·날짜필터·CSV) | ✅ 실동작 |
+| 💬 자연어 질의 (12개 인텐트) | ✅ 샘플 데이터 기준 |
+| ✅ Compliance PDCA | ✅ 샘플 데이터 |
+| 📥 증적 리포트 CSV 5종 | ✅ 샘플 데이터 |
+
+### 운영 배포 (현재 공개 서버)
+
+- URL: `http://mori.rmstudio.co.kr:37854/`
+- 계정: `admin / 1234` (어드민), `security / 1234` (보안담당자), `moniter / 1234` (모니터)
+- 운영 배포 방법: `docker compose down && docker compose up -d`
+- 데이터: 재시작 시 초기화 (영속성은 PostgreSQL 연동 완료 후 지원)
 
 ### 개별 스크립트
 
@@ -687,26 +771,33 @@ Starter dashboard에도 아래 패널이 표시됩니다.
 
 ## 14. 다음 작업 후보
 
-### Security Data Query Platform (Phase 2)
+### 🔴 높음 — 데이터 신뢰성 완성
 
-1. **실시간 수집 연동** — Wazuh/Fleet/Zabbix API 폴링 또는 webhook으로 Postgres 적재
-2. **읽기 성능 최적화** — 현재 snapshot 기반 조회를 SQL/view 기반으로 고도화
-3. **대시보드 보강** — source health, collector lag, 위험도 drill-down 추가
+1. **데이터 영속성 (PostgreSQL 연결)** — 현재 인메모리 저장소를 Postgres로 전환, 재시작 시 데이터 유지
+2. **실시간 수집 연동** — Zabbix / Fleet / Wazuh API 폴링 환경변수 설정 및 실제 연결
 
-### 운영 아키텍처 고도화
+### 🟡 중간 — 운영 안정성
 
-- Trivy 결과를 MORI ingestion 경로로 표준화
-- 서버 자산 자동 온보딩 정책 정리
-- 후순위 검토: `Zabbix Agent + Trivy` 결합형 자체 agent
+3. **LDAP 인증 운영 적용** — `LDAP_URL` 환경변수 설정 및 조직 AD/LDAP 연결 검증
+4. **HTTPS 리버스 프록시** — Nginx/Caddy 추가로 TLS 적용
+5. **PDF 증적 리포트** — CSV 외 PDF 형태 리포트 생성
 
-### 인프라 운영
+### 🟢 낮음 — 기능 확장
 
-- Grafana 대시보드/프로비저닝 고도화
-- HTTPS 리버스 프록시(Nginx/Caddy) 추가
-- Wazuh/Fleet 초기 운영 설정 보강
+6. **Trivy 연동 파이프라인** — 온디맨드 스캔 결과를 MORI ingestion 경로로 자동 적재
+7. **대시보드 보강** — source health 표시, collector lag 모니터링
+8. **Phase 3: 조사형 에이전트** — host/user/ip 기준 다단계 pivot, 교차 검증
 
 ---
 
-이 저장소는 **Phase 1 완료 + Phase 2 대부분 완료** 상태입니다.
-`./scripts/mori-start-demo.sh` 한 줄로 전체 기능(대시보드, PDCA, 교차검증, 증적 리포트)을 체험할 수 있으며,
-운영 환경 배포 시에는 `.env`에 실제 소스 연결 정보를 설정하고 Worker를 가동하면 됩니다.
+이 저장소는 **Phase 1 완료 + Phase 2 Alpha (운영 배포 중)** 상태입니다.
+
+| 구분 | 상태 |
+|---|---|
+| 로그인·RBAC·Triage·인시던트·가이드 | ✅ 운영 가능 (인메모리, 재시작 시 초기화) |
+| 대시보드 자산·경보 데이터 | ⚠️ 샘플 데이터 기반 (실시간 연동 전) |
+| PostgreSQL 영속성 | 🔲 미완 (코드 준비됨) |
+| 실시간 Zabbix·Fleet·Wazuh 연동 | 🔲 미완 (수집기 코드 준비됨) |
+
+`./scripts/mori-start-demo.sh` 한 줄로 전체 기능을 체험할 수 있습니다.
+운영 환경에서는 `docker compose down && docker compose up -d` 로 적용하세요.
