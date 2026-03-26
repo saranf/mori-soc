@@ -486,9 +486,11 @@ def build_assets_payload(
         hid = vuln.host_id
         if hid not in vuln_by_host:
             plan = plans.get(hid, {})
+            hostname_val = hostnames.get(hid, hid)
+            owner_info = owners.get(hostname_val, {})
             vuln_by_host[hid] = {
                 "host_id": hid,
-                "hostname": hostnames.get(hid, hid),
+                "hostname": hostname_val,
                 "critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0,
                 "total": 0,
                 "latest_cve": None,
@@ -496,6 +498,7 @@ def build_assets_payload(
                 "action_plan": plan.get("text", ""),
                 "action_target_date": plan.get("target_date", ""),
                 "action_updated_by": plan.get("updated_by", ""),
+                "exception_until": owner_info.get("exception_until", ""),
             }
         entry = vuln_by_host[hid]
         sev = vuln.severity
@@ -2679,9 +2682,13 @@ def render_user_dashboard_html(
             <h2 style=\"margin:0\">🔍 취약점 현황 (Trivy)</h2>
             <button onclick=\"downloadAssetsCSV('trivy')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
           </div>
-          <div class=\"asset-search-bar\">
+          <div class=\"asset-search-bar\" style=\"flex-wrap:wrap;\">
             <input type=\"text\" id=\"trivy_search_hostname\" placeholder=\"호스트명 검색…\" oninput=\"filterAssetTable('trivy')\" />
             <select id=\"trivy_search_severity\" onchange=\"filterAssetTable('trivy')\"><option value=\"\">전체 심각도</option><option value=\"critical\">Critical &gt; 0</option><option value=\"high\">High &gt; 0</option><option value=\"medium\">Medium &gt; 0</option></select>
+            <span style=\"color:#94a3b8;font-size:12px;margin-left:4px\">탐지일:</span>
+            <input type=\"date\" id=\"trivy_search_date_from\" onchange=\"filterAssetTable('trivy')\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:4px;padding:4px 6px;font-size:12px\" title=\"시작일\" />
+            <span style=\"color:#64748b;font-size:12px\">~</span>
+            <input type=\"date\" id=\"trivy_search_date_to\" onchange=\"filterAssetTable('trivy')\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:4px;padding:4px 6px;font-size:12px\" title=\"종료일\" />
             <span class=\"asset-search-count\" id=\"trivy_search_count\"></span>
           </div>
           <div class=\"subtext\">Trivy가 탐지한 취약점을 호스트별로 집계한 현황입니다. Critical/High 우선 정렬.</div>
@@ -2806,7 +2813,7 @@ def render_user_dashboard_html(
             <option value=\"resolved\">🟢 조치예정/완료 (Resolved)</option>
           </select>
         </div>
-        <div class=\"row\"><label>담당자</label><input id=\"triage_modal_analyst\" placeholder=\"예: alice\" /></div>
+        <div class=\"row\"><label>담당자 <span style=\"color:#64748b;font-size:11px\">(서버 담당자 기본)</span></label><input id=\"triage_modal_analyst\" placeholder=\"예: alice\" /></div>
         <div class=\"row\"><label>메모</label><textarea id=\"triage_modal_note\" style=\"min-height:80px\"></textarea></div>
         <div class=\"actions\">
           <button id=\"triage_modal_save\">저장</button>
@@ -3469,7 +3476,7 @@ def render_user_dashboard_html(
             <td><span style=\"background:#111827;padding:2px 6px;border-radius:4px;font-size:12px\">${escapeHtml(a.severity)}</span></td>
             <td style=\"max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">${escapeHtml(a.message)}</td>
             <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(triageAnalyst || '-')}</td>
-            <td><button onclick=\"openTriageModal('${escapeHtml(a.alert_id)}','${escapeHtml(rawStatus)}','${escapeHtml(triageAnalyst)}','${escapeHtml(triageNote)}','${escapeHtml(a.message||'').replace(/'/g,\"&#39;\")}')\" style=\"background:${color};color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;white-space:nowrap\">${label}</button></td>
+            <td><button onclick=\"openTriageModal('${escapeHtml(a.alert_id)}','${escapeHtml(rawStatus)}','${escapeHtml(triageAnalyst)}','${escapeHtml(triageNote)}','${escapeHtml(a.message||'').replace(/'/g,\"&#39;\")}','${escapeHtml(alertOwner)}')\" style=\"background:${color};color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;white-space:nowrap\">${label}</button></td>
           </tr>`;
         }).join('');
         triageTableEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
@@ -3477,7 +3484,7 @@ def render_user_dashboard_html(
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">시각</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">소스</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">호스트</th>
-            <th style=\"padding:8px;color:#a3e635;text-align:left\">담당자</th>
+            <th style=\"padding:8px;color:#a3e635;text-align:left\">서버 담당자</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">심각도</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">메시지</th>
             <th style=\"padding:8px;color:#94a3b8;text-align:left\">분석관</th>
@@ -3486,11 +3493,12 @@ def render_user_dashboard_html(
       } catch (err) { triageTableEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(err.message)}</span>`; }
     }
 
-    function openTriageModal(alertId, status, analyst, note, message) {
+    function openTriageModal(alertId, status, analyst, note, message, serverOwner) {
       currentTriageAlertId = alertId;
       triageModalAlertInfoEl.innerHTML = `<strong>Alert ID:</strong> ${escapeHtml(alertId)}<br><span style=\"color:#94a3b8\">${escapeHtml(message)}</span>`;
       triageModalStatusEl.value = status || 'pending';
-      triageModalAnalystEl.value = analyst || '';
+      // 서버 담당자가 기본, 기존 analyst가 있으면 그 값 유지
+      triageModalAnalystEl.value = analyst || serverOwner || '';
       triageModalNoteEl.value = note || '';
       triageModalStatusLineEl.textContent = '';
       // Render triage history
@@ -3721,6 +3729,12 @@ def render_user_dashboard_html(
       if (!found) return '-';
       return [found.owner, found.team].filter(Boolean).join(' / ') || '-';
     }
+    /* hostname → 담당자/팀/예외 전체 데이터 */
+    function _getOwnerData(hostname) {
+      const allHosts = [...(_assetCache.fleet || []), ...(_assetCache.zabbix || [])];
+      const found = allHosts.find(h => h.hostname === hostname);
+      return found ? { owner: found.owner || '', team: found.team || '', exception_until: found.exception_until || '' } : { owner: '', team: '', exception_until: '' };
+    }
 
     function renderFleetTable(hosts, containerEl) {
       if (!hosts.length) { containerEl.innerHTML = '<div class=\"empty\">Fleet에서 수집된 PC 자산이 없습니다.</div>'; return; }
@@ -3808,11 +3822,16 @@ def render_user_dashboard_html(
       if (!rows.length) { containerEl.innerHTML = '<div class=\"empty\">Trivy 취약점 데이터가 없습니다.</div>'; return; }
       const sevColor = { critical:'#fca5a5', high:'#fdba74', medium:'#fde68a', low:'#86efac', info:'#94a3b8' };
       const tableRows = rows.map(r => {
-        const planText = r.action_plan ? escapeHtml(r.action_plan).substring(0, 40) + (r.action_plan.length > 40 ? '…' : '') : '';
+        const planText = r.action_plan ? escapeHtml(r.action_plan).substring(0, 30) + (r.action_plan.length > 30 ? '…' : '') : '';
         const planCell = r.action_plan
-          ? `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(r.action_plan)}\">${planText}</span>${r.action_target_date ? '<br><span style=\"color:#64748b;font-size:11px\">~' + escapeHtml(r.action_target_date) + '</span>' : ''}`
+          ? `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(r.action_plan)}\">${planText}</span>${r.action_target_date ? '<br><span style=\"color:#64748b;font-size:11px\">~' + escapeHtml(r.action_target_date) + '</span>' : ''}<br><button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:1px 6px;background:#1e3a5f;border:1px solid #334155;border-radius:3px;color:#7dd3fc;cursor:pointer;margin-top:2px\">✏️ 수정</button>`
           : `<button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e3a5f;border:1px solid #334155;border-radius:4px;color:#7dd3fc;cursor:pointer\">+ 계획 추가</button>`;
         const ownerLabel = _ownerForHost(r.hostname);
+        const ownerData = _getOwnerData(r.hostname);
+        const exUntil = r.exception_until || ownerData.exception_until || '';
+        const exCell = exUntil
+          ? `<span style=\"color:#fde68a;font-size:12px\">~${escapeHtml(exUntil)}</span><br><button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','${escapeHtml(exUntil)}')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">✏️ 수정</button>`
+          : `<button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','')\" style=\"font-size:11px;padding:2px 7px;background:#3b1f00;border:1px solid #78350f;border-radius:4px;color:#fbbf24;cursor:pointer\">+ 예외 설정</button>`;
         return `<tr>
           <td><strong>${escapeHtml(r.hostname)}</strong><br><span style=\"color:#64748b;font-size:11px\">${escapeHtml(r.host_id)}</span></td>
           <td style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</td>
@@ -3823,7 +3842,9 @@ def render_user_dashboard_html(
           <td style=\"text-align:center\">${r.total}</td>
           <td style=\"font-size:12px;color:#94a3b8\">${escapeHtml(r.latest_cve || '-')}</td>
           <td style=\"font-size:12px;color:#64748b\">${escapeHtml(formatTime(r.latest_detected_at))}</td>
-          <td style=\"min-width:140px\">${planCell}</td>
+          <td style=\"min-width:130px\">${planCell}</td>
+          <td style=\"min-width:110px\">${exCell}</td>
+          <td style=\"text-align:center\"><button onclick=\"openAuditModal('${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:2px 6px;background:#1e293b;border:1px solid #334155;border-radius:3px;color:#94a3b8;cursor:pointer\" title=\"수정 이력\">📋</button></td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
@@ -3838,6 +3859,8 @@ def render_user_dashboard_html(
           <th style=\"padding:8px;color:#94a3b8\">최근 CVE</th>
           <th style=\"padding:8px;color:#64748b\">탐지일</th>
           <th style=\"padding:8px;color:#a3e635\">조치 계획</th>
+          <th style=\"padding:8px;color:#fbbf24\">조치 예외</th>
+          <th style=\"padding:8px;color:#94a3b8\">이력</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
       </table>`;
@@ -3908,7 +3931,7 @@ def render_user_dashboard_html(
       document.getElementById('owner_modal_category_row').style.display = isServer ? '' : 'none';
       // 처리 예외 기한은 Trivy에서만 필요
       document.getElementById('owner_modal_exception_row').style.display = isTrivy ? '' : 'none';
-      const titleMap = { server: '서버 자산 수정', pc: 'PC 자산 수정', trivy: '취약점 자산 수정' };
+      const titleMap = { server: '서버 자산 상세페이지', pc: 'PC 자산 상세페이지', trivy: '취약점 상세페이지' };
       document.getElementById('owner_modal_title').textContent = `${titleMap[assetType] || '자산 수정'} — ${hostname}`;
       document.getElementById('owner_modal').style.display = 'flex';
     }
@@ -3959,6 +3982,7 @@ def render_user_dashboard_html(
 
     // ── Asset data cache for search/filter ──
     let _assetCache = { fleet: [], zabbix: [], trivy: [] };
+    let _trivyFiltered = [];
 
     async function loadAssets() {
       const statusEl = document.getElementById('assets_status');
@@ -3988,6 +4012,7 @@ def render_user_dashboard_html(
         document.getElementById('trivy_total_vulns').textContent = data.trivy?.total_vulns ?? '-';
         document.getElementById('trivy_critical').textContent = data.trivy?.critical ?? '-';
         document.getElementById('trivy_high').textContent = data.trivy?.high ?? '-';
+        _trivyFiltered = _assetCache.trivy;
         renderTrivyTable(_assetCache.trivy, document.getElementById('trivy_table'));
         // Reset search counts
         _updateSearchCount('fleet', _assetCache.fleet.length, _assetCache.fleet.length);
@@ -4035,23 +4060,52 @@ def render_user_dashboard_html(
         _updateSearchCount('zabbix', filtered.length, _assetCache.zabbix.length);
       } else if (tab === 'trivy') {
         const sevVal = document.getElementById('trivy_search_severity')?.value || '';
+        const dateFrom = document.getElementById('trivy_search_date_from')?.value || '';
+        const dateTo = document.getElementById('trivy_search_date_to')?.value || '';
         const filtered = _assetCache.trivy.filter(r => {
           if (hostnameVal && !r.hostname.toLowerCase().includes(hostnameVal)) return false;
           if (sevVal === 'critical' && !(r.critical > 0)) return false;
           if (sevVal === 'high' && !(r.high > 0)) return false;
           if (sevVal === 'medium' && !(r.medium > 0)) return false;
+          if (dateFrom || dateTo) {
+            const det = r.latest_detected_at ? r.latest_detected_at.substring(0, 10) : '';
+            if (!det) return false;
+            if (dateFrom && det < dateFrom) return false;
+            if (dateTo && det > dateTo) return false;
+          }
           return true;
         });
+        _trivyFiltered = filtered;
         renderTrivyTable(filtered, document.getElementById('trivy_table'));
         _updateSearchCount('trivy', filtered.length, _assetCache.trivy.length);
       }
     }
 
     function downloadAssetsCSV(source) {
-      const a = document.createElement('a');
-      a.href = `/assets?format=csv&source=${encodeURIComponent(source)}`;
-      a.download = '';
-      a.click();
+      if (source === 'trivy') {
+        // 클라이언트에서 필터된 데이터 기반 CSV 생성
+        const rows = _trivyFiltered.length ? _trivyFiltered : _assetCache.trivy;
+        if (!rows.length) { alert('내보낼 데이터가 없습니다.'); return; }
+        const header = ['호스트','host_id','담당자','Critical','High','Medium','Low','합계','최근CVE','탐지일','조치계획','목표완료일','작성자','조치예외기한'];
+        const csvRows = [header.join(',')];
+        rows.forEach(r => {
+          const owner = _ownerForHost(r.hostname);
+          const ownerData = _getOwnerData(r.hostname);
+          csvRows.push([r.hostname, r.host_id, owner, r.critical, r.high, r.medium, r.low, r.total,
+            r.latest_cve||'', r.latest_detected_at||'', '"'+(r.action_plan||'').replace(/"/g,'""')+'"',
+            r.action_target_date||'', r.action_updated_by||'', r.exception_until||ownerData.exception_until||''].join(','));
+        });
+        const blob = new Blob(['\\uFEFF' + csvRows.join('\\n')], {type:'text/csv;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `mori-trivy-filtered-${new Date().toISOString().slice(0,10)}.csv`;
+        a.click(); URL.revokeObjectURL(url);
+      } else {
+        const a = document.createElement('a');
+        a.href = `/assets?format=csv&source=${encodeURIComponent(source)}`;
+        a.download = '';
+        a.click();
+      }
     }
 
     /* ── On-demand 수집 (새로고침 버튼) ──────────────────────────────── */
