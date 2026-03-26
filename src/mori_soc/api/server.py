@@ -899,6 +899,9 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     }
     role_permissions: dict[str, list[str]] = {k: list(v) for k, v in _DEFAULT_ROLE_PERMISSIONS.items()}
 
+    # Per-user tab overrides: username -> list of allowed tab ids (overrides role default)
+    user_tab_permissions: dict[str, list[str]] = {}
+
     def _verify_credentials(username: str, password: str) -> bool:
         """LDAP(설정 시) → 로컬 계정 순으로 인증."""
         if _ldap_enabled:
@@ -1597,10 +1600,16 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
                 "allowed_tabs": _DEFAULT_ROLE_PERMISSIONS.get("user", ["dashboard", "assets", "guides"]),
             }
         role = sess.get("role", "user")
+        uname = sess["username"]
+        # 유저별 개별 설정이 있으면 우선 적용, 없으면 역할 기본값
+        if uname in user_tab_permissions:
+            allowed = user_tab_permissions[uname]
+        else:
+            allowed = role_permissions.get(role, _DEFAULT_ROLE_PERMISSIONS.get(role, ["dashboard", "assets", "guides"]))
         return {
-            "username": sess["username"],
+            "username": uname,
             "role": role,
-            "allowed_tabs": role_permissions.get(role, _DEFAULT_ROLE_PERMISSIONS.get(role, ["dashboard", "assets", "guides"])),
+            "allowed_tabs": allowed,
         }
 
     @app.get("/admin/role-permissions", tags=["Admin"])
@@ -1618,6 +1627,48 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
                 raise HTTPException(status_code=400, detail=f"tabs for {role_key} must be a list")
             role_permissions[role_key] = [t for t in tabs if t in valid_tabs]
         return {"permissions": role_permissions}
+
+    @app.get("/admin/user-tab-permissions", tags=["Admin"])
+    def get_user_tab_permissions_api() -> dict[str, Any]:
+        """유저별 탭 권한 오버라이드 목록 + 전체 유저 목록 조회."""
+        # 로컬 유저 + 로그인 이력이 있는 세션 유저
+        all_users: dict[str, str] = {}
+        for uname, info in local_users.items():
+            all_users[uname] = info.get("role", "user")
+        for _tok, sess in sessions.items():
+            uname = sess.get("username", "")
+            if uname and uname not in all_users:
+                all_users[uname] = sess.get("role", "user")
+        users_list = []
+        for uname, role in sorted(all_users.items()):
+            role_default = role_permissions.get(role, _DEFAULT_ROLE_PERMISSIONS.get(role, ["dashboard", "assets", "guides"]))
+            override = user_tab_permissions.get(uname)
+            users_list.append({
+                "username": uname,
+                "role": role,
+                "role_default_tabs": role_default,
+                "user_tabs": override,  # None이면 역할 기본값 사용 중
+                "has_override": override is not None,
+            })
+        return {"users": users_list}
+
+    @app.post("/admin/user-tab-permissions/{username}", tags=["Admin"])
+    def set_user_tab_permissions_api(username: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """특정 유저의 탭 권한 개별 설정. {"tabs": ["dashboard","assets",...]}"""
+        valid_tabs = {"dashboard", "triage", "incidents", "assets", "compliance", "guides"}
+        tabs = payload.get("tabs")
+        if not isinstance(tabs, list):
+            raise HTTPException(status_code=400, detail="tabs must be a list")
+        user_tab_permissions[username] = [t for t in tabs if t in valid_tabs]
+        _log_action("admin", "USER_TAB_PERM_SET", f"user={username} tabs={user_tab_permissions[username]}")
+        return {"username": username, "tabs": user_tab_permissions[username]}
+
+    @app.delete("/admin/user-tab-permissions/{username}", tags=["Admin"])
+    def reset_user_tab_permissions_api(username: str) -> dict[str, Any]:
+        """특정 유저의 탭 권한 개별 설정 초기화 (역할 기본값으로 복원)."""
+        removed = user_tab_permissions.pop(username, None)
+        _log_action("admin", "USER_TAB_PERM_RESET", f"user={username}")
+        return {"username": username, "reset": removed is not None}
 
     @app.get("/admin/action-audit-log", tags=["Admin"])
     def get_action_audit_log(limit: int = 500, username: str = "") -> dict[str, Any]:
@@ -5097,6 +5148,16 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           </div>
           <div class=\"status-line\" id=\"roleperm_status\"></div>
         </section>
+
+        <section class=\"card\" style=\"margin-top:20px\">
+          <h2>👤 유저별 대시보드 탭 관리</h2>
+          <div class=\"subtext\">개별 유저에게 역할 기본값과 다른 탭을 지정합니다. 유저별 설정이 있으면 역할 기본값보다 우선 적용됩니다.</div>
+          <div class=\"actions\" style=\"margin-bottom:12px\">
+            <button id=\"reload_usertab\" class=\"secondary\">🔄 새로고침</button>
+          </div>
+          <div id=\"usertab_list\" style=\"display:grid;gap:14px;margin-bottom:16px\"><span class=\"empty\">로딩 중…</span></div>
+          <div class=\"status-line\" id=\"usertab_status\"></div>
+        </section>
       </div>
     </div>
 
@@ -6412,6 +6473,93 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       });
     }
 
+    // ── 유저별 탭 권한 관리 ────────────────────────────────────────────────
+    async function loadUserTabPermissions() {
+      const listEl = document.getElementById('usertab_list');
+      const statusEl = document.getElementById('usertab_status');
+      if (!listEl) return;
+      listEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      try {
+        const res = await fetch('/admin/user-tab-permissions');
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+        const users = data.users || [];
+        if (users.length === 0) {
+          listEl.innerHTML = '<span class=\"empty\">등록된 사용자가 없습니다.</span>';
+          return;
+        }
+        listEl.innerHTML = users.map(u => {
+          const activeTabs = u.has_override ? u.user_tabs : u.role_default_tabs;
+          const overrideBadge = u.has_override
+            ? '<span style=\"background:#854d0e;color:#fbbf24;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px\">개별 설정</span>'
+            : '<span style=\"background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px\">역할 기본값</span>';
+          const checks = ROLE_PERM_TABS.map(tab => {
+            const checked = activeTabs.includes(tab.id) ? 'checked' : '';
+            return `<label style=\"display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #223148;border-radius:6px;background:#0b1220;cursor:pointer;font-size:12px\">
+              <input type=\"checkbox\" data-user=\"${escapeHtml(u.username)}\" data-utab=\"${tab.id}\" ${checked} style=\"width:auto;margin:0\" onchange=\"_onUserTabChange('${escapeHtml(u.username)}')\" />
+              <span>${tab.label}</span>
+            </label>`;
+          }).join('');
+          const resetBtn = u.has_override
+            ? `<button onclick=\"_resetUserTabs('${escapeHtml(u.username)}')\" style=\"font-size:11px;padding:3px 10px;background:#450a0a;color:#fca5a5;border:1px solid #7f1d1d;border-radius:6px;cursor:pointer;margin-left:8px\">초기화</button>`
+            : '';
+          return `<div style=\"background:#0f172a;border:1px solid #233046;border-radius:12px;padding:14px\" id=\"usertab_row_${escapeHtml(u.username)}\">
+            <div style=\"display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px\">
+              <div>
+                <strong style=\"color:#e2e8f0\">${escapeHtml(u.username)}</strong>
+                <span style=\"color:#64748b;font-size:12px;margin-left:6px\">(${escapeHtml(u.role)})</span>
+                ${overrideBadge}
+              </div>
+              <div style=\"display:flex;gap:6px;align-items:center\">${resetBtn}</div>
+            </div>
+            <div style=\"display:flex;flex-wrap:wrap;gap:6px\">${checks}</div>
+            <div class=\"status-line\" id=\"usertab_status_${escapeHtml(u.username)}\" style=\"margin-top:6px;font-size:12px\"></div>
+          </div>`;
+        }).join('');
+      } catch(e) {
+        listEl.innerHTML = `<span class=\"empty\">로드 실패: ${escapeHtml(e.message)}</span>`;
+      }
+    }
+
+    async function _onUserTabChange(username) {
+      const checkboxes = document.querySelectorAll(`input[data-user="${username}"][data-utab]`);
+      const tabs = [];
+      checkboxes.forEach(cb => { if (cb.checked) tabs.push(cb.dataset.utab); });
+      const statusEl = document.getElementById('usertab_status_' + username);
+      if (statusEl) { statusEl.style.color = '#94a3b8'; statusEl.textContent = '저장 중…'; }
+      try {
+        const res = await fetch(`/admin/user-tab-permissions/${encodeURIComponent(username)}`, {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ tabs }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        if (statusEl) { statusEl.style.color = '#86efac'; statusEl.textContent = '✅ 저장됨 (재로그인 후 적용)'; }
+        // 배지 업데이트
+        setTimeout(() => loadUserTabPermissions(), 500);
+      } catch(e) {
+        if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = `오류: ${e.message}`; }
+      }
+    }
+    window._onUserTabChange = _onUserTabChange;
+
+    async function _resetUserTabs(username) {
+      if (!confirm(`${username} 유저의 개별 탭 설정을 초기화하시겠습니까?\\n역할 기본값으로 돌아갑니다.`)) return;
+      const statusEl = document.getElementById('usertab_status_' + username);
+      try {
+        const res = await fetch(`/admin/user-tab-permissions/${encodeURIComponent(username)}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(await res.text());
+        if (statusEl) { statusEl.style.color = '#86efac'; statusEl.textContent = '✅ 초기화됨'; }
+        setTimeout(() => loadUserTabPermissions(), 500);
+      } catch(e) {
+        if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = `오류: ${e.message}`; }
+      }
+    }
+    window._resetUserTabs = _resetUserTabs;
+
+    if (document.getElementById('reload_usertab')) {
+      document.getElementById('reload_usertab')?.addEventListener('click', loadUserTabPermissions);
+    }
+
     // ── 사용자 행동 로그 ──────────────────────────────────────────────────
     async function loadUserActivityLog(filterUser, filterAction) {
       const listEl = document.getElementById('userlog_list');
@@ -6518,6 +6666,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       await loadGuideForEdit(guideEditSelectEl.value);
       await loadSignupRequests();
       await loadRolePermissions();
+      await loadUserTabPermissions();
       await loadUserActivityLog();
     }
 
