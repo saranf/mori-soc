@@ -427,16 +427,32 @@ def _write_vulnerability_csv(buf: io.StringIO, report: dict) -> None:
         writer.writerow(r)
 
 
+_MONTHLY_SECTION_KR = {
+    "assets": "자산", "alerts": "경보", "vulnerabilities": "취약점",
+    "collection": "수집", "compliance": "컴플라이언스", "identity": "계정/권한",
+}
+_MONTHLY_METRIC_KR = {
+    "total_hosts": "전체호스트", "online": "온라인", "offline": "오프라인",
+    "total_30d": "30일경보수", "by_severity": "심각도별", "by_source": "소스별",
+    "new_30d": "30일신규", "resolved_30d": "30일해결",
+    "sources": "소스수", "healthy": "정상소스",
+    "total_checks": "전체점검수", "pass_rate": "통과율", "status_counts": "상태별",
+    "total_accounts": "전체계정수", "privileged_accounts": "특권계정수",
+}
+
+
 def _write_monthly_csv(buf: io.StringIO, report: dict) -> None:
     """월간 운영 리포트를 섹션별 key-value CSV로 출력."""
     writer = csv.writer(buf)
     writer.writerow(["섹션", "지표", "값"])
     for section_key in ("assets", "alerts", "vulnerabilities", "collection", "compliance", "identity"):
         section = report.get(section_key, {})
+        sec_label = _MONTHLY_SECTION_KR.get(section_key, section_key)
         for k, v in section.items():
+            metric_label = _MONTHLY_METRIC_KR.get(k, k)
             if isinstance(v, dict):
                 for sub_k, sub_v in v.items():
-                    writer.writerow([section_key, f"{k}.{sub_k}", str(sub_v)])
+                    writer.writerow([sec_label, f"{metric_label}.{sub_k}", str(sub_v)])
             else:
-                writer.writerow([section_key, k, str(v)])
+                writer.writerow([sec_label, metric_label, str(v)])
 

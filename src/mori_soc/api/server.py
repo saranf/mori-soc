@@ -2320,12 +2320,12 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"report generation failed: {exc}") from exc
         if format == "csv":
-            csv_content = report_to_csv(report)
+            csv_content = "\ufeff" + report_to_csv(report)
             timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             filename = f"mori-{report_type.replace('_', '-')}-{timestamp}.csv"
             return StreamingResponse(
                 iter([csv_content]),
-                media_type="text/csv; charset=utf-8",
+                media_type="text/csv; charset=utf-8-sig",
                 headers={"Content-Disposition": f'attachment; filename="{filename}"'},
             )
         return report
@@ -3775,9 +3775,26 @@ def render_user_dashboard_html(
     }
 
     /* ── 인시던트 호스트 검색 자동완성 ──────────────────────────────────── */
-    function _incHostSearch(val) {
+    let _incHostCacheLoaded = false;
+    async function _ensureAssetCacheForIncident() {
+      if (_incHostCacheLoaded) return;
+      if ((_assetCache.fleet || []).length === 0 && (_assetCache.zabbix || []).length === 0) {
+        try {
+          const res = await fetch('/assets');
+          if (res.ok) {
+            const data = await res.json();
+            _assetCache.fleet = data.fleet?.hosts || [];
+            _assetCache.zabbix = data.zabbix?.hosts || [];
+            if (!_assetCache.trivy?.length) _assetCache.trivy = data.trivy?.rows || [];
+          }
+        } catch(e) { console.warn('[MORI] asset cache load for incidents failed:', e); }
+      }
+      _incHostCacheLoaded = true;
+    }
+    async function _incHostSearch(val) {
       const sugEl = document.getElementById('inc_host_suggestions');
       if (!val || val.length < 1) { sugEl.style.display = 'none'; return; }
+      await _ensureAssetCacheForIncident();
       const q = val.toLowerCase();
       const allHosts = [...(_assetCache.fleet || []), ...(_assetCache.zabbix || [])];
       const seen = new Set();
@@ -6539,12 +6556,15 @@ _DEFAULT_STALE_THRESHOLD = 600  # 기준표에 없는 소스는 10분
 def _source_coverage(store: InMemoryQueryStore) -> list[dict[str, Any]]:
     now = datetime.now(tz=timezone.utc)
     all_host_ids = {h.host_id for h in store.hosts}
+    hostnames_map = {h.host_id: h.hostname.lower() for h in store.hosts}
     ordered_sources = ["fleet", "wazuh", "zabbix", "trivy", "host_log"]
-    sources = {source: set() for source in ordered_sources}
+    # hostname 기준으로 중복 제거 (동일 호스트가 여러 host_id를 가질 수 있음)
+    sources: dict[str, set[str]] = {source: set() for source in ordered_sources}
     for alias in store.host_aliases:
         # 실제 등록된 호스트만 카운트 (고아 alias 제외)
         if alias.host_id in all_host_ids:
-            sources.setdefault(alias.source, set()).add(alias.host_id)
+            hostname_key = hostnames_map.get(alias.host_id, alias.host_id)
+            sources.setdefault(alias.source, set()).add(hostname_key)
     sync_map = {item.source: item for item in store.source_syncs}
     for source in sync_map:
         sources.setdefault(source, set())
