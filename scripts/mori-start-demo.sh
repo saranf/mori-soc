@@ -43,17 +43,17 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
-# 3) Seed sample data
+# 4) Seed sample data
 echo ""
 echo "🌱 Seeding sample data..."
 bash "$SCRIPT_DIR/mori-seed-sample-data.sh"
 
-# 4) Start worker (background)
+# 5) Start worker (background, optional — mori-api uses same image)
 echo ""
-echo "🔄 Starting worker..."
-docker compose up -d mori-worker
+echo "🔄 Starting worker (if available)..."
+docker compose up -d mori-worker 2>/dev/null || echo "   ⚠️  Worker skipped (dependency not ready — OK for demo mode)"
 
-# 5) Summary
+# 6) Summary
 MORI_PORT="${MORI_API_PORT:-18000}"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
