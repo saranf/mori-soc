@@ -1,11 +1,12 @@
-"""Fleet-specific poller service (미연결 스텁).
+"""Fleet-specific poller service (PC/노트북 자산 — 미연결 스텁).
 
 기준값 (docs/collection-standards.md):
-  poll_interval   : 120 s
-  stale_threshold : 1200 s (20분)
+  poll_interval   : 604800 s (주 1회)
+  stale_threshold : 864000 s (10일)
   max_retries     : 3
   retry_backoff   : 15 s
   연동 상태       : 🔲 미연결 (Phase 3 REST API 연동 예정)
+  참고            : 사용자가 새로고침 시 on-demand 수집 가능
 """
 
 from __future__ import annotations
@@ -27,8 +28,8 @@ class FleetPoller(BasePollerService):
     """
 
     # ── 수집 기준값 (collection-standards.md 기준) ─────────────────
-    _DEFAULT_POLL_INTERVAL: int = 120
-    _DEFAULT_STALE_THRESHOLD: int = 1200   # 20분
+    _DEFAULT_POLL_INTERVAL: int = 604800     # 주 1회 (7일)
+    _DEFAULT_STALE_THRESHOLD: int = 864000   # 10일
     _DEFAULT_MAX_RETRIES: int = 3
     _DEFAULT_RETRY_BACKOFF: int = 15
 

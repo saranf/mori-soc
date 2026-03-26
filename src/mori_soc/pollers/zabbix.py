@@ -1,8 +1,8 @@
-"""Zabbix-specific poller service.
+"""Zabbix-specific poller service (서버 자산).
 
 기준값 (docs/collection-standards.md):
-  poll_interval   : 60 s
-  stale_threshold : 600 s (10분)
+  poll_interval   : 30 s  (서버는 30초 주기)
+  stale_threshold : 300 s (5분 — 30초 주기이므로)
   max_retries     : 3
   retry_backoff   : 10 s
 """
@@ -25,8 +25,8 @@ class ZabbixPoller(BasePollerService):
     """
 
     # ── 수집 기준값 (collection-standards.md 기준) ─────────────────
-    _DEFAULT_POLL_INTERVAL: int = 60
-    _DEFAULT_STALE_THRESHOLD: int = 600
+    _DEFAULT_POLL_INTERVAL: int = 30       # 서버: 30초 주기
+    _DEFAULT_STALE_THRESHOLD: int = 300    # 5분 (30초 주기 × 10)
     _DEFAULT_MAX_RETRIES: int = 3
     _DEFAULT_RETRY_BACKOFF: int = 10
 

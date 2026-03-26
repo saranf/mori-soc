@@ -2121,6 +2121,46 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             )
         return payload
 
+    # ── On-demand 수집 (사용자 새로고침 시 즉시 폴링) ──────────────────────
+    @app.post("/assets/refresh", tags=["Assets"])
+    def assets_refresh(payload: dict[str, Any], request: Request) -> Any:
+        """사용자가 새로고침 버튼을 누르면 해당 소스를 on-demand 수집한다.
+
+        요청: ``{"source": "zabbix"}`` 또는 ``{"source": "fleet"}``
+        응답: 수집 결과 상태
+        """
+        source = str(payload.get("source", "")).strip().lower()
+        valid_sources = {"zabbix", "fleet", "wazuh", "trivy"}
+        if source not in valid_sources:
+            raise HTTPException(status_code=400, detail=f"source must be one of: {', '.join(sorted(valid_sources))}")
+
+        from mori_soc.pollers.zabbix import ZabbixPoller
+        from mori_soc.pollers.fleet import FleetPoller
+        from mori_soc.pollers.wazuh import WazuhPoller
+        from mori_soc.pollers.trivy import TrivyPoller
+        from mori_soc.services import EnvelopeEntityMapper as _EM
+
+        poller_map: dict[str, type] = {
+            "zabbix": ZabbixPoller,
+            "fleet": FleetPoller,
+            "wazuh": WazuhPoller,
+            "trivy": TrivyPoller,
+        }
+        poller_cls = poller_map[source]
+        poller = poller_cls()
+
+        try:
+            mapper = _EM()
+            from mori_soc.pollers.base import _repository_from_env
+            repository = _repository_from_env()
+            result = poller.run_cycle(repository, mapper)
+            username = _get_session_username(request) or "unknown"
+            logger.info("[on-demand] %s refresh triggered by %s — %s", source, username, result.status)
+            return {"status": result.status, "source": source, "message": result.message or "completed"}
+        except Exception as exc:
+            logger.error("[on-demand] %s refresh failed: %s", source, exc)
+            return {"status": "error", "source": source, "message": str(exc)}
+
     # ── Fleet 전용 API ───────────────────────────────────────────────────────
     @app.get("/fleet/hosts", tags=["Fleet"])
     def fleet_hosts_get(format: str = "json") -> Any:
@@ -2556,7 +2596,10 @@ def render_user_dashboard_html(
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
             <h2 style=\"margin:0\">🖥️ PC 자산 목록 (Fleet)</h2>
-            <button onclick=\"downloadAssetsCSV('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
+            <div style=\"display:flex;gap:6px;\">
+              <button onclick=\"onDemandRefresh('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">🔄 새로고침</button>
+              <button onclick=\"downloadAssetsCSV('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
+            </div>
           </div>
           <div class=\"asset-search-bar\">
             <input type=\"text\" id=\"fleet_search_hostname\" placeholder=\"호스트명 검색…\" oninput=\"filterAssetTable('fleet')\" />
@@ -2578,7 +2621,10 @@ def render_user_dashboard_html(
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
             <h2 style=\"margin:0\">🖧 서버 자산 목록 (Zabbix)</h2>
-            <button onclick=\"downloadAssetsCSV('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
+            <div style=\"display:flex;gap:6px;\">
+              <button onclick=\"onDemandRefresh('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">🔄 새로고침</button>
+              <button onclick=\"downloadAssetsCSV('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
+            </div>
           </div>
           <div class=\"asset-search-bar\">
             <input type=\"text\" id=\"zabbix_search_hostname\" placeholder=\"호스트명 검색…\" oninput=\"filterAssetTable('zabbix')\" />
@@ -2930,6 +2976,7 @@ def render_user_dashboard_html(
     window.switchTab         = switchTab;
     window.switchAssetTab    = switchAssetTab;
     window.downloadAssetsCSV = downloadAssetsCSV;
+    window.onDemandRefresh   = onDemandRefresh;
     window.filterAssetTable  = filterAssetTable;
     window.openTriageModal   = openTriageModal;
     window.openIncidentModal = openIncidentModal;
@@ -3978,6 +4025,36 @@ def render_user_dashboard_html(
       a.href = `/assets?format=csv&source=${encodeURIComponent(source)}`;
       a.download = '';
       a.click();
+    }
+
+    /* ── On-demand 수집 (새로고침 버튼) ──────────────────────────────── */
+    async function onDemandRefresh(source) {
+      const statusEl = document.getElementById('assets_status');
+      statusEl.textContent = `🔄 ${source} 수집 중...`;
+      statusEl.style.color = '#fde68a';
+      try {
+        const res = await fetch('/assets/refresh', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({source}),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          statusEl.style.color = '#86efac';
+          statusEl.textContent = `✅ ${source} 수집 완료`;
+        } else if (data.status === 'skipped') {
+          statusEl.style.color = '#fde68a';
+          statusEl.textContent = `⏭️ ${data.message}`;
+        } else {
+          statusEl.style.color = '#fca5a5';
+          statusEl.textContent = `❌ ${source} 수집 오류: ${data.message}`;
+        }
+        // 수집 후 자산 목록 새로고침
+        await loadAssets();
+      } catch(e) {
+        statusEl.style.color = '#fca5a5';
+        statusEl.textContent = `오류: ${e.message}`;
+      }
     }
 
     // ── Guide Tab ─────────────────────────────────────────────────────────
@@ -6209,8 +6286,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
 # ── 소스별 stale 판단 기준 (docs/collection-standards.md 기준) ──────
 _SOURCE_STALE_THRESHOLDS: dict[str, int] = {
-    "zabbix": 600,       # 10분
-    "fleet": 1200,       # 20분
+    "zabbix": 300,       # 5분 (서버: 30초 주기)
+    "fleet": 864000,     # 10일 (PC: 주 1회 수집)
     "wazuh": 600,        # 10분
     "trivy": 604800,     # 7일
     "ldap": 28800,       # 8시간
