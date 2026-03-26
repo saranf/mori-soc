@@ -3728,10 +3728,8 @@ def render_user_dashboard_html(
         const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
         const fleetLink = FLEET_URL ? `<a href=\"${escapeHtml(FLEET_URL)}/hosts?query=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#6ee7b7;font-size:12px;\">Fleet ↗</a>` : '';
         const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
-        const exUntil = h.exception_until || '';
-        const exBadge = exUntil ? `<br><span style=\"color:#fbbf24;font-size:10px\">⏸ 예외 ~${escapeHtml(exUntil)}</span>` : '';
-        const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>${exBadge}
-          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','','pc','${escapeHtml(exUntil)}')\"
+        const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>
+          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','','pc','')\"
             style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
         return `<tr>
           <td><strong>${escapeHtml(h.hostname)}</strong>${fleetLink ? '<br>' + fleetLink : ''}</td>
@@ -3773,10 +3771,8 @@ def render_user_dashboard_html(
         const metricStr = h.latest_metric ? `${escapeHtml(h.latest_metric)}: ${escapeHtml(h.latest_value || '-')}` : '-';
         const impBadge = h.importance ? `<span style=\"background:#1e293b;color:${impColor[h.importance]||'#94a3b8'};padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700\">${escapeHtml(h.importance)}</span>` : '-';
         const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
-        const exUntil = h.exception_until || '';
-        const exBadge = exUntil ? `<br><span style=\"color:#fbbf24;font-size:10px\">⏸ 예외 ~${escapeHtml(exUntil)}</span>` : '';
-        const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>${exBadge}
-          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}','server','${escapeHtml(exUntil)}')\"
+        const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>
+          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}','server','')\"
             style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
         return `<tr>
           <td><strong>${escapeHtml(h.hostname)}</strong>${zabbixLink ? '<br>' + zabbixLink : ''}</td>
@@ -3908,8 +3904,12 @@ def render_user_dashboard_html(
       document.getElementById('owner_modal_status').style.color = '#94a3b8';
       // PC 자산은 카테고리 숨김, 서버만 표시
       const isServer = assetType === 'server';
+      const isTrivy = assetType === 'trivy';
       document.getElementById('owner_modal_category_row').style.display = isServer ? '' : 'none';
-      document.getElementById('owner_modal_title').textContent = isServer ? `서버 자산 수정 — ${hostname}` : `PC 자산 수정 — ${hostname}`;
+      // 처리 예외 기한은 Trivy에서만 필요
+      document.getElementById('owner_modal_exception_row').style.display = isTrivy ? '' : 'none';
+      const titleMap = { server: '서버 자산 수정', pc: 'PC 자산 수정', trivy: '취약점 자산 수정' };
+      document.getElementById('owner_modal_title').textContent = `${titleMap[assetType] || '자산 수정'} — ${hostname}`;
       document.getElementById('owner_modal').style.display = 'flex';
     }
     function closeOwnerModal() { document.getElementById('owner_modal').style.display = 'none'; }
