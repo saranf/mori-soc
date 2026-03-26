@@ -177,7 +177,7 @@ def build_dashboard_payload(service: QueryService) -> dict[str, Any]:
         "critical_vulns": sum(1 for vuln in store.vulnerabilities if vuln.severity == "critical"),
         "high_vulns": sum(1 for vuln in store.vulnerabilities if vuln.severity == "high"),
         "sources_reporting": sum(1 for item in source_coverage if item["host_count"] > 0),
-        "sources_healthy": sum(1 for item in source_coverage if item["status"] == "success"),
+        "sources_healthy": sum(1 for item in source_coverage if item["status"] == "success" and not item.get("is_stale")),
         "ingested_records": len(store.alerts)
         + len(store.vulnerabilities)
         + len(store.query_results)
@@ -193,7 +193,7 @@ def build_dashboard_payload(service: QueryService) -> dict[str, Any]:
             "alerts_24h": _alert_detail_rows(alerts_24h, hostnames),
             "critical_vulns": _critical_vuln_detail_rows(store, hostnames),
             "sources_reporting": [item for item in source_coverage if item["host_count"] > 0],
-            "sources_healthy": [item for item in source_coverage if item["status"] == "success"],
+            "sources_healthy": [item for item in source_coverage if item["status"] == "success" and not item.get("is_stale")],
             "ingested_records": _ingested_record_rows(store),
         },
         "source_coverage": source_coverage,
@@ -3116,14 +3116,16 @@ def render_user_dashboard_html(
         return;
       }
       const statusToBadge = { success: 'online', error: 'offline', running: 'unknown', unknown: 'unknown' };
-      sourceCoverageEl.innerHTML = items.map((item) => `
+      sourceCoverageEl.innerHTML = items.map((item) => {
+        const staleBadge = item.is_stale ? ' <span class=\"badge\" style=\"background:#f59e0b;color:#000\">STALE</span>' : '';
+        return `
         <div class=\"coverage-item\">
           <div class=\"metric-label\">${escapeHtml(item.source.toUpperCase())}</div>
           <strong>${escapeHtml(item.host_count)}</strong>
-          <div class=\"metric-sub\">호스트 · <span class=\"badge ${escapeHtml(statusToBadge[item.status] || 'unknown')}\">${escapeHtml(item.status)}</span></div>
+          <div class=\"metric-sub\">호스트 · <span class=\"badge ${escapeHtml(statusToBadge[item.status] || 'unknown')}\">${escapeHtml(item.status)}</span>${staleBadge}</div>
           <div class=\"metric-sub\">last sync: ${escapeHtml(formatTime(item.last_sync_at))}</div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     }
 
     function renderLatestStatus(items) {
@@ -5223,16 +5225,18 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         return;
       }
       const statusToBadge = { success: 'online', error: 'offline', running: 'unknown', unknown: 'unknown' };
-      sourceCoverageEl.innerHTML = items.map((item) => `
+      sourceCoverageEl.innerHTML = items.map((item) => {
+        const staleBadge = item.is_stale ? ' <span class=\"badge\" style=\"background:#f59e0b;color:#000\">STALE</span>' : '';
+        return `
         <div class=\"coverage-item\">
           <div class=\"metric-label\">${escapeHtml(item.source.toUpperCase())}</div>
           <strong>${escapeHtml(item.host_count)}</strong>
-          <div class=\"metric-sub\">호스트 · <span class=\"badge ${escapeHtml(statusToBadge[item.status] || 'unknown')}\">${escapeHtml(item.status)}</span></div>
+          <div class=\"metric-sub\">호스트 · <span class=\"badge ${escapeHtml(statusToBadge[item.status] || 'unknown')}\">${escapeHtml(item.status)}</span>${staleBadge}</div>
           <div class=\"metric-sub\">last sync: ${escapeHtml(formatTime(item.last_sync_at))}</div>
           <div class=\"metric-sub\">records ${escapeHtml(item.records_collected)} / entities ${escapeHtml(item.entities_saved)}</div>
           <div class=\"status-line\">${escapeHtml(item.message || '아직 sync 기록 없음')}</div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     }
 
     function renderLatestStatus(items) {
@@ -6120,7 +6124,20 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     )
 
 
+# ── 소스별 stale 판단 기준 (docs/collection-standards.md 기준) ──────
+_SOURCE_STALE_THRESHOLDS: dict[str, int] = {
+    "zabbix": 600,       # 10분
+    "fleet": 1200,       # 20분
+    "wazuh": 600,        # 10분
+    "trivy": 604800,     # 7일
+    "ldap": 28800,       # 8시간
+    "host_log": 600,     # 10분 (기본)
+}
+_DEFAULT_STALE_THRESHOLD = 600  # 기준표에 없는 소스는 10분
+
+
 def _source_coverage(store: InMemoryQueryStore) -> list[dict[str, Any]]:
+    now = datetime.now(tz=timezone.utc)
     ordered_sources = ["fleet", "wazuh", "zabbix", "trivy", "host_log"]
     sources = {source: set() for source in ordered_sources}
     for alias in store.host_aliases:
@@ -6131,11 +6148,19 @@ def _source_coverage(store: InMemoryQueryStore) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for source, host_ids in sources.items():
         sync = sync_map.get(source)
+        # stale 판단: last_success_at 이 stale_threshold 이상 경과
+        stale_threshold = _SOURCE_STALE_THRESHOLDS.get(source, _DEFAULT_STALE_THRESHOLD)
+        is_stale = True  # sync 기록 없으면 stale
+        if sync and sync.last_success_at:
+            elapsed = (now - sync.last_success_at).total_seconds()
+            is_stale = elapsed > stale_threshold
         rows.append(
             {
                 "source": source,
                 "host_count": len(host_ids),
                 "status": sync.status if sync else "unknown",
+                "is_stale": is_stale,
+                "stale_threshold_seconds": stale_threshold,
                 "last_sync_at": _isoformat(sync.last_sync_at) if sync else None,
                 "last_success_at": _isoformat(sync.last_success_at) if sync else None,
                 "last_error_at": _isoformat(sync.last_error_at) if sync else None,

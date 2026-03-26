@@ -20,8 +20,10 @@ from typing import Iterable
 from mori_soc.collectors.base import BaseCollector
 from mori_soc.models import SourceSync
 from mori_soc.pollers.base import BasePollerService, PollerCycleResult, _env_flag, _repository_from_env
+from mori_soc.pollers.fleet import FleetPoller
 from mori_soc.pollers.ldap_sync import LdapSyncPoller
 from mori_soc.pollers.trivy import TrivyPoller
+from mori_soc.pollers.wazuh import WazuhPoller
 from mori_soc.pollers.zabbix import ZabbixPoller
 from mori_soc.repositories import BaseRepository
 from mori_soc.services import CollectorIngestionService, EnvelopeEntityMapper, IngestionReport
@@ -39,6 +41,8 @@ create_repository_from_env = _repository_from_env
 
 ALL_POLLERS: list[type[BasePollerService]] = [
     ZabbixPoller,
+    FleetPoller,
+    WazuhPoller,
     TrivyPoller,
     LdapSyncPoller,
 ]
@@ -123,7 +127,12 @@ def run_ingestion_cycle(
 # ── main loop ──────────────────────────────────────────────────────
 
 def run_forever() -> None:
-    """Run all enabled pollers in a single loop (unified worker mode)."""
+    """Run all enabled pollers in a single loop (unified worker mode).
+
+    각 폴러의 ``poll_interval_seconds`` 를 존중해 소스별 다음 실행 시각을
+    관리합니다.  글로벌 루프는 1 초 간격으로 돌며, 각 폴러의 예정 시각이
+    도래하면 해당 폴러만 실행합니다.
+    """
     repository = _repository_from_env()
     mapper = EnvelopeEntityMapper()
     pollers = build_pollers()
@@ -136,17 +145,23 @@ def run_forever() -> None:
             "Set MORI_ENABLE_ZABBIX, MORI_ENABLE_TRIVY, or MORI_ENABLE_LDAP_SYNC environment variables."
         )
 
-    poll_interval = max(1, int(os.getenv("MORI_WORKER_INTERVAL_SECONDS", "60")))
     run_once = _env_flag("MORI_WORKER_RUN_ONCE", default=False)
-    source_names = ", ".join(p.source_name for p in active)
-    logger.info("Unified worker starting — pollers=[%s], interval=%ds", source_names, poll_interval)
+
+    # 소스별 다음 실행 시각 스케줄러 (첫 실행은 즉시)
+    next_run: dict[str, float] = {p.source_name: 0.0 for p in active}
+
+    source_info = ", ".join(f"{p.source_name}({p.poll_interval_seconds}s)" for p in active)
+    logger.info("Unified worker starting — pollers=[%s]", source_info)
 
     while True:
+        now = time.monotonic()
         for poller in active:
-            poller.run_cycle(repository, mapper)
+            if now >= next_run[poller.source_name]:
+                poller.run_cycle(repository, mapper)
+                next_run[poller.source_name] = time.monotonic() + poller.poll_interval_seconds
         if run_once:
             return
-        time.sleep(poll_interval)
+        time.sleep(1)
 
 
 def _truncate_message(message: str, limit: int = 500) -> str:

@@ -1,4 +1,11 @@
-"""Zabbix-specific poller service."""
+"""Zabbix-specific poller service.
+
+기준값 (docs/collection-standards.md):
+  poll_interval   : 60 s
+  stale_threshold : 600 s (10분)
+  max_retries     : 3
+  retry_backoff   : 10 s
+"""
 
 from __future__ import annotations
 
@@ -11,11 +18,37 @@ from .base import BasePollerService, _env_flag
 
 
 class ZabbixPoller(BasePollerService):
-    """Reads ``MORI_ZABBIX_*`` env-vars and creates a :class:`ZabbixEventCollector`."""
+    """Reads ``MORI_ZABBIX_*`` env-vars and creates a :class:`ZabbixEventCollector`.
+
+    기준값은 docs/collection-standards.md 참고.
+    환경변수 MORI_ZABBIX_INTERVAL_SECONDS / MORI_ZABBIX_STALE_SECONDS 로 재정의 가능.
+    """
+
+    # ── 수집 기준값 (collection-standards.md 기준) ─────────────────
+    _DEFAULT_POLL_INTERVAL: int = 60
+    _DEFAULT_STALE_THRESHOLD: int = 600
+    _DEFAULT_MAX_RETRIES: int = 3
+    _DEFAULT_RETRY_BACKOFF: int = 10
 
     @property
     def source_name(self) -> str:
         return "zabbix"
+
+    @property
+    def poll_interval_seconds(self) -> int:
+        return max(1, int(os.getenv("MORI_ZABBIX_INTERVAL_SECONDS", str(self._DEFAULT_POLL_INTERVAL))))
+
+    @property
+    def stale_threshold_seconds(self) -> int:
+        return max(1, int(os.getenv("MORI_ZABBIX_STALE_SECONDS", str(self._DEFAULT_STALE_THRESHOLD))))
+
+    @property
+    def max_retries(self) -> int:
+        return max(0, int(os.getenv("MORI_ZABBIX_MAX_RETRIES", str(self._DEFAULT_MAX_RETRIES))))
+
+    @property
+    def retry_backoff_seconds(self) -> int:
+        return max(0, int(os.getenv("MORI_ZABBIX_RETRY_BACKOFF_SECONDS", str(self._DEFAULT_RETRY_BACKOFF))))
 
     def build_collector(self) -> BaseCollector | None:
         if not _env_flag("MORI_ENABLE_ZABBIX", default=True):
