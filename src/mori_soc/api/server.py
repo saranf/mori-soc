@@ -316,7 +316,8 @@ def build_crosscheck_payload(service: QueryService) -> dict[str, Any]:
     # 3) Vuln hosts vs recent observation hosts (30d)
     since_30d = now - timedelta(days=30)
     vuln_host_ids = {v.host_id for v in store.vulnerabilities}
-    recent_obs_ids = {o.host_id for o in store.observations if o.observed_at >= since_30d}
+    # 실제 등록된 호스트에 대한 관측만 카운트 (고아 observation 제외)
+    recent_obs_ids = {o.host_id for o in store.observations if o.observed_at >= since_30d and o.host_id in all_host_ids}
     vuln_no_obs = vuln_host_ids - recent_obs_ids
 
     # 4) LDAP accounts vs host owners (if any directory accounts exist)
@@ -3600,6 +3601,14 @@ def render_user_dashboard_html(
     const FLEET_URL = '__FLEET_UI_URL__';
     const ZABBIX_URL = '__ZABBIX_UI_URL__';
 
+    /* hostname → 담당자 조회 (Fleet + Zabbix 캐시에서) */
+    function _ownerForHost(hostname) {
+      const allHosts = [...(_assetCache.fleet || []), ...(_assetCache.zabbix || [])];
+      const found = allHosts.find(h => h.hostname === hostname);
+      if (!found) return '-';
+      return [found.owner, found.team].filter(Boolean).join(' / ') || '-';
+    }
+
     function renderFleetTable(hosts, containerEl) {
       if (!hosts.length) { containerEl.innerHTML = '<div class=\"empty\">Fleet에서 수집된 PC 자산이 없습니다.</div>'; return; }
       const rows = hosts.map(h => {
@@ -3686,8 +3695,10 @@ def render_user_dashboard_html(
         const planCell = r.action_plan
           ? `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(r.action_plan)}\">${planText}</span>${r.action_target_date ? '<br><span style=\"color:#64748b;font-size:11px\">~' + escapeHtml(r.action_target_date) + '</span>' : ''}`
           : `<button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e3a5f;border:1px solid #334155;border-radius:4px;color:#7dd3fc;cursor:pointer\">+ 계획 추가</button>`;
+        const ownerLabel = _ownerForHost(r.hostname);
         return `<tr>
           <td><strong>${escapeHtml(r.hostname)}</strong><br><span style=\"color:#64748b;font-size:11px\">${escapeHtml(r.host_id)}</span></td>
+          <td style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</td>
           <td style=\"color:${sevColor.critical};font-weight:700;text-align:center\">${r.critical}</td>
           <td style=\"color:${sevColor.high};font-weight:700;text-align:center\">${r.high}</td>
           <td style=\"color:${sevColor.medium};text-align:center\">${r.medium}</td>
@@ -3701,6 +3712,7 @@ def render_user_dashboard_html(
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
         <thead><tr style=\"background:#0f2035;\">
           <th style=\"padding:8px;color:#fdba74\">호스트</th>
+          <th style=\"padding:8px;color:#a3e635\">담당자</th>
           <th style=\"padding:8px;color:#fca5a5\">Critical</th>
           <th style=\"padding:8px;color:#fdba74\">High</th>
           <th style=\"padding:8px;color:#fde68a\">Medium</th>
