@@ -545,8 +545,8 @@ def _assets_csv(payload: dict[str, Any], source: str) -> str:
     out = io.StringIO()
     writer = csv.writer(out, quoting=csv.QUOTE_MINIMAL)
     if source == "fleet":
-        writer.writerow(["host_id", "hostname", "asset_type", "platform", "primary_ip", "status",
-                         "risk_score", "last_seen_at", "query_result_count", "owner", "team"])
+        writer.writerow(["호스트ID", "호스트명", "자산유형", "플랫폼", "IP주소", "상태",
+                         "위험점수", "최종확인일시", "쿼리결과수", "담당자", "팀"])
         for h in payload["fleet"]["hosts"]:
             writer.writerow([
                 h["host_id"], h["hostname"], h["asset_type"], h["platform"], h["primary_ip"],
@@ -554,9 +554,9 @@ def _assets_csv(payload: dict[str, Any], source: str) -> str:
                 h.get("owner", ""), h.get("team", ""),
             ])
     elif source == "zabbix":
-        writer.writerow(["host_id", "hostname", "category", "importance", "platform",
-                         "primary_ip", "status", "risk_score", "last_seen_at",
-                         "observation_count", "latest_metric", "latest_value", "owner", "team"])
+        writer.writerow(["호스트ID", "호스트명", "분류", "중요도", "플랫폼",
+                         "IP주소", "상태", "위험점수", "최종확인일시",
+                         "관측수", "최근메트릭", "최근값", "담당자", "팀"])
         for h in payload["zabbix"]["hosts"]:
             writer.writerow([
                 h["host_id"], h["hostname"], h.get("category", ""), h.get("importance", ""),
@@ -566,8 +566,8 @@ def _assets_csv(payload: dict[str, Any], source: str) -> str:
                 h.get("owner", ""), h.get("team", ""),
             ])
     elif source == "trivy":
-        writer.writerow(["host_id", "hostname", "critical", "high", "medium", "low", "info", "total",
-                         "latest_cve", "latest_detected_at", "action_plan", "action_target_date", "action_updated_by"])
+        writer.writerow(["호스트ID", "호스트명", "심각", "높음", "중간", "낮음", "정보", "합계",
+                         "최근CVE", "탐지일", "조치계획", "목표완료일", "작성자"])
         for r in payload["trivy"]["rows"]:
             writer.writerow([
                 r["host_id"], r["hostname"], r["critical"], r["high"], r["medium"],
@@ -1916,19 +1916,19 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             ]
         if format == "csv":
             buf = io.StringIO()
-            fieldnames = ["incident_id", "title", "status", "created_at", "updated_at", "status_updated_at", "alert_count", "note_count"]
+            fieldnames = ["인시던트ID", "제목", "상태", "생성일시", "수정일시", "상태변경일시", "경보수", "노트수"]
             writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
             writer.writeheader()
             for inc in all_items:
                 writer.writerow({
-                    "incident_id": inc.get("incident_id", ""),
-                    "title": inc.get("title", ""),
-                    "status": inc.get("status", ""),
-                    "created_at": inc.get("created_at", ""),
-                    "updated_at": inc.get("updated_at", ""),
-                    "status_updated_at": inc.get("status_updated_at", ""),
-                    "alert_count": len(inc.get("alert_ids", [])),
-                    "note_count": len(inc.get("notes", [])),
+                    "인시던트ID": inc.get("incident_id", ""),
+                    "제목": inc.get("title", ""),
+                    "상태": inc.get("status", ""),
+                    "생성일시": inc.get("created_at", ""),
+                    "수정일시": inc.get("updated_at", ""),
+                    "상태변경일시": inc.get("status_updated_at", ""),
+                    "경보수": len(inc.get("alert_ids", [])),
+                    "노트수": len(inc.get("notes", [])),
                 })
             timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             return StreamingResponse(
@@ -2220,9 +2220,10 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             buf = io.StringIO()
             hosts = fleet_data.get("hosts", [])
             if hosts:
-                fieldnames = ["hostname", "asset_type", "platform", "primary_ip", "status", "risk_score", "last_seen_at", "owner", "team"]
+                _fleet_header_map = {"hostname": "호스트명", "asset_type": "자산유형", "platform": "플랫폼", "primary_ip": "IP주소", "status": "상태", "risk_score": "위험점수", "last_seen_at": "최종확인일시", "owner": "담당자", "team": "팀"}
+                fieldnames = list(_fleet_header_map.keys())
                 writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
-                writer.writeheader()
+                writer.writerow(_fleet_header_map)
                 writer.writerows(hosts)
             timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             return StreamingResponse(
@@ -2246,9 +2247,10 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             buf = io.StringIO()
             hosts = zabbix_data.get("hosts", [])
             if hosts:
-                fieldnames = ["hostname", "category", "importance", "primary_ip", "status", "latest_metric", "latest_value", "owner", "team"]
+                _zabbix_header_map = {"hostname": "호스트명", "category": "분류", "importance": "중요도", "primary_ip": "IP주소", "status": "상태", "latest_metric": "최근메트릭", "latest_value": "최근값", "owner": "담당자", "team": "팀"}
+                fieldnames = list(_zabbix_header_map.keys())
                 writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
-                writer.writeheader()
+                writer.writerow(_zabbix_header_map)
                 writer.writerows(hosts)
             timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             return StreamingResponse(
@@ -2277,9 +2279,10 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             import io, csv as csv_mod
             buf = io.StringIO()
             if rows:
-                fieldnames = ["hostname", "critical", "high", "medium", "low", "info", "total", "latest_cve", "action_plan", "action_target_date"]
+                _trivy_header_map = {"hostname": "호스트명", "critical": "심각", "high": "높음", "medium": "중간", "low": "낮음", "info": "정보", "total": "합계", "latest_cve": "최근CVE", "action_plan": "조치계획", "action_target_date": "목표완료일"}
+                fieldnames = list(_trivy_header_map.keys())
                 writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
-                writer.writeheader()
+                writer.writerow(_trivy_header_map)
                 writer.writerows(rows)
             timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             return StreamingResponse(

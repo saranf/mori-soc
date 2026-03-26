@@ -268,10 +268,10 @@ class QueryServiceTests(unittest.TestCase):
         rows = list(csv.DictReader(io.StringIO(csv_text)))
 
         self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[0]["filter_host_id"], "host-1")
-        self.assertEqual(rows[0]["meta_host_id"], "host-1")
-        self.assertEqual(rows[0]["evidence_source"], "wazuh")
-        self.assertIn("호스트 host-1", rows[0]["query_summary"])
+        self.assertEqual(rows[0]["필터_host_id"], "host-1")
+        self.assertEqual(rows[0]["메타_host_id"], "host-1")
+        self.assertEqual(rows[0]["증거출처"], "wazuh")
+        self.assertIn("호스트 host-1", rows[0]["질의요약"])
 
     def test_query_response_to_csv_writes_empty_evidence_row(self) -> None:
         response = self.service.execute(
@@ -281,8 +281,8 @@ class QueryServiceTests(unittest.TestCase):
         rows = list(csv.DictReader(io.StringIO(csv_text)))
 
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["evidence_source"], "")
-        self.assertEqual(rows[0]["evidence_record_id"], "")
+        self.assertEqual(rows[0]["증거출처"], "")
+        self.assertEqual(rows[0]["증거레코드ID"], "")
 
 
 # ---------------------------------------------------------------------------

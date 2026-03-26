@@ -490,19 +490,22 @@ def query_response_to_csv(response: QueryResponse) -> str:
     filters = payload.get("filters") if isinstance(payload.get("filters"), dict) else {}
     meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
     evidence = payload.get("evidence") if isinstance(payload.get("evidence"), list) else []
+    # 필터/메타 키를 한글로 매핑
+    _filter_kr = lambda k: f"필터_{k}"
+    _meta_kr = lambda k: f"메타_{k}"
     base_row = {
-        "query_summary": _csv_value(payload.get("summary")),
-        "evidence_count": str(len(evidence)),
-        **{f"filter_{key}": _csv_value(value) for key, value in sorted(filters.items())},
-        **{f"meta_{key}": _csv_value(value) for key, value in sorted(meta.items())},
+        "질의요약": _csv_value(payload.get("summary")),
+        "증거수": str(len(evidence)),
+        **{_filter_kr(key): _csv_value(value) for key, value in sorted(filters.items())},
+        **{_meta_kr(key): _csv_value(value) for key, value in sorted(meta.items())},
     }
     rows = [
         {
             **base_row,
-            "evidence_source": _csv_value(item.get("source")),
-            "evidence_record_id": _csv_value(item.get("record_id")),
-            "evidence_raw_ref": _csv_value(item.get("raw_ref")),
-            "evidence_summary": _csv_value(item.get("summary")),
+            "증거출처": _csv_value(item.get("source")),
+            "증거레코드ID": _csv_value(item.get("record_id")),
+            "증거원본참조": _csv_value(item.get("raw_ref")),
+            "증거요약": _csv_value(item.get("summary")),
         }
         for item in evidence
         if isinstance(item, dict)
@@ -511,10 +514,10 @@ def query_response_to_csv(response: QueryResponse) -> str:
         rows = [
             {
                 **base_row,
-                "evidence_source": "",
-                "evidence_record_id": "",
-                "evidence_raw_ref": "",
-                "evidence_summary": "",
+                "증거출처": "",
+                "증거레코드ID": "",
+                "증거원본참조": "",
+                "증거요약": "",
             }
         ]
 
