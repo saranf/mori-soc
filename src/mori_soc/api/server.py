@@ -432,6 +432,7 @@ def build_assets_payload(
             "owner": owner_info.get("owner", ""),
             "team": owner_info.get("team", ""),
             "exception_until": owner_info.get("exception_until", ""),
+            "exception_reason": owner_info.get("exception_reason", ""),
             "action_plan": plan.get("text", ""),
             "action_target_date": plan.get("target_date", ""),
         })
@@ -469,6 +470,7 @@ def build_assets_payload(
             "owner": owner_info.get("owner", ""),
             "team": owner_info.get("team", ""),
             "exception_until": owner_info.get("exception_until", ""),
+            "exception_reason": owner_info.get("exception_reason", ""),
             "action_plan": plan.get("text", ""),
             "action_target_date": plan.get("target_date", ""),
         })
@@ -1967,11 +1969,16 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             raise HTTPException(status_code=400, detail="title is required")
         now_str = _isoformat(datetime.now(tz=timezone.utc))
         analyst = str(payload.get("analyst", "")).strip() or "unknown"
+        handler = str(payload.get("handler", "")).strip()
+        hostname = str(payload.get("hostname", "")).strip()
         incident: dict[str, Any] = {
             "incident_id": str(uuid.uuid4()),
             "title": title,
             "status": "open",
             "status_updated_at": now_str,
+            "hostname": hostname,
+            "analyst": analyst,
+            "handler": handler or analyst,
             "alert_ids": list(payload.get("alert_ids") or []),
             "notes": [],
             "history": [{"event": "created", "to_status": "open", "analyst": analyst, "changed_at": now_str}],
@@ -2047,18 +2054,20 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         new_category = str(payload.get("category", old_entry.get("category", ""))).strip()
         new_importance = str(payload.get("importance", old_entry.get("importance", ""))).strip()
         new_exception_until = str(payload.get("exception_until", old_entry.get("exception_until", ""))).strip()
+        new_exception_reason = str(payload.get("exception_reason", old_entry.get("exception_reason", ""))).strip()
         entry = {
             "hostname": hostname,
             "owner": owner_name,
             "category": new_category,
             "importance": new_importance,
             "exception_until": new_exception_until,
+            "exception_reason": new_exception_reason,
             "email": str(payload.get("email", "")).strip(),
             "team": str(payload.get("team", "")).strip(),
             "updated_at": now_str,
         }
-        # Audit log: record changes for owner, category, importance, exception_until fields
-        for field in ("owner", "category", "importance", "exception_until"):
+        # Audit log: record changes for owner, category, importance, exception_until, exception_reason fields
+        for field in ("owner", "category", "importance", "exception_until", "exception_reason"):
             old_val = old_entry.get(field, "")
             new_val = entry[field]
             if new_val != old_val:
@@ -2597,13 +2606,35 @@ def render_user_dashboard_html(
           <button id=\"inc_csv_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px;background:#1d3a5f;color:#93c5fd\">⬇️ CSV 다운로드</button>
         </div>
         <div id=\"incidents_list\" class=\"list\" style=\"margin-bottom:14px\"><span class=\"empty\">로딩 중…</span></div>
-        <div class=\"row\">
-          <label for=\"inc_title\">새 인시던트 제목</label>
-          <input id=\"inc_title\" placeholder=\"예: 특정 서버 무단 접근 시도\" />
-        </div>
-        <div class=\"actions\">
-          <button id=\"create_incident\">인시던트 생성</button>
-          <button id=\"reload_incidents\" class=\"secondary\">새로고침</button>
+        <div style=\"background:#0c1827;border:1px solid #1e3a5f;border-radius:8px;padding:16px;margin-bottom:10px\">
+          <div style=\"font-size:13px;font-weight:600;color:#7dd3fc;margin-bottom:10px\">➕ 새 인시던트 생성</div>
+          <div class=\"row\">
+            <label for=\"inc_title\">제목</label>
+            <input id=\"inc_title\" placeholder=\"예: 특정 서버 무단 접근 시도\" />
+          </div>
+          <div class=\"row\" style=\"position:relative\">
+            <label for=\"inc_hostname\">관련 호스트 <span style=\"color:#64748b;font-size:11px\">(검색)</span></label>
+            <input id=\"inc_hostname\" placeholder=\"호스트명 입력…\" autocomplete=\"off\" oninput=\"_incHostSearch(this.value)\" />
+            <div id=\"inc_host_suggestions\" style=\"display:none;position:absolute;top:100%;left:0;right:0;background:#1e293b;border:1px solid #334155;border-radius:6px;max-height:160px;overflow-y:auto;z-index:100\"></div>
+          </div>
+          <div class=\"row\">
+            <label for=\"inc_analyst\">담당자 <span style=\"color:#64748b;font-size:11px\">(호스트 담당자 자동 입력)</span></label>
+            <input id=\"inc_analyst\" placeholder=\"예: 홍길동\" />
+          </div>
+          <div style=\"margin:8px 0\">
+            <label style=\"display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#94a3b8\">
+              <input type=\"checkbox\" id=\"inc_diff_handler\" onchange=\"document.getElementById('inc_handler_row').style.display=this.checked?'':'none'\" />
+              담당자와 조치자가 다름
+            </label>
+          </div>
+          <div class=\"row\" id=\"inc_handler_row\" style=\"display:none\">
+            <label for=\"inc_handler\">조치자</label>
+            <input id=\"inc_handler\" placeholder=\"예: 김보안\" />
+          </div>
+          <div class=\"actions\">
+            <button id=\"create_incident\">인시던트 생성</button>
+            <button id=\"reload_incidents\" class=\"secondary\">새로고침</button>
+          </div>
         </div>
         <div class=\"status-line\" id=\"incident_status\"></div>
       </section>
@@ -2906,6 +2937,8 @@ def render_user_dashboard_html(
         <div id=\"owner_modal_exception_row\"><label style=\"color:#94a3b8;font-size:13px\">처리 예외 기한</label>
           <input type=\"date\" id=\"owner_modal_exception_until\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
           <span style=\"color:#64748b;font-size:11px\">이 날짜까지 점검/알림 예외 처리됩니다</span>
+          <label style=\"color:#94a3b8;font-size:13px;margin-top:8px;display:block\">예외 사유</label>
+          <textarea id=\"owner_modal_exception_reason\" rows=\"2\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 레거시 시스템으로 패치 불가, 2분기 교체 예정\"></textarea>
         </div>
         <div><label style=\"color:#94a3b8;font-size:13px\">팀</label>
           <input id=\"owner_modal_team\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 인프라팀\" />
@@ -3582,11 +3615,15 @@ def render_user_dashboard_html(
           const color = STATUS_COLOR[inc.status] || '#6b7280';
           const ownerLabel = (inc.related_owners || []).join(', ') || '-';
           const hostLabel = (inc.related_hosts || []).join(', ') || '';
+          const incHost = inc.hostname || '';
+          const incAnalyst = inc.analyst || '';
+          const incHandler = inc.handler || '';
+          const handlerInfo = (incHandler && incHandler !== incAnalyst) ? ` · 조치자: <span style=\"color:#fbbf24\">${escapeHtml(incHandler)}</span>` : '';
           return `<div style=\"background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center\">
             <div>
               <strong>${escapeHtml(inc.title)}</strong>
-              <div style=\"color:#94a3b8;font-size:12px;margin-top:4px\">${escapeHtml(formatTime(inc.created_at))} · 노트 ${(inc.notes||[]).length}개${hostLabel ? ' · <span style=\"color:#93c5fd\">' + escapeHtml(hostLabel) + '</span>' : ''}</div>
-              <div style=\"color:#a3e635;font-size:12px;margin-top:2px\">담당자: ${escapeHtml(ownerLabel)}</div>
+              <div style=\"color:#94a3b8;font-size:12px;margin-top:4px\">${escapeHtml(formatTime(inc.created_at))} · 노트 ${(inc.notes||[]).length}개${incHost ? ' · 호스트: <span style=\"color:#93c5fd\">' + escapeHtml(incHost) + '</span>' : ''}${hostLabel ? ' · <span style=\"color:#93c5fd\">' + escapeHtml(hostLabel) + '</span>' : ''}</div>
+              <div style=\"color:#a3e635;font-size:12px;margin-top:2px\">담당자: ${escapeHtml(incAnalyst || ownerLabel)}${handlerInfo}</div>
             </div>
             <div style=\"display:flex;gap:8px;align-items:center\">
               <span style=\"background:${color};color:#fff;padding:3px 10px;border-radius:6px;font-size:12px\">${escapeHtml(inc.status)}</span>
@@ -3614,7 +3651,10 @@ def render_user_dashboard_html(
         const statusUpdatedLine = inc.status_updated_at
           ? `<br>🕐 <strong style="color:#fbbf24">상태 변경 시각:</strong> ${escapeHtml(formatTime(inc.status_updated_at))}`
           : '';
-        document.getElementById('incident_modal_info').innerHTML = `<span style="color:#64748b">ID: ${escapeHtml(inc.incident_id)}</span><br>생성: ${escapeHtml(formatTime(inc.created_at))} &nbsp;|&nbsp; 수정: ${escapeHtml(formatTime(inc.updated_at))}${statusUpdatedLine}`;
+        const hostLine = inc.hostname ? `<br>🖥️ <strong style="color:#93c5fd">호스트:</strong> ${escapeHtml(inc.hostname)}` : '';
+        const analystLine = inc.analyst ? `<br>👤 <strong style="color:#a3e635">담당자:</strong> ${escapeHtml(inc.analyst)}` : '';
+        const handlerLine = (inc.handler && inc.handler !== inc.analyst) ? `<br>🔧 <strong style="color:#fbbf24">조치자:</strong> ${escapeHtml(inc.handler)}` : '';
+        document.getElementById('incident_modal_info').innerHTML = `<span style="color:#64748b">ID: ${escapeHtml(inc.incident_id)}</span><br>생성: ${escapeHtml(formatTime(inc.created_at))} &nbsp;|&nbsp; 수정: ${escapeHtml(formatTime(inc.updated_at))}${statusUpdatedLine}${hostLine}${analystLine}${handlerLine}`;
         document.getElementById('incident_modal_status').value = inc.status;
         // 상태 변경 히스토리
         const history = inc.history || [];
@@ -3674,12 +3714,26 @@ def render_user_dashboard_html(
     document.getElementById('create_incident')?.addEventListener('click', async () => {
       const title = incTitleEl.value.trim();
       if (!title) { incidentStatusEl.textContent = '제목을 입력하세요.'; return; }
+      const hostname = document.getElementById('inc_hostname')?.value.trim() || '';
+      const analyst = document.getElementById('inc_analyst')?.value.trim() || '';
+      const diffHandler = document.getElementById('inc_diff_handler')?.checked;
+      const handler = diffHandler ? (document.getElementById('inc_handler')?.value.trim() || '') : '';
       incidentStatusEl.textContent = '생성 중...';
       try {
         const res = await fetch('/incidents', {
-          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title }),
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ title, hostname, analyst: analyst || undefined, handler: handler || undefined }),
         });
-        if (res.ok) { incidentStatusEl.textContent = '인시던트 생성 완료'; incTitleEl.value = ''; loadIncidents(); }
+        if (res.ok) {
+          incidentStatusEl.textContent = '인시던트 생성 완료';
+          incTitleEl.value = '';
+          document.getElementById('inc_hostname').value = '';
+          document.getElementById('inc_analyst').value = '';
+          document.getElementById('inc_handler').value = '';
+          document.getElementById('inc_diff_handler').checked = false;
+          document.getElementById('inc_handler_row').style.display = 'none';
+          loadIncidents();
+        }
         else { const d = await res.json(); incidentStatusEl.textContent = `오류: ${d.detail || res.status}`; }
       } catch (err) { incidentStatusEl.textContent = `오류: ${err.message}`; }
     });
@@ -3705,6 +3759,38 @@ def render_user_dashboard_html(
         document.body.removeChild(a);
       });
     }
+
+    /* ── 인시던트 호스트 검색 자동완성 ──────────────────────────────────── */
+    function _incHostSearch(val) {
+      const sugEl = document.getElementById('inc_host_suggestions');
+      if (!val || val.length < 1) { sugEl.style.display = 'none'; return; }
+      const q = val.toLowerCase();
+      const allHosts = [...(_assetCache.fleet || []), ...(_assetCache.zabbix || [])];
+      const seen = new Set();
+      const matches = allHosts.filter(h => {
+        if (seen.has(h.hostname)) return false;
+        seen.add(h.hostname);
+        return h.hostname.toLowerCase().includes(q);
+      }).slice(0, 10);
+      if (!matches.length) { sugEl.style.display = 'none'; return; }
+      sugEl.innerHTML = matches.map(h => {
+        const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
+        return `<div onclick=\"_incSelectHost('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}')\" style=\"padding:8px 12px;cursor:pointer;border-bottom:1px solid #334155;font-size:13px;color:#e2e8f0\" onmouseover=\"this.style.background='#1e3a5f'\" onmouseout=\"this.style.background=''\">
+          <strong>${escapeHtml(h.hostname)}</strong> <span style=\"color:#64748b;font-size:11px\">담당: ${escapeHtml(ownerLabel)}</span>
+        </div>`;
+      }).join('');
+      sugEl.style.display = 'block';
+    }
+    function _incSelectHost(hostname, owner) {
+      document.getElementById('inc_hostname').value = hostname;
+      document.getElementById('inc_analyst').value = owner || '';
+      document.getElementById('inc_host_suggestions').style.display = 'none';
+    }
+    // 외부 클릭 시 닫기
+    document.addEventListener('click', e => {
+      const sugEl = document.getElementById('inc_host_suggestions');
+      if (sugEl && !sugEl.contains(e.target) && e.target.id !== 'inc_hostname') sugEl.style.display = 'none';
+    });
 
     // ── Asset Collection Board ────────────────────────────────────────────────
     let currentAssetTab = 'fleet';
@@ -3733,7 +3819,7 @@ def render_user_dashboard_html(
     function _getOwnerData(hostname) {
       const allHosts = [...(_assetCache.fleet || []), ...(_assetCache.zabbix || [])];
       const found = allHosts.find(h => h.hostname === hostname);
-      return found ? { owner: found.owner || '', team: found.team || '', exception_until: found.exception_until || '' } : { owner: '', team: '', exception_until: '' };
+      return found ? { owner: found.owner || '', team: found.team || '', exception_until: found.exception_until || '', exception_reason: found.exception_reason || '' } : { owner: '', team: '', exception_until: '', exception_reason: '' };
     }
 
     function renderFleetTable(hosts, containerEl) {
@@ -3829,9 +3915,10 @@ def render_user_dashboard_html(
         const ownerLabel = _ownerForHost(r.hostname);
         const ownerData = _getOwnerData(r.hostname);
         const exUntil = r.exception_until || ownerData.exception_until || '';
+        const exReason = ownerData.exception_reason || '';
         const exCell = exUntil
-          ? `<span style=\"color:#fde68a;font-size:12px\">~${escapeHtml(exUntil)}</span><br><button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','${escapeHtml(exUntil)}')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">✏️ 수정</button>`
-          : `<button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','')\" style=\"font-size:11px;padding:2px 7px;background:#3b1f00;border:1px solid #78350f;border-radius:4px;color:#fbbf24;cursor:pointer\">+ 예외 설정</button>`;
+          ? `<span style=\"color:#fde68a;font-size:12px\">~${escapeHtml(exUntil)}</span>${exReason ? '<br><span style=\"color:#94a3b8;font-size:11px\" title=\"'+escapeHtml(exReason)+'\">'+escapeHtml(exReason.substring(0,20))+(exReason.length>20?'…':'')+'</span>' : ''}<br><button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','${escapeHtml(exUntil)}','${escapeHtml(exReason).replace(/'/g,"\\\\'")}')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">✏️ 수정</button>`
+          : `<button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','','')\" style=\"font-size:11px;padding:2px 7px;background:#3b1f00;border:1px solid #78350f;border-radius:4px;color:#fbbf24;cursor:pointer\">+ 예외 설정</button>`;
         return `<tr>
           <td><strong>${escapeHtml(r.hostname)}</strong><br><span style=\"color:#64748b;font-size:11px\">${escapeHtml(r.host_id)}</span></td>
           <td style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</td>
@@ -3896,7 +3983,7 @@ def render_user_dashboard_html(
           document.getElementById('audit_modal_body').innerHTML = '<div style=\"color:#64748b;text-align:center;padding:20px\">변경 이력이 없습니다.</div>';
           return;
         }
-        const fieldLabels = {owner:'담당자', team:'팀', category:'분류', importance:'중요도', exception_until:'예외기한'};
+        const fieldLabels = {owner:'담당자', team:'팀', category:'분류', importance:'중요도', exception_until:'예외기한', exception_reason:'예외사유'};
         const rows = logs.map(l => `<div style=\"border-bottom:1px solid #1e293b;padding:10px 0\">
           <div style=\"display:flex;justify-content:space-between;align-items:center\">
             <span style=\"color:#7dd3fc;font-weight:700\">${escapeHtml(fieldLabels[l.field]||l.field)}</span>
@@ -3917,12 +4004,13 @@ def render_user_dashboard_html(
     function closeAuditModal() { document.getElementById('audit_modal').style.display = 'none'; }
 
     /* ── 담당자/카테고리 편집 모달 ──────────────────────────────────────── */
-    function openOwnerModal(hostname, owner, team, category, assetType, exceptionUntil) {
+    function openOwnerModal(hostname, owner, team, category, assetType, exceptionUntil, exceptionReason) {
       document.getElementById('owner_modal_hostname').value = hostname;
       document.getElementById('owner_modal_owner').value = owner || '';
       document.getElementById('owner_modal_team').value = team || '';
       document.getElementById('owner_modal_category').value = category || '';
       document.getElementById('owner_modal_exception_until').value = exceptionUntil || '';
+      document.getElementById('owner_modal_exception_reason').value = exceptionReason || '';
       document.getElementById('owner_modal_status').textContent = '';
       document.getElementById('owner_modal_status').style.color = '#94a3b8';
       // PC 자산은 카테고리 숨김, 서버만 표시
@@ -3945,12 +4033,13 @@ def render_user_dashboard_html(
         const team = document.getElementById('owner_modal_team').value.trim();
         const category = document.getElementById('owner_modal_category').value.trim();
         const exception_until = document.getElementById('owner_modal_exception_until').value.trim();
+        const exception_reason = document.getElementById('owner_modal_exception_reason').value.trim();
         const statusEl = document.getElementById('owner_modal_status');
         statusEl.textContent = '저장 중...';
         try {
           const res = await fetch('/assets/owners', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ hostname, owner, team, category, exception_until })
+            body: JSON.stringify({ hostname, owner, team, category, exception_until, exception_reason })
           });
           if (!res.ok) throw new Error(await res.text());
           statusEl.style.color = '#86efac';
@@ -4086,14 +4175,15 @@ def render_user_dashboard_html(
         // 클라이언트에서 필터된 데이터 기반 CSV 생성
         const rows = _trivyFiltered.length ? _trivyFiltered : _assetCache.trivy;
         if (!rows.length) { alert('내보낼 데이터가 없습니다.'); return; }
-        const header = ['호스트','host_id','담당자','Critical','High','Medium','Low','합계','최근CVE','탐지일','조치계획','목표완료일','작성자','조치예외기한'];
+        const header = ['호스트','host_id','담당자','Critical','High','Medium','Low','합계','최근CVE','탐지일','조치계획','목표완료일','작성자','조치예외기한','예외담당자'];
         const csvRows = [header.join(',')];
         rows.forEach(r => {
           const owner = _ownerForHost(r.hostname);
           const ownerData = _getOwnerData(r.hostname);
-          csvRows.push([r.hostname, r.host_id, owner, r.critical, r.high, r.medium, r.low, r.total,
+          const exOwner = ownerData.owner || '';
+          csvRows.push([r.hostname, r.host_id, '"'+owner.replace(/"/g,'""')+'"', r.critical, r.high, r.medium, r.low, r.total,
             r.latest_cve||'', r.latest_detected_at||'', '"'+(r.action_plan||'').replace(/"/g,'""')+'"',
-            r.action_target_date||'', r.action_updated_by||'', r.exception_until||ownerData.exception_until||''].join(','));
+            r.action_target_date||'', r.action_updated_by||'', r.exception_until||ownerData.exception_until||'', '"'+exOwner.replace(/"/g,'""')+'"'].join(','));
         });
         const blob = new Blob(['\\uFEFF' + csvRows.join('\\n')], {type:'text/csv;charset=utf-8'});
         const url = URL.createObjectURL(blob);
