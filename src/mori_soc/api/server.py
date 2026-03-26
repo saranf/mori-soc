@@ -156,8 +156,9 @@ def interpret_query_text(text: str) -> dict[str, Any]:
     return NaturalLanguageQueryParser().interpret(text).to_dict()
 
 
-def build_dashboard_payload(service: QueryService) -> dict[str, Any]:
+def build_dashboard_payload(service: QueryService, *, asset_owners: Mapping[str, dict[str, Any]] | None = None) -> dict[str, Any]:
     store = service.store
+    _owners: Mapping[str, dict[str, Any]] = asset_owners or {}
     now = datetime.now(tz=timezone.utc)
     since_24h = now - timedelta(hours=24)
     status_rows = sorted(latest_host_status_view(store), key=_latest_status_sort_key)
@@ -190,8 +191,8 @@ def build_dashboard_payload(service: QueryService) -> dict[str, Any]:
         "overview_details": {
             "total_hosts": _status_detail_rows(status_rows),
             "offline_hosts": _status_detail_rows([row for row in status_rows if row.status == "offline"]),
-            "alerts_24h": _alert_detail_rows(alerts_24h, hostnames),
-            "critical_vulns": _critical_vuln_detail_rows(store, hostnames),
+            "alerts_24h": _alert_detail_rows(alerts_24h, hostnames, _owners),
+            "critical_vulns": _critical_vuln_detail_rows(store, hostnames, _owners),
             "sources_reporting": [item for item in source_coverage if item["host_count"] > 0],
             "sources_healthy": [item for item in source_coverage if item["status"] == "success" and not item.get("is_stale")],
             "ingested_records": _ingested_record_rows(store),
@@ -1677,7 +1678,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     @app.get("/dashboard/summary")
     def dashboard_summary() -> dict[str, Any]:
         try:
-            return build_dashboard_payload(get_query_service())
+            return build_dashboard_payload(get_query_service(), asset_owners=asset_owners)
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"dashboard summary unavailable: {exc}") from exc
 
@@ -1926,7 +1927,35 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
                 media_type="text/csv; charset=utf-8",
                 headers={"Content-Disposition": f'attachment; filename="mori-incidents-{timestamp}.csv"'},
             )
-        return {"incidents": all_items}
+        # Enrich incidents with related host/owner info
+        try:
+            store = get_query_service().store
+            hostnames_map = {host.host_id: host.hostname for host in store.hosts}
+            alert_map = {a.alert_id: a for a in store.alerts}
+        except Exception:
+            hostnames_map = {}
+            alert_map = {}
+        enriched = []
+        for inc in all_items:
+            item = dict(inc)
+            # Resolve related hostnames/owners from alert_ids
+            related_hosts: list[str] = []
+            for aid in inc.get("alert_ids", []):
+                alert_obj = alert_map.get(aid)
+                if alert_obj:
+                    hn = hostnames_map.get(alert_obj.host_id or "", alert_obj.host_id or "")
+                    if hn and hn not in related_hosts:
+                        related_hosts.append(hn)
+            item["related_hosts"] = related_hosts
+            owners_list = []
+            for hn in related_hosts:
+                owner_entry = asset_owners.get(hn, {})
+                label = " / ".join(p for p in [owner_entry.get("owner", ""), owner_entry.get("team", "")] if p)
+                if label and label not in owners_list:
+                    owners_list.append(label)
+            item["related_owners"] = owners_list
+            enriched.append(item)
+        return {"incidents": enriched}
 
     @app.post("/incidents", tags=["Incidents"])
     def incidents_create(payload: dict[str, Any]) -> dict[str, Any]:
@@ -3096,6 +3125,7 @@ def render_user_dashboard_html(
       return renderDetailTable([
         { label: 'Time', render: (item) => escapeHtml(formatTime(item.observed_at)) },
         { label: 'Host', render: (item) => `<strong>${escapeHtml(item.hostname || '-')}</strong><br /><span class=\"subtext\">${escapeHtml(item.host_id || '-')}</span>` },
+        { label: '담당자', render: (item) => `<span style=\"color:#a3e635\">${escapeHtml(item.owner || '-')}</span>` },
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'Severity', render: (item) => escapeHtml(item.severity) },
         { label: 'Message', render: (item) => escapeHtml(item.message) },
@@ -3106,6 +3136,7 @@ def render_user_dashboard_html(
       return renderDetailTable([
         { label: 'Detected', render: (item) => escapeHtml(formatTime(item.detected_at)) },
         { label: 'Host', render: (item) => `<strong>${escapeHtml(item.hostname || item.host_id)}</strong><br /><span class=\"subtext\">${escapeHtml(item.host_id)}</span>` },
+        { label: '담당자', render: (item) => `<span style=\"color:#a3e635\">${escapeHtml(item.owner || '-')}</span>` },
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'CVE', render: (item) => escapeHtml(item.cve || '-') },
         { label: 'Package', render: (item) => escapeHtml(item.package_name || '-') },
@@ -3429,10 +3460,12 @@ def render_user_dashboard_html(
           const triageNote = triage.note || '';
           const color = TRIAGE_STATUS_COLORS[rawStatus] || '#6b7280';
           const label = TRIAGE_STATUS_LABELS[rawStatus] || rawStatus;
+          const alertOwner = _ownerForHost(a.hostname || '');
           return `<tr>
             <td>${escapeHtml(formatTime(a.observed_at))}</td>
             <td><span style=\"background:#1e293b;color:#93c5fd;padding:2px 8px;border-radius:4px;font-size:12px\">${escapeHtml(a.source)}</span></td>
             <td><strong>${escapeHtml(a.hostname || a.host_id || '-')}</strong></td>
+            <td style=\"color:#a3e635;font-size:12px\">${escapeHtml(alertOwner)}</td>
             <td><span style=\"background:#111827;padding:2px 6px;border-radius:4px;font-size:12px\">${escapeHtml(a.severity)}</span></td>
             <td style=\"max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">${escapeHtml(a.message)}</td>
             <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(triageAnalyst || '-')}</td>
@@ -3444,9 +3477,10 @@ def render_user_dashboard_html(
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">시각</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">소스</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">호스트</th>
+            <th style=\"padding:8px;color:#a3e635;text-align:left\">담당자</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">심각도</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">메시지</th>
-            <th style=\"padding:8px;color:#a3e635;text-align:left\">담당자</th>
+            <th style=\"padding:8px;color:#94a3b8;text-align:left\">분석관</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">상태</th>
           </tr></thead><tbody>${rows}</tbody></table>`;
       } catch (err) { triageTableEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(err.message)}</span>`; }
@@ -3538,10 +3572,13 @@ def render_user_dashboard_html(
         const STATUS_COLOR = { open: '#ef4444', investigating: '#f59e0b', resolved: '#22c55e', closed: '#6b7280' };
         incidentsListEl.innerHTML = list.map(inc => {
           const color = STATUS_COLOR[inc.status] || '#6b7280';
+          const ownerLabel = (inc.related_owners || []).join(', ') || '-';
+          const hostLabel = (inc.related_hosts || []).join(', ') || '';
           return `<div style=\"background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center\">
             <div>
               <strong>${escapeHtml(inc.title)}</strong>
-              <div style=\"color:#94a3b8;font-size:12px;margin-top:4px\">${escapeHtml(formatTime(inc.created_at))} · 노트 ${(inc.notes||[]).length}개</div>
+              <div style=\"color:#94a3b8;font-size:12px;margin-top:4px\">${escapeHtml(formatTime(inc.created_at))} · 노트 ${(inc.notes||[]).length}개${hostLabel ? ' · <span style=\"color:#93c5fd\">' + escapeHtml(hostLabel) + '</span>' : ''}</div>
+              <div style=\"color:#a3e635;font-size:12px;margin-top:2px\">담당자: ${escapeHtml(ownerLabel)}</div>
             </div>
             <div style=\"display:flex;gap:8px;align-items:center\">
               <span style=\"background:${color};color:#fff;padding:3px 10px;border-radius:6px;font-size:12px\">${escapeHtml(inc.status)}</span>
@@ -3696,9 +3733,6 @@ def render_user_dashboard_html(
         const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>${exBadge}
           <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','','pc','${escapeHtml(exUntil)}')\"
             style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
-        const planInfo = h.action_plan
-          ? `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(h.action_plan)}\">${escapeHtml(h.action_plan.length > 20 ? h.action_plan.slice(0,20)+'…' : h.action_plan)}</span>${h.action_target_date ? '<br><span style=\"color:#64748b;font-size:11px\">~' + escapeHtml(h.action_target_date) + '</span>' : ''}`
-          : `<button onclick=\"openPlanModal('${escapeHtml(h.host_id)}','${escapeHtml(h.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e3a5f;border:1px solid #334155;border-radius:4px;color:#7dd3fc;cursor:pointer\">+ 계획</button>`;
         return `<tr>
           <td><strong>${escapeHtml(h.hostname)}</strong>${fleetLink ? '<br>' + fleetLink : ''}</td>
           <td><span style=\"background:#0d2137;color:#6ee7b7;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;\">🖥️ PC</span></td>
@@ -3708,7 +3742,6 @@ def render_user_dashboard_html(
           <td>${escapeHtml(h.risk_score)}</td>
           <td>${escapeHtml(formatTime(h.last_seen_at))}</td>
           <td>${ownerStr}</td>
-          <td>${planInfo}</td>
           <td><button onclick=\"openAuditModal('${escapeHtml(h.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e293b;border:1px solid #334155;border-radius:4px;color:#94a3b8;cursor:pointer\">📋 이력</button></td>
         </tr>`;
       }).join('');
@@ -3722,7 +3755,6 @@ def render_user_dashboard_html(
           <th style=\"padding:8px;color:#93c5fd\">리스크</th>
           <th style=\"padding:8px;color:#93c5fd\">마지막 확인</th>
           <th style=\"padding:8px;color:#a3e635\">담당자 / 팀</th>
-          <th style=\"padding:8px;color:#a3e635\">조치계획</th>
           <th style=\"padding:8px;color:#94a3b8\">이력</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -3746,9 +3778,6 @@ def render_user_dashboard_html(
         const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>${exBadge}
           <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}','server','${escapeHtml(exUntil)}')\"
             style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
-        const planInfo = h.action_plan
-          ? `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(h.action_plan)}\">${escapeHtml(h.action_plan.length > 20 ? h.action_plan.slice(0,20)+'…' : h.action_plan)}</span>${h.action_target_date ? '<br><span style=\"color:#64748b;font-size:11px\">~' + escapeHtml(h.action_target_date) + '</span>' : ''}`
-          : `<button onclick=\"openPlanModal('${escapeHtml(h.host_id)}','${escapeHtml(h.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e3a5f;border:1px solid #334155;border-radius:4px;color:#7dd3fc;cursor:pointer\">+ 계획</button>`;
         return `<tr>
           <td><strong>${escapeHtml(h.hostname)}</strong>${zabbixLink ? '<br>' + zabbixLink : ''}</td>
           <td style=\"font-size:12px\">${escapeHtml(h.category || '-')}</td>
@@ -3759,7 +3788,6 @@ def render_user_dashboard_html(
           <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
           <td style=\"font-size:12px;color:#94a3b8\">${metricStr}</td>
           <td>${ownerStr}</td>
-          <td>${planInfo}</td>
           <td><button onclick=\"openAuditModal('${escapeHtml(h.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e293b;border:1px solid #334155;border-radius:4px;color:#94a3b8;cursor:pointer\">📋 이력</button></td>
         </tr>`;
       }).join('');
@@ -3774,7 +3802,6 @@ def render_user_dashboard_html(
           <th style=\"padding:8px;color:#93c5fd\">상태</th>
           <th style=\"padding:8px;color:#94a3b8\">최근 메트릭</th>
           <th style=\"padding:8px;color:#a3e635\">담당자 / 팀</th>
-          <th style=\"padding:8px;color:#a3e635\">조치계획</th>
           <th style=\"padding:8px;color:#94a3b8\">이력</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -5281,6 +5308,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           label: 'Host',
           render: (item) => `<strong>${escapeHtml(item.hostname || '-')}</strong><br /><span class="subtext">${escapeHtml(item.host_id || '-')}</span>`,
         },
+        { label: '담당자', render: (item) => `<span style="color:#a3e635">${escapeHtml(item.owner || '-')}</span>` },
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'Severity', render: (item) => escapeHtml(item.severity) },
         { label: 'Message', render: (item) => escapeHtml(item.message) },
@@ -5303,6 +5331,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           label: 'Host',
           render: (item) => `<strong>${escapeHtml(item.hostname || item.host_id)}</strong><br /><span class="subtext">${escapeHtml(item.host_id)}</span>`,
         },
+        { label: '담당자', render: (item) => `<span style="color:#a3e635">${escapeHtml(item.owner || '-')}</span>` },
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'CVE', render: (item) => escapeHtml(item.cve || '-') },
         { label: 'Package', render: (item) => escapeHtml(item.package_name || '-') },
@@ -6352,35 +6381,50 @@ def _status_detail_rows(rows: list[Any]) -> list[dict[str, Any]]:
     ]
 
 
-def _alert_detail_rows(alerts: list[Any], hostnames: Mapping[str, str]) -> list[dict[str, Any]]:
-    return [
-        {
+def _owner_label_for(hostname: str, owners: Mapping[str, dict[str, Any]]) -> str:
+    """hostname → '담당자 / 팀' 문자열.  owners 가 없으면 '-'."""
+    entry = owners.get(hostname, {})
+    parts = [entry.get("owner", ""), entry.get("team", "")]
+    return " / ".join(p for p in parts if p) or "-"
+
+
+def _alert_detail_rows(alerts: list[Any], hostnames: Mapping[str, str],
+                        owners: Mapping[str, dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    _owners = owners or {}
+    rows = []
+    for alert in sorted(alerts, key=lambda item: item.observed_at, reverse=True):
+        hn = hostnames.get(alert.host_id or "", alert.host_id or "-")
+        rows.append({
             "alert_id": alert.alert_id,
             "host_id": alert.host_id,
-            "hostname": hostnames.get(alert.host_id or "", alert.host_id or "-"),
+            "hostname": hn,
+            "owner": _owner_label_for(hn, _owners),
             "source": alert.source,
             "severity": alert.severity,
             "message": alert.message,
             "observed_at": _isoformat(alert.observed_at),
-        }
-        for alert in sorted(alerts, key=lambda item: item.observed_at, reverse=True)
-    ]
+        })
+    return rows
 
 
-def _critical_vuln_detail_rows(store: InMemoryQueryStore, hostnames: Mapping[str, str]) -> list[dict[str, Any]]:
+def _critical_vuln_detail_rows(store: InMemoryQueryStore, hostnames: Mapping[str, str],
+                                owners: Mapping[str, dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    _owners = owners or {}
     critical_vulns = [vuln for vuln in store.vulnerabilities if vuln.severity == "critical"]
-    return [
-        {
+    rows = []
+    for vuln in sorted(critical_vulns, key=lambda item: item.detected_at, reverse=True):
+        hn = hostnames.get(vuln.host_id, vuln.host_id)
+        rows.append({
             "vuln_id": vuln.vuln_id,
             "host_id": vuln.host_id,
-            "hostname": hostnames.get(vuln.host_id, vuln.host_id),
+            "hostname": hn,
+            "owner": _owner_label_for(hn, _owners),
             "source": vuln.source,
             "cve": vuln.cve,
             "package_name": vuln.package_name,
             "detected_at": _isoformat(vuln.detected_at),
-        }
-        for vuln in sorted(critical_vulns, key=lambda item: item.detected_at, reverse=True)
-    ]
+        })
+    return rows
 
 
 def _ingested_record_rows(store: InMemoryQueryStore) -> list[dict[str, Any]]:
