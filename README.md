@@ -16,6 +16,84 @@
 
 ---
 
+## 🗺️ Architecture Diagram
+
+```mermaid
+flowchart LR
+    subgraph SRC["데이터 소스"]
+        Z[Zabbix]
+        F[FleetDM]
+        W[Wazuh]
+        T[Trivy]
+        L["Loki + Fluent Bit"]
+        D["LDAP / AD"]
+    end
+
+    subgraph COL["수집 계층 (src/mori_soc/collectors, pollers)"]
+        C1[zabbix_collector]
+        C2[fleet_collector]
+        C3[wazuh_collector]
+        C4[trivy_collector]
+        C5[ldap_collector]
+        WK["worker.py<br/>(주기 폴링)"]
+    end
+
+    subgraph SVC["서비스 계층 (services)"]
+        N[normalization<br/>EnvelopeEntityMapper]
+        I[ingestion]
+        R[risk_score]
+        AC[asset_classifier<br/>중요도 산출]
+        QC[query_catalog<br/>12 intents]
+        QS[query_service<br/>_INTENT_HANDLERS]
+        V[views<br/>latest/risk/timeline]
+        RP[reports<br/>5종 CSV]
+    end
+
+    subgraph REPO["저장소 (repositories)"]
+        MEM["InMemoryRepository<br/>(현재 운영)"]
+        PG["PostgreSQL<br/>(코드 준비, 미연결)"]
+        STR["인메모리 store 5종<br/>asset_owners / asset_audit_log<br/>vuln_actions / triage_store / incident_store"]
+    end
+
+    subgraph API["MORI API (api/server.py)"]
+        EP["FastAPI 엔드포인트<br/>/dashboard /assets /alerts<br/>/vulnerabilities /incidents<br/>/compliance /reports /interpret /query"]
+        UI["통합 운영 UI (/ui)<br/>Overview · Assets · Trivy · Triage<br/>Incidents · Compliance · Reports"]
+    end
+
+    subgraph OUT["출력 / 증적"]
+        G[Grafana 대시보드]
+        CSV["감사 증적 CSV<br/>5종 + PDCA pending"]
+        AUD["변경 이력<br/>(호스트·CVE·Triage·Incident)"]
+    end
+
+    Z --> C1
+    F --> C2
+    W --> C3
+    T --> C4
+    D --> C5
+    L --> G
+
+    C1 & C2 & C3 & C4 & C5 --> WK
+    WK --> N --> I
+    I --> AC & R
+    AC & R --> MEM
+
+    MEM --> V & QS & RP
+    QC --> QS
+    STR <--> EP
+
+    V & QS & RP --> EP
+    EP --> UI
+    EP --> CSV
+    UI --> AUD
+
+    PG -.미연결.-> MEM
+```
+
+> 진한 화살표는 현재 운영 중인 흐름, 점선은 다음 마일스톤(PostgreSQL 영속화 + 실시간 폴러 활성화)입니다.
+
+---
+
 ## 🎯 핵심 컨셉 — Audit-Ready
 
 심사에서 자주 요구되는 **"누가, 언제, 어떤 데이터로, 어떤 결정을 내렸는가"** 를 모든 컴플라이언스 민감 영역에서 자동으로 누적합니다.
@@ -43,7 +121,7 @@
 
 | 카테고리 | 기능 | 비고 |
 |---|---|---|
-| **인증/권한** | 로그인 / 세션 / RBAC (역할별 탭 on·off) / 가입 요청·승인 | admin·security·moniter / 1234 |
+| **인증/권한** | 로그인 / 세션 / RBAC (역할별 탭 on·off) / 가입 요청·승인 | 데모 계정 `admin` / `security` / `moniter` (비밀번호 `1234`) — **데모 전용. 운영 배포 시 반드시 변경** |
 | **개요 (Overview)** | 자산·경보·취약점 요약 카드 + Critical 취약점 상세 모달에 **조치 계획 / 조치 예외** 컬럼 노출 | 호스트별 진행 상태를 대시보드에서 즉시 확인 |
 | **자산 (서버 / PC / Trivy)** | 호스트별 담당자·팀·카테고리 편집 + **서버 자산 중요도 수동 재정의** | 자동 분류(asset_classifier)보다 우선 적용. 변경분 감사 로그 |
 | **취약점 관리 (Trivy)** | 호스트 단위 조치 계획 / 조치 예외 + **CVE별 상세 조치 계획 / 조치 예외** | 작성자·목표일·만료일·사유 기록. 충돌 안내 모달 |
@@ -90,18 +168,20 @@
 ./scripts/mori-stop-demo.sh --purge     # 컨테이너 + 볼륨 통째로 제거
 ```
 
-### 운영 배포 (현재 공개 서버)
+### 데모 공개 서버 (Demo Only)
 
-| 항목 | 값 |
-|---|---|
-| MORI Web UI (메인 포털) | `http://mori.rmstudio.co.kr:37854/` |
-| MORI API | `http://mori.rmstudio.co.kr:18000/ui` |
-| Grafana | `http://mori.rmstudio.co.kr:13000` |
-| Zabbix Web | `http://mori.rmstudio.co.kr:18081` |
-| FleetDM | `http://mori.rmstudio.co.kr:1337` |
-| 계정 | `admin / 1234`, `security / 1234`, `moniter / 1234` |
+> ⚠️ **아래 URL과 계정은 포트폴리오 데모용 인스턴스입니다.** 시드 데이터 + 인메모리 store 기반이며, 실제 운영 데이터가 아닙니다. 운영 환경에서는 **반드시 자체 도메인·HTTPS·강력한 비밀번호로 재배포**해야 합니다.
 
-배포: `docker compose down && docker compose up -d` (GitHub Actions가 `/backup/rmstudio/mori`로 rsync 후 동일 명령을 수행).
+| 항목 | 데모 값 | 비고 |
+|---|---|---|
+| MORI Web UI (메인 포털) | `mori.rmstudio.co.kr:37854` | 데모 전용 |
+| MORI API / 통합 운영 UI | `mori.rmstudio.co.kr:18000/ui` | 데모 전용 |
+| Grafana | `mori.rmstudio.co.kr:13000` | 데모 전용 |
+| Zabbix Web | `mori.rmstudio.co.kr:18081` | 데모 전용 |
+| FleetDM | `mori.rmstudio.co.kr:1337` | 데모 전용 |
+| 데모 계정 | `admin` / `security` / `moniter` (비밀번호 `1234`) | **데모 전용. 운영 배포 시 즉시 비밀번호 변경 + RBAC 재설정 필수** |
+
+배포 동작: `docker compose down && docker compose up -d` (GitHub Actions가 `/backup/rmstudio/mori`로 rsync 후 동일 명령을 수행).
 
 ### 개별 스크립트
 
