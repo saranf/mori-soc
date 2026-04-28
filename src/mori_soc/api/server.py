@@ -218,11 +218,22 @@ def build_dashboard_payload(service: QueryService, *, asset_owners: Mapping[str,
     }
 
 
-def build_pdca_payload(service: QueryService) -> dict[str, Any]:
-    """Compliance PDCA 대시보드용 집계 데이터를 생성한다."""
+def build_pdca_payload(
+    service: QueryService,
+    *,
+    vuln_actions: Mapping[str, Mapping[str, Any]] | None = None,
+    alert_triage: Mapping[str, Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Compliance PDCA 대시보드용 집계 데이터를 생성한다.
+
+    `vuln_actions`/`alert_triage`가 주어지면 Trivy critical/high 취약점과
+    미해결 critical/high alerts를 pending_remediations에 source 태그와 함께 추가한다.
+    """
     store = service.store
     checks = store.control_checks
     now = datetime.now(tz=timezone.utc)
+    vuln_actions_map: Mapping[str, Mapping[str, Any]] = vuln_actions or {}
+    alert_triage_map: Mapping[str, Mapping[str, Any]] = alert_triage or {}
 
     # Status 별 카운트
     status_counts: dict[str, int] = {"pass": 0, "fail": 0, "warning": 0, "not_applicable": 0, "not_checked": 0}
@@ -248,7 +259,7 @@ def build_pdca_payload(service: QueryService) -> dict[str, Any]:
     ]
 
     # 미조치 항목 (fail + warning, remediation_due_at 기준 정렬)
-    pending = []
+    pending: list[dict[str, Any]] = []
     for c in checks:
         if c.status in {"fail", "warning"}:
             pending.append({
@@ -262,13 +273,88 @@ def build_pdca_payload(service: QueryService) -> dict[str, Any]:
                 "note": c.note or "",
                 "remediation_due_at": _isoformat(c.remediation_due_at) if c.remediation_due_at else None,
                 "overdue": c.remediation_due_at is not None and c.remediation_due_at < now and c.resolved_at is None,
+                "source": "control_check",
             })
+
+    # ── Trivy critical/high 취약점 → 미조치 ───────────────────────────────────
+    hostnames = {h.host_id: h.hostname for h in store.hosts}
+    trivy_high_count = 0
+    for v in store.vulnerabilities:
+        if v.source != "trivy" or v.severity not in {"critical", "high"}:
+            continue
+        if v.resolved_at is not None:
+            continue
+        action = vuln_actions_map.get(v.vuln_id, {})
+        ex_until_str = str(action.get("exception_until", "")).strip()
+        ex_active = False
+        if ex_until_str:
+            try:
+                ex_dt = datetime.fromisoformat(ex_until_str.replace("Z", "+00:00"))
+                if ex_dt.tzinfo is None:
+                    ex_dt = ex_dt.replace(tzinfo=timezone.utc)
+                ex_active = ex_dt > now
+            except ValueError:
+                ex_active = False
+        if ex_active:
+            continue
+        plan_target_str = str(action.get("plan_target_date", "")).strip()
+        due_dt = None
+        if plan_target_str:
+            try:
+                due_dt = datetime.fromisoformat(plan_target_str.replace("Z", "+00:00"))
+                if due_dt.tzinfo is None:
+                    due_dt = due_dt.replace(tzinfo=timezone.utc)
+            except ValueError:
+                due_dt = None
+        cve_label = v.cve or v.vuln_id
+        pkg_label = f" · {v.package_name}" if v.package_name else ""
+        pending.append({
+            "check_id": v.vuln_id,
+            "control_id": "A.8.8",
+            "entity_type": "host",
+            "entity_id": hostnames.get(v.host_id, v.host_id),
+            "status": "fail" if v.severity == "critical" else "warning",
+            "checked_at": _isoformat(v.detected_at) if v.detected_at else None,
+            "owner": str(action.get("plan_updated_by", "") or ""),
+            "note": f"{cve_label} ({v.severity}){pkg_label}",
+            "remediation_due_at": _isoformat(due_dt) if due_dt else None,
+            "overdue": due_dt is not None and due_dt < now,
+            "source": "trivy",
+        })
+        trivy_high_count += 1
+
+    # ── 미해결 critical/high alerts → 미조치 (최근 7일) ───────────────────────
+    alert_window_start = now - timedelta(days=7)
+    alert_high_count = 0
+    for a in store.alerts:
+        if a.severity not in {"critical", "high"}:
+            continue
+        if a.observed_at < alert_window_start:
+            continue
+        triage = alert_triage_map.get(a.alert_id, {})
+        if str(triage.get("status", "")).strip() == "resolved":
+            continue
+        pending.append({
+            "check_id": a.alert_id,
+            "control_id": "A.5.24",
+            "entity_type": "host",
+            "entity_id": hostnames.get(a.host_id or "", a.host_id or "-"),
+            "status": "fail" if a.severity == "critical" else "warning",
+            "checked_at": _isoformat(a.observed_at),
+            "owner": str(triage.get("analyst", "") or ""),
+            "note": f"[{a.source}] {a.message}",
+            "remediation_due_at": None,
+            "overdue": False,
+            "source": "alert",
+        })
+        alert_high_count += 1
+
     pending.sort(key=lambda x: (0 if x["overdue"] else 1, x.get("remediation_due_at") or "9999"))
 
-    # PDCA 단계 매핑
+    # PDCA 단계 매핑 — Trivy/Alert 미조치도 Do 단계에 포함
     pdca = {
         "plan": status_counts["not_checked"],
-        "do": status_counts["warning"] + status_counts["fail"],
+        "do": status_counts["warning"] + status_counts["fail"] + trivy_high_count + alert_high_count,
         "check": checked,
         "act": status_counts["pass"],
     }
@@ -283,6 +369,11 @@ def build_pdca_payload(service: QueryService) -> dict[str, Any]:
         "pending_remediations": pending,
         "pending_count": len(pending),
         "overdue_count": sum(1 for p in pending if p["overdue"]),
+        "pending_sources": {
+            "control_check": sum(1 for p in pending if p["source"] == "control_check"),
+            "trivy": trivy_high_count,
+            "alert": alert_high_count,
+        },
     }
 
 
@@ -386,11 +477,13 @@ def build_assets_payload(
     service: QueryService,
     owners: dict[str, dict[str, Any]] | None = None,
     plans: dict[str, dict[str, Any]] | None = None,
+    vuln_actions: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     from mori_soc.services.asset_classifier import classify_server_as_dict
 
     owners = owners or {}
     plans = plans or {}
+    vuln_actions = vuln_actions or {}
     store = service.store
     now = datetime.now(tz=timezone.utc)
 
@@ -484,6 +577,8 @@ def build_assets_payload(
 
     # Trivy vulnerabilities grouped by host — 조치계획 포함
     vuln_by_host: dict[str, dict] = {}
+    vuln_lists: dict[str, list[dict[str, Any]]] = {}
+    sev_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
     for vuln in store.vulnerabilities:
         if vuln.source != "trivy":
             continue
@@ -504,6 +599,7 @@ def build_assets_payload(
                 "action_updated_by": plan.get("updated_by", ""),
                 "exception_until": owner_info.get("exception_until", ""),
             }
+            vuln_lists[hid] = []
         entry = vuln_by_host[hid]
         sev = vuln.severity
         entry[sev] = entry.get(sev, 0) + 1
@@ -511,11 +607,34 @@ def build_assets_payload(
         if entry["latest_detected_at"] is None or vuln.detected_at > entry["latest_detected_at"]:
             entry["latest_detected_at"] = vuln.detected_at
             entry["latest_cve"] = vuln.cve
+        action = vuln_actions.get(vuln.vuln_id, {})
+        vuln_lists[hid].append({
+            "vuln_id": vuln.vuln_id,
+            "cve": vuln.cve or "",
+            "severity": sev,
+            "package_name": vuln.package_name or "",
+            "installed_version": vuln.installed_version or "",
+            "fixed_version": vuln.fixed_version or "",
+            "detected_at": _isoformat(vuln.detected_at) if vuln.detected_at else "",
+            "plan_text": action.get("plan_text", ""),
+            "plan_target_date": action.get("plan_target_date", ""),
+            "plan_updated_by": action.get("plan_updated_by", ""),
+            "exception_until": action.get("exception_until", ""),
+            "exception_reason": action.get("exception_reason", ""),
+            "exception_updated_by": action.get("exception_updated_by", ""),
+            "action_updated_at": action.get("updated_at", ""),
+        })
 
     trivy_rows = sorted(vuln_by_host.values(), key=lambda r: (-r["critical"], -r["high"], -r["total"]))
     for row in trivy_rows:
         if row["latest_detected_at"]:
             row["latest_detected_at"] = _isoformat(row["latest_detected_at"])
+        vlist = vuln_lists.get(row["host_id"], [])
+        # severity 오름차순 (critical 먼저), 동일 severity 내에서는 detected_at 내림차순
+        vlist.sort(key=lambda v: (sev_order.get(v["severity"], 9), v["detected_at"]))
+        vlist.reverse()
+        vlist.sort(key=lambda v: sev_order.get(v["severity"], 9))
+        row["vulns"] = vlist
 
     return {
         "generated_at": _isoformat(now),
@@ -963,6 +1082,9 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     asset_audit_log: list[dict[str, Any]] = []
     # Action plans: host_id -> {text, target_date, updated_by, updated_at}
     action_plans: dict[str, dict[str, Any]] = {}
+    # Per-vulnerability actions: vuln_id -> {plan_text, plan_target_date, plan_updated_by,
+    #                                        exception_until, exception_reason, exception_updated_by, updated_at}
+    vuln_actions: dict[str, dict[str, Any]] = {}
     # Guides: guide_id -> {id, title, content, updated_at}
     guides: dict[str, dict[str, Any]] = {
         "zabbix_setup": {
@@ -1748,7 +1870,11 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     def compliance_pdca_summary() -> dict[str, Any]:
         """Compliance PDCA 대시보드 요약 데이터."""
         try:
-            return build_pdca_payload(get_query_service())
+            return build_pdca_payload(
+                get_query_service(),
+                vuln_actions=vuln_actions,
+                alert_triage=triage_store,
+            )
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"compliance pdca unavailable: {exc}") from exc
 
@@ -2046,13 +2172,13 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         return incident
 
     @app.patch("/incidents/{incident_id}", tags=["Incidents"])
-    def incidents_update(incident_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def incidents_update(incident_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
         incident = incidents.get(incident_id)
         if incident is None:
             raise HTTPException(status_code=404, detail="incident not found")
         valid_statuses = {"open", "investigating", "resolved", "closed"}
         now_str = _isoformat(datetime.now(tz=timezone.utc))
-        analyst = str(payload.get("analyst", "")).strip() or "unknown"
+        actor = str(payload.get("actor", "")).strip() or _get_session_username(request) or "unknown"
         if "status" in payload:
             new_status = payload["status"]
             if new_status not in valid_statuses:
@@ -2063,11 +2189,35 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
                     "event": "status_changed",
                     "from_status": prev_status,
                     "to_status": new_status,
-                    "analyst": analyst,
+                    "analyst": actor,
                     "changed_at": now_str,
                 })
                 incident["status_updated_at"] = now_str
             incident["status"] = new_status
+        if "analyst" in payload:
+            new_analyst = str(payload["analyst"]).strip()
+            prev_analyst = incident.get("analyst", "")
+            if new_analyst and new_analyst != prev_analyst:
+                incident.setdefault("history", []).append({
+                    "event": "analyst_changed",
+                    "from_analyst": prev_analyst,
+                    "to_analyst": new_analyst,
+                    "analyst": actor,
+                    "changed_at": now_str,
+                })
+                incident["analyst"] = new_analyst
+        if "handler" in payload:
+            new_handler = str(payload["handler"]).strip()
+            prev_handler = incident.get("handler", "")
+            if new_handler and new_handler != prev_handler:
+                incident.setdefault("history", []).append({
+                    "event": "handler_changed",
+                    "from_handler": prev_handler,
+                    "to_handler": new_handler,
+                    "analyst": actor,
+                    "changed_at": now_str,
+                })
+                incident["handler"] = new_handler
         if "title" in payload:
             incident["title"] = str(payload["title"]).strip()
         if "alert_ids" in payload:
@@ -2175,6 +2325,64 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         action_plans[host_id] = entry
         return entry
 
+    # ── Per-Vulnerability Actions (조치 계획 / 조치 예외) ─────────────────────
+    def _vuln_action_default(vuln_id: str) -> dict[str, Any]:
+        return {
+            "vuln_id": vuln_id,
+            "plan_text": "", "plan_target_date": "", "plan_updated_by": "",
+            "exception_until": "", "exception_reason": "", "exception_updated_by": "",
+            "updated_at": None,
+        }
+
+    def _vuln_exists(vuln_id: str) -> bool:
+        for v in get_query_service().store.vulnerabilities:
+            if v.vuln_id == vuln_id:
+                return True
+        return False
+
+    @app.get("/vulnerabilities/{vuln_id}/action", tags=["Vulnerabilities"])
+    def vuln_action_get(vuln_id: str) -> Any:
+        if not _vuln_exists(vuln_id):
+            raise HTTPException(status_code=404, detail="vulnerability not found")
+        return vuln_actions.get(vuln_id, _vuln_action_default(vuln_id))
+
+    @app.put("/vulnerabilities/{vuln_id}/plan", tags=["Vulnerabilities"])
+    def vuln_plan_upsert(vuln_id: str, payload: dict[str, Any]) -> Any:
+        if not _vuln_exists(vuln_id):
+            raise HTTPException(status_code=404, detail="vulnerability not found")
+        entry = vuln_actions.get(vuln_id, _vuln_action_default(vuln_id)) | {"vuln_id": vuln_id}
+        entry["plan_text"] = str(payload.get("plan_text", "")).strip()
+        entry["plan_target_date"] = str(payload.get("plan_target_date", "")).strip()
+        entry["plan_updated_by"] = str(payload.get("plan_updated_by", "")).strip() or "unknown"
+        entry["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
+        vuln_actions[vuln_id] = entry
+        return entry
+
+    @app.put("/vulnerabilities/{vuln_id}/exception", tags=["Vulnerabilities"])
+    def vuln_exception_upsert(vuln_id: str, payload: dict[str, Any]) -> Any:
+        if not _vuln_exists(vuln_id):
+            raise HTTPException(status_code=404, detail="vulnerability not found")
+        entry = vuln_actions.get(vuln_id, _vuln_action_default(vuln_id)) | {"vuln_id": vuln_id}
+        entry["exception_until"] = str(payload.get("exception_until", "")).strip()
+        entry["exception_reason"] = str(payload.get("exception_reason", "")).strip()
+        entry["exception_updated_by"] = str(payload.get("exception_updated_by", "")).strip() or "unknown"
+        entry["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
+        vuln_actions[vuln_id] = entry
+        return entry
+
+    @app.delete("/vulnerabilities/{vuln_id}/exception", tags=["Vulnerabilities"])
+    def vuln_exception_clear(vuln_id: str) -> Any:
+        if not _vuln_exists(vuln_id):
+            raise HTTPException(status_code=404, detail="vulnerability not found")
+        entry = vuln_actions.get(vuln_id)
+        if entry is None:
+            return {"ok": True}
+        entry["exception_until"] = ""
+        entry["exception_reason"] = ""
+        entry["exception_updated_by"] = ""
+        entry["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
+        return {"ok": True, "vuln_id": vuln_id}
+
     # ── Guides ───────────────────────────────────────────────────────────────
     @app.get("/guides")
     def guides_list() -> Any:
@@ -2202,7 +2410,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     @app.get("/assets", tags=["Assets"])
     def assets_get(format: str = "json", source: str = "all") -> Any:
         try:
-            payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans)
+            payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans, vuln_actions=vuln_actions)
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"assets unavailable: {exc}") from exc
         if format == "csv":
@@ -2264,7 +2472,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     def fleet_hosts_get(format: str = "json") -> Any:
         """Fleet(PC 자산) 전용 호스트 목록 API."""
         try:
-            payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans)
+            payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans, vuln_actions=vuln_actions)
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"fleet hosts unavailable: {exc}") from exc
         fleet_data = payload.get("fleet", {})
@@ -2291,7 +2499,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     def zabbix_hosts_get(format: str = "json") -> Any:
         """Zabbix(서버 자산) 전용 호스트 목록 API."""
         try:
-            payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans)
+            payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans, vuln_actions=vuln_actions)
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"zabbix hosts unavailable: {exc}") from exc
         zabbix_data = payload.get("zabbix", {})
@@ -2318,7 +2526,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     def trivy_vulnerabilities_get(format: str = "json", severity: str = "all") -> Any:
         """Trivy(취약점) 전용 취약점 목록 API. severity=critical|high|medium|low|all"""
         try:
-            payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans)
+            payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans, vuln_actions=vuln_actions)
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"trivy vulnerabilities unavailable: {exc}") from exc
         trivy_data = payload.get("trivy", {})
@@ -2934,8 +3142,10 @@ def render_user_dashboard_html(
             <option value=\"closed\">closed</option>
           </select>
         </div>
-        <div class=\"row\"><label>담당자</label><input id=\"incident_modal_status_analyst\" placeholder=\"예: alice\" /></div>
-        <button id=\"incident_modal_update_status\" style=\"margin-bottom:12px\">상태 저장</button>
+        <div class=\"row\"><label>담당자(분석)</label><input id=\"incident_modal_edit_analyst\" placeholder=\"비워두면 변경 없음\" /></div>
+        <div class=\"row\"><label>조치자</label><input id=\"incident_modal_edit_handler\" placeholder=\"비워두면 변경 없음\" /></div>
+        <div class=\"row\"><label>변경자(작성)</label><input id=\"incident_modal_status_analyst\" placeholder=\"예: alice (미입력 시 로그인 사용자)\" /></div>
+        <button id=\"incident_modal_update_status\" style=\"margin-bottom:12px\">변경 저장</button>
         <hr style=\"border-color:#334155;margin:12px 0\" />
         <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#7dd3fc\">📋 상태 변경 히스토리</div>
         <div id=\"incident_modal_history\" style=\"margin-bottom:12px\"></div>
@@ -3009,6 +3219,63 @@ def render_user_dashboard_html(
           <button id=\"owner_modal_save\" style=\"background:#1d4ed8;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\">저장</button>
           <button onclick=\"closeOwnerModal()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\">취소</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trivy 호스트별 취약점 리스트 모달 -->
+  <div id=\"vuln_list_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
+    <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px 28px;width:980px;max-width:96vw;max-height:88vh;overflow:auto\">
+      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:14px\">
+        <h3 id=\"vuln_list_modal_title\" style=\"color:#fdba74;margin:0\">취약점 상세</h3>
+        <button onclick=\"closeVulnListModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+      </div>
+      <div id=\"vuln_list_modal_subtitle\" style=\"color:#94a3b8;font-size:12px;margin-bottom:10px\"></div>
+      <div id=\"vuln_list_modal_body\"></div>
+    </div>
+  </div>
+
+  <!-- 취약점별 조치 계획 / 조치 예외 편집 모달 -->
+  <div id=\"vuln_action_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;\">
+    <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px 28px;width:520px;max-width:95vw\">
+      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:14px\">
+        <h3 id=\"vuln_action_modal_title\" style=\"color:#a3e635;margin:0\">취약점 조치</h3>
+        <button onclick=\"closeVulnActionModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+      </div>
+      <div id=\"vuln_action_modal_meta\" style=\"color:#94a3b8;font-size:12px;margin-bottom:12px;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;background:#0b1322\"></div>
+
+      <!-- 조치 계획 영역 -->
+      <div id=\"vuln_plan_section\" style=\"display:none;flex-direction:column;gap:10px\">
+        <div><label style=\"color:#94a3b8;font-size:13px\">조치 계획 내용</label>
+          <textarea id=\"vuln_plan_text\" rows=\"4\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 다음 정기 패치 일정에 openssh 9.3p2로 업그레이드\"></textarea>
+        </div>
+        <div><label style=\"color:#94a3b8;font-size:13px\">목표 완료일</label>
+          <input type=\"date\" id=\"vuln_plan_target_date\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+        </div>
+        <div><label style=\"color:#94a3b8;font-size:13px\">작성자</label>
+          <input id=\"vuln_plan_updated_by\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: security\" />
+        </div>
+      </div>
+
+      <!-- 조치 예외 영역 -->
+      <div id=\"vuln_exception_section\" style=\"display:none;flex-direction:column;gap:10px\">
+        <div><label style=\"color:#94a3b8;font-size:13px\">예외 처리 기한</label>
+          <input type=\"date\" id=\"vuln_exception_until\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+          <span style=\"color:#64748b;font-size:11px\">이 날짜까지 해당 취약점 점검/알림에서 제외됩니다</span>
+        </div>
+        <div><label style=\"color:#94a3b8;font-size:13px\">예외 사유</label>
+          <textarea id=\"vuln_exception_reason\" rows=\"3\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 종속 라이브러리 호환성 이슈로 차분기 교체 예정\"></textarea>
+        </div>
+        <div><label style=\"color:#94a3b8;font-size:13px\">작성자</label>
+          <input id=\"vuln_exception_updated_by\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: security\" />
+        </div>
+      </div>
+
+      <div id=\"vuln_action_modal_status\" style=\"font-size:13px;color:#94a3b8;margin-top:10px\"></div>
+      <div style=\"display:flex;gap:8px;justify-content:flex-end;margin-top:12px\">
+        <button id=\"vuln_action_modal_clear\" style=\"display:none;background:#3f1d1d;border:1px solid #7f1d1d;color:#fca5a5;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px\">예외 해제</button>
+        <button id=\"vuln_action_modal_save\" style=\"background:#16a34a;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\">저장</button>
+        <button onclick=\"closeVulnActionModal()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\">취소</button>
       </div>
     </div>
   </div>
@@ -3708,6 +3975,10 @@ def render_user_dashboard_html(
       document.getElementById('incident_modal_note_text').value = '';
       document.getElementById('incident_modal_analyst').value = '';
       document.getElementById('incident_modal_status_analyst').value = '';
+      const editAnalystEl = document.getElementById('incident_modal_edit_analyst');
+      const editHandlerEl = document.getElementById('incident_modal_edit_handler');
+      if (editAnalystEl) editAnalystEl.value = '';
+      if (editHandlerEl) editHandlerEl.value = '';
       try {
         const res = await fetch('/incidents');
         if (!res.ok) return;
@@ -3723,14 +3994,21 @@ def render_user_dashboard_html(
         const handlerLine = (inc.handler && inc.handler !== inc.analyst) ? `<br>🔧 <strong style="color:#fbbf24">조치자:</strong> ${escapeHtml(inc.handler)}` : '';
         document.getElementById('incident_modal_info').innerHTML = `<span style="color:#64748b">ID: ${escapeHtml(inc.incident_id)}</span><br>생성: ${escapeHtml(formatTime(inc.created_at))} &nbsp;|&nbsp; 수정: ${escapeHtml(formatTime(inc.updated_at))}${statusUpdatedLine}${hostLine}${analystLine}${handlerLine}`;
         document.getElementById('incident_modal_status').value = inc.status;
-        // 상태 변경 히스토리
+        // 상태 / 담당자 / 조치자 변경 히스토리
         const history = inc.history || [];
         const statusLabels = { open: '🔵 open', investigating: '🟡 investigating', resolved: '🟢 resolved', closed: '⚫ closed', created: '🆕 생성됨' };
         document.getElementById('incident_modal_history').innerHTML = history.length
           ? [...history].reverse().map(h => {
-              const arrow = h.event === 'created'
-                ? `<strong>${statusLabels[h.to_status] || h.to_status}</strong>`
-                : `${statusLabels[h.from_status] || h.from_status} → <strong>${statusLabels[h.to_status] || h.to_status}</strong>`;
+              let arrow;
+              if (h.event === 'created') {
+                arrow = `<span style=\"color:#94a3b8\">생성:</span> <strong>${statusLabels[h.to_status] || h.to_status}</strong>`;
+              } else if (h.event === 'analyst_changed') {
+                arrow = `<span style=\"color:#a3e635\">👤 담당자:</span> ${escapeHtml(h.from_analyst || '-')} → <strong>${escapeHtml(h.to_analyst || '-')}</strong>`;
+              } else if (h.event === 'handler_changed') {
+                arrow = `<span style=\"color:#fbbf24\">🔧 조치자:</span> ${escapeHtml(h.from_handler || '-')} → <strong>${escapeHtml(h.to_handler || '-')}</strong>`;
+              } else {
+                arrow = `${statusLabels[h.from_status] || h.from_status} → <strong>${statusLabels[h.to_status] || h.to_status}</strong>`;
+              }
               return `<div style=\"background:#0c1827;border-left:3px solid #334155;padding:7px 12px;margin-bottom:5px;border-radius:4px;font-size:12px\">
                 <div style=\"color:#64748b\">${escapeHtml(formatTime(h.changed_at))} &nbsp;·&nbsp; ${escapeHtml(h.analyst || '-')}</div>
                 <div style=\"color:#e2e8f0;margin-top:2px\">${arrow}</div>
@@ -3750,14 +4028,20 @@ def render_user_dashboard_html(
     document.getElementById('incident_modal_update_status')?.addEventListener('click', async () => {
       if (!currentIncidentId) return;
       const status = document.getElementById('incident_modal_status').value;
-      const analyst = document.getElementById('incident_modal_status_analyst').value.trim();
+      const actor = document.getElementById('incident_modal_status_analyst').value.trim();
+      const newAnalyst = document.getElementById('incident_modal_edit_analyst').value.trim();
+      const newHandler = document.getElementById('incident_modal_edit_handler').value.trim();
       const sl = document.getElementById('incident_modal_status_line');
+      const body = { status };
+      if (actor) body.actor = actor;
+      if (newAnalyst) body.analyst = newAnalyst;
+      if (newHandler) body.handler = newHandler;
       sl.textContent = '저장 중...';
       try {
         const res = await fetch(`/incidents/${encodeURIComponent(currentIncidentId)}`, {
-          method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ status, analyst }),
+          method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
         });
-        sl.textContent = res.ok ? '상태 저장 완료' : `오류: ${res.status}`;
+        sl.textContent = res.ok ? '저장 완료' : `오류: ${res.status}`;
         if (res.ok) { loadIncidents(); openIncidentModal(currentIncidentId); }
       } catch (err) { sl.textContent = `오류: ${err.message}`; }
     });
@@ -4003,6 +4287,9 @@ def render_user_dashboard_html(
         const exCell = exUntil
           ? `<span style=\"color:#fde68a;font-size:12px\">~${escapeHtml(exUntil)}</span>${exReason ? '<br><span style=\"color:#94a3b8;font-size:11px\" title=\"'+escapeHtml(exReason)+'\">'+escapeHtml(exReason.substring(0,20))+(exReason.length>20?'…':'')+'</span>' : ''}<br><button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','${escapeHtml(exUntil)}','${escapeHtml(exReason).replace(/'/g,"\\\\'")}')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">✏️ 수정</button>`
           : `<button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','','')\" style=\"font-size:11px;padding:2px 7px;background:#3b1f00;border:1px solid #78350f;border-radius:4px;color:#fbbf24;cursor:pointer\">+ 예외 설정</button>`;
+        const totalCell = r.total > 0
+          ? `<button onclick=\"openVulnListModal('${escapeHtml(r.host_id)}')\" title=\"취약점 상세 보기\" style=\"background:#1e3a5f;border:1px solid #334155;color:#7dd3fc;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:13px;font-weight:700\">${r.total} 건 ↗</button>`
+          : `<span style=\"color:#64748b\">${r.total}</span>`;
         return `<tr>
           <td><strong>${escapeHtml(r.hostname)}</strong><br><span style=\"color:#64748b;font-size:11px\">${escapeHtml(r.host_id)}</span></td>
           <td style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</td>
@@ -4010,7 +4297,7 @@ def render_user_dashboard_html(
           <td style=\"color:${sevColor.high};font-weight:700;text-align:center\">${r.high}</td>
           <td style=\"color:${sevColor.medium};text-align:center\">${r.medium}</td>
           <td style=\"color:${sevColor.low};text-align:center\">${r.low}</td>
-          <td style=\"text-align:center\">${r.total}</td>
+          <td style=\"text-align:center\">${totalCell}</td>
           <td style=\"font-size:12px;color:#94a3b8\">${escapeHtml(r.latest_cve || '-')}</td>
           <td style=\"font-size:12px;color:#64748b\">${escapeHtml(formatTime(r.latest_detected_at))}</td>
           <td style=\"min-width:130px\">${planCell}</td>
@@ -4053,6 +4340,104 @@ def render_user_dashboard_html(
       document.getElementById('plan_modal').style.display = 'flex';
     }
     function closePlanModal() { document.getElementById('plan_modal').style.display = 'none'; }
+
+    /* ── 호스트별 취약점 리스트 모달 ──────────────────────────────────────── */
+    function _renderVulnListBody(hostRow) {
+      const sevColor = { critical:'#fca5a5', high:'#fdba74', medium:'#fde68a', low:'#86efac', info:'#94a3b8' };
+      const vulns = hostRow.vulns || [];
+      if (!vulns.length) {
+        return '<div style=\"color:#64748b;text-align:center;padding:20px\">취약점이 없습니다.</div>';
+      }
+      const rows = vulns.map(v => {
+        const planLabel = v.plan_text
+          ? `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(v.plan_text)}\">${escapeHtml(v.plan_text.substring(0,30))}${v.plan_text.length>30?'…':''}</span>${v.plan_target_date?'<br><span style=\"color:#64748b;font-size:11px\">~'+escapeHtml(v.plan_target_date)+'</span>':''}`
+          : '<span style=\"color:#64748b;font-size:11px\">미설정</span>';
+        const exLabel = v.exception_until
+          ? `<span style=\"color:#fbbf24;font-size:12px\">~${escapeHtml(v.exception_until)}</span>${v.exception_reason?'<br><span style=\"color:#94a3b8;font-size:11px\" title=\"'+escapeHtml(v.exception_reason)+'\">'+escapeHtml(v.exception_reason.substring(0,24))+(v.exception_reason.length>24?'…':'')+'</span>':''}`
+          : '<span style=\"color:#64748b;font-size:11px\">없음</span>';
+        const versionStr = v.installed_version
+          ? `${escapeHtml(v.installed_version)}${v.fixed_version?' → <span style=\"color:#86efac\">'+escapeHtml(v.fixed_version)+'</span>':''}`
+          : '-';
+        return `<tr>
+          <td style=\"padding:6px 8px\"><strong style=\"color:#7dd3fc\">${escapeHtml(v.cve||'-')}</strong></td>
+          <td style=\"padding:6px 8px;text-align:center\"><span style=\"color:${sevColor[v.severity]||'#94a3b8'};font-weight:700;text-transform:uppercase;font-size:11px\">${escapeHtml(v.severity)}</span></td>
+          <td style=\"padding:6px 8px;font-size:12px\">${escapeHtml(v.package_name||'-')}</td>
+          <td style=\"padding:6px 8px;font-size:12px;color:#94a3b8\">${versionStr}</td>
+          <td style=\"padding:6px 8px;font-size:11px;color:#64748b\">${escapeHtml(formatTime(v.detected_at))}</td>
+          <td style=\"padding:6px 8px;min-width:140px\">${planLabel}<br><button onclick=\"openVulnActionModal('${escapeHtml(v.vuln_id)}','plan')\" style=\"font-size:10px;padding:1px 6px;background:#0f3a1d;border:1px solid #14532d;border-radius:3px;color:#86efac;cursor:pointer;margin-top:3px\">✏️ 조치 계획</button></td>
+          <td style=\"padding:6px 8px;min-width:140px\">${exLabel}<br><button onclick=\"openVulnActionModal('${escapeHtml(v.vuln_id)}','exception')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:3px\">⚠️ 조치 예외</button></td>
+        </tr>`;
+      }).join('');
+      return `<table style=\"width:100%;border-collapse:collapse;font-size:12px\">
+        <thead><tr style=\"background:#0f2035\">
+          <th style=\"padding:8px;color:#7dd3fc;text-align:left\">CVE</th>
+          <th style=\"padding:8px;color:#fdba74\">심각도</th>
+          <th style=\"padding:8px;color:#94a3b8;text-align:left\">패키지</th>
+          <th style=\"padding:8px;color:#94a3b8;text-align:left\">설치 → 권장</th>
+          <th style=\"padding:8px;color:#64748b\">탐지일</th>
+          <th style=\"padding:8px;color:#a3e635;text-align:left\">조치 계획</th>
+          <th style=\"padding:8px;color:#fbbf24;text-align:left\">조치 예외</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    function openVulnListModal(hostId) {
+      const row = (_assetCache.trivy || []).find(r => r.host_id === hostId);
+      if (!row) { alert('호스트 데이터를 찾을 수 없습니다. 자산 새로고침 후 다시 시도해 주세요.'); return; }
+      document.getElementById('vuln_list_modal_title').textContent = `🛡️ ${row.hostname} — 취약점 ${row.total}건`;
+      document.getElementById('vuln_list_modal_subtitle').textContent =
+        `Critical ${row.critical} · High ${row.high} · Medium ${row.medium} · Low ${row.low}`;
+      document.getElementById('vuln_list_modal_body').innerHTML = _renderVulnListBody(row);
+      document.getElementById('vuln_list_modal').style.display = 'flex';
+    }
+    function closeVulnListModal() { document.getElementById('vuln_list_modal').style.display = 'none'; }
+
+    /* ── 취약점별 조치 계획 / 조치 예외 모달 ─────────────────────────────── */
+    let _vulnActionId = null, _vulnActionMode = 'plan', _vulnActionHostId = null;
+    function openVulnActionModal(vulnId, mode) {
+      _vulnActionId = vulnId; _vulnActionMode = mode;
+      // 현재 보고 있던 host row 찾기 (모달 닫혀도 list 갱신용)
+      let foundVuln = null, foundHost = null;
+      for (const row of (_assetCache.trivy || [])) {
+        const v = (row.vulns || []).find(x => x.vuln_id === vulnId);
+        if (v) { foundVuln = v; foundHost = row; break; }
+      }
+      _vulnActionHostId = foundHost ? foundHost.host_id : null;
+      const meta = foundVuln
+        ? `<div><strong style=\"color:#7dd3fc\">${escapeHtml(foundVuln.cve||vulnId)}</strong> · <span style=\"color:#fdba74;text-transform:uppercase\">${escapeHtml(foundVuln.severity)}</span></div>
+           <div style=\"margin-top:3px\">${escapeHtml(foundVuln.package_name||'-')} ${foundVuln.installed_version?'('+escapeHtml(foundVuln.installed_version)+')':''} ${foundVuln.fixed_version?'→ <span style=\"color:#86efac\">'+escapeHtml(foundVuln.fixed_version)+'</span>':''}</div>
+           <div style=\"margin-top:3px;color:#64748b\">호스트: ${escapeHtml(foundHost?foundHost.hostname:'-')}</div>`
+        : `<div>vuln_id: ${escapeHtml(vulnId)}</div>`;
+      document.getElementById('vuln_action_modal_meta').innerHTML = meta;
+      document.getElementById('vuln_action_modal_status').textContent = '';
+      const planSec = document.getElementById('vuln_plan_section');
+      const exSec = document.getElementById('vuln_exception_section');
+      const clearBtn = document.getElementById('vuln_action_modal_clear');
+      if (mode === 'exception') {
+        document.getElementById('vuln_action_modal_title').textContent = '⚠️ 조치 예외 설정';
+        planSec.style.display = 'none';
+        exSec.style.display = 'flex';
+        clearBtn.style.display = (foundVuln && foundVuln.exception_until) ? 'inline-block' : 'none';
+      } else {
+        document.getElementById('vuln_action_modal_title').textContent = '✏️ 조치 계획 작성';
+        planSec.style.display = 'flex';
+        exSec.style.display = 'none';
+        clearBtn.style.display = 'none';
+      }
+      // 기존 값 채우기
+      fetch(`/vulnerabilities/${encodeURIComponent(vulnId)}/action`).then(r => r.ok?r.json():null).then(d => {
+        if (!d) return;
+        document.getElementById('vuln_plan_text').value = d.plan_text || '';
+        document.getElementById('vuln_plan_target_date').value = d.plan_target_date || '';
+        document.getElementById('vuln_plan_updated_by').value = d.plan_updated_by || '';
+        document.getElementById('vuln_exception_until').value = d.exception_until || '';
+        document.getElementById('vuln_exception_reason').value = d.exception_reason || '';
+        document.getElementById('vuln_exception_updated_by').value = d.exception_updated_by || '';
+      }).catch(()=>{});
+      document.getElementById('vuln_action_modal').style.display = 'flex';
+    }
+    function closeVulnActionModal() { document.getElementById('vuln_action_modal').style.display = 'none'; }
 
     /* ── 감사 이력 모달 ──────────────────────────────────────────────────── */
     async function openAuditModal(hostname) {
@@ -4150,6 +4535,63 @@ def render_user_dashboard_html(
         });
         closePlanModal();
         loadAssets();
+      });
+
+      // 취약점별 조치 계획/예외 저장
+      const vulnSaveBtn = document.getElementById('vuln_action_modal_save');
+      if (vulnSaveBtn) vulnSaveBtn.addEventListener('click', async () => {
+        if (!_vulnActionId) return;
+        const statusEl = document.getElementById('vuln_action_modal_status');
+        statusEl.style.color = '#94a3b8'; statusEl.textContent = '저장 중...';
+        try {
+          let res;
+          if (_vulnActionMode === 'exception') {
+            res = await fetch(`/vulnerabilities/${encodeURIComponent(_vulnActionId)}/exception`, {
+              method: 'PUT', headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({
+                exception_until: document.getElementById('vuln_exception_until').value,
+                exception_reason: document.getElementById('vuln_exception_reason').value,
+                exception_updated_by: document.getElementById('vuln_exception_updated_by').value || '운영자',
+              })
+            });
+          } else {
+            res = await fetch(`/vulnerabilities/${encodeURIComponent(_vulnActionId)}/plan`, {
+              method: 'PUT', headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({
+                plan_text: document.getElementById('vuln_plan_text').value,
+                plan_target_date: document.getElementById('vuln_plan_target_date').value,
+                plan_updated_by: document.getElementById('vuln_plan_updated_by').value || '운영자',
+              })
+            });
+          }
+          if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.detail || res.status); }
+          const hostId = _vulnActionHostId;
+          closeVulnActionModal();
+          await loadAssets();
+          if (hostId) openVulnListModal(hostId);
+        } catch(err) {
+          statusEl.style.color = '#fca5a5';
+          statusEl.textContent = `오류: ${err.message}`;
+        }
+      });
+
+      const vulnClearBtn = document.getElementById('vuln_action_modal_clear');
+      if (vulnClearBtn) vulnClearBtn.addEventListener('click', async () => {
+        if (!_vulnActionId) return;
+        if (!confirm('이 취약점의 예외 처리를 해제하시겠습니까?')) return;
+        const statusEl = document.getElementById('vuln_action_modal_status');
+        statusEl.style.color = '#94a3b8'; statusEl.textContent = '해제 중...';
+        try {
+          const res = await fetch(`/vulnerabilities/${encodeURIComponent(_vulnActionId)}/exception`, { method: 'DELETE' });
+          if (!res.ok) throw new Error(res.status);
+          const hostId = _vulnActionHostId;
+          closeVulnActionModal();
+          await loadAssets();
+          if (hostId) openVulnListModal(hostId);
+        } catch(err) {
+          statusEl.style.color = '#fca5a5';
+          statusEl.textContent = `오류: ${err.message}`;
+        }
       });
     });
 
@@ -4399,14 +4841,26 @@ def render_user_dashboard_html(
               + '</tbody></table>';
           }
         }
-        // Pending remediations
+        // Pending remediations (control_check + trivy + alert)
         if (pendingEl) {
           const items = data.pending_remediations || [];
+          const ps = data.pending_sources || {};
+          const breakdown = `<div style=\"margin-bottom:8px;font-size:12px;color:#94a3b8\">
+            출처별: <span style=\"color:#7dd3fc\">통제 점검 ${ps.control_check||0}</span> ·
+            <span style=\"color:#fdba74\">Trivy 취약점 ${ps.trivy||0}</span> ·
+            <span style=\"color:#fca5a5\">Alert ${ps.alert||0}</span>
+          </div>`;
           if (items.length === 0) {
-            pendingEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:12px\">미조치 항목이 없습니다. 🎉</div>';
+            pendingEl.innerHTML = breakdown + '<div class=\"empty\" style=\"color:#64748b;padding:12px\">미조치 항목이 없습니다. 🎉</div>';
           } else {
-            pendingEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
+            const sourceBadge = (s) => {
+              if (s === 'trivy') return '<span style=\"background:#3b1f00;color:#fdba74;padding:2px 6px;border-radius:4px;font-size:10px\">🛡️ Trivy</span>';
+              if (s === 'alert') return '<span style=\"background:#450a0a;color:#fca5a5;padding:2px 6px;border-radius:4px;font-size:10px\">🚨 Alert</span>';
+              return '<span style=\"background:#0c2a4a;color:#7dd3fc;padding:2px 6px;border-radius:4px;font-size:10px\">📋 통제</span>';
+            };
+            pendingEl.innerHTML = breakdown + `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
               <thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155\">
+                <th style=\"text-align:center;padding:6px 8px\">출처</th>
                 <th style=\"text-align:left;padding:6px 8px\">통제 ID</th>
                 <th style=\"text-align:left;padding:6px 8px\">대상</th>
                 <th style=\"text-align:center;padding:6px 8px\">상태</th>
@@ -4421,6 +4875,7 @@ def render_user_dashboard_html(
                 const due = i.remediation_due_at ? new Date(i.remediation_due_at).toLocaleDateString('ko-KR') : '-';
                 const overdueFlag = i.overdue ? ' 🔴' : '';
                 return `<tr style=\"border-bottom:1px solid #1e293b\">
+                  <td style=\"text-align:center;padding:6px 8px\">${sourceBadge(i.source)}</td>
                   <td style=\"padding:6px 8px;color:#38bdf8;font-weight:600\">${escapeHtml(i.control_id)}</td>
                   <td style=\"padding:6px 8px;color:#e2e8f0\">${escapeHtml(i.entity_type)}:${escapeHtml(i.entity_id)}</td>
                   <td style=\"text-align:center;padding:6px 8px\">${statusBadge}</td>
