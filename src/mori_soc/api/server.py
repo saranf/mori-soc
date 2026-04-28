@@ -156,9 +156,15 @@ def interpret_query_text(text: str) -> dict[str, Any]:
     return NaturalLanguageQueryParser().interpret(text).to_dict()
 
 
-def build_dashboard_payload(service: QueryService, *, asset_owners: Mapping[str, dict[str, Any]] | None = None) -> dict[str, Any]:
+def build_dashboard_payload(
+    service: QueryService,
+    *,
+    asset_owners: Mapping[str, dict[str, Any]] | None = None,
+    vuln_actions: Mapping[str, Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
     store = service.store
     _owners: Mapping[str, dict[str, Any]] = asset_owners or {}
+    _vuln_actions: Mapping[str, Mapping[str, Any]] = vuln_actions or {}
     now = datetime.now(tz=timezone.utc)
     since_24h = now - timedelta(hours=24)
     status_rows = sorted(latest_host_status_view(store), key=_latest_status_sort_key)
@@ -192,7 +198,7 @@ def build_dashboard_payload(service: QueryService, *, asset_owners: Mapping[str,
             "total_hosts": _status_detail_rows(status_rows),
             "offline_hosts": _status_detail_rows([row for row in status_rows if row.status == "offline"]),
             "alerts_24h": _alert_detail_rows(alerts_24h, hostnames, _owners),
-            "critical_vulns": _critical_vuln_detail_rows(store, hostnames, _owners),
+            "critical_vulns": _critical_vuln_detail_rows(store, hostnames, _owners, _vuln_actions),
             "sources_reporting": [item for item in source_coverage if item["host_count"] > 0],
             "sources_healthy": [item for item in source_coverage if item["status"] == "success" and not item.get("is_stale")],
             "ingested_records": _ingested_record_rows(store),
@@ -1869,7 +1875,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     @app.get("/dashboard/summary")
     def dashboard_summary() -> dict[str, Any]:
         try:
-            return build_dashboard_payload(get_query_service(), asset_owners=asset_owners)
+            return build_dashboard_payload(get_query_service(), asset_owners=asset_owners, vuln_actions=vuln_actions)
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"dashboard summary unavailable: {exc}") from exc
 
@@ -1884,6 +1890,45 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             )
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"compliance pdca unavailable: {exc}") from exc
+
+    @app.get("/compliance/pdca/pending.csv", tags=["Compliance"])
+    def compliance_pdca_pending_csv() -> Any:
+        """미조치 / 기한 초과 항목(PDCA Do 단계)을 CSV로 다운로드."""
+        try:
+            payload = build_pdca_payload(
+                get_query_service(),
+                vuln_actions=vuln_actions,
+                alert_triage=triage_store,
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"compliance pdca unavailable: {exc}") from exc
+        import io, csv as csv_mod
+        buf = io.StringIO()
+        header_map = {
+            "source": "출처",
+            "control_id": "통제ID",
+            "entity_type": "대상유형",
+            "entity_id": "대상",
+            "status": "상태",
+            "owner": "담당자",
+            "checked_at": "점검일시",
+            "remediation_due_at": "조치기한",
+            "overdue": "기한초과",
+            "note": "비고",
+        }
+        fieldnames = list(header_map.keys())
+        writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writerow(header_map)
+        for item in payload.get("pending_remediations", []):
+            row = {k: item.get(k, "") for k in fieldnames}
+            row["overdue"] = "Y" if item.get("overdue") else "N"
+            writer.writerow(row)
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        return StreamingResponse(
+            iter([buf.getvalue()]),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="mori-pdca-pending-{timestamp}.csv"'},
+        )
 
     @app.get("/compliance/crosscheck", tags=["Compliance"])
     def compliance_crosscheck() -> dict[str, Any]:
@@ -3086,7 +3131,10 @@ def render_user_dashboard_html(
             <div id=\"pdca_cycle_chart\" style=\"margin-top:12px\"></div>
           </section>
           <section class=\"card\">
-            <h2>⚠️ 미조치 / 기한 초과 항목</h2>
+            <div style=\"display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap\">
+              <h2 style=\"margin:0\">⚠️ 미조치 / 기한 초과 항목</h2>
+              <a id=\"pdca_pending_csv_btn\" href=\"/compliance/pdca/pending.csv\" download style=\"background:#0c2a4a;border:1px solid #1e3a5f;color:#7dd3fc;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer\">📥 CSV</a>
+            </div>
             <div class=\"subtext\">fail 또는 warning 상태인 통제 항목입니다. 기한 초과는 🔴로 표시됩니다.</div>
             <div id=\"pdca_pending_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
           </section>
@@ -3096,7 +3144,7 @@ def render_user_dashboard_html(
       <!-- ── 증적 리포트 다운로드 ────────────────────────────────────── -->
       <section class=\"card\" style=\"margin-top:20px\">
         <h2>📥 감사 증적 리포트 다운로드</h2>
-        <div class=\"subtext\">ISMS-P / ISO 27001 감사 증적으로 사용할 수 있는 리포트를 JSON 또는 CSV로 다운로드합니다.</div>
+        <div class=\"subtext\">ISMS-P / ISO 27001 감사 증적으로 사용할 수 있는 리포트를 CSV로 다운로드합니다. 미리보기를 통해 CSV의 컬럼 구성을 먼저 확인할 수 있습니다.</div>
         <div id=\"report_download_area\" style=\"margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px\">
         </div>
       </section>
@@ -3314,6 +3362,52 @@ def render_user_dashboard_html(
       <div style=\"display:flex;gap:10px;justify-content:flex-end\">
         <button onclick=\"closeVulnPlansNotice()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px\">닫기</button>
         <button id=\"vuln_plans_notice_open_list\" style=\"background:#1e3a5f;border:1px solid #334155;color:#7dd3fc;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600\">합계 탭 열기 ↗</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDCA Do(조치) 항목 상세 모달 -->
+  <div id=\"pdca_do_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:center;justify-content:center;\">
+    <div style=\"background:#0f172a;border:1px solid #f59e0b;border-radius:10px;padding:24px 28px;width:1080px;max-width:96vw;max-height:88vh;overflow:auto\">
+      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:14px\">
+        <h3 style=\"color:#f59e0b;margin:0\">🔧 Do — 조치가 필요한 항목</h3>
+        <button onclick=\"closePdcaDoModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+      </div>
+      <div id=\"pdca_do_modal_subtitle\" style=\"color:#94a3b8;font-size:12px;margin-bottom:10px\"></div>
+      <div id=\"pdca_do_modal_body\"></div>
+    </div>
+  </div>
+
+  <!-- 감사 증적 리포트 미리보기 모달 (CSV 미리보기 + 다운로드) -->
+  <div id=\"report_preview_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:center;justify-content:center;\">
+    <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px 28px;width:1080px;max-width:96vw;max-height:88vh;overflow:auto\">
+      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px;flex-wrap:wrap\">
+        <h3 id=\"report_preview_title\" style=\"color:#67e8f9;margin:0\">📄 리포트 미리보기</h3>
+        <div style=\"display:flex;gap:8px;align-items:center\">
+          <a id=\"report_preview_download\" href=\"#\" download style=\"background:#164e63;border:1px solid #155e75;color:#67e8f9;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none\">📥 CSV 다운로드</a>
+          <button onclick=\"closeReportPreview()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        </div>
+      </div>
+      <div id=\"report_preview_subtitle\" style=\"color:#94a3b8;font-size:12px;margin-bottom:10px\">CSV 파일이 아래와 같은 형태로 생성됩니다. (상위 50행만 표시)</div>
+      <div id=\"report_preview_body\"></div>
+    </div>
+  </div>
+
+  <!-- 인시던트 CSV 다운로드 안내 모달 -->
+  <div id=\"incident_csv_notice_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
+    <div style=\"background:#0f172a;border:1px solid #78350f;border-radius:10px;padding:28px 32px;width:520px;max-width:95vw\">
+      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
+        <h3 style=\"color:#fbbf24;margin:0\">📥 인시던트 CSV 다운로드</h3>
+        <button onclick=\"closeIncidentCsvNotice()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+      </div>
+      <div style=\"color:#e2e8f0;font-size:13px;line-height:1.7;margin-bottom:18px\">
+        <div style=\"margin-bottom:10px\">⚠️ <strong style=\"color:#fbbf24\">변경 내역(history)은 CSV 내역에 포함되지 않습니다.</strong></div>
+        <div style=\"color:#cbd5e1\">각 인시던트는 <strong style=\"color:#7dd3fc\">변경 일자</strong>와 <strong style=\"color:#7dd3fc\">최신 내역</strong>(현재 상태 / 담당자 / 영향도 등)만 1행으로 표시됩니다.</div>
+        <div style=\"color:#94a3b8;margin-top:10px;font-size:12px\">전체 변경 이력은 인시던트 상세 모달의 \"📋 변경 이력\" 섹션 또는 <code style=\"background:#1e293b;padding:1px 6px;border-radius:3px\">/incidents/{id}/history</code> API를 이용해 주세요.</div>
+      </div>
+      <div style=\"display:flex;gap:10px;justify-content:flex-end\">
+        <button onclick=\"closeIncidentCsvNotice()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px\">취소</button>
+        <button id=\"incident_csv_confirm_btn\" style=\"background:#164e63;border:1px solid #155e75;color:#67e8f9;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600\">📥 다운로드</button>
       </div>
     </div>
   </div>
@@ -3590,6 +3684,17 @@ def render_user_dashboard_html(
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'CVE', render: (item) => escapeHtml(item.cve || '-') },
         { label: 'Package', render: (item) => escapeHtml(item.package_name || '-') },
+        { label: '조치 계획', render: (item) => {
+          if (!item.plan_text) return '<span style=\"color:#64748b;font-size:11px\">미설정</span>';
+          const tgt = item.plan_target_date ? `<br /><span style=\"color:#64748b;font-size:11px\">~${escapeHtml(item.plan_target_date)}</span>` : '';
+          const by = item.plan_updated_by ? ` <span style=\"color:#94a3b8;font-size:11px\">(${escapeHtml(item.plan_updated_by)})</span>` : '';
+          return `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(item.plan_text)}\">${escapeHtml(item.plan_text.substring(0,30))}${item.plan_text.length>30?'…':''}</span>${by}${tgt}`;
+        }},
+        { label: '조치 예외', render: (item) => {
+          if (!item.exception_until) return '<span style=\"color:#64748b;font-size:11px\">없음</span>';
+          const reason = item.exception_reason ? `<br /><span style=\"color:#94a3b8;font-size:11px\">${escapeHtml(item.exception_reason.substring(0,30))}${item.exception_reason.length>30?'…':''}</span>` : '';
+          return `<span style=\"color:#fbbf24;font-size:12px\">~${escapeHtml(item.exception_until)}</span>${reason}`;
+        }},
       ], items, 'critical 취약점이 없습니다.');
     }
 
@@ -4187,18 +4292,20 @@ def render_user_dashboard_html(
     // 검색창 Enter 키
     document.getElementById('inc_search')?.addEventListener('keydown', e => { if (e.key === 'Enter') loadIncidents(); });
 
-    // CSV 다운로드
+    // CSV 다운로드 — 변경 이력은 미포함 안내 모달 표시 후 다운로드
     if (document.getElementById('inc_csv_btn')) {
       document.getElementById('inc_csv_btn')?.addEventListener('click', () => {
         const params = buildIncidentParams();
         params.set('format', 'csv');
         const url = '/incidents?' + params.toString();
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'incidents.csv';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        showIncidentCsvNotice(() => {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'incidents.csv';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        });
       });
     }
 
@@ -4520,6 +4627,59 @@ def render_user_dashboard_html(
       openBtn.onclick = () => { closeVulnPlansNotice(); openVulnListModal(hostId); };
       document.getElementById('vuln_plans_notice_modal').style.display = 'flex';
     }
+
+    /* ── PDCA Do(조치) 항목 상세 모달 ─────────────────────────────────────── */
+    function openPdcaDoModal() {
+      const items = window.__pdcaPending || [];
+      const ps = window.__pdcaPendingSources || {};
+      const subtitleEl = document.getElementById('pdca_do_modal_subtitle');
+      const bodyEl = document.getElementById('pdca_do_modal_body');
+      if (!bodyEl) return;
+      const overdue = items.filter(i => i.overdue).length;
+      subtitleEl.innerHTML = `총 <strong style=\"color:#f59e0b\">${items.length}</strong>건 조치 필요 (기한 초과 <strong style=\"color:#fca5a5\">${overdue}</strong>건) ·
+        <span style=\"color:#7dd3fc\">통제 ${ps.control_check||0}</span> ·
+        <span style=\"color:#fdba74\">Trivy ${ps.trivy||0}</span> ·
+        <span style=\"color:#fca5a5\">Alert ${ps.alert||0}</span>
+        <a href=\"/compliance/pdca/pending.csv\" download style=\"margin-left:12px;background:#0c2a4a;border:1px solid #1e3a5f;color:#7dd3fc;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none\">📥 CSV</a>`;
+      if (items.length === 0) {
+        bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:24px;text-align:center\">조치가 필요한 항목이 없습니다. 🎉</div>';
+      } else {
+        const sourceBadge = (s) => {
+          if (s === 'trivy') return '<span style=\"background:#3b1f00;color:#fdba74;padding:2px 6px;border-radius:4px;font-size:10px\">🛡️ Trivy</span>';
+          if (s === 'alert') return '<span style=\"background:#450a0a;color:#fca5a5;padding:2px 6px;border-radius:4px;font-size:10px\">🚨 Alert</span>';
+          return '<span style=\"background:#0c2a4a;color:#7dd3fc;padding:2px 6px;border-radius:4px;font-size:10px\">📋 통제</span>';
+        };
+        bodyEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
+          <thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155\">
+            <th style=\"text-align:center;padding:6px 8px\">출처</th>
+            <th style=\"text-align:left;padding:6px 8px\">통제 ID</th>
+            <th style=\"text-align:left;padding:6px 8px\">대상</th>
+            <th style=\"text-align:center;padding:6px 8px\">상태</th>
+            <th style=\"text-align:left;padding:6px 8px\">담당자</th>
+            <th style=\"text-align:left;padding:6px 8px\">조치 기한</th>
+            <th style=\"text-align:left;padding:6px 8px\">비고</th>
+          </tr></thead><tbody>`
+          + items.map(i => {
+            const statusBadge = i.status === 'fail'
+              ? '<span style=\"background:#450a0a;color:#fca5a5;padding:2px 8px;border-radius:999px;font-size:11px\">Fail</span>'
+              : '<span style=\"background:#451a03;color:#fbbf24;padding:2px 8px;border-radius:999px;font-size:11px\">Warning</span>';
+            const due = i.remediation_due_at ? new Date(i.remediation_due_at).toLocaleDateString('ko-KR') : '-';
+            const overdueFlag = i.overdue ? ' 🔴' : '';
+            return `<tr style=\"border-bottom:1px solid #1e293b\">
+              <td style=\"text-align:center;padding:6px 8px\">${sourceBadge(i.source)}</td>
+              <td style=\"padding:6px 8px;color:#38bdf8;font-weight:600\">${escapeHtml(i.control_id)}</td>
+              <td style=\"padding:6px 8px;color:#e2e8f0\">${escapeHtml(i.entity_type)}:${escapeHtml(i.entity_id)}</td>
+              <td style=\"text-align:center;padding:6px 8px\">${statusBadge}</td>
+              <td style=\"padding:6px 8px;color:#94a3b8\">${escapeHtml(i.owner) || '-'}</td>
+              <td style=\"padding:6px 8px;color:#e2e8f0\">${due}${overdueFlag}</td>
+              <td style=\"padding:6px 8px;color:#64748b\">${escapeHtml(i.note) || ''}</td>
+            </tr>`;
+          }).join('')
+          + '</tbody></table>';
+      }
+      document.getElementById('pdca_do_modal').style.display = 'flex';
+    }
+    function closePdcaDoModal() { document.getElementById('pdca_do_modal').style.display = 'none'; }
 
     /* ── 취약점별 조치 계획 / 조치 예외 모달 ─────────────────────────────── */
     let _vulnActionId = null, _vulnActionMode = 'plan', _vulnActionHostId = null;
@@ -4903,6 +5063,9 @@ def render_user_dashboard_html(
         const data = await res.json();
         const sc = data.status_counts || {};
         const pdca = data.pdca || {};
+        // Cache pending list so PDCA Do modal / CSV button can reuse the same dataset
+        window.__pdcaPending = data.pending_remediations || [];
+        window.__pdcaPendingSources = data.pending_sources || {};
         // Summary cards
         if (cardsEl) {
           cardsEl.innerHTML = [
@@ -4935,18 +5098,25 @@ def render_user_dashboard_html(
         // PDCA Cycle
         if (cycleEl) {
           const steps = [
-            {label:'Plan', desc:'미점검 항목', val: pdca.plan || 0, color:'#38bdf8', icon:'📝'},
-            {label:'Do', desc:'조치 필요', val: pdca.do || 0, color:'#f59e0b', icon:'🔧'},
-            {label:'Check', desc:'점검 완료', val: pdca.check || 0, color:'#a78bfa', icon:'🔍'},
-            {label:'Act', desc:'통과 (Pass)', val: pdca.act || 0, color:'#22c55e', icon:'✅'},
+            {key:'plan',  label:'Plan',  desc:'미점검 항목',  val: pdca.plan || 0,  color:'#38bdf8', icon:'📝'},
+            {key:'do',    label:'Do',    desc:'조치 필요',    val: pdca.do || 0,    color:'#f59e0b', icon:'🔧'},
+            {key:'check', label:'Check', desc:'점검 완료',    val: pdca.check || 0, color:'#a78bfa', icon:'🔍'},
+            {key:'act',   label:'Act',   desc:'통과 (Pass)',  val: pdca.act || 0,   color:'#22c55e', icon:'✅'},
           ];
           cycleEl.innerHTML = `<div style=\"display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center\">`
-            + steps.map(s => `<div style=\"background:#0b1220;border:2px solid ${s.color};border-radius:12px;padding:16px 8px\">
+            + steps.map(s => {
+              const clickable = (s.key === 'do' && s.val > 0);
+              const cursor = clickable ? 'cursor:pointer' : '';
+              const handler = clickable ? ' onclick=\"openPdcaDoModal()\"' : '';
+              const hint = clickable ? '<div style=\"font-size:10px;color:#fbbf24;margin-top:4px\">▸ 클릭</div>' : '';
+              return `<div${handler} style=\"background:#0b1220;border:2px solid ${s.color};border-radius:12px;padding:16px 8px;${cursor}\">
                 <div style=\"font-size:24px\">${s.icon}</div>
                 <div style=\"font-size:18px;font-weight:800;color:${s.color};margin:4px 0\">${s.val}</div>
                 <div style=\"font-size:13px;font-weight:700;color:#e2e8f0\">${s.label}</div>
                 <div style=\"font-size:11px;color:#64748b\">${s.desc}</div>
-              </div>`).join('')
+                ${hint}
+              </div>`;
+            }).join('')
             + '</div>';
         }
         // Category table
@@ -5042,8 +5212,8 @@ def render_user_dashboard_html(
             <div style=\"font-size:20px;margin-bottom:8px\">${icons[rt.id] || '📄'}</div>
             <div style=\"font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:4px\">${escapeHtml(rt.label)}</div>
             <div style=\"display:flex;gap:8px;margin-top:12px\">
+              <button onclick=\"openReportPreview('${rt.id}', '${escapeHtml(rt.label)}')\" style=\"flex:1;padding:6px 12px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer\">🔍 미리보기</button>
               <a href=\"${rt.url_csv}\" download style=\"flex:1;text-align:center;padding:6px 12px;background:#164e63;color:#67e8f9;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none\">📥 CSV</a>
-              <a href=\"${rt.url_json}\" target=\"_blank\" style=\"flex:1;text-align:center;padding:6px 12px;background:#1e293b;color:#94a3b8;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none\">🔍 JSON</a>
             </div>
           </div>
         `).join('');
@@ -5051,6 +5221,78 @@ def render_user_dashboard_html(
         area.innerHTML = '<div class=\"empty\" style=\"color:#f87171\">리포트 목록을 불러올 수 없습니다.</div>';
       }
     }
+
+    /* ── 감사 증적 리포트 미리보기 ─────────────────────────────────────────── */
+    function _parseSimpleCsv(text) {
+      // BOM 제거
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      const rows = [];
+      let row = [], cur = '', inQ = false, i = 0;
+      while (i < text.length) {
+        const ch = text[i];
+        if (inQ) {
+          if (ch === '\"' && text[i+1] === '\"') { cur += '\"'; i += 2; continue; }
+          if (ch === '\"') { inQ = false; i++; continue; }
+          cur += ch; i++; continue;
+        }
+        if (ch === '\"') { inQ = true; i++; continue; }
+        if (ch === ',') { row.push(cur); cur = ''; i++; continue; }
+        if (ch === '\r') { i++; continue; }
+        if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; i++; continue; }
+        cur += ch; i++;
+      }
+      if (cur.length > 0 || row.length > 0) { row.push(cur); rows.push(row); }
+      return rows;
+    }
+
+    async function openReportPreview(reportType, label) {
+      const modal = document.getElementById('report_preview_modal');
+      const titleEl = document.getElementById('report_preview_title');
+      const bodyEl = document.getElementById('report_preview_body');
+      const dlEl = document.getElementById('report_preview_download');
+      if (!modal || !bodyEl) return;
+      titleEl.textContent = `📄 ${label} — 미리보기`;
+      dlEl.href = `/compliance/reports/${reportType}?format=csv`;
+      bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:24px;text-align:center\">⏳ 불러오는 중…</div>';
+      modal.style.display = 'flex';
+      try {
+        const res = await fetch(`/compliance/reports/${reportType}?format=csv`);
+        if (!res.ok) throw new Error(res.status);
+        const text = await res.text();
+        const rows = _parseSimpleCsv(text);
+        if (rows.length === 0) {
+          bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:24px;text-align:center\">데이터가 없습니다.</div>';
+          return;
+        }
+        const headers = rows[0] || [];
+        const dataRows = rows.slice(1).filter(r => r.length > 0 && !(r.length === 1 && r[0] === ''));
+        const limit = 50;
+        const shown = dataRows.slice(0, limit);
+        const overflowNote = dataRows.length > limit
+          ? `<div style=\"color:#94a3b8;font-size:12px;margin-top:10px\">… 총 <strong style=\"color:#e2e8f0\">${dataRows.length}</strong>행 중 상위 ${limit}행만 표시됩니다. 전체는 CSV 다운로드로 확인하세요.</div>`
+          : `<div style=\"color:#94a3b8;font-size:12px;margin-top:10px\">총 <strong style=\"color:#e2e8f0\">${dataRows.length}</strong>행</div>`;
+        const head = '<thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155;background:#0b1322;position:sticky;top:0\">'
+          + headers.map(h => `<th style=\"text-align:left;padding:6px 10px;font-size:12px;white-space:nowrap\">${escapeHtml(h)}</th>`).join('')
+          + '</tr></thead>';
+        const body = shown.map(r => '<tr style=\"border-bottom:1px solid #1e293b\">'
+          + headers.map((_, idx) => `<td style=\"padding:6px 10px;font-size:12px;color:#e2e8f0;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis\" title=\"${escapeHtml(r[idx] || '')}\">${escapeHtml(r[idx] || '')}</td>`).join('')
+          + '</tr>').join('');
+        bodyEl.innerHTML = `<div style=\"max-height:60vh;overflow:auto;border:1px solid #1e293b;border-radius:6px\"><table style=\"width:100%;border-collapse:collapse\">${head}<tbody>${body}</tbody></table></div>${overflowNote}`;
+      } catch (e) {
+        bodyEl.innerHTML = `<div class=\"empty\" style=\"color:#f87171;padding:24px;text-align:center\">❌ 리포트를 불러올 수 없습니다: ${escapeHtml(String(e.message || e))}</div>`;
+      }
+    }
+    function closeReportPreview() { document.getElementById('report_preview_modal').style.display = 'none'; }
+
+    /* ── 인시던트 CSV 다운로드 안내 ────────────────────────────────────────── */
+    function showIncidentCsvNotice(downloadFn) {
+      const modal = document.getElementById('incident_csv_notice_modal');
+      const btn = document.getElementById('incident_csv_confirm_btn');
+      if (!modal || !btn) { downloadFn(); return; }
+      btn.onclick = () => { closeIncidentCsvNotice(); downloadFn(); };
+      modal.style.display = 'flex';
+    }
+    function closeIncidentCsvNotice() { document.getElementById('incident_csv_notice_modal').style.display = 'none'; }
 
     let _crosscheckData = null;
 
@@ -6222,6 +6464,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'CVE', render: (item) => escapeHtml(item.cve || '-') },
         { label: 'Package', render: (item) => escapeHtml(item.package_name || '-') },
+        { label: '조치 계획', render: (item) => {
+          if (!item.plan_text) return '<span style="color:#64748b;font-size:11px">미설정</span>';
+          const tgt = item.plan_target_date ? `<br /><span style="color:#64748b;font-size:11px">~${escapeHtml(item.plan_target_date)}</span>` : '';
+          const by = item.plan_updated_by ? ` <span style="color:#94a3b8;font-size:11px">(${escapeHtml(item.plan_updated_by)})</span>` : '';
+          return `<span style="color:#a3e635;font-size:12px" title="${escapeHtml(item.plan_text)}">${escapeHtml(item.plan_text.substring(0,30))}${item.plan_text.length>30?'…':''}</span>${by}${tgt}`;
+        }},
+        { label: '조치 예외', render: (item) => {
+          if (!item.exception_until) return '<span style="color:#64748b;font-size:11px">없음</span>';
+          const reason = item.exception_reason ? `<br /><span style="color:#94a3b8;font-size:11px">${escapeHtml(item.exception_reason.substring(0,30))}${item.exception_reason.length>30?'…':''}</span>` : '';
+          return `<span style="color:#fbbf24;font-size:12px">~${escapeHtml(item.exception_until)}</span>${reason}`;
+        }},
       ], items, 'critical 취약점이 없습니다.');
     }
 
@@ -7430,12 +7683,15 @@ def _alert_detail_rows(alerts: list[Any], hostnames: Mapping[str, str],
 
 
 def _critical_vuln_detail_rows(store: InMemoryQueryStore, hostnames: Mapping[str, str],
-                                owners: Mapping[str, dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+                                owners: Mapping[str, dict[str, Any]] | None = None,
+                                vuln_actions: Mapping[str, Mapping[str, Any]] | None = None) -> list[dict[str, Any]]:
     _owners = owners or {}
+    _vuln_actions = vuln_actions or {}
     critical_vulns = [vuln for vuln in store.vulnerabilities if vuln.severity == "critical"]
     rows = []
     for vuln in sorted(critical_vulns, key=lambda item: item.detected_at, reverse=True):
         hn = hostnames.get(vuln.host_id, vuln.host_id)
+        action = _vuln_actions.get(vuln.vuln_id, {}) or {}
         rows.append({
             "vuln_id": vuln.vuln_id,
             "host_id": vuln.host_id,
@@ -7445,6 +7701,12 @@ def _critical_vuln_detail_rows(store: InMemoryQueryStore, hostnames: Mapping[str
             "cve": vuln.cve,
             "package_name": vuln.package_name,
             "detected_at": _isoformat(vuln.detected_at),
+            "plan_text": str(action.get("plan_text", "") or ""),
+            "plan_target_date": str(action.get("plan_target_date", "") or ""),
+            "plan_updated_by": str(action.get("plan_updated_by", "") or ""),
+            "exception_until": str(action.get("exception_until", "") or ""),
+            "exception_reason": str(action.get("exception_reason", "") or ""),
+            "exception_updated_by": str(action.get("exception_updated_by", "") or ""),
         })
     return rows
 
