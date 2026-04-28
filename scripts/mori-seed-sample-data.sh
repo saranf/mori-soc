@@ -20,10 +20,37 @@ DB_NAME="${MORI_DB_NAME:-mori_soc}"
 DB_USER="${MORI_DB_USER:-mori}"
 
 run_sql() {
+  docker compose exec -T soc-postgres psql -U "$DB_USER" -d "$DB_NAME" -q -v ON_ERROR_STOP=1 <<< "$1"
+}
+
+run_sql_file() {
+  docker compose exec -T soc-postgres psql -U "$DB_USER" -d "$DB_NAME" -q < "$1"
+}
+
+run_sql_lenient() {
   docker compose exec -T soc-postgres psql -U "$DB_USER" -d "$DB_NAME" -q <<< "$1"
 }
 
 echo "🌱 Seeding sample data into $DB_NAME..."
+
+# ── 0) Apply schema migrations (idempotent) ──────────────────────────────────
+echo "   🔧 Applying schema migrations..."
+if [ -f "$PROJECT_ROOT/schema/001_phase1_initial.sql" ]; then
+  run_sql_file "$PROJECT_ROOT/schema/001_phase1_initial.sql" >/dev/null 2>&1 || true
+fi
+if [ -f "$PROJECT_ROOT/schema/002_phase2_compliance_identity.sql" ]; then
+  run_sql_file "$PROJECT_ROOT/schema/002_phase2_compliance_identity.sql" >/dev/null 2>&1 || true
+fi
+
+# Fix legacy CHECK constraints (older DBs missing 'trivy' in source whitelists)
+run_sql_lenient "
+ALTER TABLE host_aliases DROP CONSTRAINT IF EXISTS host_aliases_source_check;
+ALTER TABLE host_aliases ADD CONSTRAINT host_aliases_source_check
+  CHECK (source IN ('fleet', 'wazuh', 'zabbix', 'host_log', 'trivy'));
+ALTER TABLE vulnerabilities DROP CONSTRAINT IF EXISTS vulnerabilities_source_check;
+ALTER TABLE vulnerabilities ADD CONSTRAINT vulnerabilities_source_check
+  CHECK (source IN ('fleet', 'trivy'));
+" >/dev/null 2>&1 || true
 
 # ── 1) Hosts ─────────────────────────────────────────────────────────────────
 echo "   📦 Hosts..."
