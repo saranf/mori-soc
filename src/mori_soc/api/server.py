@@ -635,12 +635,13 @@ def build_assets_payload(
         vlist.reverse()
         vlist.sort(key=lambda v: sev_order.get(v["severity"], 9))
         row["vulns"] = vlist
-        # CVE별 상세 계획/예외 존재 여부 — UI에서 host-level plan 편집을 안내 모달로 전환
+        # CVE별 상세 계획/예외 존재 여부 — UI에서 host-level 편집을 안내 모달로 전환
         plans_count = sum(1 for v in vlist if v.get("plan_text"))
         exceptions_count = sum(1 for v in vlist if v.get("exception_until"))
         row["vuln_plans_count"] = plans_count
         row["vuln_exceptions_count"] = exceptions_count
-        row["has_vuln_plans"] = plans_count > 0 or exceptions_count > 0
+        row["has_vuln_plans"] = plans_count > 0
+        row["has_vuln_exceptions"] = exceptions_count > 0
 
     return {
         "generated_at": _isoformat(now),
@@ -4382,9 +4383,17 @@ def render_user_dashboard_html(
         const ownerData = _getOwnerData(r.hostname);
         const exUntil = r.exception_until || ownerData.exception_until || '';
         const exReason = ownerData.exception_reason || '';
-        const exCell = exUntil
-          ? `<span style=\"color:#fde68a;font-size:12px\">~${escapeHtml(exUntil)}</span>${exReason ? '<br><span style=\"color:#94a3b8;font-size:11px\" title=\"'+escapeHtml(exReason)+'\">'+escapeHtml(exReason.substring(0,20))+(exReason.length>20?'…':'')+'</span>' : ''}<br><button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','${escapeHtml(exUntil)}','${escapeHtml(exReason).replace(/'/g,"\\\\'")}')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">✏️ 수정</button>`
-          : `<button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','','')\" style=\"font-size:11px;padding:2px 7px;background:#3b1f00;border:1px solid #78350f;border-radius:4px;color:#fbbf24;cursor:pointer\">+ 예외 설정</button>`;
+        let exCell;
+        if (r.has_vuln_exceptions) {
+          const cnt = (r.vuln_plans_count || 0) + (r.vuln_exceptions_count || 0);
+          exCell = `<span style=\"color:#fbbf24;font-size:12px;font-weight:600\">📋 CVE별 상세 예외</span>
+            <br><span style=\"color:#94a3b8;font-size:11px\">예외 ${r.vuln_exceptions_count||0} · 계획 ${r.vuln_plans_count||0}</span>
+            <br><button onclick=\"showVulnExceptionsNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">ℹ️ 안내</button>`;
+        } else if (exUntil) {
+          exCell = `<span style=\"color:#fde68a;font-size:12px\">~${escapeHtml(exUntil)}</span>${exReason ? '<br><span style=\"color:#94a3b8;font-size:11px\" title=\"'+escapeHtml(exReason)+'\">'+escapeHtml(exReason.substring(0,20))+(exReason.length>20?'…':'')+'</span>' : ''}<br><button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','${escapeHtml(exUntil)}','${escapeHtml(exReason).replace(/'/g,"\\\\'")}')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">✏️ 수정</button>`;
+        } else {
+          exCell = `<button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','','')\" style=\"font-size:11px;padding:2px 7px;background:#3b1f00;border:1px solid #78350f;border-radius:4px;color:#fbbf24;cursor:pointer\">+ 예외 설정</button>`;
+        }
         const totalCell = r.total > 0
           ? `<button onclick=\"openVulnListModal('${escapeHtml(r.host_id)}')\" title=\"취약점 상세 보기\" style=\"background:#1e3a5f;border:1px solid #334155;color:#7dd3fc;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:13px;font-weight:700\">${r.total} 건 ↗</button>`
           : `<span style=\"color:#64748b\">${r.total}</span>`;
@@ -4501,6 +4510,16 @@ def render_user_dashboard_html(
       document.getElementById('vuln_plans_notice_modal').style.display = 'flex';
     }
     function closeVulnPlansNotice() { document.getElementById('vuln_plans_notice_modal').style.display = 'none'; }
+
+    /* ── 호스트 단위 조치 예외 안내 (CVE별 상세 예외 존재 시) ──────────── */
+    function showVulnExceptionsNotice(hostId, hostname, count) {
+      document.getElementById('vuln_plans_notice_body').innerHTML =
+        `<div style=\"margin-bottom:10px\"><strong style=\"color:#fdba74\">${escapeHtml(hostname)}</strong> 호스트에는 이미 <strong style=\"color:#fbbf24\">CVE별 상세 조치 예외</strong>가 설정되어 있습니다. (총 ${count}건의 CVE별 계획/예외)</div>
+         <div style=\"color:#94a3b8\">호스트 단위 일괄 예외 대신 <strong style=\"color:#7dd3fc\">합계 탭</strong>(예: <span style=\"background:#1e3a5f;color:#7dd3fc;padding:1px 8px;border-radius:4px\">N 건 ↗</span> 버튼)에서 각 CVE별 예외를 확인·수정해 주세요.</div>`;
+      const openBtn = document.getElementById('vuln_plans_notice_open_list');
+      openBtn.onclick = () => { closeVulnPlansNotice(); openVulnListModal(hostId); };
+      document.getElementById('vuln_plans_notice_modal').style.display = 'flex';
+    }
 
     /* ── 취약점별 조치 계획 / 조치 예외 모달 ─────────────────────────────── */
     let _vulnActionId = null, _vulnActionMode = 'plan', _vulnActionHostId = null;
