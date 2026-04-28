@@ -446,6 +446,116 @@ class PostgresRepository(BaseRepository):
                 for row in cur.fetchall()
             ]
 
+            # ── Phase 2 tables (control_checks / directory) — schema/002 적용된 DB만 ──
+            control_checks: list[ControlCheckResult] = []
+            directory_accounts: list[DirectoryAccount] = []
+            privilege_bindings: list[PrivilegeBinding] = []
+            group_memberships: list[GroupMembership] = []
+            account_observations: list[AccountObservation] = []
+            try:
+                cur.execute(
+                    """
+                    SELECT check_id, control_id, entity_type, entity_id, status, checked_at,
+                           evidence_refs, owner, note, remediation_due_at, resolved_at
+                    FROM control_check_results ORDER BY checked_at DESC, check_id
+                    """
+                )
+                control_checks = [
+                    ControlCheckResult(
+                        check_id=row[0],
+                        control_id=row[1],
+                        entity_type=row[2],
+                        entity_id=row[3],
+                        status=row[4],
+                        checked_at=row[5],
+                        evidence_refs=list(row[6] or []),
+                        owner=row[7],
+                        note=row[8],
+                        remediation_due_at=row[9],
+                        resolved_at=row[10],
+                    )
+                    for row in cur.fetchall()
+                ]
+            except psycopg.errors.UndefinedTable:
+                conn.rollback()
+            try:
+                cur.execute(
+                    """
+                    SELECT account_id, username, display_name, email, department, status,
+                           is_privileged, last_login_at, password_last_set, created_at
+                    FROM directory_accounts ORDER BY username
+                    """
+                )
+                directory_accounts = [
+                    DirectoryAccount(
+                        account_id=row[0],
+                        username=row[1],
+                        display_name=row[2],
+                        email=row[3],
+                        department=row[4],
+                        status=row[5],
+                        is_privileged=row[6],
+                        last_login_at=row[7],
+                        password_last_set=row[8],
+                        created_at=row[9],
+                    )
+                    for row in cur.fetchall()
+                ]
+                cur.execute(
+                    """
+                    SELECT binding_id, account_id, privilege_type, target, granted_at, expires_at, granted_by
+                    FROM privilege_bindings ORDER BY granted_at DESC NULLS LAST, binding_id
+                    """
+                )
+                privilege_bindings = [
+                    PrivilegeBinding(
+                        binding_id=row[0],
+                        account_id=row[1],
+                        privilege_type=row[2],
+                        target=row[3],
+                        granted_at=row[4],
+                        expires_at=row[5],
+                        granted_by=row[6],
+                    )
+                    for row in cur.fetchall()
+                ]
+                cur.execute(
+                    """
+                    SELECT membership_id, account_id, group_name, source, synced_at
+                    FROM group_memberships ORDER BY group_name, account_id
+                    """
+                )
+                group_memberships = [
+                    GroupMembership(
+                        membership_id=row[0],
+                        account_id=row[1],
+                        group_name=row[2],
+                        source=row[3],
+                        synced_at=row[4],
+                    )
+                    for row in cur.fetchall()
+                ]
+                cur.execute(
+                    """
+                    SELECT observation_id, account_id, observation_type, source, observed_at, detail, severity
+                    FROM account_observations ORDER BY observed_at DESC NULLS LAST, observation_id
+                    """
+                )
+                account_observations = [
+                    AccountObservation(
+                        observation_id=row[0],
+                        account_id=row[1],
+                        observation_type=row[2],
+                        source=row[3],
+                        observed_at=row[4],
+                        detail=row[5],
+                        severity=row[6],
+                    )
+                    for row in cur.fetchall()
+                ]
+            except psycopg.errors.UndefinedTable:
+                conn.rollback()
+
         return RepositorySnapshot(
             hosts=hosts,
             host_aliases=host_aliases,
@@ -454,6 +564,11 @@ class PostgresRepository(BaseRepository):
             query_results=query_results,
             observations=observations,
             source_syncs=source_syncs,
+            control_checks=control_checks,
+            directory_accounts=directory_accounts,
+            privilege_bindings=privilege_bindings,
+            group_memberships=group_memberships,
+            account_observations=account_observations,
         )
 
     def _connect(self):
