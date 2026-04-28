@@ -5237,8 +5237,8 @@ def render_user_dashboard_html(
         }
         if (ch === '\"') { inQ = true; i++; continue; }
         if (ch === ',') { row.push(cur); cur = ''; i++; continue; }
-        if (ch === '\r') { i++; continue; }
-        if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; i++; continue; }
+        if (ch === '\\r') { i++; continue; }
+        if (ch === '\\n') { row.push(cur); rows.push(row); row = []; cur = ''; i++; continue; }
         cur += ch; i++;
       }
       if (cur.length > 0 || row.length > 0) { row.push(cur); rows.push(row); }

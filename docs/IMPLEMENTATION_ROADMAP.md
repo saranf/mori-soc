@@ -5,18 +5,23 @@
 이 문서는 `docs/FUNCTIONAL_SPEC.md`와 `docs/SECURITY_CONTROL_MAPPING.md`의 요구사항을 현재 저장소 구현과 연결하고,
 다음 개발 단계를 정의하기 위한 운영/개발 기준 문서입니다.
 
+지향점은 **ISMS-P / ISO 27001 인증 심사를 일상 운영과 같이 진행할 수 있는 Audit-Ready Compliance-Evidence Platform** 입니다.
+
 ## 2. 기능 모듈 매핑
 
 | 기능 모듈 | 현재 구성 요소 | 현재 상태 | 다음 구현 포인트 |
 | --- | --- | --- | --- |
-| Infrastructure Monitoring | Zabbix Server/Web | 기본 배포 완료 | 호스트/서비스 템플릿, CPU/메모리/디스크 트리거 정교화 |
-| Endpoint Security | FleetDM | 기본 배포 완료 | osquery 정책/쿼리팩 추가, 준수 지표 시각화 |
+| Infrastructure Monitoring | Zabbix Server/Web | 기본 배포 완료, MORI `/ui` 자산 탭에서 호스트별 담당자/중요도 편집 가능 | 호스트/서비스 템플릿, CPU/메모리/디스크 트리거 정교화, 실시간 폴링 활성화 |
+| Endpoint Security | FleetDM | 기본 배포 완료, MORI 자산 탭에서 PC 카테고리 분류/담당자 관리 | osquery 정책/쿼리팩 추가, Fleet API 폴링 활성화 |
 | Log Management | Fluent Bit + Loki + Grafana | 기본 배포 완료 | 로그 라벨 정교화, 검색용 dashboard/panel 보강 |
-| Vulnerability Management | Trivy + FleetDM | 초기 스캐너 수준 | 정기 실행, 결과 적재/리포팅 방식 정의 |
-| Security Event Detection | Wazuh | 기본 배포 완료 | 탐지 룰 튜닝, 알림 연동, 이벤트 분류 |
-| Security Dashboard | Grafana | 데이터소스 + starter dashboard 적용 | KPI 카드/추이 대시보드 고도화 |
+| Vulnerability Management | Trivy + MORI | MORI 취약점 탭 + **CVE별 조치 계획/예외 + 감사 로그** | 자동 적재 파이프라인, 만료 임박 알림 |
+| Security Event Detection | Wazuh + MORI Triage | 기본 배포 완료, MORI Triage(상태/분석관/변경자 actor 기록) | Wazuh API 폴링 활성화, 탐지 룰 튜닝 |
+| Security Dashboard | Grafana + MORI `/ui` | Grafana starter + **MORI 통합 운영 UI(Overview/PDCA/Crosscheck/Reports)** | KPI 카드/추이/source freshness 강화 |
+| **Compliance / 감사 증적** | MORI `/ui` | **PDCA 대시보드, 5종 증적 리포트(CSV 미리보기), 감사 로그 누적, 인시던트 변경 이력** | PDF 리포트, 영속화 |
 
 ## 3. 현재 반영된 구현
+
+### 인프라 / 배포
 
 - `docker-compose.yml` 기반 통합 스택 구성
 - GitHub Actions를 통한 원격 배포 자동화
@@ -24,17 +29,29 @@
 - Grafana Loki 데이터소스 프로비저닝
 - Grafana starter overview dashboard 프로비저닝
 - Trivy profile 실행 구조 반영
-- Security Control Mapping 문서 추가
+- Security Control Mapping 문서
+
+### MORI 통합 운영 UI (`/ui`)
+
+- **인증 / RBAC** — 로그인, 세션, 가입 요청·승인, admin/security/moniter 역할별 탭 on·off
+- **자산 관리** — 호스트별 담당자·팀·카테고리 + **서버 자산 중요도 수동 재정의** + 변경 감사 로그
+- **취약점 관리** — 호스트 단위 + **CVE별 조치 계획/예외** (작성자·목표일·만료일·사유) + 호스트↔CVE 충돌 안내 모달
+- **Alert Triage** — 3단계 상태 + 분석관/**변경자 actor 분리 기록** + 변경 history
+- **인시던트 관리** — CRUD + 변경 history + CSV 다운로드(history 미포함 안내 모달)
+- **Compliance PDCA** — Plan/Do/Check/Act 4단계 + **Do 클릭 → 미조치 항목 통합 모달** + `/compliance/pdca/pending.csv` 다운로드
+- **감사 증적 리포트** — 자산·계정·로그·취약점·월간 5종 CSV + **🔍 미리보기 모달** (상위 50행)
+- **교차 검증** — Zabbix × Fleet × Trivy 매핑 차이/orphan 검출
+- **자연어 질의** — 12개 인텐트 디스패치 + `/interpret` + `/query`
 
 ## 4. 기능 정의서 기준 우선 구현 순서
 
-### Phase 1. 운영 안정화
+### Phase 1. 운영 안정화 (✅ 완료)
 
 - Grafana 초기 로그인/비밀번호 리셋 절차 문서화
 - `docker compose` 기준 배포 표준화
 - Wazuh/Zabbix/Fleet 초기 접속 경로 정리
 
-### Phase 2. 모듈별 기능 구현
+### Phase 2. 모듈별 기능 구현 (🟡 진행 중 — MORI 통합 UI 측면 ✅, 각 솔루션 내부 설정 🔲)
 
 #### 2-1. Infrastructure Monitoring
 
@@ -71,36 +88,50 @@
   - Security Log Cleared
   - Suspicious PowerShell
 
-### Phase 3. Dashboard / Alert / Reporting
+### Phase 3. Dashboard / Alert / Reporting (🟡 MORI UI ✅ / Grafana·알림 🔲)
 
-- Security Overview 대시보드
-- Endpoint Compliance 대시보드
-- Vulnerability Dashboard
-- Security Event Timeline
-- Email/Slack/Dashboard Alert 연동
-- 주간/월간 보안 리포트 템플릿
+- Security Overview 대시보드 (✅ MORI `/ui` Overview)
+- Endpoint Compliance 대시보드 (✅ MORI Assets + PDCA)
+- Vulnerability Dashboard (✅ MORI Trivy 탭 + CVE별 조치 계획/예외)
+- Security Event Timeline (✅ MORI Triage + 자연어 질의 host_timeline)
+- Email/Slack/Dashboard Alert 연동 (🔲 미연결)
+- 주간/월간 보안 리포트 템플릿 (✅ MORI 5종 CSV 증적 리포트, 🔲 PDF)
+
+### Phase 4. Audit-Ready 기능 (✅ Alpha 운영 중)
+
+- 자산/취약점/Triage/인시던트 변경 이력의 **감사 로그 누적** (`asset_audit_log`)
+- 호스트 단위 + **CVE별 조치 계획/예외**의 통합 이력 표시
+- **PDCA 미조치 항목 통합 모달** + CSV 다운로드 (`/compliance/pdca/pending.csv`)
+- **감사 증적 리포트 미리보기 모달** (5종 CSV)
+- 인시던트 CSV 다운로드 시 안내 모달 (변경 이력 미포함 명시)
+
+### Phase 5. 데이터 신뢰성 (🔲 다음 작업)
+
+- 인메모리 store 5개를 **PostgreSQL 영속화** (`asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store`)
+- **실시간 ingestion worker** — Fleet/Wazuh/Zabbix API 폴링 활성화 (`pollers/`)
+- collector lag / source freshness 시각화
 
 ## 5. 현재 기준 구현 가능한 세부 항목
 
 저장소만으로 바로 추가 구현하기 좋은 우선순위는 아래입니다.
 
-1. Grafana dashboard 고도화
-2. FleetDM용 osquery query pack 파일 추가
-3. Wazuh 룰/로컬 룰 추가
-4. Trivy 실행 결과 수집 스크립트 추가
-5. 운영용 체크리스트/런북 정리
+1. **인메모리 store → Postgres 매핑** (5개 store) — `repositories/postgres.py` 골격 활용
+2. **폴러 활성화** — Zabbix/Fleet/Wazuh API 키 환경변수 설정 + `pollers/worker.py`
+3. FleetDM용 osquery query pack 파일 추가
+4. Wazuh 룰/로컬 룰 추가
+5. Slack 알림 webhook 활성화 (`SLACK_WEBHOOK_URL` 환경변수)
 
 ## 6. 다음 추천 작업
 
 가장 효율적인 다음 단계는 아래 순서입니다.
 
-1. FleetDM endpoint compliance 쿼리팩 추가
-2. Wazuh 이벤트 탐지 룰 튜닝
-3. Grafana 대시보드 KPI 패널 확장
+1. **PostgreSQL 영속화** — Phase 2 Alpha의 모든 변경 이력을 재시작 후에도 유지
+2. **실시간 폴링 활성화** — 시드 데이터 의존을 끊고 실데이터 기반으로 전환
+3. PDF 증적 리포트 출력 (현재 CSV 5종에 추가)
 4. Slack/Email 알림 연결
+5. FleetDM endpoint compliance 쿼리팩 추가
+6. Wazuh 이벤트 탐지 룰 튜닝
 
 ## 7. 비고
 
-현재 저장소는 “배포 스캐폴드 + 초기 통합” 단계이며,
-기능 정의서의 모든 요구사항을 충족하려면 각 솔루션 내부 설정(Fleet query, Wazuh rule, Zabbix template, Grafana panel)을
-추가로 단계별 구현해야 합니다.
+현재 저장소는 **"통합 운영 UI + 감사 증적이 인메모리에서 동작하는 Alpha 단계"** 입니다. 기능 정의서의 ISMS-P / ISO 27001 요구사항 중 **운영자 워크플로우와 변경 이력 누적은 충족**되어 있으며, 다음 단계는 **데이터 영속성 + 실시간 수집** 입니다. 각 솔루션 내부 설정(Fleet query, Wazuh rule, Zabbix template, Grafana panel)은 별도 트랙으로 점진 보강합니다.
