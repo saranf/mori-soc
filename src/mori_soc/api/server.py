@@ -4559,16 +4559,48 @@ def render_user_dashboard_html(
     function _renderVulnListBody(hostRow) {
       const sevColor = { critical:'#fca5a5', high:'#fdba74', medium:'#fde68a', low:'#86efac', info:'#94a3b8' };
       const vulns = hostRow.vulns || [];
+      // 호스트 단위 계획/예외 (CVE별 vuln_actions와 별개)
+      const hostPlan = (hostRow.action_plan || '').trim();
+      const hostPlanDate = (hostRow.action_target_date || '').trim();
+      const hostPlanBy = (hostRow.action_updated_by || '').trim();
+      const hostEx = (hostRow.exception_until || '').trim();
+      const hasHostPlan = !!hostPlan;
+      const hasHostEx = !!hostEx;
+      let hostBanner = '';
+      if (hasHostPlan || hasHostEx) {
+        const parts = [];
+        if (hasHostPlan) {
+          parts.push(`<div style=\"flex:1;min-width:240px\">
+              <div style=\"color:#86efac;font-size:11px;font-weight:600;margin-bottom:3px\">📋 호스트 단위 조치 계획</div>
+              <div style=\"color:#e2e8f0;font-size:13px\">${escapeHtml(hostPlan)}</div>
+              <div style=\"color:#64748b;font-size:11px;margin-top:2px\">${hostPlanDate?'목표일 '+escapeHtml(hostPlanDate):''}${hostPlanBy?(hostPlanDate?' · ':'')+'작성자 '+escapeHtml(hostPlanBy):''}</div>
+            </div>`);
+        }
+        if (hasHostEx) {
+          parts.push(`<div style=\"flex:1;min-width:200px\">
+              <div style=\"color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:3px\">⚠️ 호스트 단위 조치 예외</div>
+              <div style=\"color:#e2e8f0;font-size:13px\">~${escapeHtml(hostEx)} 까지</div>
+            </div>`);
+        }
+        hostBanner = `<div style=\"background:#0f2035;border:1px solid #1e3a5f;border-radius:6px;padding:10px 14px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:18px\">
+          ${parts.join('')}
+          <div style=\"width:100%;color:#64748b;font-size:11px;margin-top:4px\">※ 아래 CVE별 계획/예외가 설정된 경우 해당 CVE에 한해 우선 적용됩니다.</div>
+        </div>`;
+      }
       if (!vulns.length) {
-        return '<div style=\"color:#64748b;text-align:center;padding:20px\">취약점이 없습니다.</div>';
+        return hostBanner + '<div style=\"color:#64748b;text-align:center;padding:20px\">취약점이 없습니다.</div>';
       }
       const rows = vulns.map(v => {
         const planLabel = v.plan_text
           ? `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(v.plan_text)}\">${escapeHtml(v.plan_text.substring(0,30))}${v.plan_text.length>30?'…':''}</span>${v.plan_target_date?'<br><span style=\"color:#64748b;font-size:11px\">~'+escapeHtml(v.plan_target_date)+'</span>':''}`
-          : '<span style=\"color:#64748b;font-size:11px\">미설정</span>';
+          : (hasHostPlan
+              ? `<span style=\"color:#86efac;font-size:11px;font-style:italic\">호스트 단위 적용</span>${hostPlanDate?'<br><span style=\"color:#64748b;font-size:11px\">~'+escapeHtml(hostPlanDate)+'</span>':''}`
+              : '<span style=\"color:#64748b;font-size:11px\">미설정</span>');
         const exLabel = v.exception_until
           ? `<span style=\"color:#fbbf24;font-size:12px\">~${escapeHtml(v.exception_until)}</span>${v.exception_reason?'<br><span style=\"color:#94a3b8;font-size:11px\" title=\"'+escapeHtml(v.exception_reason)+'\">'+escapeHtml(v.exception_reason.substring(0,24))+(v.exception_reason.length>24?'…':'')+'</span>':''}`
-          : '<span style=\"color:#64748b;font-size:11px\">없음</span>';
+          : (hasHostEx
+              ? `<span style=\"color:#fbbf24;font-size:11px;font-style:italic\">호스트 단위 적용</span><br><span style=\"color:#64748b;font-size:11px\">~${escapeHtml(hostEx)}</span>`
+              : '<span style=\"color:#64748b;font-size:11px\">없음</span>');
         const versionStr = v.installed_version
           ? `${escapeHtml(v.installed_version)}${v.fixed_version?' → <span style=\"color:#86efac\">'+escapeHtml(v.fixed_version)+'</span>':''}`
           : '-';
@@ -4582,7 +4614,7 @@ def render_user_dashboard_html(
           <td style=\"padding:6px 8px;min-width:140px\">${exLabel}<br><button onclick=\"openVulnActionModal('${escapeHtml(v.vuln_id)}','exception')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:3px\">⚠️ 조치 예외</button></td>
         </tr>`;
       }).join('');
-      return `<table style=\"width:100%;border-collapse:collapse;font-size:12px\">
+      return hostBanner + `<table style=\"width:100%;border-collapse:collapse;font-size:12px\">
         <thead><tr style=\"background:#0f2035\">
           <th style=\"padding:8px;color:#7dd3fc;text-align:left\">CVE</th>
           <th style=\"padding:8px;color:#fdba74\">심각도</th>

@@ -168,6 +168,35 @@ flowchart LR
 ./scripts/mori-stop-demo.sh --purge     # 컨테이너 + 볼륨 통째로 제거
 ```
 
+### 데모 화면 미리보기
+
+데모 모드를 기동하면 아래와 같이 동작합니다.
+
+#### 1) 통합 대시보드 — 자산·경보·취약점 현황 한눈에
+
+![Dashboard](docs/images/demo-dashboard.png)
+
+- 상단 카드: Total Hosts / Offline Hosts / High Alerts 24h / Critical Vulns
+- Latest Host Status: offline / unknown 호스트를 우선 노출하여 즉시 확인 대상 식별
+- 좌측 탭: **대시보드 / Alert Triage / 인시던트 / 자산 현황 / Compliance PDCA / 가이드 & 기준** (RBAC 역할별 on·off)
+
+#### 2) 자연어 질의 (NLQ) — `interpret` → `query`
+
+![NLQ Modal](docs/images/demo-nlq.png)
+
+- "오프라인 호스트 보여줘" 같은 한국어 질문을 입력하면 12개 인텐트 중 매칭되는 항목으로 해석
+- **Interpret** → 의도 표시(`offline_hosts`) / **Run Query** → 결과 + 요약 문장 / **Download CSV** → 증적용 다운로드
+- 결과 테이블: Source / Summary / Record ID
+
+#### 3) 취약점 (Trivy) — CVE별 조치 계획·예외
+
+![Trivy Vulnerabilities](docs/images/demo-trivy.png)
+
+- 호스트별 Critical / High / Medium / Low 합계와 최근 CVE / 탐지일
+- **조치 계획** / **조치 예외** 컬럼: `+ 계획 추가` / `+ 예외 설정` 버튼 또는 설정된 값 표시
+- 호스트에 호스트 단위 계획·예외가 설정되면 "📋 CVE별 상세 계획"·만료일이 즉시 노출되며, **CVE 상세 모달(N건 ↗ 버튼)** 안에서도 호스트 단위 계획/예외 배너 + 각 CVE 행에 "호스트 단위 적용" 표시로 확인 가능
+- **📋 이력** 버튼으로 호스트별 변경 이력(자산·계획·예외·CVE별 조치) 통합 조회
+
 ### 데모 공개 서버 (Demo Only)
 
 > ⚠️ **아래 URL과 계정은 포트폴리오 데모용 인스턴스입니다.** 시드 데이터 + 인메모리 store 기반이며, 실제 운영 데이터가 아닙니다. 운영 환경에서는 **반드시 자체 도메인·HTTPS·강력한 비밀번호로 재배포**해야 합니다.
