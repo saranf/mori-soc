@@ -635,6 +635,12 @@ def build_assets_payload(
         vlist.reverse()
         vlist.sort(key=lambda v: sev_order.get(v["severity"], 9))
         row["vulns"] = vlist
+        # CVE별 상세 계획/예외 존재 여부 — UI에서 host-level plan 편집을 안내 모달로 전환
+        plans_count = sum(1 for v in vlist if v.get("plan_text"))
+        exceptions_count = sum(1 for v in vlist if v.get("exception_until"))
+        row["vuln_plans_count"] = plans_count
+        row["vuln_exceptions_count"] = exceptions_count
+        row["has_vuln_plans"] = plans_count > 0 or exceptions_count > 0
 
     return {
         "generated_at": _isoformat(now),
@@ -1992,7 +1998,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         return {"alerts": rows, "total": len(rows)}
 
     @app.patch("/alerts/{alert_id}/triage", tags=["Alerts"])
-    def alert_triage_update(alert_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def alert_triage_update(alert_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
         status = payload.get("status", "")
         valid_statuses = {"pending", "reviewing", "resolved"}
         if status not in valid_statuses:
@@ -2003,6 +2009,9 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         entry["analyst"] = payload.get("analyst", "")
         entry["note"] = payload.get("note", entry.get("note", ""))
         entry["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
+        # 변경자: payload의 actor → 세션 사용자 → "unknown"
+        changed_by = str(payload.get("actor", "")).strip() or _get_session_username(request) or "unknown"
+        entry["changed_by"] = changed_by
         # history: 상태 변경 이력
         history = entry.setdefault("history", [])
         history.append({
@@ -2010,6 +2019,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             "to_status": status,
             "analyst": entry["analyst"],
             "note": entry["note"],
+            "changed_by": changed_by,
             "changed_at": entry["updated_at"],
         })
         # Slack 알림: reviewing/resolved 전환 시
@@ -2340,6 +2350,42 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
                 return True
         return False
 
+    def _vuln_lookup(vuln_id: str) -> tuple[Any, str, str]:
+        """vuln_id → (vuln_obj, hostname, cve_label) 반환. 없으면 (None, "", vuln_id)."""
+        store_ = get_query_service().store
+        for v in store_.vulnerabilities:
+            if v.vuln_id == vuln_id:
+                hostname = next((h.hostname for h in store_.hosts if h.host_id == v.host_id), v.host_id)
+                return v, hostname, (v.cve or vuln_id)
+        return None, "", vuln_id
+
+    def _record_vuln_audit(
+        hostname: str,
+        cve_label: str,
+        old_entry: dict[str, Any],
+        new_entry: dict[str, Any],
+        changed_by: str,
+        now_str: str,
+        fields: tuple[str, ...],
+    ) -> None:
+        """vuln_actions 변경분을 asset_audit_log에 기록한다."""
+        if not hostname:
+            return
+        for fld in fields:
+            old_val = old_entry.get(fld, "")
+            new_val = new_entry.get(fld, "")
+            if old_val == new_val:
+                continue
+            asset_audit_log.append({
+                "log_id": str(uuid.uuid4()),
+                "hostname": hostname,
+                "field": f"vuln_{fld} [{cve_label}]",
+                "old_value": old_val,
+                "new_value": new_val,
+                "changed_by": changed_by,
+                "changed_at": now_str,
+            })
+
     @app.get("/vulnerabilities/{vuln_id}/action", tags=["Vulnerabilities"])
     def vuln_action_get(vuln_id: str) -> Any:
         if not _vuln_exists(vuln_id):
@@ -2347,40 +2393,52 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         return vuln_actions.get(vuln_id, _vuln_action_default(vuln_id))
 
     @app.put("/vulnerabilities/{vuln_id}/plan", tags=["Vulnerabilities"])
-    def vuln_plan_upsert(vuln_id: str, payload: dict[str, Any]) -> Any:
-        if not _vuln_exists(vuln_id):
+    def vuln_plan_upsert(vuln_id: str, payload: dict[str, Any], request: Request) -> Any:
+        vuln_obj, hostname, cve_label = _vuln_lookup(vuln_id)
+        if vuln_obj is None:
             raise HTTPException(status_code=404, detail="vulnerability not found")
-        entry = vuln_actions.get(vuln_id, _vuln_action_default(vuln_id)) | {"vuln_id": vuln_id}
+        old_entry = dict(vuln_actions.get(vuln_id, _vuln_action_default(vuln_id)))
+        entry = old_entry | {"vuln_id": vuln_id}
         entry["plan_text"] = str(payload.get("plan_text", "")).strip()
         entry["plan_target_date"] = str(payload.get("plan_target_date", "")).strip()
         entry["plan_updated_by"] = str(payload.get("plan_updated_by", "")).strip() or "unknown"
         entry["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
         vuln_actions[vuln_id] = entry
+        changed_by = entry["plan_updated_by"] if entry["plan_updated_by"] != "unknown" else (_get_session_username(request) or "unknown")
+        _record_vuln_audit(hostname, cve_label, old_entry, entry, changed_by, entry["updated_at"], ("plan_text", "plan_target_date"))
         return entry
 
     @app.put("/vulnerabilities/{vuln_id}/exception", tags=["Vulnerabilities"])
-    def vuln_exception_upsert(vuln_id: str, payload: dict[str, Any]) -> Any:
-        if not _vuln_exists(vuln_id):
+    def vuln_exception_upsert(vuln_id: str, payload: dict[str, Any], request: Request) -> Any:
+        vuln_obj, hostname, cve_label = _vuln_lookup(vuln_id)
+        if vuln_obj is None:
             raise HTTPException(status_code=404, detail="vulnerability not found")
-        entry = vuln_actions.get(vuln_id, _vuln_action_default(vuln_id)) | {"vuln_id": vuln_id}
+        old_entry = dict(vuln_actions.get(vuln_id, _vuln_action_default(vuln_id)))
+        entry = old_entry | {"vuln_id": vuln_id}
         entry["exception_until"] = str(payload.get("exception_until", "")).strip()
         entry["exception_reason"] = str(payload.get("exception_reason", "")).strip()
         entry["exception_updated_by"] = str(payload.get("exception_updated_by", "")).strip() or "unknown"
         entry["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
         vuln_actions[vuln_id] = entry
+        changed_by = entry["exception_updated_by"] if entry["exception_updated_by"] != "unknown" else (_get_session_username(request) or "unknown")
+        _record_vuln_audit(hostname, cve_label, old_entry, entry, changed_by, entry["updated_at"], ("exception_until", "exception_reason"))
         return entry
 
     @app.delete("/vulnerabilities/{vuln_id}/exception", tags=["Vulnerabilities"])
-    def vuln_exception_clear(vuln_id: str) -> Any:
-        if not _vuln_exists(vuln_id):
+    def vuln_exception_clear(vuln_id: str, request: Request) -> Any:
+        vuln_obj, hostname, cve_label = _vuln_lookup(vuln_id)
+        if vuln_obj is None:
             raise HTTPException(status_code=404, detail="vulnerability not found")
         entry = vuln_actions.get(vuln_id)
         if entry is None:
             return {"ok": True}
+        old_entry = dict(entry)
         entry["exception_until"] = ""
         entry["exception_reason"] = ""
         entry["exception_updated_by"] = ""
         entry["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
+        changed_by = _get_session_username(request) or "unknown"
+        _record_vuln_audit(hostname, cve_label, old_entry, entry, changed_by, entry["updated_at"], ("exception_until", "exception_reason"))
         return {"ok": True, "vuln_id": vuln_id}
 
     # ── Guides ───────────────────────────────────────────────────────────────
@@ -3113,6 +3171,7 @@ def render_user_dashboard_html(
           </select>
         </div>
         <div class=\"row\"><label>담당자 <span style=\"color:#64748b;font-size:11px\">(서버 담당자 기본)</span></label><input id=\"triage_modal_analyst\" placeholder=\"예: alice\" /></div>
+        <div class=\"row\"><label>변경자(작성)</label><input id=\"triage_modal_actor\" placeholder=\"예: alice (미입력 시 로그인 사용자)\" /></div>
         <div class=\"row\"><label>메모</label><textarea id=\"triage_modal_note\" style=\"min-height:80px\"></textarea></div>
         <div class=\"actions\">
           <button id=\"triage_modal_save\">저장</button>
@@ -3204,6 +3263,14 @@ def render_user_dashboard_html(
         <div id=\"owner_modal_category_row\"><label style=\"color:#94a3b8;font-size:13px\">카테고리 (서버 분류)</label>
           <input id=\"owner_modal_category\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 웹 서버\" />
         </div>
+        <div id=\"owner_modal_importance_row\"><label style=\"color:#94a3b8;font-size:13px\">중요도 <span style=\"color:#64748b;font-size:11px\">(자동 분류 재정의)</span></label>
+          <select id=\"owner_modal_importance\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\">
+            <option value=\"\">자동 (기본)</option>
+            <option value=\"상\">상</option>
+            <option value=\"중\">중</option>
+            <option value=\"하\">하</option>
+          </select>
+        </div>
         <div id=\"owner_modal_exception_row\"><label style=\"color:#94a3b8;font-size:13px\">처리 예외 기한</label>
           <input type=\"date\" id=\"owner_modal_exception_until\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
           <span style=\"color:#64748b;font-size:11px\">이 날짜까지 점검/알림 예외 처리됩니다</span>
@@ -3232,6 +3299,21 @@ def render_user_dashboard_html(
       </div>
       <div id=\"vuln_list_modal_subtitle\" style=\"color:#94a3b8;font-size:12px;margin-bottom:10px\"></div>
       <div id=\"vuln_list_modal_body\"></div>
+    </div>
+  </div>
+
+  <!-- 호스트 단위 조치 계획 안내 모달 (CVE별 상세 계획 존재 시) -->
+  <div id=\"vuln_plans_notice_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
+    <div style=\"background:#0f172a;border:1px solid #78350f;border-radius:10px;padding:28px 32px;width:480px;max-width:95vw\">
+      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
+        <h3 style=\"color:#fbbf24;margin:0\">📋 상세 계획이 정해져 있습니다</h3>
+        <button onclick=\"closeVulnPlansNotice()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+      </div>
+      <div id=\"vuln_plans_notice_body\" style=\"color:#e2e8f0;font-size:13px;line-height:1.6;margin-bottom:18px\"></div>
+      <div style=\"display:flex;gap:10px;justify-content:flex-end\">
+        <button onclick=\"closeVulnPlansNotice()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px\">닫기</button>
+        <button id=\"vuln_plans_notice_open_list\" style=\"background:#1e3a5f;border:1px solid #334155;color:#7dd3fc;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600\">합계 탭 열기 ↗</button>
+      </div>
     </div>
   </div>
 
@@ -3832,6 +3914,7 @@ def render_user_dashboard_html(
           const rawStatus = triage.status || 'pending';
           const triageAnalyst = triage.analyst || '';
           const triageNote = triage.note || '';
+          const triageChangedBy = triage.changed_by || '';
           const color = TRIAGE_STATUS_COLORS[rawStatus] || '#6b7280';
           const label = TRIAGE_STATUS_LABELS[rawStatus] || rawStatus;
           const alertOwner = _ownerForHost(a.hostname || '');
@@ -3843,6 +3926,7 @@ def render_user_dashboard_html(
             <td><span style=\"background:#111827;padding:2px 6px;border-radius:4px;font-size:12px\">${escapeHtml(a.severity)}</span></td>
             <td style=\"max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">${escapeHtml(a.message)}</td>
             <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(triageAnalyst || '-')}</td>
+            <td style=\"color:#fde68a;font-size:12px\">${escapeHtml(triageChangedBy || '-')}</td>
             <td><button onclick=\"openTriageModal('${escapeHtml(a.alert_id)}','${escapeHtml(rawStatus)}','${escapeHtml(triageAnalyst)}','${escapeHtml(triageNote)}','${escapeHtml(a.message||'').replace(/'/g,\"&#39;\")}','${escapeHtml(alertOwner)}')\" style=\"background:${color};color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;white-space:nowrap\">${label}</button></td>
           </tr>`;
         }).join('');
@@ -3855,6 +3939,7 @@ def render_user_dashboard_html(
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">심각도</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">메시지</th>
             <th style=\"padding:8px;color:#94a3b8;text-align:left\">분석관</th>
+            <th style=\"padding:8px;color:#fde68a;text-align:left\">변경자</th>
             <th style=\"padding:8px;color:#93c5fd;text-align:left\">상태</th>
           </tr></thead><tbody>${rows}</tbody></table>`;
       } catch (err) { triageTableEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(err.message)}</span>`; }
@@ -3867,6 +3952,8 @@ def render_user_dashboard_html(
       // 서버 담당자가 기본, 기존 analyst가 있으면 그 값 유지
       triageModalAnalystEl.value = analyst || serverOwner || '';
       triageModalNoteEl.value = note || '';
+      const actorEl = document.getElementById('triage_modal_actor');
+      if (actorEl) actorEl.value = '';
       triageModalStatusLineEl.textContent = '';
       // Render triage history
       const cached = triageDataCache[alertId] || {};
@@ -3879,8 +3966,9 @@ def render_user_dashboard_html(
               const toLabel = TRIAGE_STATUS_LABELS[h.to_status] || h.to_status;
               const arrow = `${fromLabel} → <strong>${toLabel}</strong>`;
               const noteText = h.note ? `<div style=\"color:#cbd5e1;margin-top:2px;font-size:11px\">📝 ${escapeHtml(h.note)}</div>` : '';
+              const actorText = h.changed_by ? ` &nbsp;·&nbsp; <span style=\"color:#fde68a\">변경자: ${escapeHtml(h.changed_by)}</span>` : '';
               return `<div style=\"background:#0c1827;border-left:3px solid #334155;padding:7px 12px;margin-bottom:5px;border-radius:4px;font-size:12px\">
-                <div style=\"color:#64748b\">${escapeHtml(formatTime(h.changed_at))} &nbsp;·&nbsp; ${escapeHtml(h.analyst || '-')}</div>
+                <div style=\"color:#64748b\">${escapeHtml(formatTime(h.changed_at))} &nbsp;·&nbsp; 분석관: ${escapeHtml(h.analyst || '-')}${actorText}</div>
                 <div style=\"color:#e2e8f0;margin-top:2px\">${arrow}</div>${noteText}
               </div>`;
             }).join('')
@@ -3892,7 +3980,8 @@ def render_user_dashboard_html(
 
     document.getElementById('triage_modal_save')?.addEventListener('click', async () => {
       if (!currentTriageAlertId) return;
-      const body = { status: triageModalStatusEl.value, analyst: triageModalAnalystEl.value, note: triageModalNoteEl.value };
+      const actor = (document.getElementById('triage_modal_actor')?.value || '').trim();
+      const body = { status: triageModalStatusEl.value, analyst: triageModalAnalystEl.value, note: triageModalNoteEl.value, actor };
       triageModalStatusLineEl.textContent = '저장 중...';
       try {
         const res = await fetch(`/alerts/${encodeURIComponent(currentTriageAlertId)}/triage`, {
@@ -3907,7 +3996,8 @@ def render_user_dashboard_html(
     // Auto-save triage status when dropdown changes
     triageModalStatusEl.addEventListener('change', async () => {
       if (!currentTriageAlertId) return;
-      const body = { status: triageModalStatusEl.value, analyst: triageModalAnalystEl.value, note: triageModalNoteEl.value };
+      const actor = (document.getElementById('triage_modal_actor')?.value || '').trim();
+      const body = { status: triageModalStatusEl.value, analyst: triageModalAnalystEl.value, note: triageModalNoteEl.value, actor };
       triageModalStatusLineEl.textContent = '자동 저장 중...';
       try {
         const res = await fetch(`/alerts/${encodeURIComponent(currentTriageAlertId)}/triage`, {
@@ -4240,7 +4330,7 @@ def render_user_dashboard_html(
         const impBadge = h.importance ? `<span style=\"background:#1e293b;color:${impColor[h.importance]||'#94a3b8'};padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700\">${escapeHtml(h.importance)}</span>` : '-';
         const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
         const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>
-          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}','server','')\"
+          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}','server','','','${escapeHtml(h.importance||'')}')\"
             style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
         return `<tr>
           <td><strong>${escapeHtml(h.hostname)}</strong>${zabbixLink ? '<br>' + zabbixLink : ''}</td>
@@ -4277,9 +4367,17 @@ def render_user_dashboard_html(
       const sevColor = { critical:'#fca5a5', high:'#fdba74', medium:'#fde68a', low:'#86efac', info:'#94a3b8' };
       const tableRows = rows.map(r => {
         const planText = r.action_plan ? escapeHtml(r.action_plan).substring(0, 30) + (r.action_plan.length > 30 ? '…' : '') : '';
-        const planCell = r.action_plan
-          ? `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(r.action_plan)}\">${planText}</span>${r.action_target_date ? '<br><span style=\"color:#64748b;font-size:11px\">~' + escapeHtml(r.action_target_date) + '</span>' : ''}<br><button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:1px 6px;background:#1e3a5f;border:1px solid #334155;border-radius:3px;color:#7dd3fc;cursor:pointer;margin-top:2px\">✏️ 수정</button>`
-          : `<button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e3a5f;border:1px solid #334155;border-radius:4px;color:#7dd3fc;cursor:pointer\">+ 계획 추가</button>`;
+        let planCell;
+        if (r.has_vuln_plans) {
+          const cnt = (r.vuln_plans_count || 0) + (r.vuln_exceptions_count || 0);
+          planCell = `<span style=\"color:#fbbf24;font-size:12px;font-weight:600\">📋 CVE별 상세 계획</span>
+            <br><span style=\"color:#94a3b8;font-size:11px\">계획 ${r.vuln_plans_count||0} · 예외 ${r.vuln_exceptions_count||0}</span>
+            <br><button onclick=\"showVulnPlansNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">ℹ️ 안내</button>`;
+        } else if (r.action_plan) {
+          planCell = `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(r.action_plan)}\">${planText}</span>${r.action_target_date ? '<br><span style=\"color:#64748b;font-size:11px\">~' + escapeHtml(r.action_target_date) + '</span>' : ''}<br><button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:1px 6px;background:#1e3a5f;border:1px solid #334155;border-radius:3px;color:#7dd3fc;cursor:pointer;margin-top:2px\">✏️ 수정</button>`;
+        } else {
+          planCell = `<button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e3a5f;border:1px solid #334155;border-radius:4px;color:#7dd3fc;cursor:pointer\">+ 계획 추가</button>`;
+        }
         const ownerLabel = _ownerForHost(r.hostname);
         const ownerData = _getOwnerData(r.hostname);
         const exUntil = r.exception_until || ownerData.exception_until || '';
@@ -4393,6 +4491,17 @@ def render_user_dashboard_html(
     }
     function closeVulnListModal() { document.getElementById('vuln_list_modal').style.display = 'none'; }
 
+    /* ── 호스트 단위 조치 계획 안내 (CVE별 상세 계획 존재 시) ──────────── */
+    function showVulnPlansNotice(hostId, hostname, count) {
+      document.getElementById('vuln_plans_notice_body').innerHTML =
+        `<div style=\"margin-bottom:10px\"><strong style=\"color:#fdba74\">${escapeHtml(hostname)}</strong> 호스트에는 이미 <strong style=\"color:#a3e635\">CVE별 상세 조치 계획/예외</strong>가 ${count}건 설정되어 있습니다.</div>
+         <div style=\"color:#94a3b8\">호스트 단위 일괄 계획 대신 <strong style=\"color:#7dd3fc\">합계 탭</strong>(예: <span style=\"background:#1e3a5f;color:#7dd3fc;padding:1px 8px;border-radius:4px\">N 건 ↗</span> 버튼)에서 각 CVE별 계획을 확인·수정해 주세요.</div>`;
+      const openBtn = document.getElementById('vuln_plans_notice_open_list');
+      openBtn.onclick = () => { closeVulnPlansNotice(); openVulnListModal(hostId); };
+      document.getElementById('vuln_plans_notice_modal').style.display = 'flex';
+    }
+    function closeVulnPlansNotice() { document.getElementById('vuln_plans_notice_modal').style.display = 'none'; }
+
     /* ── 취약점별 조치 계획 / 조치 예외 모달 ─────────────────────────────── */
     let _vulnActionId = null, _vulnActionMode = 'plan', _vulnActionHostId = null;
     function openVulnActionModal(vulnId, mode) {
@@ -4473,19 +4582,23 @@ def render_user_dashboard_html(
     function closeAuditModal() { document.getElementById('audit_modal').style.display = 'none'; }
 
     /* ── 담당자/카테고리 편집 모달 ──────────────────────────────────────── */
-    function openOwnerModal(hostname, owner, team, category, assetType, exceptionUntil, exceptionReason) {
+    function openOwnerModal(hostname, owner, team, category, assetType, exceptionUntil, exceptionReason, importance) {
       document.getElementById('owner_modal_hostname').value = hostname;
       document.getElementById('owner_modal_owner').value = owner || '';
       document.getElementById('owner_modal_team').value = team || '';
       document.getElementById('owner_modal_category').value = category || '';
       document.getElementById('owner_modal_exception_until').value = exceptionUntil || '';
       document.getElementById('owner_modal_exception_reason').value = exceptionReason || '';
+      const impEl = document.getElementById('owner_modal_importance');
+      if (impEl) impEl.value = importance || '';
       document.getElementById('owner_modal_status').textContent = '';
       document.getElementById('owner_modal_status').style.color = '#94a3b8';
       // PC 자산은 카테고리 숨김, 서버만 표시
       const isServer = assetType === 'server';
       const isTrivy = assetType === 'trivy';
       document.getElementById('owner_modal_category_row').style.display = isServer ? '' : 'none';
+      // 중요도 재정의는 서버 자산에서만 노출
+      document.getElementById('owner_modal_importance_row').style.display = isServer ? '' : 'none';
       // 처리 예외 기한은 Trivy에서만 필요
       document.getElementById('owner_modal_exception_row').style.display = isTrivy ? '' : 'none';
       const titleMap = { server: '서버 자산 상세페이지', pc: 'PC 자산 상세페이지', trivy: '취약점 상세페이지' };
@@ -4503,12 +4616,14 @@ def render_user_dashboard_html(
         const category = document.getElementById('owner_modal_category').value.trim();
         const exception_until = document.getElementById('owner_modal_exception_until').value.trim();
         const exception_reason = document.getElementById('owner_modal_exception_reason').value.trim();
+        const impEl = document.getElementById('owner_modal_importance');
+        const importance = (impEl && impEl.closest('#owner_modal_importance_row').style.display !== 'none') ? impEl.value : '';
         const statusEl = document.getElementById('owner_modal_status');
         statusEl.textContent = '저장 중...';
         try {
           const res = await fetch('/assets/owners', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ hostname, owner, team, category, exception_until, exception_reason })
+            body: JSON.stringify({ hostname, owner, team, category, importance, exception_until, exception_reason })
           });
           if (!res.ok) throw new Error(await res.text());
           statusEl.style.color = '#86efac';

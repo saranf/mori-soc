@@ -352,6 +352,31 @@ class FastAPIAppTests(unittest.TestCase):
         self.assertEqual(last["from_status"], "pending")
         self.assertEqual(last["to_status"], "reviewing")
 
+    def test_alert_triage_actor_from_payload(self) -> None:
+        """payload.actor가 주어지면 entry/history에 changed_by로 기록되어야 한다."""
+        alert_id = "alert-actor-test"
+        resp = self.client.patch(
+            f"/alerts/{alert_id}/triage",
+            json={"status": "reviewing", "analyst": "a1", "actor": "alice"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        triage = resp.json()["triage"]
+        self.assertEqual(triage["changed_by"], "alice")
+        self.assertTrue(len(triage["history"]) >= 1)
+        self.assertEqual(triage["history"][-1]["changed_by"], "alice")
+
+    def test_alert_triage_actor_falls_back_to_unknown(self) -> None:
+        """actor 미지정·세션 미인증이면 changed_by는 'unknown'이어야 한다."""
+        alert_id = "alert-actor-unknown-test"
+        resp = self.client.patch(
+            f"/alerts/{alert_id}/triage",
+            json={"status": "pending", "analyst": "a1"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        triage = resp.json()["triage"]
+        self.assertEqual(triage["changed_by"], "unknown")
+        self.assertEqual(triage["history"][-1]["changed_by"], "unknown")
+
     def test_incidents_create_has_history(self) -> None:
         """인시던트 생성 시 history에 created 항목이 있어야 한다."""
         resp = self.client.post("/incidents", json={"title": "테스트 인시던트", "analyst": "ops"})
