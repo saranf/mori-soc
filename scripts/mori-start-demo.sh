@@ -26,7 +26,7 @@ fi
 # 2) Build & start core services
 echo ""
 echo "🔧 Building & starting core services..."
-docker compose up -d --build soc-postgres mori-api
+docker compose up -d --build soc-postgres openldap mori-api
 
 echo ""
 echo "⏳ Waiting for mori-api to be healthy..."
