@@ -7,6 +7,16 @@
 ![Docker](https://img.shields.io/badge/docker-compose-2496ED)
 ![License](https://img.shields.io/badge/license-Apache%202.0-lightgrey)
 
+## TL;DR
+
+`docker compose up -d` 한 줄로 띄우는 **ISMS-P / ISO 27001 감사 증적 누적 플랫폼**. Zabbix · FleetDM · Wazuh · Trivy · Loki를 통합하여 자산·취약점·경보·인시던트 + 통제 점검을 한 화면(`/ui`)에서 운영하고, 모든 변경을 *who / when / what* 단위로 자동 누적합니다.
+
+- 🎯 **대상** — 보안 담당자 1~2명 + IT 헬프데스크로 ISMS-P / ISO 27001을 준비해야 하는 중소형 조직
+- 🚀 **한 줄 시작** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, 데모 전용)
+- 📊 **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · Compliance PDCA · 5종 감사 증적 CSV
+- 🧾 **자동 증적** — 자산 담당자·중요도, 호스트/CVE 단위 조치 계획·예외, Triage·인시던트 상태 변경
+- ⚠️ **Alpha** — 시드 + 인메모리 store 기반. PostgreSQL 영속화·실시간 폴러는 다음 마일스톤 ([Integrations & 확장 방향](#-integrations--확장-방향) 참조)
+
 > ⚠️ **Alpha / Work in Progress** — 일상 보안 운영 + 감사 증적 누적 시나리오는 동작하지만, 데이터 영속성과 실시간 폴링은 다음 마일스톤입니다. 실제 데이터는 **시드(sample data) + 인메모리 store** 기반입니다.
 
 오픈소스 보안 도구를 통합하여 **ISMS-P / ISO 27001 인증 심사에 필요한 증적·통제 점검·조치 이력**을 한 곳에서 수집·관리·내보내기 할 수 있도록 만든 경량 SOC 플랫폼입니다.
@@ -506,6 +516,33 @@ API 인메모리 저장(재시작 시 초기화)으로 별도 생성되는 항�
 | `docs/collection-standards.md` | 수집 표준 |
 | `schema/001_phase1_initial.sql` | Phase 1 Postgres 초기 DDL |
 | `schema/002_phase2_compliance_identity.sql` | Phase 2 Compliance/Identity DDL |
+
+---
+
+## 🔌 Integrations & 확장 방향
+
+MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제공하며, 추후 **Zabbix 생태계 템플릿 / 경량 Agent 패키지로 배포**하는 방향까지 확장 예정입니다. Zabbix만 운영 중인 조직에서도 MORI의 자산·통제 점검·증적 누적 컨셉을 부분 도입할 수 있도록 하는 것이 목표입니다.
+
+### 현재 통합 (Phase 1 / Phase 2 Alpha)
+
+| 도구 | 통합 방식 | 상태 |
+|---|---|---|
+| **Zabbix** | trigger / item collector(`collectors/zabbix_events.py`) → ingestion. 자산 가용성 + CPU·Disk·Memory 관측치 누적 | 🟡 통합 검증 중 |
+| **FleetDM** | osquery 결과 + 호스트 등록 정보 normalization. 자산 식별 + 미매핑(orphan) 검출 | 🟡 parser/collector 준비됨, REST poller 미연결 |
+| **Wazuh** | alert ingestion → 트리아지 파이프라인. SSH brute force / rootkit 등 보안 이벤트 증적 | 🟡 parser/collector 준비됨, REST poller 미연결 |
+| **Trivy** | JSON 결과 ingest → CVE별 조치 계획·예외 + 호스트 단위 일괄 적용 | 🟡 자동 적재 패키징 중 |
+| **Loki + Fluent Bit** | 로그 중앙화 (Grafana 시각화 경유) | ✅ 동작 |
+| **LDAP / AD** | 디렉토리 계정 + 권한 바인딩 정합성 점검(시드) | 🔲 운영 적용 시 `LDAP_URL` 활성화 |
+| **Grafana** | Postgres / Loki를 직접 조회하는 운영 대시보드 | ✅ 동작 |
+
+### 🔭 확장 로드맵
+
+1. **Zabbix 공식 템플릿 패키지로 배포** — MORI에서 정의한 자산·통제 점검·감사 증적 항목을 Zabbix 템플릿 YAML로 export하여, Zabbix만 운영 중인 조직에서도 MORI 컨셉을 부분 도입 가능.
+   - *예상 산출물*: `templates/zabbix/mori-soc-template.yaml` + 가져오기 가이드 + Zabbix Share 등록
+2. **MORI Agent 패키징** — 호스트 단위 수집/리포트용 경량 에이전트 (Linux systemd timer / macOS launchd) — Trivy 정기 스캔 + 결과 ingest 자동화 + Wazuh agent 보완
+3. **Postgres 영속화 + REST poller 활성화** — 위 통합 도구의 라이브 데이터로 시드를 대체 (UI 운영 상태 5종 store 영속화 포함)
+4. **Webhook 연동** — Slack / Teams / Email 알림 (`SLACK_WEBHOOK_URL` 자리만 존재)
+5. **Phase 3 — 조사형 multi-hop pivot 에이전트** — alert → host → user → 다른 host로 이어지는 조사 자동화
 
 ---
 

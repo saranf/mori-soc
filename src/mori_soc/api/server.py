@@ -3105,7 +3105,9 @@ def render_user_dashboard_html(
     <div class=\"tab-panel\" id=\"tab_compliance\">
       <section class=\"card\">
         <h2>✅ Compliance PDCA 대시보드</h2>
-        <div class=\"subtext\">ISMS-P / ISO 27001 통제 항목 점검 현황을 PDCA(Plan-Do-Check-Act) 관점으로 요약합니다.</div>
+        <div class=\"subtext\">ISMS-P / ISO 27001 통제 항목 점검 현황을 PDCA(Plan-Do-Check-Act) 관점으로 요약합니다.<br/>
+          <span style=\"color:#64748b;font-size:12px\">※ 상단 카드의 <strong>📋 전체 점검 / Pass / Fail / Warning / Pass Rate</strong>는 <strong>통제 점검(control_checks)</strong> 결과만 집계합니다. <strong>🔧 미조치 합계</strong>와 <strong>🔴 기한초과</strong>는 통제 점검 + Trivy 취약점(critical/high) + Alert(critical/high, 7일) 미조치 항목을 통합 집계합니다.</span>
+        </div>
       </section>
 
       <!-- PDCA Summary Cards -->
@@ -5095,18 +5097,25 @@ def render_user_dashboard_html(
         const data = await res.json();
         const sc = data.status_counts || {};
         const pdca = data.pdca || {};
+        const ps = data.pending_sources || {};
         // Cache pending list so PDCA Do modal / CSV button can reuse the same dataset
         window.__pdcaPending = data.pending_remediations || [];
-        window.__pdcaPendingSources = data.pending_sources || {};
-        // Summary cards
+        window.__pdcaPendingSources = ps;
+        // Summary cards — 상단은 control_checks만, 하단 2장은 통합(통제+Trivy+Alert)
         if (cardsEl) {
+          const totalChecks = data.total_checks || 0;
+          const passRateStr = totalChecks > 0 ? (data.pass_rate + '%') : '—';
+          const passRateSub = totalChecks > 0 ? '통제 점검' : '통제 점검 데이터 없음';
+          const totalPending = data.pending_count || 0;
+          const pendingSub = `통제 ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}`;
           cardsEl.innerHTML = [
-            _metricCard('📋 전체 점검', data.total_checks, '#38bdf8'),
-            _metricCard('✅ Pass', sc.pass || 0, '#22c55e'),
-            _metricCard('❌ Fail', sc.fail || 0, '#ef4444'),
-            _metricCard('⚠️ Warning', sc.warning || 0, '#f59e0b'),
-            _metricCard('📊 Pass Rate', data.pass_rate + '%', '#a78bfa'),
-            _metricCard('🔴 기한초과', data.overdue_count || 0, '#f43f5e'),
+            _metricCard('📋 전체 점검', totalChecks, '#38bdf8', '통제 점검'),
+            _metricCard('✅ Pass', sc.pass || 0, '#22c55e', '통제 점검'),
+            _metricCard('❌ Fail', sc.fail || 0, '#ef4444', '통제 점검'),
+            _metricCard('⚠️ Warning', sc.warning || 0, '#f59e0b', '통제 점검'),
+            _metricCard('📊 Pass Rate', passRateStr, '#a78bfa', passRateSub),
+            _metricCard('🔧 미조치 합계', totalPending, '#fb923c', pendingSub),
+            _metricCard('🔴 기한초과', data.overdue_count || 0, '#f43f5e', '통제+Trivy+Alert'),
           ].join('');
         }
         // Status bars
@@ -5440,10 +5449,12 @@ def render_user_dashboard_html(
       }
     }
 
-    function _metricCard(label, value, color) {
+    function _metricCard(label, value, color, sub) {
+      const subHtml = sub ? `<div class=\"metric-sub\" style=\"color:#64748b;font-size:11px;margin-top:2px\">${escapeHtml(sub)}</div>` : '';
       return `<div class=\"metric-card\" style=\"cursor:default\">
         <div class=\"metric-value\" style=\"color:${color}\">${value}</div>
         <div class=\"metric-label\">${label}</div>
+        ${subHtml}
       </div>`;
     }
 
