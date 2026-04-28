@@ -191,7 +191,30 @@ INSERT INTO group_memberships (membership_id, account_id, group_name, source, sy
 ON CONFLICT (membership_id) DO NOTHING;
 "
 
-# ── 10) Source Syncs ─────────────────────────────────────────────────────────
+# ── 10) Fleet Query Results (osquery) ────────────────────────────────────────
+echo "   🔍 Fleet Query Results..."
+run_sql "
+INSERT INTO query_results (query_result_id, source, host_id, query_name, query_text, observed_at, result_json) VALUES
+  ('qr-01','fleet','h-pc-01','installed_apps','SELECT name, version FROM apps;',now()-interval '20 minutes',
+    '{\"rows\":[{\"name\":\"Slack\",\"version\":\"4.40.121\"},{\"name\":\"Chrome\",\"version\":\"131.0.6778\"}]}'::jsonb),
+  ('qr-02','fleet','h-pc-02','installed_apps','SELECT name, version FROM apps;',now()-interval '12 minutes',
+    '{\"rows\":[{\"name\":\"VS Code\",\"version\":\"1.95.3\"},{\"name\":\"Docker Desktop\",\"version\":\"4.36.0\"}]}'::jsonb),
+  ('qr-03','fleet','h-pc-03','windows_security','SELECT * FROM windows_security_center;',now()-interval '3 days',
+    '{\"rows\":[{\"firewall\":\"Good\",\"antivirus\":\"Snoozed\",\"autoupdate\":\"Off\"}]}'::jsonb),
+  ('qr-04','fleet','h-pc-01','disk_encryption','SELECT name, encrypted FROM disk_encryption;',now()-interval '15 minutes',
+    '{\"rows\":[{\"name\":\"/dev/disk1s1\",\"encrypted\":1}]}'::jsonb),
+  ('qr-05','fleet','h-pc-02','disk_encryption','SELECT name, encrypted FROM disk_encryption;',now()-interval '8 minutes',
+    '{\"rows\":[{\"name\":\"/dev/disk1s1\",\"encrypted\":1}]}'::jsonb),
+  ('qr-06','fleet','h-pc-03','disk_encryption','SELECT name, encrypted FROM disk_encryption;',now()-interval '3 days',
+    '{\"rows\":[{\"name\":\"C:\\\\\",\"encrypted\":0}]}'::jsonb),
+  ('qr-07','fleet','h-pc-01','logged_in_users','SELECT user, host, time FROM logged_in_users;',now()-interval '5 minutes',
+    '{\"rows\":[{\"user\":\"developer01\",\"host\":\"console\",\"time\":1714286400}]}'::jsonb),
+  ('qr-08','fleet','h-pc-03','startup_items','SELECT name, path FROM startup_items;',now()-interval '3 days',
+    '{\"rows\":[{\"name\":\"OneDrive\",\"path\":\"C:\\\\Program Files\\\\Microsoft OneDrive\"},{\"name\":\"Unknown.exe\",\"path\":\"C:\\\\Users\\\\Public\\\\unknown.exe\"}]}'::jsonb)
+ON CONFLICT (query_result_id) DO NOTHING;
+"
+
+# ── 11) Source Syncs ─────────────────────────────────────────────────────────
 echo "   🔄 Source Syncs..."
 run_sql "
 INSERT INTO source_syncs (source, status, last_sync_at, last_success_at, records_collected, envelopes_normalized, entities_saved) VALUES
@@ -207,5 +230,5 @@ ON CONFLICT (source) DO UPDATE SET
 
 echo ""
 echo "   ✅ Sample data seeded successfully!"
-echo "   📊 10 hosts, 8 alerts, 8 vulnerabilities, 12 control checks, 7 accounts"
+echo "   📊 10 hosts, 8 alerts, 8 vulnerabilities, 9 observations, 8 fleet queries, 12 control checks, 7 accounts"
 

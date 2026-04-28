@@ -230,20 +230,42 @@
 
 Docker와 Docker Compose가 설치된 환경에서 한 줄로 전체 데모를 실행할 수 있습니다.
 
+#### ▶️ 데모 시작
+
 ```bash
-# 원커맨드 데모: .env 생성 → API 기동 → 샘플 데이터 시딩
+# 원커맨드 데모: .env 생성 → API 기동 → 스키마/샘플 시딩 → 데모 인시던트 생성 → 워커 시작
 ./scripts/mori-start-demo.sh
 ```
 
-실행 완료 후 `http://localhost:18000/ui` 접속 → `admin / 1234` 로그인 후 체험 가능:
+실행 완료 후 `http://localhost:18000/ui` 접속 → `admin / 1234` 로그인.
+
+#### ⏹️ 데모 종료
+
+```bash
+# 1) 데모 데이터만 삭제 + 컨테이너 정지 (실제 폴러 수집 데이터 보존) — 기본
+./scripts/mori-stop-demo.sh
+
+# 2) 데모 데이터만 삭제, 컨테이너는 계속 실행
+./scripts/mori-stop-demo.sh --keep
+
+# 3) 컨테이너 + 볼륨까지 모두 제거 (DB 통째로 초기화)
+./scripts/mori-stop-demo.sh --purge
+```
+
+`mori-stop-demo.sh`는 시드 스크립트가 삽입한 **정확한 ID**(`h-web-01`, `al-01`, `cc-01` 등)만 매칭해서 삭제하므로,
+이미 폴러가 실제 환경에서 수집한 데이터는 그대로 보존됩니다.
+
+#### 데모로 체험 가능한 기능
 
 | 기능 | 데모 여부 |
 |---|---|
 | 📊 대시보드 (자산·경보·취약점 요약) | ✅ 샘플 데이터 |
 | 🚨 Alert Triage (3단계 상태 관리) | ✅ 실동작 |
-| 📋 인시던트 관리 (검색·날짜필터·CSV) | ✅ 실동작 |
+| 📋 인시던트 관리 (검색·날짜필터·CSV) | ✅ 데모 인시던트 3건 자동 생성 |
 | 💬 자연어 질의 (12개 인텐트) | ✅ 샘플 데이터 기준 |
-| ✅ Compliance PDCA | ✅ 샘플 데이터 |
+| ✅ Compliance PDCA + 교차검증 | ✅ 샘플 데이터 |
+| 🔍 Fleet osquery 결과 | ✅ 샘플 데이터 |
+| 🛡️ Trivy 취약점 스캔 결과 | ✅ 샘플 데이터 |
 | 📥 증적 리포트 CSV 5종 | ✅ 샘플 데이터 |
 
 ### 운영 배포 (현재 공개 서버)
@@ -269,18 +291,28 @@ Docker와 Docker Compose가 설치된 환경에서 한 줄로 전체 데모를 �
 
 ### 시딩되는 샘플 데이터
 
+DB(PostgreSQL)에 영속 저장되는 데이터:
+
 | 항목 | 수량 | 설명 |
 |---|---|---|
 | Hosts | 10 | 서버, PC, 방화벽, VPN 등 다양한 자산 |
 | Host Aliases | 13 | Zabbix/Fleet/Trivy 소스별 매핑 |
-| Alerts | 8 | SSH brute force, rootkit, disk/CPU 경보 등 |
-| Vulnerabilities | 8 | CVE 기반 critical~medium 취약점 |
-| Observations | 9 | CPU, Disk, Memory, 암호화 상태 메트릭 |
+| Alerts | 8 | Wazuh/Zabbix — SSH brute force, rootkit, disk/CPU 경보 등 |
+| Vulnerabilities | 8 | Trivy 6 + Fleet 2 — CVE 기반 critical~medium |
+| Observations | 9 | Zabbix/Fleet — CPU, Disk, Memory, 암호화 상태 |
+| Fleet Query Results | 8 | osquery — 설치앱, 디스크 암호화, 시작 프로그램 등 |
 | Control Checks | 12 | ISO 27001 / ISMS-P 통제 항목 점검 결과 |
 | Directory Accounts | 7 | LDAP 사용자 (관리자, 개발자, DBA 등) |
 | Privilege Bindings | 6 | sudo, domain_admin, db_admin 권한 |
 | Group Memberships | 8 | Domain Admins, Developers, DBA 등 |
 | Source Syncs | 4 | Zabbix/Fleet/Trivy/Wazuh 수집 상태 |
+
+API 인메모리 저장(API 재시작 시 초기화)으로 별도 생성되는 데이터:
+
+| 항목 | 수량 | 생성 시점 |
+|---|---|---|
+| Incidents | 3 | `mori-start-demo.sh`가 시드 후 `POST /incidents` 호출 |
+| Triage 상태 | 0 | UI에서 직접 변경 시 누적 |
 
 ---
 
@@ -455,8 +487,9 @@ curl -X POST http://localhost:18000/query \
 - `config/portal/index.html`: 메인 포털 페이지
 - `scripts/trivy-fs-scan.sh`: 파일시스템 취약점 스캔 스크립트
 - `scripts/trivy-image-scan.sh`: 이미지 취약점 스캔 스크립트
-- `scripts/mori-start-demo.sh`: 원커맨드 데모 실행 (env 생성 → 기동 → 시딩 → 워커)
-- `scripts/mori-seed-sample-data.sh`: 샘플 데이터 SQL 시딩 (10 hosts, 8 alerts, 8 vulns, 12 checks, 7 accounts)
+- `scripts/mori-start-demo.sh`: 원커맨드 데모 실행 (env 생성 → 기동 → 스키마/시드 → 인시던트 생성 → 워커)
+- `scripts/mori-stop-demo.sh`: 데모 정지 (기본/`--keep`/`--purge` — 시드 ID만 정확히 매칭해 삭제, 실수집 데이터 보존)
+- `scripts/mori-seed-sample-data.sh`: 샘플 데이터 SQL 시딩 (10 hosts, 8 alerts, 8 vulns, 9 obs, 8 fleet queries, 12 checks, 7 accounts)
 - `scripts/mori-run-workers.sh`: Worker/Poller 관리 유틸리티 (start/stop/status/cycle/logs)
 - `src/mori_soc/services/reports.py`: 5종 감사 증적 리포트 생성 (자산/계정/로그/취약점/월간)
 - `schema/002_phase2_compliance_identity.sql`: Phase 2 Compliance/Identity DDL

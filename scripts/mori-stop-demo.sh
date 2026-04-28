@@ -61,6 +61,8 @@ else
     ('cc-01','cc-02','cc-03','cc-04','cc-05','cc-06','cc-07','cc-08','cc-09','cc-10','cc-11','cc-12');
   DELETE FROM host_observations WHERE observation_id IN
     ('obs-01','obs-02','obs-03','obs-04','obs-05','obs-06','obs-07','obs-08','obs-09');
+  DELETE FROM query_results WHERE query_result_id IN
+    ('qr-01','qr-02','qr-03','qr-04','qr-05','qr-06','qr-07','qr-08');
   DELETE FROM vulnerabilities WHERE vuln_id IN
     ('v-01','v-02','v-03','v-04','v-05','v-06','v-07','v-08');
   DELETE FROM alerts WHERE alert_id IN

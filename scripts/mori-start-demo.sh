@@ -48,6 +48,22 @@ echo ""
 echo "🌱 Seeding sample data..."
 bash "$SCRIPT_DIR/mori-seed-sample-data.sh"
 
+# 4-1) Seed demo incidents (in-memory store, requires running API)
+echo ""
+echo "📋 Creating demo incidents..."
+MORI_PORT="${MORI_API_PORT:-18000}"
+post_incident() {
+  curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:${MORI_PORT}/incidents" \
+    -H "Content-Type: application/json" -d "$1" || echo "000"
+}
+codes=()
+codes+=( "$(post_incident '{"title":"SSH brute force on web-server-01","hostname":"web-server-01","analyst":"security","alert_ids":["al-01"]}')" )
+codes+=( "$(post_incident '{"title":"Rootkit detection requires forensic review","hostname":"web-server-01","analyst":"security","alert_ids":["al-02"]}')" )
+codes+=( "$(post_incident '{"title":"db-primary disk usage critical","hostname":"db-primary","analyst":"monitor","alert_ids":["al-03"]}')" )
+ok_count=0
+for c in "${codes[@]}"; do [ "$c" = "200" ] && ok_count=$((ok_count+1)); done
+echo "   ✅ ${ok_count}/3 demo incidents created (in-memory; reset on API restart)"
+
 # 5) Start worker (background, optional — mori-api uses same image)
 echo ""
 echo "🔄 Starting worker (if available)..."
@@ -63,9 +79,11 @@ echo "   🌐 Dashboard:  http://localhost:${MORI_PORT}/ui"
 echo "   🔑 API:        http://localhost:${MORI_PORT}/docs"
 echo "   📊 Health:     http://localhost:${MORI_PORT}/health"
 echo ""
-echo "   Default login: admin / admin"
+echo "   Default login: admin / 1234"
 echo ""
-echo "   Stop:  docker compose down"
-echo "   Logs:  docker compose logs -f mori-api"
+echo "   Stop demo (preserve real data):  ./scripts/mori-stop-demo.sh"
+echo "   Stop containers only:            ./scripts/mori-stop-demo.sh --keep"
+echo "   Wipe everything (volumes too):   ./scripts/mori-stop-demo.sh --purge"
+echo "   Logs:                            docker compose logs -f mori-api"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
