@@ -356,6 +356,8 @@ def build_crosscheck_payload(service: QueryService) -> dict[str, Any]:
                 "total_hosts": len(all_host_ids),
                 "covered_hosts": len(any_source),
                 "uncovered_hosts": len(no_source),
+                "all_hosts": sorted([_host_row(h) for h in all_host_ids], key=lambda x: x["hostname"])[:200],
+                "covered": sorted([_host_row(h) for h in any_source], key=lambda x: x["hostname"])[:200],
                 "uncovered": sorted([_host_row(h) for h in no_source], key=lambda x: x["hostname"])[:50],
             },
             {
@@ -4461,6 +4463,41 @@ def render_user_dashboard_html(
       }
     }
 
+    let _crosscheckData = null;
+
+    function _renderCrosscheckHostTable(rows) {
+      if (!rows || !rows.length) {
+        return '<div class=\"empty\" style=\"padding:12px;color:#94a3b8\">해당 자산이 없습니다.</div>';
+      }
+      const head = '<thead><tr><th style=\"text-align:left;padding:6px 8px;border-bottom:1px solid #233046;color:#94a3b8;font-size:12px\">호스트명</th><th style=\"text-align:left;padding:6px 8px;border-bottom:1px solid #233046;color:#94a3b8;font-size:12px\">호스트 ID</th><th style=\"text-align:left;padding:6px 8px;border-bottom:1px solid #233046;color:#94a3b8;font-size:12px\">소스</th></tr></thead>';
+      const body = rows.map(r => {
+        const sources = (r.sources && r.sources.length) ? r.sources.join(', ') : '<span style=\"color:#fca5a5\">없음</span>';
+        return `<tr><td style=\"padding:6px 8px;border-bottom:1px solid #1f2937;font-size:13px\">${escapeHtml(r.hostname || '-')}</td><td style=\"padding:6px 8px;border-bottom:1px solid #1f2937;font-size:12px;color:#94a3b8\">${escapeHtml(r.host_id || '-')}</td><td style=\"padding:6px 8px;border-bottom:1px solid #1f2937;font-size:12px\">${sources}</td></tr>`;
+      }).join('');
+      return `<table style=\"width:100%;border-collapse:collapse\">${head}<tbody>${body}</tbody></table>`;
+    }
+
+    function showCrosscheckHosts(kind) {
+      if (!_crosscheckData) return;
+      const chk = (_crosscheckData.checks || []).find(c => c.id === 'source_coverage');
+      if (!chk) return;
+      let title = '', desc = '', rows = [];
+      if (kind === 'total') {
+        title = '전체 자산 (' + chk.total_hosts + '대)';
+        desc = '현재 hosts 테이블에 등록된 모든 자산입니다. 각 행의 \"소스\" 컬럼은 host_aliases 에 매핑된 수집 소스를 보여줍니다.';
+        rows = chk.all_hosts || [];
+      } else if (kind === 'covered') {
+        title = '소스 커버됨 (' + chk.covered_hosts + '대)';
+        desc = 'Fleet / Zabbix / Trivy / Wazuh 중 최소 1개 소스에서 관측된 자산입니다.';
+        rows = chk.covered || [];
+      } else if (kind === 'uncovered') {
+        title = '미관측 자산 (' + chk.uncovered_hosts + '대)';
+        desc = '어떤 수집 소스에도 매핑되어 있지 않은 자산입니다. host_aliases 등록 또는 정리가 필요합니다.';
+        rows = chk.uncovered || [];
+      }
+      openOverviewModal(title, desc, _renderCrosscheckHostTable(rows));
+    }
+
     async function loadCrosscheck() {
       const area = document.getElementById('crosscheck_area');
       if (!area) return;
@@ -4468,6 +4505,7 @@ def render_user_dashboard_html(
         const res = await fetch('/compliance/crosscheck');
         if (!res.ok) throw new Error(res.status);
         const data = await res.json();
+        _crosscheckData = data;
         const checks = data.checks || [];
         area.innerHTML = checks.map(chk => {
           let detail = '';
@@ -4484,16 +4522,31 @@ def render_user_dashboard_html(
             `;
           } else if (chk.id === 'source_coverage') {
             const covPct = chk.total_hosts > 0 ? (chk.covered_hosts / chk.total_hosts * 100).toFixed(1) : '0.0';
+            // 클릭 가능한 숫자 카드 3개: 전체 / 커버됨 / 미관측
             detail = `
+              <div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0\">
+                <div role=\"button\" tabindex=\"0\" onclick=\"showCrosscheckHosts('total')\" style=\"text-align:center;cursor:pointer;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 6px;transition:border-color .15s\" onmouseover=\"this.style.borderColor='#38bdf8'\" onmouseout=\"this.style.borderColor='#334155'\">
+                  <div style=\"font-size:22px;font-weight:800;color:#38bdf8\">${chk.total_hosts}</div>
+                  <div style=\"font-size:11px;color:#94a3b8;text-decoration:underline;text-decoration-style:dotted\">전체 자산</div>
+                </div>
+                <div role=\"button\" tabindex=\"0\" onclick=\"showCrosscheckHosts('covered')\" style=\"text-align:center;cursor:pointer;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 6px;transition:border-color .15s\" onmouseover=\"this.style.borderColor='#22c55e'\" onmouseout=\"this.style.borderColor='#334155'\">
+                  <div style=\"font-size:22px;font-weight:800;color:#22c55e\">${chk.covered_hosts}</div>
+                  <div style=\"font-size:11px;color:#94a3b8;text-decoration:underline;text-decoration-style:dotted\">소스 커버됨</div>
+                </div>
+                <div role=\"button\" tabindex=\"0\" onclick=\"showCrosscheckHosts('uncovered')\" style=\"text-align:center;cursor:pointer;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 6px;transition:border-color .15s\" onmouseover=\"this.style.borderColor='#fca5a5'\" onmouseout=\"this.style.borderColor='#334155'\">
+                  <div style=\"font-size:22px;font-weight:800;color:${chk.uncovered_hosts > 0 ? '#fca5a5' : '#94a3b8'}\">${chk.uncovered_hosts}</div>
+                  <div style=\"font-size:11px;color:#94a3b8;text-decoration:underline;text-decoration-style:dotted\">미관측</div>
+                </div>
+              </div>
               <div style=\"margin:12px 0\">
                 <div style=\"display:flex;justify-content:space-between;font-size:12px;color:#94a3b8;margin-bottom:4px\">
                   <span>커버리지</span><span>${covPct}% (${chk.covered_hosts}/${chk.total_hosts})</span>
                 </div>
-                <div style=\"background:#0f172a;border-radius:6px;height:20px;overflow:hidden\">
+                <div style=\"background:#0f172a;border-radius:6px;height:14px;overflow:hidden\">
                   <div style=\"background:#22c55e;width:${covPct}%;height:100%;border-radius:6px;transition:width .5s\"></div>
                 </div>
               </div>
-              ${chk.uncovered_hosts > 0 ? '<div style=\"font-size:12px;color:#fca5a5\">⚠️ 미관측 자산: ' + chk.uncovered_hosts + '대</div>' : '<div style=\"font-size:12px;color:#22c55e\">✅ 모든 자산이 최소 1개 소스에서 관측됨</div>'}
+              <div style=\"font-size:11px;color:#64748b;margin-top:8px\">💡 숫자를 클릭하면 해당 자산 목록을 볼 수 있습니다.</div>
             `;
           } else if (chk.id === 'vuln_vs_observation') {
             detail = `
