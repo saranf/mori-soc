@@ -863,15 +863,252 @@ def _ldap_verify(username: str, password: str, ldap_url: str, bind_dn: str, bind
         return False
 
 
+# ── i18n shared runtime ──────────────────────────────────────────────────────
+# Translation dictionaries live alongside each render function. The runtime
+# script below reads `mori_lang` from localStorage/cookie, exposes window.t(key)
+# + window.setLang(lang), and auto-applies on DOMContentLoaded.
+
+def _i18n_script(translations: dict[str, dict[str, str]]) -> str:
+    """공통 i18n 런타임 — translations: {'ko': {...}, 'en': {...}}."""
+    return (
+        "<script>(function(){"
+        "window.MORI_I18N=" + json.dumps(translations, ensure_ascii=False) + ";"
+        "function readLang(){"
+        "try{var l=localStorage.getItem('mori_lang');if(l==='ko'||l==='en')return l;}catch(e){}"
+        "var m=document.cookie.match(/(?:^|; )mori_lang=([^;]+)/);"
+        "if(m&&(m[1]==='ko'||m[1]==='en'))return m[1];"
+        "return 'ko';}"
+        "window.lang=readLang();"
+        "window.t=function(key,fallback){"
+        "var d=(window.MORI_I18N[window.lang]||{});"
+        "if(d[key]!=null)return d[key];"
+        "var f=(window.MORI_I18N['ko']||{})[key];"
+        "return f!=null?f:(fallback!=null?fallback:key);};"
+        "window.applyI18n=function(root){"
+        "var scope=root||document;"
+        "scope.querySelectorAll('[data-i18n]').forEach(function(el){"
+        "var k=el.getAttribute('data-i18n');el.textContent=window.t(k,el.textContent);});"
+        "scope.querySelectorAll('[data-i18n-html]').forEach(function(el){"
+        "var k=el.getAttribute('data-i18n-html');el.innerHTML=window.t(k,el.innerHTML);});"
+        "scope.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){"
+        "var k=el.getAttribute('data-i18n-placeholder');"
+        "el.setAttribute('placeholder',window.t(k,el.getAttribute('placeholder')||''));});"
+        "scope.querySelectorAll('[data-i18n-title]').forEach(function(el){"
+        "var k=el.getAttribute('data-i18n-title');"
+        "el.setAttribute('title',window.t(k,el.getAttribute('title')||''));});"
+        "var dt=document.querySelector('[data-i18n-doctitle]');"
+        "if(dt){var dk=dt.getAttribute('data-i18n-doctitle');document.title=window.t(dk,document.title);}"
+        "document.documentElement.setAttribute('lang',window.lang);"
+        "document.querySelectorAll('[data-i18n-toggle]').forEach(function(b){"
+        "var bl=b.getAttribute('data-lang');"
+        "if(bl===window.lang)b.classList.add('active');else b.classList.remove('active');});"
+        "};"
+        "window.setLang=function(l){if(l!=='ko'&&l!=='en')return;"
+        "window.lang=l;"
+        "try{localStorage.setItem('mori_lang',l);}catch(e){}"
+        "document.cookie='mori_lang='+l+'; path=/; max-age='+(60*60*24*365)+'; samesite=lax';"
+        "window.applyI18n();};"
+        "if(document.readyState==='loading'){"
+        "document.addEventListener('DOMContentLoaded',function(){window.applyI18n();});"
+        "}else{window.applyI18n();}"
+        "})();</script>"
+    )
+
+
+def _i18n_toggle_html() -> str:
+    """우측 상단 KO/EN 토글 위젯 — inline style, 외부 CSS 의존 없음."""
+    return (
+        '<div class="lang-toggle" style="position:fixed;top:16px;right:16px;'
+        'display:flex;gap:4px;background:#0f2035;border:1px solid #1e3a5f;'
+        'border-radius:8px;padding:3px;z-index:9999;">'
+        '<button data-i18n-toggle data-lang="ko" onclick="setLang(\'ko\')" '
+        'style="background:transparent;border:none;color:#94a3b8;font-size:12px;'
+        'font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer;">KO</button>'
+        '<button data-i18n-toggle data-lang="en" onclick="setLang(\'en\')" '
+        'style="background:transparent;border:none;color:#94a3b8;font-size:12px;'
+        'font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer;">EN</button>'
+        '</div>'
+        '<style>.lang-toggle button.active{background:#2563eb!important;color:#fff!important;}</style>'
+    )
+
+
+_LOGIN_I18N: dict[str, dict[str, str]] = {
+    "ko": {
+        "login.doctitle": "MORI SOC — 로그인",
+        "login.brand_sub": "Audit-Ready Security Operations",
+        "login.label.username": "아이디",
+        "login.label.password": "비밀번호",
+        "login.placeholder.username": "admin",
+        "login.button.login": "로그인",
+        "login.footer.no_account": "계정이 없으신가요?",
+        "login.footer.signup_link": "가입 요청 →",
+        "login.error.empty": "아이디와 비밀번호를 입력하세요.",
+        "login.status.loading": "로그인 중…",
+        "login.error.invalid": "아이디 또는 비밀번호가 올바르지 않습니다.",
+        "login.error.network": "네트워크 오류: ",
+    },
+    "en": {
+        "login.doctitle": "MORI SOC — Sign in",
+        "login.brand_sub": "Audit-Ready Security Operations",
+        "login.label.username": "Username",
+        "login.label.password": "Password",
+        "login.placeholder.username": "admin",
+        "login.button.login": "Sign in",
+        "login.footer.no_account": "Don't have an account?",
+        "login.footer.signup_link": "Request access →",
+        "login.error.empty": "Please enter both username and password.",
+        "login.status.loading": "Signing in…",
+        "login.error.invalid": "Invalid username or password.",
+        "login.error.network": "Network error: ",
+    },
+}
+
+
+_SIGNUP_I18N: dict[str, dict[str, str]] = {
+    "ko": {
+        "signup.doctitle": "MORI SOC — 가입 요청",
+        "signup.brand_title": "🛡️ MORI SOC 가입 요청",
+        "signup.intro": "계정 사용을 원하시면 아래 정보를 입력하고 운영자에게 가입을 요청하세요.",
+        "signup.label.name": "이름 *",
+        "signup.label.email": "이메일 *",
+        "signup.label.dept": "부서",
+        "signup.label.reason": "요청 사유",
+        "signup.placeholder.name": "홍길동",
+        "signup.placeholder.dept": "보안팀",
+        "signup.placeholder.reason": "업무 목적 및 필요 권한을 간략히 작성해주세요.",
+        "signup.button.submit": "가입 요청 제출",
+        "signup.back": "← 로그인으로 돌아가기",
+        "signup.error.required": "이름과 이메일은 필수입니다.",
+        "signup.status.submitting": "제출 중…",
+        "signup.success.title": "가입 요청 완료",
+        "signup.success.body": "운영자 승인 후 계정이 생성됩니다.<br>이메일로 안내드리겠습니다.",
+        "signup.error.generic": "오류가 발생했습니다.",
+        "signup.error.network": "네트워크 오류: ",
+    },
+    "en": {
+        "signup.doctitle": "MORI SOC — Request access",
+        "signup.brand_title": "🛡️ MORI SOC access request",
+        "signup.intro": "To use an account, fill in the details below and request access from an operator.",
+        "signup.label.name": "Name *",
+        "signup.label.email": "Email *",
+        "signup.label.dept": "Department",
+        "signup.label.reason": "Reason",
+        "signup.placeholder.name": "Jane Doe",
+        "signup.placeholder.dept": "Security",
+        "signup.placeholder.reason": "Briefly describe your business purpose and required permissions.",
+        "signup.button.submit": "Submit access request",
+        "signup.back": "← Back to sign in",
+        "signup.error.required": "Name and email are required.",
+        "signup.status.submitting": "Submitting…",
+        "signup.success.title": "Access request submitted",
+        "signup.success.body": "Your account will be created after operator approval.<br>We will notify you by email.",
+        "signup.error.generic": "An error occurred.",
+        "signup.error.network": "Network error: ",
+    },
+}
+
+
+_DASHBOARD_I18N: dict[str, dict[str, str]] = {
+    "ko": {
+        "dash.doctitle": "MORI Security Dashboard",
+        "dash.hero.title": "MORI — 보안 점검 현황",
+        "dash.hero.intro": "ISMS-P / ISO 27001 통제 항목 기준으로 자산·경보·취약점 현황을 한눈에 확인하고, 증적 데이터를 내보낼 수 있는 대시보드입니다.",
+        "dash.links.docs": "운영 문서 / 포털",
+        "dash.actions.refresh": "🔄 새로고침",
+        "dash.actions.logout": "🚪 로그아웃",
+        "dash.tab.dashboard": "📊 대시보드",
+        "dash.tab.triage": "🚨 Alert Triage",
+        "dash.tab.incidents": "📋 인시던트",
+        "dash.tab.assets": "📡 자산 현황",
+        "dash.tab.compliance": "✅ Compliance PDCA",
+        "dash.tab.guides": "📖 가이드 & 기준",
+        "dash.bn.dashboard": "대시보드",
+        "dash.bn.triage": "Triage",
+        "dash.bn.assets": "자산",
+        "dash.bn.incidents": "인시던트",
+        "dash.bn.compliance": "PDCA",
+        "dash.bn.guides": "가이드",
+        "dash.card.source_coverage": "Source Coverage",
+        "dash.card.source_coverage.sub": "운영자가 노출을 허용한 경우에만 source 상태를 표시합니다.",
+        "dash.card.latest_status": "Latest Host Status",
+        "dash.card.latest_status.sub": "조치가 필요한 offline / unknown 호스트를 우선 확인합니다.",
+        "dash.card.risk_summary": "Risk Summary",
+        "dash.card.risk_summary.sub": "alert, 취약점, 상태를 기준으로 우선 대응 대상을 확인합니다.",
+        "dash.card.recent_activity": "Recent Activity",
+        "dash.card.recent_activity.sub": "운영자가 허용한 범위에서 최근 이벤트와 관측값을 보여줍니다.",
+        "dash.card.triage": "🚨 Alert Triage",
+        "dash.card.triage.sub": "최근 24h 경보 목록입니다. 상태를 클릭해 Triage 처리하세요.",
+        "dash.card.incidents": "📋 인시던트 관리",
+        "dash.card.incidents.sub": "여러 경보를 하나의 인시던트로 묶고 조사 노트를 남깁니다.",
+        "dash.card.assets.fleet": "🖥️ PC 자산 목록 (Fleet)",
+        "dash.card.assets.zabbix": "🖧 서버 자산 목록 (Zabbix)",
+        "dash.card.assets.trivy": "🔍 취약점 현황 (Trivy)",
+        "dash.card.compliance": "✅ Compliance PDCA 대시보드",
+        "dash.card.reports": "📥 감사 증적 리포트 다운로드",
+        "dash.card.reports.sub": "ISMS-P / ISO 27001 감사 증적으로 사용할 수 있는 리포트를 CSV로 다운로드합니다. 미리보기를 통해 CSV의 컬럼 구성을 먼저 확인할 수 있습니다.",
+        "dash.card.crosscheck": "🔀 소스 간 교차 검증",
+        "dash.card.crosscheck.sub": "서로 다른 수집 소스의 데이터를 교차 비교하여 누락·불일치를 확인합니다.",
+        "dash.btn.reload": "새로고침",
+        "dash.btn.csv": "📥 CSV 내보내기",
+        "dash.status.loading": "⏳ 로딩 중…",
+    },
+    "en": {
+        "dash.doctitle": "MORI Security Dashboard",
+        "dash.hero.title": "MORI — Security Posture",
+        "dash.hero.intro": "Dashboard for viewing asset, alert, and vulnerability status against ISMS-P / ISO 27001 controls, with evidence export.",
+        "dash.links.docs": "Operations docs / portal",
+        "dash.actions.refresh": "🔄 Refresh",
+        "dash.actions.logout": "🚪 Sign out",
+        "dash.tab.dashboard": "📊 Dashboard",
+        "dash.tab.triage": "🚨 Alert Triage",
+        "dash.tab.incidents": "📋 Incidents",
+        "dash.tab.assets": "📡 Assets",
+        "dash.tab.compliance": "✅ Compliance PDCA",
+        "dash.tab.guides": "📖 Guides & References",
+        "dash.bn.dashboard": "Dashboard",
+        "dash.bn.triage": "Triage",
+        "dash.bn.assets": "Assets",
+        "dash.bn.incidents": "Incidents",
+        "dash.bn.compliance": "PDCA",
+        "dash.bn.guides": "Guides",
+        "dash.card.source_coverage": "Source Coverage",
+        "dash.card.source_coverage.sub": "Source status is shown only when the operator has enabled exposure.",
+        "dash.card.latest_status": "Latest Host Status",
+        "dash.card.latest_status.sub": "Prioritize offline / unknown hosts that need action.",
+        "dash.card.risk_summary": "Risk Summary",
+        "dash.card.risk_summary.sub": "Identify priority targets by alerts, vulnerabilities, and status.",
+        "dash.card.recent_activity": "Recent Activity",
+        "dash.card.recent_activity.sub": "Recent events and observations within the operator-allowed scope.",
+        "dash.card.triage": "🚨 Alert Triage",
+        "dash.card.triage.sub": "Last 24h alerts. Click a status to triage.",
+        "dash.card.incidents": "📋 Incident Management",
+        "dash.card.incidents.sub": "Group multiple alerts into a single incident and record investigation notes.",
+        "dash.card.assets.fleet": "🖥️ PC Inventory (Fleet)",
+        "dash.card.assets.zabbix": "🖧 Server Inventory (Zabbix)",
+        "dash.card.assets.trivy": "🔍 Vulnerabilities (Trivy)",
+        "dash.card.compliance": "✅ Compliance PDCA Dashboard",
+        "dash.card.reports": "📥 Audit Evidence Report Downloads",
+        "dash.card.reports.sub": "Download reports as CSV for use as ISMS-P / ISO 27001 audit evidence. Preview to inspect the CSV column layout first.",
+        "dash.card.crosscheck": "🔀 Cross-source Verification",
+        "dash.card.crosscheck.sub": "Cross-compare data from different collectors to find gaps and inconsistencies.",
+        "dash.btn.reload": "Refresh",
+        "dash.btn.csv": "📥 Export CSV",
+        "dash.status.loading": "⏳ Loading…",
+    },
+}
+
+
 def render_login_html(error: str = "", next_url: str = "/ui") -> str:
-    """로그인 페이지 HTML 반환."""
+    """로그인 페이지 HTML 반환 (KO/EN 토글 지원)."""
     error_html = f'<div class="login-error">{error}</div>' if error else ""
+    i18n_runtime = _i18n_script(_LOGIN_I18N)
+    toggle_widget = _i18n_toggle_html()
     return f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MORI SOC — 로그인</title>
+  <title data-i18n-doctitle="login.doctitle">MORI SOC — 로그인</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{ background: #0a1628; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif;
@@ -898,28 +1135,30 @@ def render_login_html(error: str = "", next_url: str = "/ui") -> str:
   </style>
 </head>
 <body>
+  {toggle_widget}
   <div class="login-card">
     <div class="login-logo">
       <h1>🛡️ MORI SOC</h1>
-      <p>Audit-Ready Security Operations</p>
+      <p data-i18n="login.brand_sub">Audit-Ready Security Operations</p>
     </div>
     {error_html}
-    <div class="field"><label>아이디</label><input id="username" type="text" autocomplete="username" placeholder="admin" /></div>
-    <div class="field"><label>비밀번호</label><input id="password" type="password" autocomplete="current-password" placeholder="••••••" /></div>
-    <button class="btn btn-primary" id="login_btn">로그인</button>
+    <div class="field"><label data-i18n="login.label.username">아이디</label><input id="username" type="text" autocomplete="username" placeholder="admin" data-i18n-placeholder="login.placeholder.username" /></div>
+    <div class="field"><label data-i18n="login.label.password">비밀번호</label><input id="password" type="password" autocomplete="current-password" placeholder="••••••" /></div>
+    <button class="btn btn-primary" id="login_btn" data-i18n="login.button.login">로그인</button>
     <div class="status-line" id="status"></div>
     <div class="login-footer">
-      계정이 없으신가요? <a href="/signup-request">가입 요청 →</a>
+      <span data-i18n="login.footer.no_account">계정이 없으신가요?</span> <a href="/signup-request" data-i18n="login.footer.signup_link">가입 요청 →</a>
     </div>
   </div>
+  {i18n_runtime}
   <script>
     const nextUrl = {json.dumps(next_url)};
     async function doLogin() {{
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
       const statusEl = document.getElementById('status');
-      if (!username || !password) {{ statusEl.textContent = '아이디와 비밀번호를 입력하세요.'; return; }}
-      statusEl.textContent = '로그인 중…';
+      if (!username || !password) {{ statusEl.textContent = window.t('login.error.empty'); return; }}
+      statusEl.textContent = window.t('login.status.loading');
       try {{
         const res = await fetch('/auth/login', {{
           method: 'POST',
@@ -930,9 +1169,9 @@ def render_login_html(error: str = "", next_url: str = "/ui") -> str:
           window.location.href = nextUrl || '/ui';
         }} else {{
           const d = await res.json().catch(() => ({{}}));
-          statusEl.textContent = d.detail || '아이디 또는 비밀번호가 올바르지 않습니다.';
+          statusEl.textContent = d.detail || window.t('login.error.invalid');
         }}
-      }} catch(e) {{ statusEl.textContent = '네트워크 오류: ' + e.message; }}
+      }} catch(e) {{ statusEl.textContent = window.t('login.error.network') + e.message; }}
     }}
     document.getElementById('login_btn').addEventListener('click', doLogin);
     document.addEventListener('keydown', e => {{ if (e.key === 'Enter') doLogin(); }});
@@ -942,16 +1181,16 @@ def render_login_html(error: str = "", next_url: str = "/ui") -> str:
 
 
 def render_signup_request_html(success: bool = False) -> str:
-    """가입 요청 페이지 HTML 반환."""
+    """가입 요청 페이지 HTML 반환 (KO/EN 토글 지원)."""
     body_html = """
-    <p style="color:#94a3b8;font-size:14px;margin-bottom:20px;">계정 사용을 원하시면 아래 정보를 입력하고 운영자에게 가입을 요청하세요.</p>
-    <div class="field"><label>이름 *</label><input id="req_name" placeholder="홍길동" /></div>
-    <div class="field"><label>이메일 *</label><input id="req_email" type="email" placeholder="hong@company.com" /></div>
-    <div class="field"><label>부서</label><input id="req_dept" placeholder="보안팀" /></div>
-    <div class="field"><label>요청 사유</label><textarea id="req_reason" style="width:100%;background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;color:#e2e8f0;padding:10px 14px;font-size:14px;min-height:80px;outline:none;" placeholder="업무 목적 및 필요 권한을 간략히 작성해주세요."></textarea></div>
-    <button class="btn btn-primary" id="submit_btn">가입 요청 제출</button>
+    <p data-i18n="signup.intro" style="color:#94a3b8;font-size:14px;margin-bottom:20px;">계정 사용을 원하시면 아래 정보를 입력하고 운영자에게 가입을 요청하세요.</p>
+    <div class="field"><label data-i18n="signup.label.name">이름 *</label><input id="req_name" placeholder="홍길동" data-i18n-placeholder="signup.placeholder.name" /></div>
+    <div class="field"><label data-i18n="signup.label.email">이메일 *</label><input id="req_email" type="email" placeholder="hong@company.com" /></div>
+    <div class="field"><label data-i18n="signup.label.dept">부서</label><input id="req_dept" placeholder="보안팀" data-i18n-placeholder="signup.placeholder.dept" /></div>
+    <div class="field"><label data-i18n="signup.label.reason">요청 사유</label><textarea id="req_reason" style="width:100%;background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;color:#e2e8f0;padding:10px 14px;font-size:14px;min-height:80px;outline:none;" placeholder="업무 목적 및 필요 권한을 간략히 작성해주세요." data-i18n-placeholder="signup.placeholder.reason"></textarea></div>
+    <button class="btn btn-primary" id="submit_btn" data-i18n="signup.button.submit">가입 요청 제출</button>
     <div class="status-line" id="status"></div>
-    <div class="login-footer"><a href="/login">← 로그인으로 돌아가기</a></div>
+    <div class="login-footer"><a href="/login" data-i18n="signup.back">← 로그인으로 돌아가기</a></div>
     <script>
       document.getElementById('submit_btn').addEventListener('click', async () => {
         const name = document.getElementById('req_name').value.trim();
@@ -959,28 +1198,33 @@ def render_signup_request_html(success: bool = False) -> str:
         const department = document.getElementById('req_dept').value.trim();
         const reason = document.getElementById('req_reason').value.trim();
         const statusEl = document.getElementById('status');
-        if (!name || !email) { statusEl.textContent = '이름과 이메일은 필수입니다.'; return; }
-        statusEl.textContent = '제출 중…';
+        if (!name || !email) { statusEl.textContent = window.t('signup.error.required'); return; }
+        statusEl.textContent = window.t('signup.status.submitting');
         try {
           const res = await fetch('/auth/signup-request', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({name, email, department, reason})
           });
           if (res.ok) {
-            document.querySelector('.login-card').innerHTML = '<div style="text-align:center;padding:40px 0"><div style="font-size:48px">✅</div><h2 style="color:#22c55e;margin:16px 0 8px">가입 요청 완료</h2><p style="color:#94a3b8">운영자 승인 후 계정이 생성됩니다.<br>이메일로 안내드리겠습니다.</p><div style="margin-top:24px"><a href="/login" style="color:#7dd3fc">← 로그인으로 돌아가기</a></div></div>';
+            const title = window.t('signup.success.title');
+            const bodyHtml = window.t('signup.success.body');
+            const back = window.t('signup.back');
+            document.querySelector('.login-card').innerHTML = '<div style="text-align:center;padding:40px 0"><div style="font-size:48px">✅</div><h2 style="color:#22c55e;margin:16px 0 8px">' + title + '</h2><p style="color:#94a3b8">' + bodyHtml + '</p><div style="margin-top:24px"><a href="/login" style="color:#7dd3fc">' + back + '</a></div></div>';
           } else {
             const d = await res.json().catch(() => ({}));
-            statusEl.textContent = d.detail || '오류가 발생했습니다.';
+            statusEl.textContent = d.detail || window.t('signup.error.generic');
           }
-        } catch(e) { statusEl.textContent = '네트워크 오류: ' + e.message; }
+        } catch(e) { statusEl.textContent = window.t('signup.error.network') + e.message; }
       });
-    </script>""" if not success else '<div style="text-align:center;padding:40px 0"><div style="font-size:48px">✅</div><h2 style="color:#22c55e">가입 요청 완료</h2><p style="color:#94a3b8;margin-top:8px">운영자 승인 후 계정이 생성됩니다.</p><div style="margin-top:24px"><a href="/login" style="color:#7dd3fc">← 로그인으로 돌아가기</a></div></div>'
+    </script>""" if not success else '<div style="text-align:center;padding:40px 0"><div style="font-size:48px">✅</div><h2 data-i18n="signup.success.title" style="color:#22c55e">가입 요청 완료</h2><p data-i18n-html="signup.success.body" style="color:#94a3b8;margin-top:8px">운영자 승인 후 계정이 생성됩니다.<br>이메일로 안내드리겠습니다.</p><div style="margin-top:24px"><a href="/login" data-i18n="signup.back" style="color:#7dd3fc">← 로그인으로 돌아가기</a></div></div>'
+    i18n_runtime = _i18n_script(_SIGNUP_I18N)
+    toggle_widget = _i18n_toggle_html()
     return f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MORI SOC — 가입 요청</title>
+  <title data-i18n-doctitle="signup.doctitle">MORI SOC — 가입 요청</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{ background: #0a1628; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif;
@@ -1004,10 +1248,12 @@ def render_signup_request_html(success: bool = False) -> str:
   </style>
 </head>
 <body>
+  {toggle_widget}
   <div class="login-card">
-    <div class="login-logo"><h1>🛡️ MORI SOC 가입 요청</h1></div>
+    <div class="login-logo"><h1 data-i18n="signup.brand_title">🛡️ MORI SOC 가입 요청</h1></div>
     {body_html}
   </div>
+  {i18n_runtime}
 </body>
 </html>"""
 
@@ -2823,7 +3069,7 @@ def render_user_dashboard_html(
 <head>
   <meta charset=\"utf-8\" />
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-  <title>MORI Security Dashboard</title>
+  <title data-i18n-doctitle=\"dash.doctitle\">MORI Security Dashboard</title>
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0b1220; color: #e5e7eb; }
@@ -2987,28 +3233,29 @@ def render_user_dashboard_html(
   </style>
 </head>
 <body>
+  __I18N_TOGGLE__
   <div class=\"wrap\">
     <section class=\"hero\">
       <div>
-        <h1>MORI — 보안 점검 현황</h1>
-        <p>ISMS-P / ISO 27001 통제 항목 기준으로 자산·경보·취약점 현황을 한눈에 확인하고, 증적 데이터를 내보낼 수 있는 대시보드입니다.</p>
+        <h1 data-i18n=\"dash.hero.title\">MORI — 보안 점검 현황</h1>
+        <p data-i18n=\"dash.hero.intro\">ISMS-P / ISO 27001 통제 항목 기준으로 자산·경보·취약점 현황을 한눈에 확인하고, 증적 데이터를 내보낼 수 있는 대시보드입니다.</p>
         <div class=\"links\">
-          <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\">운영 문서 / 포털</a>
+          <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"dash.links.docs\">운영 문서 / 포털</a>
         </div>
       </div>
       <div class=\"top-actions\">
-        <button id=\"refresh_dashboard\" type=\"button\">🔄 새로고침</button>
-        <a href=\"/auth/logout\" class=\"logout-btn\">🚪 로그아웃</a>
+        <button id=\"refresh_dashboard\" type=\"button\" data-i18n=\"dash.actions.refresh\">🔄 새로고침</button>
+        <a href=\"/auth/logout\" class=\"logout-btn\" data-i18n=\"dash.actions.logout\">🚪 로그아웃</a>
       </div>
     </section>
 
     <nav class=\"tabs-nav\">
-      <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\">📊 대시보드</button>
-      <button data-tab=\"triage\" onclick=\"switchTab('triage')\">🚨 Alert Triage</button>
-      <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\">📋 인시던트</button>
-      <button data-tab=\"assets\" onclick=\"switchTab('assets')\">📡 자산 현황</button>
-      <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\">✅ Compliance PDCA</button>
-      <button data-tab=\"guides\" onclick=\"switchTab('guides')\">📖 가이드 &amp; 기준</button>
+      <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\" data-i18n=\"dash.tab.dashboard\">📊 대시보드</button>
+      <button data-tab=\"triage\" onclick=\"switchTab('triage')\" data-i18n=\"dash.tab.triage\">🚨 Alert Triage</button>
+      <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\" data-i18n=\"dash.tab.incidents\">📋 인시던트</button>
+      <button data-tab=\"assets\" onclick=\"switchTab('assets')\" data-i18n=\"dash.tab.assets\">📡 자산 현황</button>
+      <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\" data-i18n=\"dash.tab.compliance\">✅ Compliance PDCA</button>
+      <button data-tab=\"guides\" onclick=\"switchTab('guides')\" data-i18n=\"dash.tab.guides\">📖 가이드 &amp; 기준</button>
     </nav>
 
     <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
@@ -3017,26 +3264,26 @@ def render_user_dashboard_html(
       <div class=\"layout\">
         <div class=\"stack\">
           <section class=\"card\" id=\"source_coverage_section\">
-            <h2>Source Coverage</h2>
-            <div class=\"subtext\">운영자가 노출을 허용한 경우에만 source 상태를 표시합니다.</div>
+            <h2 data-i18n=\"dash.card.source_coverage\">Source Coverage</h2>
+            <div class=\"subtext\" data-i18n=\"dash.card.source_coverage.sub\">운영자가 노출을 허용한 경우에만 source 상태를 표시합니다.</div>
             <div class=\"coverage\" id=\"source_coverage\"><span class=\"empty\">⏳ 로딩 중…</span></div>
           </section>
 
           <section class=\"card\" id=\"latest_status_section\">
-            <h2>Latest Host Status</h2>
-            <div class=\"subtext\">조치가 필요한 offline / unknown 호스트를 우선 확인합니다.</div>
+            <h2 data-i18n=\"dash.card.latest_status\">Latest Host Status</h2>
+            <div class=\"subtext\" data-i18n=\"dash.card.latest_status.sub\">조치가 필요한 offline / unknown 호스트를 우선 확인합니다.</div>
             <div class=\"table-wrap\" id=\"latest_status\"><span class=\"empty\">⏳ 로딩 중…</span></div>
           </section>
 
           <section class=\"card\" id=\"risk_summary_section\">
-            <h2>Risk Summary</h2>
-            <div class=\"subtext\">alert, 취약점, 상태를 기준으로 우선 대응 대상을 확인합니다.</div>
+            <h2 data-i18n=\"dash.card.risk_summary\">Risk Summary</h2>
+            <div class=\"subtext\" data-i18n=\"dash.card.risk_summary.sub\">alert, 취약점, 상태를 기준으로 우선 대응 대상을 확인합니다.</div>
             <div class=\"table-wrap\" id=\"risk_summary\"><span class=\"empty\">⏳ 로딩 중…</span></div>
           </section>
 
           <section class=\"card\" id=\"recent_activity_section\">
-            <h2>Recent Activity</h2>
-            <div class=\"subtext\">운영자가 허용한 범위에서 최근 이벤트와 관측값을 보여줍니다.</div>
+            <h2 data-i18n=\"dash.card.recent_activity\">Recent Activity</h2>
+            <div class=\"subtext\" data-i18n=\"dash.card.recent_activity.sub\">운영자가 허용한 범위에서 최근 이벤트와 관측값을 보여줍니다.</div>
             <div class=\"list\" id=\"recent_activity\"><span class=\"empty\">⏳ 로딩 중…</span></div>
           </section>
 
@@ -3049,8 +3296,8 @@ def render_user_dashboard_html(
     <!-- ── Tab: Alert Triage ───────────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_triage\">
       <section class=\"card\">
-        <h2>🚨 Alert Triage</h2>
-        <div class=\"subtext\">최근 24h 경보 목록입니다. 상태를 클릭해 Triage 처리하세요.</div>
+        <h2 data-i18n=\"dash.card.triage\">🚨 Alert Triage</h2>
+        <div class=\"subtext\" data-i18n=\"dash.card.triage.sub\">최근 24h 경보 목록입니다. 상태를 클릭해 Triage 처리하세요.</div>
         <div class=\"table-wrap\" id=\"triage_table\"><span class=\"empty\">로딩 중…</span></div>
         <div style=\"margin-top:10px\"><button id=\"reload_triage\" class=\"secondary\">새로고침</button></div>
       </section>
@@ -3059,8 +3306,8 @@ def render_user_dashboard_html(
     <!-- ── Tab: Incidents ─────────────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_incidents\">
       <section class=\"card\">
-        <h2>📋 인시던트 관리</h2>
-        <div class=\"subtext\">여러 경보를 하나의 인시던트로 묶고 조사 노트를 남깁니다.</div>
+        <h2 data-i18n=\"dash.card.incidents\">📋 인시던트 관리</h2>
+        <div class=\"subtext\" data-i18n=\"dash.card.incidents.sub\">여러 경보를 하나의 인시던트로 묶고 조사 노트를 남깁니다.</div>
         <!-- 검색 + 날짜 필터 + CSV 다운로드 -->
         <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:#0f172a;border-radius:8px;border:1px solid #1e293b\">
           <input type=\"text\" id=\"inc_search\" placeholder=\"제목 · 담당자 · 상태 검색\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 10px;font-size:13px;min-width:180px;flex:1\" />
@@ -3128,7 +3375,7 @@ def render_user_dashboard_html(
         </div>
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
-            <h2 style=\"margin:0\">🖥️ PC 자산 목록 (Fleet)</h2>
+            <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.fleet\">🖥️ PC 자산 목록 (Fleet)</h2>
             <div style=\"display:flex;gap:6px;\">
               <button onclick=\"onDemandRefresh('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">🔄 새로고침</button>
               <button onclick=\"downloadAssetsCSV('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
@@ -3153,7 +3400,7 @@ def render_user_dashboard_html(
         </div>
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
-            <h2 style=\"margin:0\">🖧 서버 자산 목록 (Zabbix)</h2>
+            <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.zabbix\">🖧 서버 자산 목록 (Zabbix)</h2>
             <div style=\"display:flex;gap:6px;\">
               <button onclick=\"onDemandRefresh('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">🔄 새로고침</button>
               <button onclick=\"downloadAssetsCSV('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
@@ -3180,8 +3427,8 @@ def render_user_dashboard_html(
         </div>
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
-            <h2 style=\"margin:0\">🔍 취약점 현황 (Trivy)</h2>
-            <button onclick=\"downloadAssetsCSV('trivy')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\">📥 CSV 내보내기</button>
+            <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.trivy\">🔍 취약점 현황 (Trivy)</h2>
+            <button onclick=\"downloadAssetsCSV('trivy')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.btn.csv\">📥 CSV 내보내기</button>
           </div>
           <div class=\"asset-search-bar\" style=\"flex-wrap:wrap;\">
             <input type=\"text\" id=\"trivy_search_hostname\" placeholder=\"호스트명 검색…\" oninput=\"filterAssetTable('trivy')\" />
@@ -3202,7 +3449,7 @@ def render_user_dashboard_html(
     <!-- ── Tab: Compliance PDCA ──────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_compliance\">
       <section class=\"card\">
-        <h2>✅ Compliance PDCA 대시보드</h2>
+        <h2 data-i18n=\"dash.card.compliance\">✅ Compliance PDCA 대시보드</h2>
         <div class=\"subtext\">ISMS-P / ISO 27001 통제 항목 점검 현황을 PDCA(Plan-Do-Check-Act) 관점으로 요약합니다.<br/>
           <span style=\"color:#64748b;font-size:12px\">※ 상단 카드의 <strong>📋 전체 점검 / Pass / Fail / Warning / Pass Rate</strong>는 <strong>통제 점검(control_checks)</strong> 결과만 집계합니다. <strong>🔧 미조치 합계</strong>와 <strong>🔴 기한초과</strong>는 통제 점검 + Trivy 취약점(critical/high) + Alert(critical/high, 7일) 미조치 항목을 통합 집계합니다.</span>
         </div>
@@ -3243,16 +3490,16 @@ def render_user_dashboard_html(
 
       <!-- ── 증적 리포트 다운로드 ────────────────────────────────────── -->
       <section class=\"card\" style=\"margin-top:20px\">
-        <h2>📥 감사 증적 리포트 다운로드</h2>
-        <div class=\"subtext\">ISMS-P / ISO 27001 감사 증적으로 사용할 수 있는 리포트를 CSV로 다운로드합니다. 미리보기를 통해 CSV의 컬럼 구성을 먼저 확인할 수 있습니다.</div>
+        <h2 data-i18n=\"dash.card.reports\">📥 감사 증적 리포트 다운로드</h2>
+        <div class=\"subtext\" data-i18n=\"dash.card.reports.sub\">ISMS-P / ISO 27001 감사 증적으로 사용할 수 있는 리포트를 CSV로 다운로드합니다. 미리보기를 통해 CSV의 컬럼 구성을 먼저 확인할 수 있습니다.</div>
         <div id=\"report_download_area\" style=\"margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px\">
         </div>
       </section>
 
       <!-- ── 교차 검증 (Cross-verification) ─────────────────────────── -->
       <section class=\"card\" style=\"margin-top:20px\">
-        <h2>🔀 소스 간 교차 검증</h2>
-        <div class=\"subtext\">서로 다른 수집 소스의 데이터를 교차 비교하여 누락·불일치를 확인합니다.</div>
+        <h2 data-i18n=\"dash.card.crosscheck\">🔀 소스 간 교차 검증</h2>
+        <div class=\"subtext\" data-i18n=\"dash.card.crosscheck.sub\">서로 다른 수집 소스의 데이터를 교차 비교하여 누락·불일치를 확인합니다.</div>
         <div id=\"crosscheck_area\" style=\"margin-top:16px\">
           <div class=\"empty\" style=\"padding:16px;color:#64748b\">⏳ 교차 검증 데이터를 불러오는 중…</div>
         </div>
@@ -3572,22 +3819,22 @@ def render_user_dashboard_html(
   <!-- ── 하단 탭 바 (모바일 전용) ────────────────────────────────────────── -->
   <nav class=\"bottom-nav\" id=\"bottom_nav\">
     <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\">
-      <span class=\"bn-icon\">📊</span>대시보드
+      <span class=\"bn-icon\">📊</span><span data-i18n=\"dash.bn.dashboard\">대시보드</span>
     </button>
     <button data-tab=\"triage\" onclick=\"switchTab('triage')\">
-      <span class=\"bn-icon\">🚨</span>Triage
+      <span class=\"bn-icon\">🚨</span><span data-i18n=\"dash.bn.triage\">Triage</span>
     </button>
     <button data-tab=\"assets\" onclick=\"switchTab('assets')\">
-      <span class=\"bn-icon\">📡</span>자산
+      <span class=\"bn-icon\">📡</span><span data-i18n=\"dash.bn.assets\">자산</span>
     </button>
     <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\">
-      <span class=\"bn-icon\">📋</span>인시던트
+      <span class=\"bn-icon\">📋</span><span data-i18n=\"dash.bn.incidents\">인시던트</span>
     </button>
     <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\">
-      <span class=\"bn-icon\">✅</span>PDCA
+      <span class=\"bn-icon\">✅</span><span data-i18n=\"dash.bn.compliance\">PDCA</span>
     </button>
     <button data-tab=\"guides\" onclick=\"switchTab('guides')\">
-      <span class=\"bn-icon\">📖</span>가이드
+      <span class=\"bn-icon\">📖</span><span data-i18n=\"dash.bn.guides\">가이드</span>
     </button>
   </nav>
 
@@ -5753,6 +6000,7 @@ def render_user_dashboard_html(
       <div id=\"nlq_result_area\" style=\"margin-top:12px;\"></div>
     </div>
   </dialog>
+  __I18N_SCRIPT__
 </body>
 </html>"""
     return (
@@ -5764,6 +6012,8 @@ def render_user_dashboard_html(
         .replace("__FLEET_UI_URL__", fleet_ui_url)
         .replace("__ZABBIX_UI_URL__", zabbix_ui_url)
         .replace("__GUIDE_LABELS_JSON__", guide_labels_json)
+        .replace("__I18N_TOGGLE__", _i18n_toggle_html())
+        .replace("__I18N_SCRIPT__", _i18n_script(_DASHBOARD_I18N))
     )
 
 
