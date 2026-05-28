@@ -5857,22 +5857,27 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       </div>
     </section>
 
-    <!-- ── Admin Tab Nav ────────────────────────────────────────────────── -->
+    <!-- ── Admin Tab Nav (8 tabs, Phase 2 정렬) ────────────────────────── -->
     <nav class=\"tabs-nav\" id=\"admin_tabs_nav\">
-      <button class=\"active\" data-atab=\"monitoring\" onclick=\"switchAdminTab('monitoring')\">📊 모니터링</button>
-      <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\">👤 자산 관리</button>
-      <button data-atab=\"query\" onclick=\"switchAdminTab('query')\">🔍 쿼리</button>
-      <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\">⚙️ 설정</button>
-      <button data-atab=\"users\" onclick=\"switchAdminTab('users')\">🙋 가입 요청</button>
-      <button data-atab=\"auditlog\" onclick=\"switchAdminTab('auditlog')\">📝 변경 이력</button>
-      <button data-atab=\"roleperm\" onclick=\"switchAdminTab('roleperm')\">🔐 권한 관리</button>
-      <button data-atab=\"userlog\" onclick=\"switchAdminTab('userlog')\">👤 사용자 로그</button>
+      <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\">📊 Overview</button>
+      <button data-atab=\"compliance\" onclick=\"switchAdminTab('compliance')\">✅ Compliance</button>
+      <button data-atab=\"triage\" onclick=\"switchAdminTab('triage')\">🚨 Triage &amp; Incidents</button>
+      <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\">🔧 Remediation</button>
+      <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\">👤 자산 / Owners</button>
+      <button data-atab=\"access\" onclick=\"switchAdminTab('access')\">🛡️ Access Control</button>
+      <button data-atab=\"logs\" onclick=\"switchAdminTab('logs')\">📝 Audit &amp; Logs</button>
+      <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\">⚙️ Settings</button>
     </nav>
 
-    <!-- ── Tab: 모니터링 ─────────────────────────────────────────────────── -->
-    <div class=\"atab-panel active\" id=\"atab_monitoring\">
+    <!-- ── Tab: Overview ──────────────────────────────────────────────────── -->
+    <div class=\"atab-panel active\" id=\"atab_overview\">
       <section class=\"metrics\" id=\"overview_cards\"></section>
       <div class=\"stack\">
+        <section class=\"card\">
+          <h2>📦 Phase 2 데이터 헬스</h2>
+          <div class=\"subtext\">PostgreSQL → InMemoryQueryStore 로 로드된 Phase 2 시드 데이터의 현재 카운트입니다. 0이면 시드 누락 또는 schema 002 미적용일 수 있습니다.</div>
+          <div class=\"coverage\" id=\"phase2_health\"></div>
+        </section>
         <section class=\"card\">
           <h2>Source Coverage</h2>
           <div class=\"subtext\">Fleet / Wazuh / Zabbix / Trivy / host logs 기준으로 현재 MORI에 연결된 호스트 수입니다.</div>
@@ -5893,6 +5898,82 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <h2>Recent Activity</h2>
           <div class=\"subtext\">최근 alert / observation / fleet query 결과를 시간순으로 합쳐 보여줍니다.</div>
           <div class=\"list\" id=\"recent_activity\"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ── Tab: Compliance (Phase 2 control_checks) ──────────────────────── -->
+    <div class=\"atab-panel\" id=\"atab_compliance\">
+      <section class=\"metrics\" id=\"admin_compliance_cards\"></section>
+      <div class=\"stack\">
+        <section class=\"card\">
+          <h2>📋 통제 점검 현황 (PDCA)</h2>
+          <div class=\"subtext\">
+            <code>control_check_results</code> 테이블 기준 ISMS-P / ISO 27001 통제 점검 결과입니다.
+            상세 시각화와 미조치 항목 편집은 <a href=\"/ui#compliance\" style=\"color:#7dd3fc\">사용자 대시보드 Compliance 탭 ↗</a>에서 가능합니다.
+          </div>
+          <div class=\"actions\" style=\"margin-bottom:12px\">
+            <button id=\"admin_reload_compliance\" class=\"secondary\">새로고침</button>
+            <a href=\"/compliance/pdca/pending.csv\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\">📥 미조치 CSV</a>
+          </div>
+          <div class=\"table-wrap\" id=\"admin_compliance_categories\"></div>
+        </section>
+        <section class=\"card\">
+          <h2>🔧 미조치 항목 (통제 + Trivy + Alert)</h2>
+          <div class=\"subtext\">기한 초과는 🔴 표시. 통제 점검 fail/warning + Trivy critical/high + Alert critical/high (7일) 통합.</div>
+          <div class=\"table-wrap\" id=\"admin_compliance_pending\"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ── Tab: Triage & Incidents ───────────────────────────────────────── -->
+    <div class=\"atab-panel\" id=\"atab_triage\">
+      <div class=\"stack\">
+        <section class=\"card\">
+          <h2>🚨 Alert Triage 현황</h2>
+          <div class=\"subtext\">
+            triage 상태가 설정된 alert 목록입니다. 편집은
+            <a href=\"/ui#triage\" style=\"color:#7dd3fc\">사용자 대시보드 Triage 탭 ↗</a>에서 가능합니다.
+          </div>
+          <div class=\"actions\" style=\"margin-bottom:12px\">
+            <button id=\"admin_reload_triage\" class=\"secondary\">새로고침</button>
+          </div>
+          <div class=\"table-wrap\" id=\"admin_triage_list\"></div>
+        </section>
+        <section class=\"card\">
+          <h2>📋 인시던트 (incident_store)</h2>
+          <div class=\"subtext\">
+            등록된 인시던트와 처리 상태입니다. 생성·노트는
+            <a href=\"/ui#incidents\" style=\"color:#7dd3fc\">사용자 대시보드 Incidents 탭 ↗</a>에서 가능합니다.
+          </div>
+          <div class=\"actions\" style=\"margin-bottom:12px\">
+            <button id=\"admin_reload_incidents\" class=\"secondary\">새로고침</button>
+            <a href=\"/incidents?format=csv\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\">📥 인시던트 CSV</a>
+          </div>
+          <div class=\"table-wrap\" id=\"admin_incidents_list\"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ── Tab: Remediation (vuln_actions + action_plans) ────────────────── -->
+    <div class=\"atab-panel\" id=\"atab_remediation\">
+      <div class=\"stack\">
+        <section class=\"card\">
+          <h2>🔧 Trivy 취약점 조치 상태</h2>
+          <div class=\"subtext\">
+            Critical / High 취약점과 등록된 조치 계획(plan) · 예외(exception) 입니다.
+            편집은 <a href=\"/ui#assets\" style=\"color:#7dd3fc\">사용자 대시보드 Assets 탭의 취약점 카드 ↗</a>에서 가능합니다.
+          </div>
+          <div class=\"actions\" style=\"margin-bottom:12px\">
+            <button id=\"admin_reload_vulns\" class=\"secondary\">새로고침</button>
+            <a href=\"/trivy/vulnerabilities?format=csv&amp;severity=critical\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\">📥 Critical CSV</a>
+          </div>
+          <div class=\"table-wrap\" id=\"admin_vuln_actions\"></div>
+        </section>
+        <section class=\"card\">
+          <h2>📝 자산 조치 계획 (action_plans)</h2>
+          <div class=\"subtext\">호스트별 등록된 조치 계획(target_date / text)을 표시합니다.</div>
+          <div class=\"table-wrap\" id=\"admin_action_plans\"></div>
         </section>
       </div>
     </div>
@@ -5922,54 +6003,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     </div>
 
     <!-- ── Tab: 쿼리 ─────────────────────────────────────────────────────── -->
-    <div class=\"atab-panel\" id=\"atab_query\">
-      <div class=\"stack\">
-        <section class=\"card\">
-          <h2>⚡ Quick Actions</h2>
-          <div class=\"subtext\">자주 쓰는 질의를 클릭하면 아래 폼에 바로 채워집니다.</div>
-          <div class=\"quick-actions\" id=\"quick_queries\"></div>
-        </section>
-        <section class=\"card\">
-          <h2>🗣️ Natural Language Query</h2>
-          <div class=\"subtext\">자연스럽게 질문하면 의도를 해석해 실행합니다. <a href=\"#\" id=\"query_guide_link\" style=\"color:#7dd3fc;\">질의 가이드 보기 ↗</a></div>
-          <div class=\"row\">
-            <label for=\"nlp_text\">질문</label>
-            <textarea id=\"nlp_text\">오프라인 호스트 보여줘</textarea>
-          </div>
-          <div class=\"guide-chips\" id=\"guide_examples\"></div>
-          <div class=\"actions\">
-            <button id=\"interpret\" class=\"secondary\">Interpret Text</button>
-            <button id=\"run\">Run Query</button>
-            <button id=\"download_csv\" class=\"ghost\">Download CSV</button>
-          </div>
-          <div id=\"interpretation_hint\"></div>
-          <div class=\"status-line\" id=\"query_status\">catalog loading...</div>
-        </section>
-        <section class=\"card\">
-          <h2>🔧 Structured Query Builder</h2>
-          <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
-            <div class=\"row\"><label for=\"intent\">Intent</label><select id=\"intent\"></select></div>
-            <div class=\"row\"><label for=\"time_range\">time_range</label><input id=\"time_range\" value=\"24h\" /></div>
-            <div class=\"row\"><label for=\"host_id\">host_id</label><input id=\"host_id\" placeholder=\"예: host-1\" /></div>
-            <div class=\"row\"><label for=\"hostname\">hostname</label><input id=\"hostname\" placeholder=\"예: mbp-01\" /></div>
-            <div class=\"row\"><label for=\"severity\">severity</label><input id=\"severity\" placeholder=\"예: high,critical\" /></div>
-            <div class=\"row\"><label for=\"source\">source</label><input id=\"source\" placeholder=\"예: wazuh\" /></div>
-          </div>
-          <div class=\"row\"><label for=\"filters\">filters (JSON)</label><textarea id=\"filters\">{}</textarea></div>
-          <div class=\"actions\">
-            <button id=\"reset\" class=\"secondary\">Reset</button>
-            <button id=\"copy_payload\" class=\"ghost\">Copy Payload</button>
-          </div>
-        </section>
-        <section class=\"card\">
-          <h2>📨 Request / Response</h2>
-          <div class=\"row\"><label for=\"payload\">Request Payload</label><textarea id=\"payload\">__PAYLOAD_JSON__</textarea></div>
-          <div class=\"row\"><label>Response</label><div id=\"result\" class=\"query-result-area\"><span class=\"result-placeholder\">아직 실행 전입니다.</span></div></div>
-        </section>
-      </div>
-    </div>
-
-    <!-- ── Tab: 설정 ─────────────────────────────────────────────────────── -->
+    <!-- ── Tab: 설정 (대시보드 / Webhook / 가이드 / Dev Tools 통합) ───── -->
     <div class=\"atab-panel\" id=\"atab_settings\">
       <div class=\"stack\">
         <section class=\"card\">
@@ -6022,11 +6056,62 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           </div>
           <div class=\"status-line\" id=\"guide_edit_status\"></div>
         </section>
+
+        <!-- ── Dev Tools (자연어 / 구조화 질의 — 접기 기본) ───────────── -->
+        <details class=\"card\" style=\"padding:0\">
+          <summary style=\"cursor:pointer;padding:18px 22px;font-size:18px;font-weight:700;color:#e2e8f0;list-style:none\">
+            🛠️ Dev Tools <span style=\"color:#94a3b8;font-weight:400;font-size:13px\">— 자연어 / 구조화 질의 (개발자용)</span>
+          </summary>
+          <div style=\"padding:0 22px 22px 22px\">
+            <div class=\"subtext\" style=\"margin-bottom:12px\">관리자가 직접 백엔드 질의를 시험하기 위한 도구입니다. 일반 사용자 화면은 <a href=\"/ui\" style=\"color:#7dd3fc\">/ui</a> 를 참고하세요.</div>
+            <section style=\"margin-bottom:18px\">
+              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\">⚡ Quick Actions</h3>
+              <div class=\"quick-actions\" id=\"quick_queries\"></div>
+            </section>
+            <section style=\"margin-bottom:18px\">
+              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\">🗣️ Natural Language Query</h3>
+              <div class=\"subtext\">자연스럽게 질문하면 의도를 해석해 실행합니다. <a href=\"#\" id=\"query_guide_link\" style=\"color:#7dd3fc;\">질의 가이드 ↗</a></div>
+              <div class=\"row\">
+                <label for=\"nlp_text\">질문</label>
+                <textarea id=\"nlp_text\">오프라인 호스트 보여줘</textarea>
+              </div>
+              <div class=\"guide-chips\" id=\"guide_examples\"></div>
+              <div class=\"actions\">
+                <button id=\"interpret\" class=\"secondary\">Interpret Text</button>
+                <button id=\"run\">Run Query</button>
+                <button id=\"download_csv\" class=\"ghost\">Download CSV</button>
+              </div>
+              <div id=\"interpretation_hint\"></div>
+              <div class=\"status-line\" id=\"query_status\">catalog loading...</div>
+            </section>
+            <section style=\"margin-bottom:18px\">
+              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\">🔧 Structured Query Builder</h3>
+              <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
+                <div class=\"row\"><label for=\"intent\">Intent</label><select id=\"intent\"></select></div>
+                <div class=\"row\"><label for=\"time_range\">time_range</label><input id=\"time_range\" value=\"24h\" /></div>
+                <div class=\"row\"><label for=\"host_id\">host_id</label><input id=\"host_id\" placeholder=\"예: host-1\" /></div>
+                <div class=\"row\"><label for=\"hostname\">hostname</label><input id=\"hostname\" placeholder=\"예: mbp-01\" /></div>
+                <div class=\"row\"><label for=\"severity\">severity</label><input id=\"severity\" placeholder=\"예: high,critical\" /></div>
+                <div class=\"row\"><label for=\"source\">source</label><input id=\"source\" placeholder=\"예: wazuh\" /></div>
+              </div>
+              <div class=\"row\"><label for=\"filters\">filters (JSON)</label><textarea id=\"filters\">{}</textarea></div>
+              <div class=\"actions\">
+                <button id=\"reset\" class=\"secondary\">Reset</button>
+                <button id=\"copy_payload\" class=\"ghost\">Copy Payload</button>
+              </div>
+            </section>
+            <section>
+              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\">📨 Request / Response</h3>
+              <div class=\"row\"><label for=\"payload\">Request Payload</label><textarea id=\"payload\">__PAYLOAD_JSON__</textarea></div>
+              <div class=\"row\"><label>Response</label><div id=\"result\" class=\"query-result-area\"><span class=\"result-placeholder\">아직 실행 전입니다.</span></div></div>
+            </section>
+          </div>
+        </details>
       </div>
     </div>
 
-    <!-- ── Tab: 가입 요청 관리 ──────────────────────────────────────────── -->
-    <div class=\"atab-panel\" id=\"atab_users\">
+    <!-- ── Tab: Access Control (가입 요청 + RBAC 통합) ─────────────────── -->
+    <div class=\"atab-panel\" id=\"atab_access\">
       <div class=\"stack\">
         <section class=\"card\">
           <h2>🙋 가입 요청 관리</h2>
@@ -6037,11 +6122,32 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div id=\"signup_requests_list\" class=\"list\"><span class=\"empty\">로딩 중…</span></div>
           <div class=\"status-line\" id=\"signup_requests_status\"></div>
         </section>
+
+        <section class=\"card\">
+          <h2>🔐 역할별 탭 권한 관리</h2>
+          <div class=\"subtext\">각 계정 역할에서 보이는 탭을 설정합니다. 저장 후 다음 로그인부터 적용됩니다.</div>
+          <div id=\"roleperm_list\" style=\"display:grid;gap:16px;margin-bottom:16px\"><span class=\"empty\">로딩 중…</span></div>
+          <div class=\"actions\">
+            <button id=\"save_roleperm\">저장</button>
+            <button id=\"reload_roleperm\" class=\"secondary\">새로고침</button>
+          </div>
+          <div class=\"status-line\" id=\"roleperm_status\"></div>
+        </section>
+
+        <section class=\"card\">
+          <h2>👤 유저별 대시보드 탭 관리</h2>
+          <div class=\"subtext\">개별 유저에게 역할 기본값과 다른 탭을 지정합니다. 유저별 설정이 있으면 역할 기본값보다 우선 적용됩니다.</div>
+          <div class=\"actions\" style=\"margin-bottom:12px\">
+            <button id=\"reload_usertab\" class=\"secondary\">🔄 새로고침</button>
+          </div>
+          <div id=\"usertab_list\" style=\"display:grid;gap:14px;margin-bottom:16px\"><span class=\"empty\">로딩 중…</span></div>
+          <div class=\"status-line\" id=\"usertab_status\"></div>
+        </section>
       </div>
     </div>
 
-    <!-- ── Tab: 변경 이력 ────────────────────────────────────────────────── -->
-    <div class=\"atab-panel\" id=\"atab_auditlog\">
+    <!-- ── Tab: Audit & Logs (자산 변경 이력 + 사용자 행동 로그 통합) ─── -->
+    <div class=\"atab-panel\" id=\"atab_logs\">
       <div class=\"stack\">
         <section class=\"card\">
           <h2>📝 자산 변경 이력</h2>
@@ -6059,38 +6165,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div id=\"audit_log_list\" class=\"list\"><span class=\"empty\">로딩 중…</span></div>
           <div class=\"status-line\" id=\"audit_log_status\"></div>
         </section>
-      </div>
-    </div>
 
-    <!-- ── Tab: 권한 관리 ───────────────────────────────────────────────── -->
-    <div class=\"atab-panel\" id=\"atab_roleperm\">
-      <div class=\"stack\">
-        <section class=\"card\">
-          <h2>🔐 역할별 탭 권한 관리</h2>
-          <div class=\"subtext\">각 계정 역할에서 보이는 탭을 설정합니다. 저장 후 다음 로그인부터 적용됩니다.</div>
-          <div id=\"roleperm_list\" style=\"display:grid;gap:16px;margin-bottom:16px\"><span class=\"empty\">로딩 중…</span></div>
-          <div class=\"actions\">
-            <button id=\"save_roleperm\">저장</button>
-            <button id=\"reload_roleperm\" class=\"secondary\">새로고침</button>
-          </div>
-          <div class=\"status-line\" id=\"roleperm_status\"></div>
-        </section>
-
-        <section class=\"card\" style=\"margin-top:20px\">
-          <h2>👤 유저별 대시보드 탭 관리</h2>
-          <div class=\"subtext\">개별 유저에게 역할 기본값과 다른 탭을 지정합니다. 유저별 설정이 있으면 역할 기본값보다 우선 적용됩니다.</div>
-          <div class=\"actions\" style=\"margin-bottom:12px\">
-            <button id=\"reload_usertab\" class=\"secondary\">🔄 새로고침</button>
-          </div>
-          <div id=\"usertab_list\" style=\"display:grid;gap:14px;margin-bottom:16px\"><span class=\"empty\">로딩 중…</span></div>
-          <div class=\"status-line\" id=\"usertab_status\"></div>
-        </section>
-      </div>
-    </div>
-
-    <!-- ── Tab: 사용자 로그 ─────────────────────────────────────────────── -->
-    <div class=\"atab-panel\" id=\"atab_userlog\">
-      <div class=\"stack\">
         <section class=\"card\">
           <h2>👤 사용자 행동 로그</h2>
           <div class=\"subtext\">로그인·로그아웃·탭 전환·쿼리 실행 등 모든 사용자 행동이 기록됩니다.</div>
@@ -6116,29 +6191,29 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
   <!-- ── 어드민 하단 탭 바 (모바일 전용) ────────────────────────────────── -->
   <nav class=\"admin-bottom-nav\" id=\"admin_bottom_nav\">
-    <button class=\"active\" data-atab=\"monitoring\" onclick=\"switchAdminTab('monitoring')\">
-      <span class=\"bn-icon\">📊</span>모니터링
+    <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\">
+      <span class=\"bn-icon\">📊</span>Overview
+    </button>
+    <button data-atab=\"compliance\" onclick=\"switchAdminTab('compliance')\">
+      <span class=\"bn-icon\">✅</span>Compliance
+    </button>
+    <button data-atab=\"triage\" onclick=\"switchAdminTab('triage')\">
+      <span class=\"bn-icon\">🚨</span>Triage
+    </button>
+    <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\">
+      <span class=\"bn-icon\">🔧</span>조치
     </button>
     <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\">
       <span class=\"bn-icon\">👤</span>자산
     </button>
-    <button data-atab=\"query\" onclick=\"switchAdminTab('query')\">
-      <span class=\"bn-icon\">🔍</span>쿼리
+    <button data-atab=\"access\" onclick=\"switchAdminTab('access')\">
+      <span class=\"bn-icon\">🛡️</span>권한
+    </button>
+    <button data-atab=\"logs\" onclick=\"switchAdminTab('logs')\">
+      <span class=\"bn-icon\">📝</span>로그
     </button>
     <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\">
       <span class=\"bn-icon\">⚙️</span>설정
-    </button>
-    <button data-atab=\"users\" onclick=\"switchAdminTab('users')\">
-      <span class=\"bn-icon\">🙋</span>가입
-    </button>
-    <button data-atab=\"auditlog\" onclick=\"switchAdminTab('auditlog')\">
-      <span class=\"bn-icon\">📝</span>이력
-    </button>
-    <button data-atab=\"roleperm\" onclick=\"switchAdminTab('roleperm')\">
-      <span class=\"bn-icon\">🔐</span>권한
-    </button>
-    <button data-atab=\"userlog\" onclick=\"switchAdminTab('userlog')\">
-      <span class=\"bn-icon\">👤</span>로그
     </button>
   </nav>
 
@@ -7220,7 +7295,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       if (panel) panel.classList.add('active');
       document.querySelectorAll('[data-atab="' + tab + '"]').forEach(btn => btn.classList.add('active'));
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      if (tab === 'auditlog') loadAuditLog();
+      // 탭별 lazy 로더 dispatch (Phase 2)
+      if (tab === 'logs') { loadAuditLog(); loadUserActivityLog(); }
+      if (tab === 'compliance') loadAdminCompliance();
+      if (tab === 'triage') { loadAdminTriage(); loadAdminIncidents(); }
+      if (tab === 'remediation') { loadAdminVulnActions(); loadAdminActionPlans(); }
+      if (tab === 'overview') loadAdminPhase2Health();
     }
 
     // ── Signup Requests ────────────────────────────────────────────────────
@@ -7553,17 +7633,284 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       });
     }
 
+    // ── Phase 2: Overview · Compliance · Triage · Remediation 로더 ───────────
+    const STATUS_BADGE = {
+      pass:'<span style=\"background:rgba(34,197,94,.12);color:#86efac;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">PASS</span>',
+      fail:'<span style=\"background:rgba(248,113,113,.12);color:#fca5a5;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">FAIL</span>',
+      warning:'<span style=\"background:rgba(250,204,21,.12);color:#fde68a;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">WARN</span>',
+      not_applicable:'<span style=\"background:rgba(148,163,184,.12);color:#cbd5e1;padding:2px 8px;border-radius:6px;font-size:12px\">N/A</span>',
+      not_checked:'<span style=\"background:rgba(100,116,139,.12);color:#94a3b8;padding:2px 8px;border-radius:6px;font-size:12px\">미점검</span>',
+    };
+    const _statusBadge = (s) => STATUS_BADGE[s] || `<span>${escapeHtml(s||'')}</span>`;
+    const _sourceBadge = (src) => {
+      const map = { control_check:'#7dd3fc', trivy:'#fbbf24', alert:'#fca5a5' };
+      const color = map[src] || '#94a3b8';
+      return `<span style=\"background:rgba(56,189,248,.08);color:${color};padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700\">${escapeHtml(src||'-')}</span>`;
+    };
+
+    async function loadAdminPhase2Health() {
+      const el = document.getElementById('phase2_health');
+      if (!el) return;
+      el.innerHTML = '<div class=\"coverage-item\"><span style=\"color:#94a3b8\">로딩 중…</span></div>';
+      try {
+        const res = await fetch('/compliance/pdca');
+        const data = res.ok ? await res.json() : { summary: {}, pending_count: 0 };
+        const summary = data.summary || {};
+        const total = Object.values(summary).reduce((a,b)=>a+(b||0),0);
+        const items = [
+          { label: 'Control Checks', value: total, hint: 'control_check_results' },
+          { label: '미조치', value: data.pending_count || 0, hint: 'fail + warning + Trivy + Alert' },
+          { label: '기한 초과', value: data.overdue_count || 0, hint: 'remediation_due_at 경과' },
+        ];
+        const inc = await fetch('/incidents').then(r => r.ok ? r.json() : { total: 0 }).catch(() => ({ total: 0 }));
+        items.push({ label: 'Incidents', value: inc.total || (inc.incidents||[]).length, hint: 'incident_store' });
+        el.innerHTML = items.map(it => `
+          <div class=\"coverage-item\">
+            <div style=\"color:#94a3b8;font-size:12px\">${escapeHtml(it.label)}</div>
+            <strong style=\"color:${it.value>0?'#86efac':'#fca5a5'}\">${it.value}</strong>
+            <div style=\"color:#64748b;font-size:11px;margin-top:4px\">${escapeHtml(it.hint)}</div>
+          </div>`).join('');
+      } catch (e) {
+        el.innerHTML = `<div class=\"coverage-item\"><span style=\"color:#fca5a5\">로드 실패: ${escapeHtml(e.message)}</span></div>`;
+      }
+    }
+
+    async function loadAdminCompliance() {
+      const cardsEl = document.getElementById('admin_compliance_cards');
+      const catEl = document.getElementById('admin_compliance_categories');
+      const pendingEl = document.getElementById('admin_compliance_pending');
+      if (!cardsEl) return;
+      cardsEl.innerHTML = '<div class=\"metric-card card\"><span class=\"empty\">로딩 중…</span></div>';
+      try {
+        const res = await fetch('/compliance/pdca');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const s = data.summary || {};
+        const total = (s.pass||0)+(s.fail||0)+(s.warning||0)+(s.not_applicable||0)+(s.not_checked||0);
+        const passRate = total > 0 ? Math.round(((s.pass||0)/total)*100) : null;
+        const ps = data.pending_sources || {};
+        cardsEl.innerHTML = `
+          <div class=\"metric-card card\"><div class=\"metric-label\">📋 전체 점검</div><div class=\"metric-value\">${total}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">✅ Pass</div><div class=\"metric-value\" style=\"color:#86efac\">${s.pass||0}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">❌ Fail</div><div class=\"metric-value\" style=\"color:#fca5a5\">${s.fail||0}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">⚠️ Warning</div><div class=\"metric-value\" style=\"color:#fde68a\">${s.warning||0}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">📊 Pass Rate</div><div class=\"metric-value\" style=\"color:#a78bfa\">${passRate===null?'—':passRate+'%'}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">🔧 미조치</div><div class=\"metric-value\" style=\"color:#fb923c\">${data.pending_count||0}</div><div class=\"metric-sub\">통제 ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}</div></div>
+        `;
+        const cats = data.categories || [];
+        if (!cats.length) {
+          catEl.innerHTML = '<div class=\"empty\">카테고리 데이터 없음 — 시드 누락 가능성</div>';
+        } else {
+          catEl.innerHTML = `<table class=\"result-table\">
+            <thead><tr><th>카테고리</th><th>총</th><th style=\"color:#86efac\">Pass</th><th style=\"color:#fca5a5\">Fail</th><th style=\"color:#fde68a\">Warning</th><th style=\"color:#cbd5e1\">N/A</th><th style=\"color:#94a3b8\">미점검</th></tr></thead>
+            <tbody>${cats.map(c => `<tr>
+              <td><strong>${escapeHtml(c.category||'-')}</strong></td>
+              <td>${c.total||0}</td>
+              <td style=\"color:#86efac\">${c.pass||0}</td>
+              <td style=\"color:#fca5a5\">${c.fail||0}</td>
+              <td style=\"color:#fde68a\">${c.warning||0}</td>
+              <td style=\"color:#cbd5e1\">${c.not_applicable||0}</td>
+              <td style=\"color:#94a3b8\">${c.not_checked||0}</td>
+            </tr>`).join('')}</tbody></table>`;
+        }
+        const pending = data.pending_remediations || [];
+        if (!pending.length) {
+          pendingEl.innerHTML = '<div class=\"empty\">미조치 항목 없음 🎉</div>';
+        } else {
+          pendingEl.innerHTML = `<table class=\"result-table\">
+            <thead><tr><th>출처</th><th>통제 ID</th><th>대상</th><th>상태</th><th>담당자</th><th>조치기한</th><th>비고</th></tr></thead>
+            <tbody>${pending.slice(0,100).map(p => `<tr>
+              <td>${_sourceBadge(p.source)}</td>
+              <td><strong>${escapeHtml(p.control_id||'-')}</strong></td>
+              <td>${escapeHtml(p.entity_id||'-')}</td>
+              <td>${_statusBadge(p.status)}</td>
+              <td>${escapeHtml(p.owner||'-')}</td>
+              <td style=\"${p.overdue?'color:#fca5a5;font-weight:700':''}\">${p.overdue?'🔴 ':''}${escapeHtml(p.remediation_due_at?formatTime(p.remediation_due_at):'-')}</td>
+              <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(p.note||'')}</td>
+            </tr>`).join('')}${pending.length>100?`<tr><td colspan=\"7\" style=\"color:#64748b;text-align:center;padding:8px\">… ${pending.length-100}건 더 (CSV 다운로드 권장)</td></tr>`:''}</tbody></table>`;
+        }
+      } catch (e) {
+        cardsEl.innerHTML = `<div class=\"metric-card card\"><span class=\"empty\">로드 실패: ${escapeHtml(e.message)}</span></div>`;
+        if (catEl) catEl.innerHTML = '';
+        if (pendingEl) pendingEl.innerHTML = '';
+      }
+    }
+    if (document.getElementById('admin_reload_compliance')) {
+      document.getElementById('admin_reload_compliance').addEventListener('click', loadAdminCompliance);
+    }
+
+    // ── Triage 로더 (alert triage_store 상태 요약) ────────────────────────
+    async function loadAdminTriage() {
+      const el = document.getElementById('admin_triage_list');
+      if (!el) return;
+      el.innerHTML = '<div class=\"empty\">로딩 중…</div>';
+      try {
+        const res = await fetch('/alerts');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const alerts = data.alerts || [];
+        // triage가 pending이 아닌 항목 우선 + critical/high만 표시 (최대 100건)
+        const rows = alerts
+          .filter(a => (a.triage && a.triage.status && a.triage.status !== 'pending') || ['critical','high'].includes(a.severity))
+          .slice(0, 100);
+        if (!rows.length) {
+          el.innerHTML = '<div class=\"empty\">표시할 alert 없음</div>';
+          return;
+        }
+        const TRIAGE_LABEL = { pending:'🟡 대기', reviewing:'🔵 검토중', resolved:'🟢 조치' };
+        el.innerHTML = `<table class=\"result-table\">
+          <thead><tr><th>심각도</th><th>호스트</th><th>메시지</th><th>Triage</th><th>분석관</th><th>발생 시각</th></tr></thead>
+          <tbody>${rows.map(a => {
+            const sev = a.severity || '-';
+            const sevColor = sev==='critical'?'#fca5a5':sev==='high'?'#fbbf24':'#94a3b8';
+            const t = a.triage || {};
+            return `<tr>
+              <td><strong style=\"color:${sevColor}\">${escapeHtml(sev.toUpperCase())}</strong></td>
+              <td>${escapeHtml(a.hostname||a.host_id||'-')}</td>
+              <td style=\"color:#cbd5e1;max-width:380px;overflow:hidden;text-overflow:ellipsis\">${escapeHtml(a.message||'')}</td>
+              <td>${escapeHtml(TRIAGE_LABEL[t.status]||t.status||'🟡 대기')}</td>
+              <td style=\"color:#93c5fd\">${escapeHtml(t.analyst||'-')}</td>
+              <td style=\"color:#64748b;font-size:12px\">${escapeHtml(formatTime(a.observed_at))}</td>
+            </tr>`;
+          }).join('')}</tbody></table>`;
+      } catch (e) {
+        el.innerHTML = `<div class=\"empty\">로드 실패: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+    if (document.getElementById('admin_reload_triage')) {
+      document.getElementById('admin_reload_triage').addEventListener('click', loadAdminTriage);
+    }
+
+    // ── Incidents 로더 (incident_store 요약) ──────────────────────────────
+    async function loadAdminIncidents() {
+      const el = document.getElementById('admin_incidents_list');
+      if (!el) return;
+      el.innerHTML = '<div class=\"empty\">로딩 중…</div>';
+      try {
+        const res = await fetch('/incidents');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const list = data.incidents || [];
+        if (!list.length) {
+          el.innerHTML = '<div class=\"empty\">등록된 인시던트 없음</div>';
+          return;
+        }
+        const STATUS_COLOR = { open:'#ef4444', investigating:'#f59e0b', resolved:'#22c55e', closed:'#6b7280' };
+        el.innerHTML = `<table class=\"result-table\">
+          <thead><tr><th>제목</th><th>상태</th><th>호스트</th><th>담당자</th><th>분석관</th><th>등록일</th><th>업데이트</th></tr></thead>
+          <tbody>${list.slice(0,100).map(i => `<tr>
+            <td><strong>${escapeHtml(i.title||'-')}</strong></td>
+            <td><span style=\"background:rgba(56,189,248,.08);color:${STATUS_COLOR[i.status]||'#94a3b8'};padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">${escapeHtml((i.status||'').toUpperCase())}</span></td>
+            <td>${escapeHtml(i.hostname||'-')}</td>
+            <td>${escapeHtml(i.handler||'-')}</td>
+            <td style=\"color:#93c5fd\">${escapeHtml(i.analyst||'-')}</td>
+            <td style=\"color:#64748b;font-size:12px\">${escapeHtml(formatTime(i.created_at))}</td>
+            <td style=\"color:#64748b;font-size:12px\">${escapeHtml(formatTime(i.status_updated_at))}</td>
+          </tr>`).join('')}</tbody></table>`;
+      } catch (e) {
+        el.innerHTML = `<div class=\"empty\">로드 실패: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+    if (document.getElementById('admin_reload_incidents')) {
+      document.getElementById('admin_reload_incidents').addEventListener('click', loadAdminIncidents);
+    }
+
+    // ── Remediation: vuln_actions (Trivy 조치) ────────────────────────────
+    async function loadAdminVulnActions() {
+      const el = document.getElementById('admin_vuln_actions');
+      if (!el) return;
+      el.innerHTML = '<div class=\"empty\">로딩 중…</div>';
+      try {
+        const res = await fetch('/trivy/vulnerabilities?severity=critical');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const hosts = data.hosts || [];
+        // by_host 구조: { host_id, hostname, vulnerabilities: [{vuln_id, cve, severity, package_name, action: {plan_text,...}}] }
+        const flatRows = [];
+        hosts.forEach(h => {
+          (h.vulnerabilities || []).forEach(v => flatRows.push({ ...v, hostname: h.hostname || h.host_id }));
+        });
+        if (!flatRows.length) {
+          el.innerHTML = '<div class=\"empty\">Critical 취약점 없음</div>';
+          return;
+        }
+        el.innerHTML = `<table class=\"result-table\">
+          <thead><tr><th>호스트</th><th>CVE</th><th>패키지</th><th>심각도</th><th>조치 계획</th><th>예외</th></tr></thead>
+          <tbody>${flatRows.slice(0,150).map(v => {
+            const act = v.action || {};
+            const planTxt = act.plan_text ? `<div>${escapeHtml(act.plan_text.substring(0,80))}${act.plan_text.length>80?'…':''}</div><div style=\"color:#64748b;font-size:11px\">기한 ${escapeHtml(act.plan_target_date||'-')} · ${escapeHtml(act.plan_updated_by||'-')}</div>` : '<span style=\"color:#64748b\">미등록</span>';
+            const excTxt = act.exception_until ? `<div style=\"color:#fde68a\">~${escapeHtml(act.exception_until)}</div><div style=\"color:#64748b;font-size:11px\">${escapeHtml((act.exception_reason||'').substring(0,60))}</div>` : '<span style=\"color:#64748b\">-</span>';
+            return `<tr>
+              <td><strong>${escapeHtml(v.hostname||'-')}</strong></td>
+              <td style=\"font-family:ui-monospace\">${escapeHtml(v.cve||v.vuln_id||'-')}</td>
+              <td style=\"color:#cbd5e1\">${escapeHtml(v.package_name||'-')}</td>
+              <td><strong style=\"color:${v.severity==='critical'?'#fca5a5':'#fbbf24'}\">${escapeHtml((v.severity||'').toUpperCase())}</strong></td>
+              <td style=\"color:#cbd5e1;font-size:12px\">${planTxt}</td>
+              <td style=\"font-size:12px\">${excTxt}</td>
+            </tr>`;
+          }).join('')}${flatRows.length>150?`<tr><td colspan=\"6\" style=\"color:#64748b;text-align:center;padding:8px\">… ${flatRows.length-150}건 더</td></tr>`:''}</tbody></table>`;
+      } catch (e) {
+        el.innerHTML = `<div class=\"empty\">로드 실패: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+    if (document.getElementById('admin_reload_vulns')) {
+      document.getElementById('admin_reload_vulns').addEventListener('click', loadAdminVulnActions);
+    }
+
+    // ── Remediation: asset action_plans (host별 계획) ────────────────────
+    async function loadAdminActionPlans() {
+      const el = document.getElementById('admin_action_plans');
+      if (!el) return;
+      el.innerHTML = '<div class=\"empty\">로딩 중…</div>';
+      try {
+        const res = await fetch('/assets');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        // build_assets_payload returns nested structure; collect plans from zabbix/fleet/trivy hosts
+        const seen = new Set();
+        const rows = [];
+        const collect = (arr) => {
+          (arr || []).forEach(h => {
+            const plan = h.plan || {};
+            if (plan.text || plan.target_date) {
+              const key = h.host_id || h.hostname;
+              if (seen.has(key)) return;
+              seen.add(key);
+              rows.push({ hostname: h.hostname || h.host_id, plan });
+            }
+          });
+        };
+        collect((data.zabbix||{}).by_host);
+        collect((data.fleet||{}).by_host);
+        collect((data.trivy||{}).by_host);
+        if (!rows.length) {
+          el.innerHTML = '<div class=\"empty\">등록된 조치 계획 없음</div>';
+          return;
+        }
+        el.innerHTML = `<table class=\"result-table\">
+          <thead><tr><th>호스트</th><th>목표일</th><th>계획 내용</th><th>업데이트</th></tr></thead>
+          <tbody>${rows.slice(0,100).map(r => `<tr>
+            <td><strong>${escapeHtml(r.hostname)}</strong></td>
+            <td style=\"color:#fde68a\">${escapeHtml(r.plan.target_date||'-')}</td>
+            <td style=\"color:#cbd5e1\">${escapeHtml((r.plan.text||'').substring(0,200))}${(r.plan.text||'').length>200?'…':''}</td>
+            <td style=\"color:#64748b;font-size:12px\">${escapeHtml(formatTime(r.plan.updated_at)||'-')} · ${escapeHtml(r.plan.updated_by||'-')}</td>
+          </tr>`).join('')}</tbody></table>`;
+      } catch (e) {
+        el.innerHTML = `<div class=\"empty\">로드 실패: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+
     /* ── 관리자 콘솔 역할별 탭 제한 ────────────────────────────────────────── */
     const _ADMIN_ROLE_LABELS = { admin: '어드민', security: '보안담당자', monitor: '서버모니터', auditor: '감사자', helpdesk: '헬프데스크', user: '사용자' };
     // admin: 전체, monitor: 모니터링/자산, security: 모니터링/자산/권한관리,
     // auditor: 모니터링/변경이력(읽기전용), helpdesk: 모니터링/자산
     const _ADMIN_TAB_BY_ROLE = {
-      admin:    ['monitoring','assets','query','settings','users','auditlog','roleperm','userlog'],
-      monitor:  ['monitoring','assets'],
-      security: ['monitoring','assets','roleperm'],
-      auditor:  ['monitoring','auditlog'],
-      helpdesk: ['monitoring','assets'],
-      user:     ['monitoring'],
+      admin:    ['overview','compliance','triage','remediation','assets','access','logs','settings'],
+      monitor:  ['overview','compliance','triage','assets'],
+      security: ['overview','compliance','triage','remediation','assets','access'],
+      auditor:  ['overview','compliance','logs'],
+      helpdesk: ['overview','assets'],
+      user:     ['overview'],
     };
     let _adminCurrentRole = 'user';
     async function applyAdminRoleTabs() {
@@ -7574,14 +7921,14 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const role = me.role || 'user';
         _adminCurrentRole = role;
         const allowed = _ADMIN_TAB_BY_ROLE[role] || _ADMIN_TAB_BY_ROLE['user'];
-        const allTabs = ['monitoring','assets','query','settings','users','auditlog','roleperm','userlog'];
+        const allTabs = ['overview','compliance','triage','remediation','assets','access','logs','settings'];
         allTabs.forEach(tab => {
           const visible = allowed.includes(tab);
           document.querySelectorAll('[data-atab="'+tab+'"]').forEach(btn => btn.style.display = visible ? '' : 'none');
         });
         // 현재 활성 탭이 허용되지 않으면 첫 번째 허용 탭으로 전환
         const activePanel = document.querySelector('.atab-panel.active');
-        const activeId = activePanel ? activePanel.id.replace('atab_','') : 'monitoring';
+        const activeId = activePanel ? activePanel.id.replace('atab_','') : 'overview';
         if (!allowed.includes(activeId) && allowed.length > 0) {
           switchAdminTab(allowed[0]);
         }
@@ -7605,7 +7952,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       await loadSignupRequests();
       await loadRolePermissions();
       await loadUserTabPermissions();
-      await loadUserActivityLog();
+      // Phase 2 lazy loaders: overview는 즉시, 나머지는 탭 전환 시
+      loadAdminPhase2Health().catch(() => {});
     }
 
     initialize().catch(err => {
