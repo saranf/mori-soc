@@ -1,5 +1,7 @@
 # MORI SOC — Audit-Ready Security Operations
 
+**🇰🇷 한국어 (this page)** · [🇬🇧 English README](./README.en.md)
+
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 ![Phase](https://img.shields.io/badge/phase-2%20(audit--ready)-yellow)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
