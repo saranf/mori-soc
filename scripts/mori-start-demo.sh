@@ -64,6 +64,23 @@ ok_count=0
 for c in "${codes[@]}"; do [ "$c" = "200" ] && ok_count=$((ok_count+1)); done
 echo "   ✅ ${ok_count}/3 demo incidents created (in-memory; reset on API restart)"
 
+# 4-2) Seed demo triage states (in-memory store) — 상태 분포 시연
+echo ""
+echo "🚨 Seeding demo triage states..."
+patch_triage() {
+  curl -s -o /dev/null -w "%{http_code}" -X PATCH \
+    "http://localhost:${MORI_PORT}/alerts/$1/triage" \
+    -H "Content-Type: application/json" -d "$2" || echo "000"
+}
+tcodes=()
+tcodes+=( "$(patch_triage al-01 '{"status":"reviewing","analyst":"security","note":"브루트포스 소스 IP 차단 + 로그 보존 진행","actor":"security"}')" )
+tcodes+=( "$(patch_triage al-02 '{"status":"reviewing","analyst":"security","note":"포렌식 이미지 채집 후 격리","actor":"security"}')" )
+tcodes+=( "$(patch_triage al-03 '{"status":"resolved","analyst":"monitor","note":"오래된 로그 archive 후 디스크 회수","actor":"monitor"}')" )
+tcodes+=( "$(patch_triage al-05 '{"status":"resolved","analyst":"monitor","note":"비정상 프로세스 종료 + 자원 안정화","actor":"monitor"}')" )
+t_ok=0
+for c in "${tcodes[@]}"; do [ "$c" = "200" ] && t_ok=$((t_ok+1)); done
+echo "   ✅ ${t_ok}/4 triage states seeded (reviewing × 2 / resolved × 2 — 나머지는 pending)"
+
 # 5) Start worker (background, optional — mori-api uses same image)
 echo ""
 echo "🔄 Starting worker (if available)..."

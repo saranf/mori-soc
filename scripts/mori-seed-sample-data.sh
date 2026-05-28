@@ -215,16 +215,29 @@ ON CONFLICT (query_result_id) DO NOTHING;
 "
 
 # ── 11) Source Syncs ─────────────────────────────────────────────────────────
+# 데모용으로 4가지 상태(healthy / stale / error / running)를 모두 노출 — Collector Lag 카드 시연
+#   zabbix: success + 최근 (healthy, SLA 5분 이내)
+#   wazuh : success + SLA(10분) 초과 → 🟡 STALE
+#   trivy : error → 🔴 (last_error_at + message 표시)
+#   fleet : running → ⏳ (현재 수집 중)
 echo "   🔄 Source Syncs..."
 run_sql "
-INSERT INTO source_syncs (source, status, last_sync_at, last_success_at, records_collected, envelopes_normalized, entities_saved) VALUES
-  ('zabbix','success',now()-interval '1 minute',now()-interval '1 minute',47,47,94),
-  ('fleet','success',now()-interval '2 minutes',now()-interval '2 minutes',23,23,46),
-  ('trivy','success',now()-interval '5 minutes',now()-interval '5 minutes',8,8,8),
-  ('wazuh','success',now()-interval '3 minutes',now()-interval '3 minutes',31,31,39)
+INSERT INTO source_syncs
+  (source, status, last_sync_at, last_success_at, last_error_at, message,
+   records_collected, envelopes_normalized, entities_saved) VALUES
+  ('zabbix','success',  now()-interval '1 minute',  now()-interval '1 minute',  NULL,
+   NULL, 47, 47, 94),
+  ('wazuh', 'success',  now()-interval '18 minutes',now()-interval '18 minutes',NULL,
+   NULL, 31, 31, 39),
+  ('trivy', 'error',    now()-interval '2 hours',   now()-interval '8 hours',
+   now()-interval '2 hours',
+   'image scan timeout (registry unreachable)',  6,  6,  6),
+  ('fleet', 'running',  now(),                      now()-interval '4 minutes', NULL,
+   NULL, 23, 23, 46)
 ON CONFLICT (source) DO UPDATE SET
   status=EXCLUDED.status, last_sync_at=EXCLUDED.last_sync_at,
-  last_success_at=EXCLUDED.last_success_at, records_collected=EXCLUDED.records_collected,
+  last_success_at=EXCLUDED.last_success_at, last_error_at=EXCLUDED.last_error_at,
+  message=EXCLUDED.message, records_collected=EXCLUDED.records_collected,
   envelopes_normalized=EXCLUDED.envelopes_normalized, entities_saved=EXCLUDED.entities_saved;
 "
 
