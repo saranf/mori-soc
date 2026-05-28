@@ -254,8 +254,8 @@ class FastAPIAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("text/csv", response.headers["content-type"])
         self.assertIn("attachment; filename=", response.headers["content-disposition"])
-        self.assertIn("query_summary", response.text)
-        self.assertIn("evidence_count", response.text)
+        self.assertIn("질의요약", response.text)
+        self.assertIn("증거수", response.text)
 
     def test_ui_endpoint(self) -> None:
         response = self.client.get("/ui")
@@ -508,10 +508,10 @@ class FastAPIAppTests(unittest.TestCase):
         self.assertIn("/auth/logout", response.text)
 
     def test_admin_has_signup_requests_tab(self) -> None:
-        """/admin 어드민 콘솔에 가입 요청 탭이 있어야 한다."""
+        """/admin 어드민 콘솔에 가입 요청 탭이 있어야 한다 (Phase 2: Access Control 탭 통합)."""
         response = self.client.get("/admin")
         self.assertIn("가입 요청", response.text)
-        self.assertIn("atab_users", response.text)
+        self.assertIn("atab_access", response.text)
 
 
 # ---------------------------------------------------------------------------

@@ -149,7 +149,8 @@ flowchart LR
 | **📋 인시던트 관리** | 생성·상태변경·노트·날짜필터·텍스트검색·CSV 다운로드 + 변경 이력 | CSV 다운로드 시 "변경 내역 미포함" 안내 모달 표시 |
 | **✅ Compliance PDCA** | Plan/Do/Check/Act 4단계 카드, 카테고리별 Pass/Fail/Warning 표 | **Do 카드 클릭 → 미조치 항목 모달** (통제 + Trivy + Alert 통합) |
 | **미조치 / 기한 초과** | 통제 점검(fail/warning) + Trivy critical/high + Alert critical/high(7일) 통합 표시 | **📥 CSV 다운로드** (`/compliance/pdca/pending.csv`) |
-| **📥 감사 증적 리포트** | 자산·계정·로그·취약점·월간 5종 CSV | **🔍 미리보기 모달**(상위 50행 테이블 미리보기 + 다운로드 버튼) |
+| **📥 감사 증적 리포트** | 자산·계정·로그·취약점·월간 5종 CSV + **PDF** (NanumGothic 임베드) | **🔍 미리보기 모달**(상위 50행 + CSV/PDF 다운로드 버튼) |
+| **📡 Source Freshness · Collector Lag** | 수집기별 마지막 성공 시각·lag·SLA 임계 시각화 (`/dashboard` `source_coverage`) | Admin Overview + 사용자 대시보드에 카드/표 노출 |
 | **🔀 교차 검증** | Zabbix × Fleet × Trivy 호스트 매핑 차이 / 미매핑 자산 검출 | source_coverage / orphan check |
 | **💬 자연어 질의 (FAB)** | 12개 인텐트 디스패치 (alert_summary, offline_hosts, top_vulnerable_hosts, host_timeline …) | `/interpret` + `/query` |
 | **📚 가이드 시스템** | 7종 가이드 어드민 on/off + 직접 편집 | ISMS-P / ISO 27001 운영 가이드 |
@@ -171,7 +172,6 @@ flowchart LR
 | 항목 | 현황 | 우선순위 |
 |---|---|---|
 | LDAP 인증 운영 적용 | 코드 준비됨, `LDAP_URL` 설정 시 활성화 | 🟡 중간 |
-| PDF 증적 리포트 | CSV 미리보기만 지원 (5종 CSV 출력 완료) | 🟡 중간 |
 | Slack / Email 알림 webhook | 미연결 (`SLACK_WEBHOOK_URL` 설정점만 존재) | 🟡 중간 |
 | Phase 3 — 조사형 multi-hop pivot 에이전트 | 미착수 | 🟢 낮음 |
 
@@ -206,7 +206,9 @@ flowchart LR
 
 - 상단 카드: Total Hosts / Offline Hosts / High Alerts 24h / Critical Vulns
 - Latest Host Status: offline / unknown 호스트를 우선 노출하여 즉시 확인 대상 식별
-- 좌측 탭: **대시보드 / Alert Triage / 인시던트 / 자산 현황 / Compliance PDCA / 가이드 & 기준** (RBAC 역할별 on·off)
+- **Source Freshness · Collector Lag** 카드: Fleet/Wazuh/Zabbix/Trivy 수집기 last_sync + lag + SLA 표시
+- 사용자 대시보드 탭: **대시보드 / Alert Triage / 인시던트 / 자산 현황 / Compliance PDCA / 가이드 & 기준** (RBAC 역할별 on·off)
+- **어드민 콘솔(/admin) 8탭** (Phase 2 정렬): Overview · Compliance · Triage & Incidents · Remediation · 자산 / Owners · Access Control · Audit & Logs · Settings (역할별 노출 탭 자동 제한)
 
 #### 2) 자연어 질의 (NLQ) — `interpret` → `query`
 
@@ -249,6 +251,8 @@ flowchart LR
 ./scripts/mori-run-workers.sh cycle       # 수동 1회 수집 사이클
 ./scripts/mori-run-workers.sh logs        # 로그 확인
 ./scripts/mori-run-workers.sh stop        # 워커 중지
+./scripts/mori-backup.sh                  # pg_dump → backups/mori-soc-<ts>.dump
+./scripts/mori-restore.sh backups/<file>.dump  # pg_restore (확인 프롬프트, --force 로 생략)
 ./scripts/trivy-fs-scan.sh .              # 파일시스템 취약점 스캔
 ./scripts/trivy-image-scan.sh <image>     # 이미지 취약점 스캔
 ```
@@ -342,7 +346,7 @@ src/mori_soc/
 | Incidents | `GET /incidents`, `POST /incidents`, `PATCH /incidents/{id}`, `GET /incidents/{id}/history`, `GET /incidents?format=csv` | 인시던트 CRUD + 이력 + CSV |
 | Compliance | `GET /compliance/pdca`, `GET /compliance/crosscheck` | PDCA 집계 / 교차 검증 |
 | **Compliance CSV** | `GET /compliance/pdca/pending.csv` | 미조치/기한초과 항목 CSV (출처/통제ID/대상/상태/담당자/조치기한/기한초과/비고) |
-| Reports | `GET /compliance/reports`, `GET /compliance/reports/{type}?format=csv` | 5종 감사 증적 리포트 (asset/account/log/vuln/monthly) |
+| Reports | `GET /compliance/reports`, `GET /compliance/reports/{type}?format=csv\|pdf` | 5종 감사 증적 리포트 (asset/account/log/vuln/monthly). PDF는 NanumGothic 임베드 |
 
 전체 스펙은 Swagger `/docs` 참조.
 
@@ -354,15 +358,18 @@ src/mori_soc/
 ### 단위 테스트 (Docker)
 
 ```bash
-# 전체 테스트
+# 실행 중인 컨테이너에서 전체 테스트 (가장 빠름)
+docker compose cp tests/test_api_server.py mori-api:/app/tests/test_api_server.py
+docker compose exec mori-api python -m unittest tests.test_api_server
+
+# 특정 테스트 클래스만
+docker compose exec mori-api python -m unittest tests.test_api_server.FastAPIAppTests
+
+# 컨테이너가 없을 때 일회성 실행
 docker compose run --rm \
   -v "$(pwd)/tests:/app/tests:ro" \
   mori-api \
-  sh -c "pip install -q pytest httpx && python -m pytest /app/tests/ -v"
-
-# 특정 영역만
-docker compose run --rm -v "$(pwd)/tests:/app/tests:ro" mori-api \
-  sh -c "pip install -q pytest httpx && python -m pytest /app/tests/test_api_server.py -v -k 'alert_triage or pdca or vuln'"
+  python -m unittest discover -s /app/tests
 ```
 
 ### 테스트 파일 목록
@@ -397,6 +404,18 @@ curl -X POST http://localhost:18000/interpret \
 curl -X POST http://localhost:18000/query \
   -H 'Content-Type: application/json' \
   -d '{"intent":"offline_hosts","scope":{"time_range":"24h"}}'
+
+# PDF 증적 리포트 (NanumGothic 임베드)
+curl -OJ "http://localhost:18000/compliance/reports/monthly_operations?format=pdf"
+```
+
+### 백업 / 복원
+
+```bash
+./scripts/mori-backup.sh                          # backups/mori-soc-<timestamp>.dump 생성
+./scripts/mori-restore.sh backups/<file>.dump     # 확인 후 복원
+./scripts/mori-restore.sh backups/<file>.dump --force   # 확인 생략
+docker compose restart mori-api                   # 복원 후 snapshot 재로드
 ```
 
 ### 코드 검증 (server.py 변경 시)
@@ -557,13 +576,11 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 
 3. **LDAP 인증** — `LDAP_URL` 환경변수 설정 + 조직 AD/LDAP 검증.
 4. **HTTPS / 리버스 프록시** — Nginx/Caddy + TLS.
-5. **PDF 증적 리포트** — CSV 미리보기 외 PDF 출력 추가.
 
 ### 🟢 기능 확장
 
-6. **Trivy 자동 적재** — 온디맨드 스캔 결과를 ingestion 경로로 자동 적재.
-7. **대시보드 보강** — source health, collector lag, 잔여 SLA 시각화.
-8. **Phase 3 — 조사형 에이전트** — host/user/ip 다단계 pivot + 교차검증 자동화.
+5. **Trivy 자동 적재** — 온디맨드 스캔 결과를 ingestion 경로로 자동 적재.
+6. **Phase 3 — 조사형 에이전트** — host/user/ip 다단계 pivot + 교차검증 자동화.
 
 ---
 
@@ -593,9 +610,12 @@ README의 "🗺️ 현재 상태", src/mori_soc, schema/*.sql 읽고 바로 이�
 | 구분 | 상태 |
 |---|---|
 | 인증·RBAC·자산·취약점·Triage·인시던트·PDCA·증적 리포트 | ✅ 운영 가능 (인메모리, 재시작 시 초기화) |
+| 어드민 콘솔 8탭 (Phase 2 정렬) + 역할별 탭 자동 제한 | ✅ 동작 |
 | 자산/취약점/Triage/인시던트 **변경 감사 로그** | ✅ 누적 (CVE별 라벨 포함) |
 | PDCA Do 카드 클릭 → 미조치 모달 + CSV 다운로드 | ✅ 동작 |
-| 감사 증적 리포트 미리보기 모달 | ✅ 동작 (5종) |
+| 감사 증적 리포트 미리보기 모달 + **PDF 다운로드** (NanumGothic) | ✅ 동작 (5종 CSV+PDF) |
+| Source Freshness · Collector Lag · SLA 카드 | ✅ 동작 (Admin Overview + 사용자 대시보드) |
+| pg_dump 기반 백업/복원 스크립트 | ✅ 동작 (`scripts/mori-backup.sh` / `mori-restore.sh`) |
 | 인시던트 CSV "변경 내역 미포함" 안내 모달 | ✅ 동작 |
 | 대시보드 자산·경보 데이터 | ⚠️ 시드 + 인메모리 기반 (실시간 폴링 미연결) |
 | PostgreSQL — 정규화 보안 데이터 (Phase 1 스키마) | ✅ 시드 적재 + 부팅 시 로드 |
