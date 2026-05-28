@@ -11,9 +11,7 @@ Individual pollers can also be run standalone::
 from __future__ import annotations
 
 import logging
-import os
 import time
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable
 
@@ -26,7 +24,7 @@ from mori_soc.pollers.trivy import TrivyPoller
 from mori_soc.pollers.wazuh import WazuhPoller
 from mori_soc.pollers.zabbix import ZabbixPoller
 from mori_soc.repositories import BaseRepository
-from mori_soc.services import CollectorIngestionService, EnvelopeEntityMapper, IngestionReport
+from mori_soc.services import CollectorIngestionService, EnvelopeEntityMapper
 
 logger = logging.getLogger("mori.worker")
 

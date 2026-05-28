@@ -16,7 +16,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from mori_soc.services.query_service import InMemoryQueryStore, QueryService
+from mori_soc.services.query_service import QueryService
 from mori_soc.services.views import host_risk_summary_view, latest_host_status_view
 
 REPORT_TYPES = [
@@ -519,7 +519,7 @@ def report_to_pdf(report: dict[str, Any]) -> bytes:
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import mm
         from reportlab.platypus import (
-            SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak,
+            SimpleDocTemplate, Paragraph, Table, TableStyle,
         )
     except ImportError as exc:  # pragma: no cover - runtime guard
         raise RuntimeError("reportlab not installed; PDF output unavailable") from exc

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import uuid
 import urllib.request
 import urllib.error
 from urllib.parse import quote as _url_quote
-from collections import Counter
 from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -39,11 +39,51 @@ except ImportError:  # pragma: no cover
     _ldap3_available = False
 
 
+logger = logging.getLogger("mori_soc.api")
+
+
 DEFAULT_UI_PAYLOAD = {
     "intent": "offline_hosts",
     "scope": {"time_range": "24h"},
     "filters": {},
 }
+
+# Placeholder password patterns that indicate operators have not customised .env.
+# Used by `_warn_insecure_defaults` at app startup to emit audit-visible warnings.
+_INSECURE_PLACEHOLDER_PREFIXES = ("change_this_", "generate_with_")
+_INSECURE_CHECKED_ENV_VARS = (
+    "MORI_DB_PASSWORD",
+    "MORI_LDAP_BIND_PASSWORD",
+    "LDAP_ADMIN_PASSWORD",
+    "ZABBIX_DB_PASSWORD",
+    "FLEET_DB_PASSWORD",
+    "FLEET_DB_ROOT_PASSWORD",
+    "FLEET_SERVER_PRIVATE_KEY",
+)
+
+
+def _warn_insecure_defaults() -> list[str]:
+    """Scan critical env vars for placeholder values and emit warning logs.
+
+    Returns the list of variable names still using placeholders so callers
+    (e.g. /health) can surface the result without re-reading the environment.
+    """
+    flagged: list[str] = []
+    for name in _INSECURE_CHECKED_ENV_VARS:
+        value = os.environ.get(name, "")
+        if not value:
+            continue
+        if any(value.startswith(prefix) for prefix in _INSECURE_PLACEHOLDER_PREFIXES):
+            flagged.append(name)
+    admin_pw = os.environ.get("MORI_ADMIN_PASSWORD", "1234")
+    if admin_pw in ("1234", "admin", "password"):
+        flagged.append("MORI_ADMIN_PASSWORD")
+    if flagged:
+        logger.warning(
+            "[security] insecure default credentials detected for: %s — update .env before production use",
+            ", ".join(flagged),
+        )
+    return flagged
 
 DOCS_PORTAL_URL = os.getenv("MORI_DOCS_PORTAL_URL", "http://mori.rmstudio.co.kr:37854/")
 FLEET_UI_URL = os.getenv("MORI_FLEET_UI_URL", "")
@@ -979,6 +1019,7 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
         )
 
     app = FastAPI(title="MORI SOC — Audit-Ready Security Operations API", version="0.2.0")
+    insecure_defaults = _warn_insecure_defaults()
     admin_dashboard_preferences = _default_dashboard_preferences()
     # Per-user dashboard preferences: username -> preferences dict
     user_dashboard_prefs: dict[str, dict[str, Any]] = {}
@@ -1672,7 +1713,6 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     @app.get("/auth/logout", include_in_schema=False)
     def auth_logout(request: Any = None) -> Any:
         """로그아웃: 세션 쿠키 삭제 후 /login 리디렉션."""
-        from fastapi import Request as _FRequest
         token = ""
         if hasattr(request, "cookies"):
             token = request.cookies.get("mori_session", "")
@@ -1850,10 +1890,48 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             query_service = get_query_service()
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"query service unavailable: {exc}") from exc
+
+        # ── PostgreSQL ping (only if MORI_DATABASE_URL is configured) ────
+        database_url = os.getenv("MORI_DATABASE_URL", "").strip()
+        db_status: dict[str, Any]
+        if database_url:
+            try:
+                import psycopg  # type: ignore
+
+                with psycopg.connect(database_url, connect_timeout=2) as conn, conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+                    cur.fetchone()
+                db_status = {"configured": True, "reachable": True}
+            except Exception as exc:
+                db_status = {"configured": True, "reachable": False, "error": str(exc)[:200]}
+        else:
+            db_status = {"configured": False, "reachable": None}
+
+        # ── Source freshness summary (counts only — full detail at /dashboard/summary) ──
+        coverage_summary: dict[str, int] = {"total": 0, "healthy": 0, "stale": 0, "error": 0, "unknown": 0}
+        try:
+            coverage = _source_coverage(query_service.store)
+            for row in coverage:
+                coverage_summary["total"] += 1
+                status_val = row.get("status") or "unknown"
+                if status_val == "error":
+                    coverage_summary["error"] += 1
+                elif row.get("is_stale"):
+                    coverage_summary["stale"] += 1
+                elif status_val in ("success", "running"):
+                    coverage_summary["healthy"] += 1
+                else:
+                    coverage_summary["unknown"] += 1
+        except Exception:
+            pass
+
         return {
             "status": "ok",
             "engine": type(query_service.store).__name__,
             "query_count": len(PHASE1_QUERY_CATALOG),
+            "database": db_status,
+            "source_coverage": coverage_summary,
+            "insecure_defaults": insecure_defaults,
         }
 
     @app.get("/catalog")

@@ -14,7 +14,7 @@ import os
 
 from mori_soc.collectors.base import BaseCollector
 
-from .base import BasePollerService, _env_flag
+from .base import BasePollerService
 
 
 class WazuhPoller(BasePollerService):
