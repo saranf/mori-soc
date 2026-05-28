@@ -456,3 +456,202 @@ def _write_monthly_csv(buf: io.StringIO, report: dict) -> None:
             else:
                 writer.writerow([sec_label, metric_label, str(v)])
 
+
+# ---------------------------------------------------------------------------
+# PDF 출력 (ReportLab) — CSV와 동일 데이터를 표 형식으로 렌더
+# ---------------------------------------------------------------------------
+
+_REPORT_LABELS = {
+    "asset_inspection": "자산 점검 리포트",
+    "account_privilege": "계정/권한 점검 리포트",
+    "log_collection_status": "로그 수집 상태 리포트",
+    "vulnerability_assessment": "취약점 점검 리포트",
+    "monthly_operations": "월간 운영 리포트",
+}
+
+# PDF 한 페이지에 너무 많은 행을 넣지 않도록 상한 (CSV는 전체 제공)
+_PDF_ROW_LIMIT = 200
+
+# 시스템에서 한글 폰트 후보를 순서대로 탐색하고, 실패 시 Helvetica로 fallback
+_KOREAN_FONT_CANDIDATES = (
+    ("NanumGothic", "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"),
+    ("NanumGothic", "/usr/share/fonts/nanum/NanumGothic.ttf"),
+    ("NotoSansCJK", "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
+    ("AppleSDGothicNeo", "/System/Library/Fonts/AppleSDGothicNeo.ttc"),
+)
+
+_pdf_font_name: str | None = None
+
+
+def _get_pdf_font() -> str:
+    """ReportLab에 한글 폰트를 등록(최초 1회)하고 폰트명을 반환. 실패 시 Helvetica."""
+    global _pdf_font_name
+    if _pdf_font_name is not None:
+        return _pdf_font_name
+    try:
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        import os as _os
+        for name, path in _KOREAN_FONT_CANDIDATES:
+            if _os.path.exists(path):
+                try:
+                    pdfmetrics.registerFont(TTFont(name, path))
+                    _pdf_font_name = name
+                    return name
+                except Exception:
+                    continue
+    except ImportError:
+        pass
+    _pdf_font_name = "Helvetica"
+    return _pdf_font_name
+
+
+def report_to_pdf(report: dict[str, Any]) -> bytes:
+    """리포트 JSON을 PDF 바이트로 변환한다.
+
+    ReportLab Platypus(SimpleDocTemplate + Table flowable)를 사용한다.
+    한글 폰트는 시스템 fonts-nanum(NanumGothic)을 우선 사용하고, 없으면 Helvetica로 fallback.
+    한 표당 _PDF_ROW_LIMIT(200) 행 상한 — 전체 데이터는 CSV에서 받도록 안내.
+    """
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.platypus import (
+            SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak,
+        )
+    except ImportError as exc:  # pragma: no cover - runtime guard
+        raise RuntimeError("reportlab not installed; PDF output unavailable") from exc
+
+    font = _get_pdf_font()
+    bold_font = font  # NanumGothic은 별도 bold 미등록 — 동일 폰트로 처리
+
+    rtype = report.get("report_type", "")
+    title = _REPORT_LABELS.get(rtype, rtype or "MORI 증적 리포트")
+    generated_at = report.get("generated_at", _isoformat(_now()))
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=landscape(A4),
+        leftMargin=12 * mm, rightMargin=12 * mm,
+        topMargin=14 * mm, bottomMargin=12 * mm,
+        title=title,
+    )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "MoriTitle", parent=styles["Title"],
+        fontName=bold_font, fontSize=18, leading=22, spaceAfter=6,
+    )
+    meta_style = ParagraphStyle(
+        "MoriMeta", parent=styles["Normal"],
+        fontName=font, fontSize=9, textColor=colors.HexColor("#475569"), spaceAfter=10,
+    )
+    h2_style = ParagraphStyle(
+        "MoriH2", parent=styles["Heading2"],
+        fontName=bold_font, fontSize=13, leading=16,
+        textColor=colors.HexColor("#0f172a"), spaceBefore=10, spaceAfter=6,
+    )
+    note_style = ParagraphStyle(
+        "MoriNote", parent=styles["Normal"],
+        fontName=font, fontSize=8, textColor=colors.HexColor("#94a3b8"),
+    )
+
+    story: list[Any] = []
+    story.append(Paragraph(title, title_style))
+    story.append(Paragraph(
+        f"report_type: {rtype} &nbsp;&nbsp;|&nbsp;&nbsp; generated_at: {generated_at}",
+        meta_style,
+    ))
+
+    # 표 스타일 (헤더 짙은 회색 + 줄무늬)
+    def _table_style() -> TableStyle:
+        return TableStyle([
+            ("FONT", (0, 0), (-1, -1), font, 8),
+            ("FONT", (0, 0), (-1, 0), bold_font, 8.5),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e293b")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f1f5f9")]),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cbd5e1")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ])
+
+    def _add_section(headline: str, headers: list[str], rows: list[list[Any]]) -> None:
+        story.append(Paragraph(headline, h2_style))
+        if not rows:
+            story.append(Paragraph("데이터 없음", note_style))
+            return
+        truncated = False
+        if len(rows) > _PDF_ROW_LIMIT:
+            rows = rows[:_PDF_ROW_LIMIT]
+            truncated = True
+        data = [headers] + [[("" if v is None else str(v)) for v in r] for r in rows]
+        tbl = Table(data, repeatRows=1, hAlign="LEFT")
+        tbl.setStyle(_table_style())
+        story.append(tbl)
+        if truncated:
+            story.append(Paragraph(
+                f"… {_PDF_ROW_LIMIT}행까지 표시 (전체 데이터는 CSV 다운로드를 이용하세요)",
+                note_style,
+            ))
+
+    _render_report_pdf_sections(report, _add_section)
+
+    doc.build(story)
+    return buf.getvalue()
+
+
+def _render_report_pdf_sections(report: dict, add_section) -> None:
+    """리포트 타입별로 add_section(headline, headers, rows)을 호출한다."""
+    rtype = report.get("report_type", "")
+    if rtype == "asset_inspection":
+        headers = ["호스트ID", "호스트명", "플랫폼", "IP주소", "상태", "위험점수", "최종확인일시", "매핑소스", "소스수"]
+        rows = [[h.get("host_id"), h.get("hostname"), h.get("platform"), h.get("primary_ip"),
+                 h.get("status"), h.get("risk_score"), h.get("last_seen_at"),
+                 ",".join(h.get("mapped_sources", [])), h.get("source_count")]
+                for h in report.get("hosts", [])]
+        add_section("자산 목록", headers, rows)
+    elif rtype == "account_privilege":
+        headers = ["계정ID", "사용자명", "표시명", "이메일", "부서", "상태", "특권여부",
+                   "최종로그인", "비밀번호설정일", "권한수", "그룹"]
+        rows = [[a.get("account_id"), a.get("username"), a.get("display_name"), a.get("email"),
+                 a.get("department"), a.get("status"), a.get("is_privileged"),
+                 a.get("last_login_at"), a.get("password_last_set"),
+                 a.get("privilege_count"), ",".join(a.get("groups", []))]
+                for a in report.get("accounts", [])]
+        add_section("계정/권한 목록", headers, rows)
+    elif rtype == "log_collection_status":
+        headers = ["소스", "상태", "최종동기화", "최종성공", "수집레코드수", "저장엔티티수", "호스트수", "메시지"]
+        rows = [[s.get("source"), s.get("status"), s.get("last_sync_at"), s.get("last_success_at"),
+                 s.get("records_collected"), s.get("entities_saved"), s.get("host_count"), s.get("message")]
+                for s in report.get("sources", [])]
+        add_section("로그 수집 상태", headers, rows)
+    elif rtype == "vulnerability_assessment":
+        headers = ["호스트ID", "호스트명", "심각", "높음", "중간", "낮음", "정보", "합계", "CVE목록"]
+        rows = [[r.get("host_id"), r.get("hostname"), r.get("critical"), r.get("high"),
+                 r.get("medium"), r.get("low"), r.get("info"), r.get("total"),
+                 ",".join(r.get("cves", []))]
+                for r in report.get("by_host", [])]
+        add_section("취약점 호스트별 집계", headers, rows)
+    elif rtype == "monthly_operations":
+        rows: list[list[Any]] = []
+        for section_key in ("assets", "alerts", "vulnerabilities", "collection", "compliance", "identity"):
+            section = report.get(section_key, {})
+            sec_label = _MONTHLY_SECTION_KR.get(section_key, section_key)
+            for k, v in section.items():
+                metric_label = _MONTHLY_METRIC_KR.get(k, k)
+                if isinstance(v, dict):
+                    for sub_k, sub_v in v.items():
+                        rows.append([sec_label, f"{metric_label}.{sub_k}", str(sub_v)])
+                else:
+                    rows.append([sec_label, metric_label, str(v)])
+        add_section("월간 운영 지표", ["섹션", "지표", "값"], rows)
+    else:
+        rows = [[str(k), str(v)] for k, v in report.get("summary", {}).items()]
+        add_section("요약", ["키", "값"], rows)
+

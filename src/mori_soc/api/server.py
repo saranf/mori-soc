@@ -15,7 +15,7 @@ from mori_soc.api.contracts import QueryRequest, QueryScope
 from mori_soc.services.intent_parser import QUERY_GUIDE_EXAMPLES, NaturalLanguageQueryParser
 from mori_soc.services.query_catalog import PHASE1_QUERY_CATALOG
 from mori_soc.services.query_service import InMemoryQueryStore, QueryService, query_response_to_csv
-from mori_soc.services.reports import REPORT_TYPES, generate_report, report_to_csv
+from mori_soc.services.reports import REPORT_TYPES, generate_report, report_to_csv, report_to_pdf
 from mori_soc.services.views import host_risk_summary_view, latest_host_status_view
 
 try:
@@ -2670,14 +2670,20 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         }
         return {
             "report_types": [
-                {"id": rt, "label": labels.get(rt, rt), "url_json": f"/compliance/reports/{rt}", "url_csv": f"/compliance/reports/{rt}?format=csv"}
+                {
+                    "id": rt,
+                    "label": labels.get(rt, rt),
+                    "url_json": f"/compliance/reports/{rt}",
+                    "url_csv": f"/compliance/reports/{rt}?format=csv",
+                    "url_pdf": f"/compliance/reports/{rt}?format=pdf",
+                }
                 for rt in REPORT_TYPES
             ]
         }
 
     @app.get("/compliance/reports/{report_type}", tags=["Compliance"])
     def compliance_report_get(report_type: str, format: str = "json") -> Any:
-        """증적 리포트 생성. format=json|csv"""
+        """증적 리포트 생성. format=json|csv|pdf"""
         if report_type not in REPORT_TYPES:
             raise HTTPException(status_code=400, detail=f"Unknown report type: {report_type}. Valid: {', '.join(REPORT_TYPES)}")
         try:
@@ -2691,6 +2697,20 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             return StreamingResponse(
                 iter([csv_content]),
                 media_type="text/csv; charset=utf-8-sig",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            )
+        if format == "pdf":
+            try:
+                pdf_bytes = report_to_pdf(report)
+            except RuntimeError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+            except Exception as exc:
+                raise HTTPException(status_code=500, detail=f"PDF rendering failed: {exc}") from exc
+            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            filename = f"mori-{report_type.replace('_', '-')}-{timestamp}.pdf"
+            return StreamingResponse(
+                iter([pdf_bytes]),
+                media_type="application/pdf",
                 headers={"Content-Disposition": f'attachment; filename="{filename}"'},
             )
         return report
@@ -3387,6 +3407,7 @@ def render_user_dashboard_html(
         <h3 id=\"report_preview_title\" style=\"color:#67e8f9;margin:0\">📄 리포트 미리보기</h3>
         <div style=\"display:flex;gap:8px;align-items:center\">
           <a id=\"report_preview_download\" href=\"#\" download style=\"background:#164e63;border:1px solid #155e75;color:#67e8f9;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none\">📥 CSV 다운로드</a>
+          <a id=\"report_preview_download_pdf\" href=\"#\" download style=\"background:#7c2d12;border:1px solid #9a3412;color:#fed7aa;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none\">📄 PDF 다운로드</a>
           <button onclick=\"closeReportPreview()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
         </div>
       </div>
@@ -5252,9 +5273,10 @@ def render_user_dashboard_html(
           <div style=\"background:#0b1220;border:1px solid #233046;border-radius:12px;padding:16px\">
             <div style=\"font-size:20px;margin-bottom:8px\">${icons[rt.id] || '📄'}</div>
             <div style=\"font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:4px\">${escapeHtml(rt.label)}</div>
-            <div style=\"display:flex;gap:8px;margin-top:12px\">
-              <button onclick=\"openReportPreview('${rt.id}', '${escapeHtml(rt.label)}')\" style=\"flex:1;padding:6px 12px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer\">🔍 미리보기</button>
-              <a href=\"${rt.url_csv}\" download style=\"flex:1;text-align:center;padding:6px 12px;background:#164e63;color:#67e8f9;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none\">📥 CSV</a>
+            <div style=\"display:flex;gap:6px;margin-top:12px;flex-wrap:wrap\">
+              <button onclick=\"openReportPreview('${rt.id}', '${escapeHtml(rt.label)}')\" style=\"flex:1;min-width:80px;padding:6px 10px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer\">🔍 미리보기</button>
+              <a href=\"${rt.url_csv}\" download style=\"flex:1;min-width:60px;text-align:center;padding:6px 10px;background:#164e63;color:#67e8f9;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none\">📥 CSV</a>
+              <a href=\"${rt.url_pdf || (rt.url_json + '?format=pdf')}\" download style=\"flex:1;min-width:60px;text-align:center;padding:6px 10px;background:#7c2d12;color:#fed7aa;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none\">📄 PDF</a>
             </div>
           </div>
         `).join('');
@@ -5294,6 +5316,8 @@ def render_user_dashboard_html(
       if (!modal || !bodyEl) return;
       titleEl.textContent = `📄 ${label} — 미리보기`;
       dlEl.href = `/compliance/reports/${reportType}?format=csv`;
+      const dlPdfEl = document.getElementById('report_preview_download_pdf');
+      if (dlPdfEl) dlPdfEl.href = `/compliance/reports/${reportType}?format=pdf`;
       bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:24px;text-align:center\">⏳ 불러오는 중…</div>';
       modal.style.display = 'flex';
       try {
@@ -5883,6 +5907,14 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"subtext\">Fleet / Wazuh / Zabbix / Trivy / host logs 기준으로 현재 MORI에 연결된 호스트 수입니다.</div>
           <div class=\"coverage\" id=\"source_coverage\"></div>
           <div class=\"status-line\" id=\"dashboard_status\">dashboard loading...</div>
+        </section>
+        <section class=\"card\">
+          <h2>📡 Collector Health · Source Freshness</h2>
+          <div class=\"subtext\">수집기별 마지막 성공 시각과 SLA 임계 대비 지연(lag)을 표시합니다. SLA 초과 시 🟡 STALE, 마지막 sync가 error면 🔴 표시됩니다.</div>
+          <div class=\"actions\" style=\"margin-bottom:10px\">
+            <button id=\"admin_reload_freshness\" class=\"secondary\">새로고침</button>
+          </div>
+          <div class=\"table-wrap\" id=\"admin_source_freshness\"></div>
         </section>
         <section class=\"card\">
           <h2>Latest Host Status</h2>
@@ -7300,7 +7332,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       if (tab === 'compliance') loadAdminCompliance();
       if (tab === 'triage') { loadAdminTriage(); loadAdminIncidents(); }
       if (tab === 'remediation') { loadAdminVulnActions(); loadAdminActionPlans(); }
-      if (tab === 'overview') loadAdminPhase2Health();
+      if (tab === 'overview') { loadAdminPhase2Health(); loadAdminSourceFreshness(); }
     }
 
     // ── Signup Requests ────────────────────────────────────────────────────
@@ -7675,6 +7707,67 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       }
     }
 
+    // 초 단위 lag을 사람이 읽을 수 있는 문자열로 변환
+    function _humanizeLag(seconds) {
+      if (seconds == null || !isFinite(seconds)) return '-';
+      const s = Math.max(0, Math.floor(seconds));
+      if (s < 60) return s + '초';
+      if (s < 3600) return Math.floor(s/60) + '분';
+      if (s < 86400) {
+        const h = Math.floor(s/3600); const m = Math.floor((s%3600)/60);
+        return m ? `${h}시간 ${m}분` : `${h}시간`;
+      }
+      const d = Math.floor(s/86400); const h = Math.floor((s%86400)/3600);
+      return h ? `${d}일 ${h}시간` : `${d}일`;
+    }
+
+    async function loadAdminSourceFreshness() {
+      const el = document.getElementById('admin_source_freshness');
+      if (!el) return;
+      el.innerHTML = '<div class=\"empty\">로딩 중…</div>';
+      try {
+        const res = await fetch('/dashboard');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const rows = data.source_coverage || [];
+        if (!rows.length) {
+          el.innerHTML = '<div class=\"empty\">source_syncs 기록 없음</div>';
+          return;
+        }
+        const nowMs = Date.now();
+        const fmt = (rec) => {
+          const lastOk = rec.last_success_at ? new Date(rec.last_success_at).getTime() : null;
+          const lastErr = rec.last_error_at ? new Date(rec.last_error_at).getTime() : null;
+          const lagSec = lastOk != null ? (nowMs - lastOk) / 1000 : null;
+          const sla = rec.stale_threshold_seconds || null;
+          let statusColor = '#86efac', statusLabel = (rec.status||'unknown').toUpperCase();
+          if (rec.status === 'error') { statusColor = '#fca5a5'; }
+          else if (rec.is_stale) { statusColor = '#fde68a'; statusLabel = 'STALE'; }
+          else if (rec.status === 'running') { statusColor = '#93c5fd'; }
+          const lagColor = rec.is_stale ? '#fbbf24' : (lagSec != null ? '#cbd5e1' : '#64748b');
+          const slaText = sla ? _humanizeLag(sla) : '-';
+          const errBadge = lastErr ? `<div style=\"color:#fca5a5;font-size:11px;margin-top:2px\">⚠ 최근 에러: ${escapeHtml(formatTime(rec.last_error_at))}</div>` : '';
+          return `<tr>
+            <td><strong>${escapeHtml((rec.source||'-').toUpperCase())}</strong></td>
+            <td><span style=\"background:rgba(56,189,248,.08);color:${statusColor};padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">${escapeHtml(statusLabel)}</span></td>
+            <td style=\"text-align:right\">${rec.host_count||0}</td>
+            <td style=\"color:${lagColor}\">${lagSec != null ? _humanizeLag(lagSec) + ' 전' : '-'}</td>
+            <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(slaText)}</td>
+            <td style=\"text-align:right;color:#cbd5e1\">${rec.records_collected||0}<div style=\"color:#64748b;font-size:11px\">env ${rec.envelopes_normalized||0} · save ${rec.entities_saved||0}</div></td>
+            <td style=\"color:#64748b;font-size:12px;max-width:280px;overflow:hidden;text-overflow:ellipsis\">${escapeHtml(rec.message||'-')}${errBadge}</td>
+          </tr>`;
+        };
+        el.innerHTML = `<table class=\"result-table\">
+          <thead><tr><th>Source</th><th>Status</th><th style=\"text-align:right\">호스트</th><th>Lag</th><th>SLA</th><th style=\"text-align:right\">수집</th><th>메시지</th></tr></thead>
+          <tbody>${rows.map(fmt).join('')}</tbody></table>`;
+      } catch (e) {
+        el.innerHTML = `<div class=\"empty\">로드 실패: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+    if (document.getElementById('admin_reload_freshness')) {
+      document.getElementById('admin_reload_freshness').addEventListener('click', loadAdminSourceFreshness);
+    }
+
     async function loadAdminCompliance() {
       const cardsEl = document.getElementById('admin_compliance_cards');
       const catEl = document.getElementById('admin_compliance_categories');
@@ -7954,6 +8047,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       await loadUserTabPermissions();
       // Phase 2 lazy loaders: overview는 즉시, 나머지는 탭 전환 시
       loadAdminPhase2Health().catch(() => {});
+      loadAdminSourceFreshness().catch(() => {});
     }
 
     initialize().catch(err => {
