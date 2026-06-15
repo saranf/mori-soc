@@ -907,7 +907,8 @@ def _i18n_script(translations: dict[str, dict[str, str]]) -> str:
         "window.lang=l;"
         "try{localStorage.setItem('mori_lang',l);}catch(e){}"
         "document.cookie='mori_lang='+l+'; path=/; max-age='+(60*60*24*365)+'; samesite=lax';"
-        "window.applyI18n();};"
+        "window.applyI18n();"
+        "if(typeof window.onLangChange==='function'){try{window.onLangChange(l);}catch(e){}}};"
         "if(document.readyState==='loading'){"
         "document.addEventListener('DOMContentLoaded',function(){window.applyI18n();});"
         "}else{window.applyI18n();}"
@@ -1051,6 +1052,19 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.btn.reload": "새로고침",
         "dash.btn.csv": "📥 CSV 내보내기",
         "dash.status.loading": "⏳ 로딩 중…",
+        "dash.dyn.loading": "로딩 중…",
+        "dash.dyn.triage.pending": "🔴 미확인",
+        "dash.dyn.triage.reviewing": "🟡 검토중",
+        "dash.dyn.triage.resolved": "🟢 조치예정/완료",
+        "dash.dyn.alerts_load_fail": "경보 로드 실패",
+        "dash.dyn.alerts_empty": "최근 24h 경보 없음",
+        "dash.dyn.incidents_load_fail": "인시던트 로드 실패",
+        "dash.dyn.incidents_empty": "인시던트 없음",
+        "dash.dyn.assets_loading": "자산 데이터 로딩 중...",
+        "dash.dyn.assets_load_fail": "자산 데이터 로드 실패",
+        "dash.dyn.trivy_empty": "Trivy 취약점 데이터가 없습니다.",
+        "dash.dyn.autosaving": "자동 저장 중...",
+        "dash.dyn.error_prefix": "오류: ",
     },
     "en": {
         "dash.doctitle": "MORI Security Dashboard",
@@ -1094,6 +1108,111 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.btn.reload": "Refresh",
         "dash.btn.csv": "📥 Export CSV",
         "dash.status.loading": "⏳ Loading…",
+        "dash.dyn.loading": "Loading…",
+        "dash.dyn.triage.pending": "🔴 Pending",
+        "dash.dyn.triage.reviewing": "🟡 Reviewing",
+        "dash.dyn.triage.resolved": "🟢 Resolved",
+        "dash.dyn.alerts_load_fail": "Failed to load alerts",
+        "dash.dyn.alerts_empty": "No alerts in the last 24h",
+        "dash.dyn.incidents_load_fail": "Failed to load incidents",
+        "dash.dyn.incidents_empty": "No incidents",
+        "dash.dyn.assets_loading": "Loading asset data…",
+        "dash.dyn.assets_load_fail": "Failed to load asset data",
+        "dash.dyn.trivy_empty": "No Trivy vulnerability data.",
+        "dash.dyn.autosaving": "Auto-saving…",
+        "dash.dyn.error_prefix": "Error: ",
+    },
+}
+
+
+_ADMIN_I18N: dict[str, dict[str, str]] = {
+    "ko": {
+        "admin.doctitle": "MORI Security Dashboard",
+        "admin.hero.title": "MORI — 점검·통제 운영 콘솔",
+        "admin.hero.intro": "통제 항목 점검 결과를 관리하고, 수집 데이터를 교차 검증하며, 사용자 대시보드 노출 범위를 제어하는 관리자 운영 콘솔입니다.",
+        "admin.links.docs": "운영 문서 / 포털",
+        "admin.links.api": "📋 API 문서 (Swagger)",
+        "admin.actions.user_dashboard": "사용자 대시보드",
+        "admin.actions.query_guide": "Query Guide",
+        "admin.actions.refresh": "Refresh Dashboard",
+        "admin.actions.logout": "로그아웃",
+        "admin.tab.overview": "📊 Overview",
+        "admin.tab.compliance": "✅ Compliance",
+        "admin.tab.triage": "🚨 Triage & Incidents",
+        "admin.tab.remediation": "🔧 Remediation",
+        "admin.tab.assets": "👤 자산 / Owners",
+        "admin.tab.access": "🛡️ Access Control",
+        "admin.tab.logs": "📝 Audit & Logs",
+        "admin.tab.settings": "⚙️ Settings",
+        "admin.h.phase2_health": "📦 Phase 2 데이터 헬스",
+        "admin.h.source_coverage": "Source Coverage",
+        "admin.h.collector_health": "📡 Collector Health · Source Freshness",
+        "admin.h.latest_status": "Latest Host Status",
+        "admin.h.risk_summary": "Risk Summary",
+        "admin.h.recent_activity": "Recent Activity",
+        "admin.h.pdca_status": "📋 통제 점검 현황 (PDCA)",
+        "admin.h.pending": "🔧 미조치 항목 (통제 + Trivy + Alert)",
+        "admin.h.triage": "🚨 Alert Triage 현황",
+        "admin.h.incidents": "📋 인시던트 (incident_store)",
+        "admin.h.trivy_remediation": "🔧 Trivy 취약점 조치 상태",
+        "admin.h.action_plans": "📝 자산 조치 계획 (action_plans)",
+        "admin.h.asset_owners": "👤 자산 담당자 관리",
+        "admin.h.dashboard_prefs": "🖥️ 사용자 대시보드 설정",
+        "admin.h.slack": "🔔 Slack Webhook 관리",
+        "admin.h.guides_editor": "📖 가이드 & 메뉴얼 편집",
+        "admin.h.quick_actions": "⚡ Quick Actions",
+        "admin.h.nlq": "🗣️ Natural Language Query",
+        "admin.h.query_builder": "🔧 Structured Query Builder",
+        "admin.h.request_response": "📨 Request / Response",
+        "admin.h.signup_requests": "🙋 가입 요청 관리",
+        "admin.h.role_perms": "🔐 역할별 탭 권한 관리",
+        "admin.h.user_tabs": "👤 유저별 대시보드 탭 관리",
+        "admin.h.asset_audit": "📝 자산 변경 이력",
+        "admin.h.user_activity": "👤 사용자 행동 로그",
+    },
+    "en": {
+        "admin.doctitle": "MORI Security Dashboard",
+        "admin.hero.title": "MORI — Controls & Operations Console",
+        "admin.hero.intro": "Operator console for managing control-check results, cross-verifying collected data, and controlling user dashboard exposure scope.",
+        "admin.links.docs": "Operations docs / portal",
+        "admin.links.api": "📋 API docs (Swagger)",
+        "admin.actions.user_dashboard": "User dashboard",
+        "admin.actions.query_guide": "Query Guide",
+        "admin.actions.refresh": "Refresh Dashboard",
+        "admin.actions.logout": "Sign out",
+        "admin.tab.overview": "📊 Overview",
+        "admin.tab.compliance": "✅ Compliance",
+        "admin.tab.triage": "🚨 Triage & Incidents",
+        "admin.tab.remediation": "🔧 Remediation",
+        "admin.tab.assets": "👤 Assets / Owners",
+        "admin.tab.access": "🛡️ Access Control",
+        "admin.tab.logs": "📝 Audit & Logs",
+        "admin.tab.settings": "⚙️ Settings",
+        "admin.h.phase2_health": "📦 Phase 2 Data Health",
+        "admin.h.source_coverage": "Source Coverage",
+        "admin.h.collector_health": "📡 Collector Health · Source Freshness",
+        "admin.h.latest_status": "Latest Host Status",
+        "admin.h.risk_summary": "Risk Summary",
+        "admin.h.recent_activity": "Recent Activity",
+        "admin.h.pdca_status": "📋 Control Check Status (PDCA)",
+        "admin.h.pending": "🔧 Pending Items (Controls + Trivy + Alert)",
+        "admin.h.triage": "🚨 Alert Triage Status",
+        "admin.h.incidents": "📋 Incidents (incident_store)",
+        "admin.h.trivy_remediation": "🔧 Trivy Vulnerability Remediation",
+        "admin.h.action_plans": "📝 Asset Action Plans (action_plans)",
+        "admin.h.asset_owners": "👤 Asset Owner Management",
+        "admin.h.dashboard_prefs": "🖥️ User Dashboard Settings",
+        "admin.h.slack": "🔔 Slack Webhook Management",
+        "admin.h.guides_editor": "📖 Guides & Manual Editor",
+        "admin.h.quick_actions": "⚡ Quick Actions",
+        "admin.h.nlq": "🗣️ Natural Language Query",
+        "admin.h.query_builder": "🔧 Structured Query Builder",
+        "admin.h.request_response": "📨 Request / Response",
+        "admin.h.signup_requests": "🙋 Signup Request Management",
+        "admin.h.role_perms": "🔐 Role-based Tab Permissions",
+        "admin.h.user_tabs": "👤 Per-user Dashboard Tabs",
+        "admin.h.asset_audit": "📝 Asset Change History",
+        "admin.h.user_activity": "👤 User Activity Log",
     },
 }
 
@@ -3891,6 +4010,8 @@ def render_user_dashboard_html(
       closed: '#22c55e', false_positive: '#94a3b8'
     };
     const TRIAGE_STATUS_LABELS = { pending:'🔴 미확인', reviewing:'🟡 검토중', resolved:'🟢 조치예정/완료' };
+    const tt = (k, f) => (window.t ? window.t(k, f) : f);
+    const triageLabel = (s) => tt('dash.dyn.triage.' + s, TRIAGE_STATUS_LABELS[s] || s);
     const INC_STATUS_COLORS = {open:'#f59e0b', investigating:'#a78bfa', resolved:'#6ee7b7', closed:'#94a3b8'};
 
     // ── 전역 함수 노출 (onclick 속성에서 직접 호출 — 함수 선언은 호이스팅됨) ──
@@ -3943,6 +4064,19 @@ def render_user_dashboard_html(
         if (currentGuideId) switchGuideTab(currentGuideId);
       }
     }
+
+    // i18n: re-render the active tab's dynamic content when the language changes
+    window.onLangChange = function() {
+      const activeBtn = document.querySelector('.tabs-nav button.active');
+      const tab = activeBtn ? activeBtn.dataset.tab : 'dashboard';
+      try {
+        if (tab === 'dashboard') loadDashboard();
+        else if (tab === 'triage') loadTriage();
+        else if (tab === 'incidents') loadIncidents();
+        else if (tab === 'assets') loadAssets();
+        else if (tab === 'compliance') loadCompliance();
+      } catch (e) { /* re-render best-effort */ }
+    };
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -4354,13 +4488,13 @@ def render_user_dashboard_html(
 
     // ── Triage ──────────────────────────────────────────────────────────────
     async function loadTriage() {
-      triageTableEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      triageTableEl.innerHTML = '<span class=\"empty\">' + tt('dash.dyn.loading', '로딩 중…') + '</span>';
       try {
         const res = await fetch('/alerts');
-        if (!res.ok) { triageTableEl.innerHTML = '<span class=\"empty\">경보 로드 실패</span>'; return; }
+        if (!res.ok) { triageTableEl.innerHTML = '<span class=\"empty\">' + tt('dash.dyn.alerts_load_fail', '경보 로드 실패') + '</span>'; return; }
         const data = await res.json();
         const alerts = data.alerts || [];
-        if (!alerts.length) { triageTableEl.innerHTML = '<span class=\"empty\">최근 24h 경보 없음</span>'; return; }
+        if (!alerts.length) { triageTableEl.innerHTML = '<span class=\"empty\">' + tt('dash.dyn.alerts_empty', '최근 24h 경보 없음') + '</span>'; return; }
         // Cache triage data for history display in modal
         alerts.forEach(a => { if (a.triage) triageDataCache[a.alert_id] = a.triage; });
         const rows = alerts.map(a => {
@@ -4370,7 +4504,7 @@ def render_user_dashboard_html(
           const triageNote = triage.note || '';
           const triageChangedBy = triage.changed_by || '';
           const color = TRIAGE_STATUS_COLORS[rawStatus] || '#6b7280';
-          const label = TRIAGE_STATUS_LABELS[rawStatus] || rawStatus;
+          const label = triageLabel(rawStatus);
           const alertOwner = _ownerForHost(a.hostname || '');
           return `<tr>
             <td>${escapeHtml(formatTime(a.observed_at))}</td>
@@ -4416,8 +4550,8 @@ def render_user_dashboard_html(
       if (historyEl) {
         historyEl.innerHTML = history.length
           ? [...history].reverse().map(h => {
-              const fromLabel = TRIAGE_STATUS_LABELS[h.from_status] || h.from_status;
-              const toLabel = TRIAGE_STATUS_LABELS[h.to_status] || h.to_status;
+              const fromLabel = triageLabel(h.from_status);
+              const toLabel = triageLabel(h.to_status);
               const arrow = `${fromLabel} → <strong>${toLabel}</strong>`;
               const noteText = h.note ? `<div style=\"color:#cbd5e1;margin-top:2px;font-size:11px\">📝 ${escapeHtml(h.note)}</div>` : '';
               const actorText = h.changed_by ? ` &nbsp;·&nbsp; <span style=\"color:#fde68a\">변경자: ${escapeHtml(h.changed_by)}</span>` : '';
@@ -4452,7 +4586,7 @@ def render_user_dashboard_html(
       if (!currentTriageAlertId) return;
       const actor = (document.getElementById('triage_modal_actor')?.value || '').trim();
       const body = { status: triageModalStatusEl.value, analyst: triageModalAnalystEl.value, note: triageModalNoteEl.value, actor };
-      triageModalStatusLineEl.textContent = '자동 저장 중...';
+      triageModalStatusLineEl.textContent = tt('dash.dyn.autosaving', '자동 저장 중...');
       try {
         const res = await fetch(`/alerts/${encodeURIComponent(currentTriageAlertId)}/triage`, {
           method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
@@ -4479,15 +4613,15 @@ def render_user_dashboard_html(
     }
 
     async function loadIncidents() {
-      incidentsListEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      incidentsListEl.innerHTML = '<span class=\"empty\">' + tt('dash.dyn.loading', '로딩 중…') + '</span>';
       try {
         const params = buildIncidentParams();
         const url = '/incidents' + (params.toString() ? '?' + params.toString() : '');
         const res = await fetch(url);
-        if (!res.ok) { incidentsListEl.innerHTML = '<span class=\"empty\">인시던트 로드 실패</span>'; return; }
+        if (!res.ok) { incidentsListEl.innerHTML = '<span class=\"empty\">' + tt('dash.dyn.incidents_load_fail', '인시던트 로드 실패') + '</span>'; return; }
         const data = await res.json();
         const list = data.incidents || [];
-        if (!list.length) { incidentsListEl.innerHTML = '<span class=\"empty\">인시던트 없음</span>'; return; }
+        if (!list.length) { incidentsListEl.innerHTML = '<span class=\"empty\">' + tt('dash.dyn.incidents_empty', '인시던트 없음') + '</span>'; return; }
         const STATUS_COLOR = { open: '#ef4444', investigating: '#f59e0b', resolved: '#22c55e', closed: '#6b7280' };
         incidentsListEl.innerHTML = list.map(inc => {
           const color = STATUS_COLOR[inc.status] || '#6b7280';
@@ -4819,7 +4953,7 @@ def render_user_dashboard_html(
     }
 
     function renderTrivyTable(rows, containerEl) {
-      if (!rows.length) { containerEl.innerHTML = '<div class=\"empty\">Trivy 취약점 데이터가 없습니다.</div>'; return; }
+      if (!rows.length) { containerEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.trivy_empty', 'Trivy 취약점 데이터가 없습니다.') + '</div>'; return; }
       const sevColor = { critical:'#fca5a5', high:'#fdba74', medium:'#fde68a', low:'#86efac', info:'#94a3b8' };
       const tableRows = rows.map(r => {
         const planText = r.action_plan ? escapeHtml(r.action_plan).substring(0, 30) + (r.action_plan.length > 30 ? '…' : '') : '';
@@ -5275,10 +5409,10 @@ def render_user_dashboard_html(
 
     async function loadAssets() {
       const statusEl = document.getElementById('assets_status');
-      statusEl.textContent = '자산 데이터 로딩 중...';
+      statusEl.textContent = tt('dash.dyn.assets_loading', '자산 데이터 로딩 중...');
       try {
         const res = await fetch('/assets');
-        if (!res.ok) { statusEl.textContent = '자산 데이터 로드 실패'; return; }
+        if (!res.ok) { statusEl.textContent = tt('dash.dyn.assets_load_fail', '자산 데이터 로드 실패'); return; }
         const data = await res.json();
         // Cache raw data
         _assetCache.fleet = data.fleet?.hosts || [];
@@ -6031,7 +6165,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 <head>
   <meta charset=\"utf-8\" />
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-  <title>MORI Security Dashboard</title>
+  <title data-i18n-doctitle=\"admin.doctitle\">MORI Security Dashboard</title>
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0b1220; color: #e5e7eb; }
@@ -6187,14 +6321,15 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
   </style>
 </head>
 <body>
+  __I18N_TOGGLE__
   <div class=\"wrap\">
     <section class=\"hero\">
       <div>
-        <h1>MORI — 점검·통제 운영 콘솔</h1>
-        <p>통제 항목 점검 결과를 관리하고, 수집 데이터를 교차 검증하며, 사용자 대시보드 노출 범위를 제어하는 관리자 운영 콘솔입니다.</p>
+        <h1 data-i18n=\"admin.hero.title\">MORI — 점검·통제 운영 콘솔</h1>
+        <p data-i18n=\"admin.hero.intro\">통제 항목 점검 결과를 관리하고, 수집 데이터를 교차 검증하며, 사용자 대시보드 노출 범위를 제어하는 관리자 운영 콘솔입니다.</p>
         <div class=\"links\">
-          <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\">운영 문서 / 포털</a>
-          <a href=\"/docs\" target=\"_blank\" rel=\"noreferrer\">📋 API 문서 (Swagger)</a>
+          <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"admin.links.docs\">운영 문서 / 포털</a>
+          <a href=\"/docs\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"admin.links.api\">📋 API 문서 (Swagger)</a>
           <a href=\"/health\" target=\"_blank\" rel=\"noreferrer\">Health JSON</a>
           <a href=\"/dashboard/summary\" target=\"_blank\" rel=\"noreferrer\">Dashboard JSON</a>
           <a href=\"/catalog\" target=\"_blank\" rel=\"noreferrer\">Query Catalog JSON</a>
@@ -6202,23 +6337,23 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       </div>
       <div class=\"top-actions\">
         <span id=\"admin_user_badge\" style=\"font-size:13px;color:#94a3b8\"></span>
-        <a href=\"/ui\">사용자 대시보드</a>
-        <button id=\"query_guide\" class=\"ghost\">Query Guide</button>
-        <button id=\"refresh_dashboard\" class=\"ghost\">Refresh Dashboard</button>
-        <a href=\"/auth/logout\" style=\"color:#ef4444;font-size:13px;margin-left:4px\">로그아웃</a>
+        <a href=\"/ui\" data-i18n=\"admin.actions.user_dashboard\">사용자 대시보드</a>
+        <button id=\"query_guide\" class=\"ghost\" data-i18n=\"admin.actions.query_guide\">Query Guide</button>
+        <button id=\"refresh_dashboard\" class=\"ghost\" data-i18n=\"admin.actions.refresh\">Refresh Dashboard</button>
+        <a href=\"/auth/logout\" style=\"color:#ef4444;font-size:13px;margin-left:4px\" data-i18n=\"admin.actions.logout\">로그아웃</a>
       </div>
     </section>
 
     <!-- ── Admin Tab Nav (8 tabs, Phase 2 정렬) ────────────────────────── -->
     <nav class=\"tabs-nav\" id=\"admin_tabs_nav\">
-      <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\">📊 Overview</button>
-      <button data-atab=\"compliance\" onclick=\"switchAdminTab('compliance')\">✅ Compliance</button>
-      <button data-atab=\"triage\" onclick=\"switchAdminTab('triage')\">🚨 Triage &amp; Incidents</button>
-      <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\">🔧 Remediation</button>
-      <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\">👤 자산 / Owners</button>
-      <button data-atab=\"access\" onclick=\"switchAdminTab('access')\">🛡️ Access Control</button>
-      <button data-atab=\"logs\" onclick=\"switchAdminTab('logs')\">📝 Audit &amp; Logs</button>
-      <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\">⚙️ Settings</button>
+      <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\" data-i18n=\"admin.tab.overview\">📊 Overview</button>
+      <button data-atab=\"compliance\" onclick=\"switchAdminTab('compliance')\" data-i18n=\"admin.tab.compliance\">✅ Compliance</button>
+      <button data-atab=\"triage\" onclick=\"switchAdminTab('triage')\" data-i18n=\"admin.tab.triage\">🚨 Triage &amp; Incidents</button>
+      <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\" data-i18n=\"admin.tab.remediation\">🔧 Remediation</button>
+      <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\" data-i18n=\"admin.tab.assets\">👤 자산 / Owners</button>
+      <button data-atab=\"access\" onclick=\"switchAdminTab('access')\" data-i18n=\"admin.tab.access\">🛡️ Access Control</button>
+      <button data-atab=\"logs\" onclick=\"switchAdminTab('logs')\" data-i18n=\"admin.tab.logs\">📝 Audit &amp; Logs</button>
+      <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\" data-i18n=\"admin.tab.settings\">⚙️ Settings</button>
     </nav>
 
     <!-- ── Tab: Overview ──────────────────────────────────────────────────── -->
@@ -6226,18 +6361,18 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <section class=\"metrics\" id=\"overview_cards\"></section>
       <div class=\"stack\">
         <section class=\"card\">
-          <h2>📦 Phase 2 데이터 헬스</h2>
+          <h2 data-i18n=\"admin.h.phase2_health\">📦 Phase 2 데이터 헬스</h2>
           <div class=\"subtext\">PostgreSQL → InMemoryQueryStore 로 로드된 Phase 2 시드 데이터의 현재 카운트입니다. 0이면 시드 누락 또는 schema 002 미적용일 수 있습니다.</div>
           <div class=\"coverage\" id=\"phase2_health\"></div>
         </section>
         <section class=\"card\">
-          <h2>Source Coverage</h2>
+          <h2 data-i18n=\"admin.h.source_coverage\">Source Coverage</h2>
           <div class=\"subtext\">Fleet / Wazuh / Zabbix / Trivy / host logs 기준으로 현재 MORI에 연결된 호스트 수입니다.</div>
           <div class=\"coverage\" id=\"source_coverage\"></div>
           <div class=\"status-line\" id=\"dashboard_status\">dashboard loading...</div>
         </section>
         <section class=\"card\">
-          <h2>📡 Collector Health · Source Freshness</h2>
+          <h2 data-i18n=\"admin.h.collector_health\">📡 Collector Health · Source Freshness</h2>
           <div class=\"subtext\">수집기별 마지막 성공 시각과 SLA 임계 대비 지연(lag)을 표시합니다. SLA 초과 시 🟡 STALE, 마지막 sync가 error면 🔴 표시됩니다.</div>
           <div class=\"actions\" style=\"margin-bottom:10px\">
             <button id=\"admin_reload_freshness\" class=\"secondary\">새로고침</button>
@@ -6245,17 +6380,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"table-wrap\" id=\"admin_source_freshness\"></div>
         </section>
         <section class=\"card\">
-          <h2>Latest Host Status</h2>
+          <h2 data-i18n=\"admin.h.latest_status\">Latest Host Status</h2>
           <div class=\"subtext\">offline / unknown 호스트를 우선 배치합니다.</div>
           <div class=\"table-wrap\" id=\"latest_status\"></div>
         </section>
         <section class=\"card\">
-          <h2>Risk Summary</h2>
+          <h2 data-i18n=\"admin.h.risk_summary\">Risk Summary</h2>
           <div class=\"subtext\">24시간 alert와 누적 취약점 기준 상위 호스트입니다.</div>
           <div class=\"table-wrap\" id=\"risk_summary\"></div>
         </section>
         <section class=\"card\">
-          <h2>Recent Activity</h2>
+          <h2 data-i18n=\"admin.h.recent_activity\">Recent Activity</h2>
           <div class=\"subtext\">최근 alert / observation / fleet query 결과를 시간순으로 합쳐 보여줍니다.</div>
           <div class=\"list\" id=\"recent_activity\"></div>
         </section>
@@ -6267,7 +6402,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <section class=\"metrics\" id=\"admin_compliance_cards\"></section>
       <div class=\"stack\">
         <section class=\"card\">
-          <h2>📋 통제 점검 현황 (PDCA)</h2>
+          <h2 data-i18n=\"admin.h.pdca_status\">📋 통제 점검 현황 (PDCA)</h2>
           <div class=\"subtext\">
             <code>control_check_results</code> 테이블 기준 ISMS-P / ISO 27001 통제 점검 결과입니다.
             상세 시각화와 미조치 항목 편집은 <a href=\"/ui#compliance\" style=\"color:#7dd3fc\">사용자 대시보드 Compliance 탭 ↗</a>에서 가능합니다.
@@ -6279,7 +6414,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"table-wrap\" id=\"admin_compliance_categories\"></div>
         </section>
         <section class=\"card\">
-          <h2>🔧 미조치 항목 (통제 + Trivy + Alert)</h2>
+          <h2 data-i18n=\"admin.h.pending\">🔧 미조치 항목 (통제 + Trivy + Alert)</h2>
           <div class=\"subtext\">기한 초과는 🔴 표시. 통제 점검 fail/warning + Trivy critical/high + Alert critical/high (7일) 통합.</div>
           <div class=\"table-wrap\" id=\"admin_compliance_pending\"></div>
         </section>
@@ -6290,7 +6425,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"atab-panel\" id=\"atab_triage\">
       <div class=\"stack\">
         <section class=\"card\">
-          <h2>🚨 Alert Triage 현황</h2>
+          <h2 data-i18n=\"admin.h.triage\">🚨 Alert Triage 현황</h2>
           <div class=\"subtext\">
             triage 상태가 설정된 alert 목록입니다. 편집은
             <a href=\"/ui#triage\" style=\"color:#7dd3fc\">사용자 대시보드 Triage 탭 ↗</a>에서 가능합니다.
@@ -6301,7 +6436,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"table-wrap\" id=\"admin_triage_list\"></div>
         </section>
         <section class=\"card\">
-          <h2>📋 인시던트 (incident_store)</h2>
+          <h2 data-i18n=\"admin.h.incidents\">📋 인시던트 (incident_store)</h2>
           <div class=\"subtext\">
             등록된 인시던트와 처리 상태입니다. 생성·노트는
             <a href=\"/ui#incidents\" style=\"color:#7dd3fc\">사용자 대시보드 Incidents 탭 ↗</a>에서 가능합니다.
@@ -6319,7 +6454,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"atab-panel\" id=\"atab_remediation\">
       <div class=\"stack\">
         <section class=\"card\">
-          <h2>🔧 Trivy 취약점 조치 상태</h2>
+          <h2 data-i18n=\"admin.h.trivy_remediation\">🔧 Trivy 취약점 조치 상태</h2>
           <div class=\"subtext\">
             Critical / High 취약점과 등록된 조치 계획(plan) · 예외(exception) 입니다.
             편집은 <a href=\"/ui#assets\" style=\"color:#7dd3fc\">사용자 대시보드 Assets 탭의 취약점 카드 ↗</a>에서 가능합니다.
@@ -6331,7 +6466,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"table-wrap\" id=\"admin_vuln_actions\"></div>
         </section>
         <section class=\"card\">
-          <h2>📝 자산 조치 계획 (action_plans)</h2>
+          <h2 data-i18n=\"admin.h.action_plans\">📝 자산 조치 계획 (action_plans)</h2>
           <div class=\"subtext\">호스트별 등록된 조치 계획(target_date / text)을 표시합니다.</div>
           <div class=\"table-wrap\" id=\"admin_action_plans\"></div>
         </section>
@@ -6341,7 +6476,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <!-- ── Tab: 자산 관리 ────────────────────────────────────────────────── -->
     <div class=\"atab-panel\" id=\"atab_assets\">
       <section class=\"card\">
-        <h2>👤 자산 담당자 관리</h2>
+        <h2 data-i18n=\"admin.h.asset_owners\">👤 자산 담당자 관리</h2>
         <div class=\"subtext\">서버·PC 자산의 담당자와 팀을 등록합니다. 호스트명과 정확히 일치해야 합니다.</div>
         <div id=\"owners_list\" class=\"list\" style=\"margin-bottom:16px;max-height:360px;overflow-y:auto\"><span class=\"empty\">로딩 중…</span></div>
         <div id=\"owner_form_title\" style=\"font-size:14px;font-weight:700;color:#38bdf8;margin-bottom:8px;\">➕ 새 자산 등록</div>
@@ -6367,7 +6502,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"atab-panel\" id=\"atab_settings\">
       <div class=\"stack\">
         <section class=\"card\">
-          <h2>🖥️ 사용자 대시보드 설정</h2>
+          <h2 data-i18n=\"admin.h.dashboard_prefs\">🖥️ 사용자 대시보드 설정</h2>
           <div class=\"subtext\">`/ui` 에서 사용자에게 보이는 카드와 섹션을 제어합니다. 재시작 시 초기값으로 돌아갑니다.</div>
           <div class=\"row\"><label for=\"docs_portal_url\">문서 / 포털 URL</label><input id=\"docs_portal_url\" value=\"__DOCS_PORTAL_URL__\" /></div>
           <div class=\"row\"><label>사용자 요약 카드</label><div class=\"toggle-grid\" id=\"user_dashboard_cards\"></div></div>
@@ -6381,7 +6516,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"status-line\" id=\"dashboard_preferences_status\">user dashboard settings loading...</div>
         </section>
         <section class=\"card\">
-          <h2>🔔 Slack Webhook 관리</h2>
+          <h2 data-i18n=\"admin.h.slack\">🔔 Slack Webhook 관리</h2>
           <div class=\"subtext\">Critical 경보 발생 시 자동으로 알림을 전송할 Slack Incoming Webhook을 등록합니다.</div>
           <div id=\"webhooks_list\" class=\"list\" style=\"margin-bottom:12px\"><span class=\"empty\">로딩 중…</span></div>
           <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
@@ -6395,7 +6530,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"status-line\" id=\"webhook_status\"></div>
         </section>
         <section class=\"card\">
-          <h2>📖 가이드 &amp; 메뉴얼 편집</h2>
+          <h2 data-i18n=\"admin.h.guides_editor\">📖 가이드 &amp; 메뉴얼 편집</h2>
           <div class=\"subtext\">사용자 UI에 표시되는 가이드 내용을 수정합니다. 마크다운 형식을 지원합니다.</div>
           <div class=\"row\"><label for=\"guide_edit_select\">가이드 선택</label>
             <select id=\"guide_edit_select\">
@@ -6425,11 +6560,11 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div style=\"padding:0 22px 22px 22px\">
             <div class=\"subtext\" style=\"margin-bottom:12px\">관리자가 직접 백엔드 질의를 시험하기 위한 도구입니다. 일반 사용자 화면은 <a href=\"/ui\" style=\"color:#7dd3fc\">/ui</a> 를 참고하세요.</div>
             <section style=\"margin-bottom:18px\">
-              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\">⚡ Quick Actions</h3>
+              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.quick_actions\">⚡ Quick Actions</h3>
               <div class=\"quick-actions\" id=\"quick_queries\"></div>
             </section>
             <section style=\"margin-bottom:18px\">
-              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\">🗣️ Natural Language Query</h3>
+              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.nlq\">🗣️ Natural Language Query</h3>
               <div class=\"subtext\">자연스럽게 질문하면 의도를 해석해 실행합니다. <a href=\"#\" id=\"query_guide_link\" style=\"color:#7dd3fc;\">질의 가이드 ↗</a></div>
               <div class=\"row\">
                 <label for=\"nlp_text\">질문</label>
@@ -6445,7 +6580,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <div class=\"status-line\" id=\"query_status\">catalog loading...</div>
             </section>
             <section style=\"margin-bottom:18px\">
-              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\">🔧 Structured Query Builder</h3>
+              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.query_builder\">🔧 Structured Query Builder</h3>
               <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
                 <div class=\"row\"><label for=\"intent\">Intent</label><select id=\"intent\"></select></div>
                 <div class=\"row\"><label for=\"time_range\">time_range</label><input id=\"time_range\" value=\"24h\" /></div>
@@ -6461,7 +6596,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               </div>
             </section>
             <section>
-              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\">📨 Request / Response</h3>
+              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.request_response\">📨 Request / Response</h3>
               <div class=\"row\"><label for=\"payload\">Request Payload</label><textarea id=\"payload\">__PAYLOAD_JSON__</textarea></div>
               <div class=\"row\"><label>Response</label><div id=\"result\" class=\"query-result-area\"><span class=\"result-placeholder\">아직 실행 전입니다.</span></div></div>
             </section>
@@ -6474,7 +6609,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"atab-panel\" id=\"atab_access\">
       <div class=\"stack\">
         <section class=\"card\">
-          <h2>🙋 가입 요청 관리</h2>
+          <h2 data-i18n=\"admin.h.signup_requests\">🙋 가입 요청 관리</h2>
           <div class=\"subtext\">사용자가 제출한 가입 요청 목록입니다. 승인하면 운영자가 별도로 계정을 생성해야 합니다.</div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
             <button id=\"reload_signup_requests\" class=\"secondary\">새로고침</button>
@@ -6484,7 +6619,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
 
         <section class=\"card\">
-          <h2>🔐 역할별 탭 권한 관리</h2>
+          <h2 data-i18n=\"admin.h.role_perms\">🔐 역할별 탭 권한 관리</h2>
           <div class=\"subtext\">각 계정 역할에서 보이는 탭을 설정합니다. 저장 후 다음 로그인부터 적용됩니다.</div>
           <div id=\"roleperm_list\" style=\"display:grid;gap:16px;margin-bottom:16px\"><span class=\"empty\">로딩 중…</span></div>
           <div class=\"actions\">
@@ -6495,7 +6630,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
 
         <section class=\"card\">
-          <h2>👤 유저별 대시보드 탭 관리</h2>
+          <h2 data-i18n=\"admin.h.user_tabs\">👤 유저별 대시보드 탭 관리</h2>
           <div class=\"subtext\">개별 유저에게 역할 기본값과 다른 탭을 지정합니다. 유저별 설정이 있으면 역할 기본값보다 우선 적용됩니다.</div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
             <button id=\"reload_usertab\" class=\"secondary\">🔄 새로고침</button>
@@ -6510,7 +6645,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"atab-panel\" id=\"atab_logs\">
       <div class=\"stack\">
         <section class=\"card\">
-          <h2>📝 자산 변경 이력</h2>
+          <h2 data-i18n=\"admin.h.asset_audit\">📝 자산 변경 이력</h2>
           <div class=\"subtext\">사용자가 수정한 담당자·카테고리 변경 이력입니다. 최신 순으로 표시됩니다.</div>
           <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
             <input id=\"audit_filter_hostname\" placeholder=\"호스트명으로 검색\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:180px\" />
@@ -6527,7 +6662,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
 
         <section class=\"card\">
-          <h2>👤 사용자 행동 로그</h2>
+          <h2 data-i18n=\"admin.h.user_activity\">👤 사용자 행동 로그</h2>
           <div class=\"subtext\">로그인·로그아웃·탭 전환·쿼리 실행 등 모든 사용자 행동이 기록됩니다.</div>
           <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
             <input id=\"userlog_filter_user\" placeholder=\"사용자명으로 검색\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:180px\" />
@@ -7663,6 +7798,13 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       if (tab === 'overview') { loadAdminPhase2Health(); loadAdminSourceFreshness(); }
     }
 
+    // i18n: refresh the active admin tab's dynamic content when the language changes
+    window.onLangChange = function() {
+      const activePanel = document.querySelector('.atab-panel.active');
+      const tab = activePanel ? activePanel.id.replace('atab_', '') : 'overview';
+      try { switchAdminTab(tab); } catch (e) { /* best-effort */ }
+    };
+
     // ── Signup Requests ────────────────────────────────────────────────────
     const signupListEl = document.getElementById('signup_requests_list');
     const signupStatusEl = document.getElementById('signup_requests_status');
@@ -8383,6 +8525,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       if (dashboardStatusEl) dashboardStatusEl.textContent = `초기화 오류: ${err.message}`;
     });
   </script>
+  __I18N_SCRIPT__
 </body>
 </html>"""
     return (
@@ -8395,6 +8538,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         .replace("__SECTION_LABELS_JSON__", section_labels_json)
         .replace("__ASSET_COLUMN_LABELS_JSON__", asset_column_labels_json)
         .replace("__GUIDE_LABELS_JSON__", guide_labels_json)
+        .replace("__I18N_TOGGLE__", _i18n_toggle_html())
+        .replace("__I18N_SCRIPT__", _i18n_script(_ADMIN_I18N))
     )
 
 

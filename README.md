@@ -15,7 +15,8 @@
 
 - 🎯 **대상** — 보안 담당자 1~2명 + IT 헬프데스크로 ISMS-P / ISO 27001을 준비해야 하는 중소형 조직
 - 🚀 **한 줄 시작** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, 데모 전용)
-- 📊 **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · Compliance PDCA · 5종 감사 증적 CSV
+- 📊 **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · Compliance PDCA · 5종 감사 증적 CSV/PDF
+- 🌐 **다국어 UI** — 로그인·대시보드·어드민 콘솔 전 페이지 한국어/영어 토글 지원 (선택 언어는 쿠키·localStorage에 저장, 새로고침 없이 즉시 전환)
 - 🧾 **자동 증적** — 자산 담당자·중요도, 호스트/CVE 단위 조치 계획·예외, Triage·인시던트 상태 변경
 - ⚠️ **Alpha** — 시드 + 인메모리 store 기반. PostgreSQL 영속화·실시간 폴러는 다음 마일스톤 ([Integrations & 확장 방향](#-integrations--확장-방향) 참조)
 
@@ -156,6 +157,7 @@ flowchart LR
 | **🔀 교차 검증** | Zabbix × Fleet × Trivy 호스트 매핑 차이 / 미매핑 자산 검출 | source_coverage / orphan check |
 | **💬 자연어 질의 (FAB)** | 12개 인텐트 디스패치 (alert_summary, offline_hosts, top_vulnerable_hosts, host_timeline …) | `/interpret` + `/query` |
 | **📚 가이드 시스템** | 7종 가이드 어드민 on/off + 직접 편집 | ISMS-P / ISO 27001 운영 가이드 |
+| **🌐 다국어 (KO/EN)** | 로그인·대시보드·어드민 전 페이지 우상단 토글 + `data-i18n` 정적 치환 + `window.t()` 동적 메시지 | 쿠키·localStorage 저장, 토글 시 활성 탭 즉시 재렌더 |
 | **API 문서** | Swagger `/docs` | FastAPI 자동 생성 |
 
 > ⚠️ **저장소 분리 안내** — PostgreSQL은 **정규화된 시드 보안 데이터**(hosts/alerts/vulnerabilities/observations 등)를 보유하며 부팅 시 InMemoryRepository로 로드되어 질의에 사용됩니다. 한편 **UI 운영 상태 5종**(triage / incidents / asset owners / vuln actions / asset audit log)은 현재 API 프로세스의 인메모리 dict이므로 **재시작 시 초기화**됩니다. Postgres 영속화 매핑은 `repositories/postgres.py` + `schema/002_phase2_compliance_identity.sql`에 코드/스키마가 준비되어 있고 실제 연결만 미완입니다.
