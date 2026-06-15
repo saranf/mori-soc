@@ -1065,6 +1065,7 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.dyn.trivy_empty": "Trivy 취약점 데이터가 없습니다.",
         "dash.dyn.autosaving": "자동 저장 중...",
         "dash.dyn.error_prefix": "오류: ",
+        "dash.dyn.crosscheck_fail": "교차 검증 데이터를 불러올 수 없습니다.",
     },
     "en": {
         "dash.doctitle": "MORI Security Dashboard",
@@ -1121,6 +1122,7 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.dyn.trivy_empty": "No Trivy vulnerability data.",
         "dash.dyn.autosaving": "Auto-saving…",
         "dash.dyn.error_prefix": "Error: ",
+        "dash.dyn.crosscheck_fail": "Failed to load cross-validation data.",
     },
 }
 
@@ -1322,6 +1324,39 @@ _ADMIN_I18N: dict[str, dict[str, str]] = {
         "admin.dyn.filters_json_error": "filters JSON 오류: ",
         "admin.dyn.not_run_yet": "아직 실행 전입니다.",
         "admin.dyn.init_error": "초기화 오류: ",
+        "admin.dyn.edit": "✏️ 수정",
+        "admin.dyn.delete": "삭제",
+        "admin.dyn.info_not_found": "정보를 찾을 수 없습니다.",
+        "admin.dyn.editing": "수정 중",
+        "admin.dyn.new_asset": "➕ 새 자산 등록",
+        "admin.dyn.edit_cancelled": "수정 취소됨",
+        "admin.dyn.confirm_delete_owner": "자산 정보를 삭제하시겠습니까?",
+        "admin.dyn.delete_fail_prefix": "삭제 실패: ",
+        "admin.dyn.enter_hostname": "호스트명을 입력하세요.",
+        "admin.dyn.save_done": "저장 완료 ✓",
+        "admin.dyn.test": "테스트",
+        "admin.dyn.sending": "전송 중…",
+        "admin.dyn.success_check": "✓ 성공",
+        "admin.dyn.fail_check": "✗ 실패",
+        "admin.dyn.error_check": "✗ 오류",
+        "admin.dyn.confirm_delete_webhook": "이 webhook을 삭제하시겠습니까?",
+        "admin.dyn.deleting": "삭제 중…",
+        "admin.dyn.enter_url": "URL을 입력하세요.",
+        "admin.dyn.adding": "추가 중…",
+        "admin.dyn.add_done": "추가 완료 ✓",
+        "admin.dyn.loading_data": "불러오는 중…",
+        "admin.dyn.last_saved_prefix": "마지막 저장: ",
+        "admin.dyn.default_content": "(기본 내용)",
+        "admin.dyn.load_data_fail_prefix": "불러오기 실패: ",
+        "admin.dyn.enter_title": "제목을 입력하세요.",
+        "admin.dyn.hint_rewrite": "이 질문은 다시 써주는 편이 좋습니다.",
+        "admin.dyn.hint_more": "추가 힌트가 있습니다.",
+        "admin.dyn.guide_default_msg": "질문 의도를 정확히 해석하지 못하면 아래 예시를 눌러 다시 시작할 수 있습니다.",
+        "admin.dyn.enter_nlq": "자연어 질문을 입력하세요.",
+        "admin.dyn.enter_question_first": "질문을 먼저 입력해 주세요.",
+        "admin.dyn.total_prefix": "총 ",
+        "admin.dyn.queried_suffix": "건 조회됨",
+        "admin.dyn.elapsed": "경과",
     },
     "en": {
         "admin.doctitle": "MORI Security Dashboard",
@@ -1519,6 +1554,39 @@ _ADMIN_I18N: dict[str, dict[str, str]] = {
         "admin.dyn.filters_json_error": "filters JSON error: ",
         "admin.dyn.not_run_yet": "Not run yet.",
         "admin.dyn.init_error": "Initialization error: ",
+        "admin.dyn.edit": "✏️ Edit",
+        "admin.dyn.delete": "Delete",
+        "admin.dyn.info_not_found": "information not found.",
+        "admin.dyn.editing": "— editing",
+        "admin.dyn.new_asset": "➕ Register new asset",
+        "admin.dyn.edit_cancelled": "Edit cancelled",
+        "admin.dyn.confirm_delete_owner": "— delete this asset info?",
+        "admin.dyn.delete_fail_prefix": "Delete failed: ",
+        "admin.dyn.enter_hostname": "Enter a hostname.",
+        "admin.dyn.save_done": "Saved ✓",
+        "admin.dyn.test": "Test",
+        "admin.dyn.sending": "Sending…",
+        "admin.dyn.success_check": "✓ Success",
+        "admin.dyn.fail_check": "✗ Failed",
+        "admin.dyn.error_check": "✗ Error",
+        "admin.dyn.confirm_delete_webhook": "Delete this webhook?",
+        "admin.dyn.deleting": "Deleting…",
+        "admin.dyn.enter_url": "Enter a URL.",
+        "admin.dyn.adding": "Adding…",
+        "admin.dyn.add_done": "Added ✓",
+        "admin.dyn.loading_data": "Loading…",
+        "admin.dyn.last_saved_prefix": "Last saved: ",
+        "admin.dyn.default_content": "(default content)",
+        "admin.dyn.load_data_fail_prefix": "Load failed: ",
+        "admin.dyn.enter_title": "Enter a title.",
+        "admin.dyn.hint_rewrite": "You may want to rephrase this question.",
+        "admin.dyn.hint_more": "Additional hints available.",
+        "admin.dyn.guide_default_msg": "If the intent isn't recognized, click an example below to restart.",
+        "admin.dyn.enter_nlq": "Enter a natural-language question.",
+        "admin.dyn.enter_question_first": "Please enter a question first.",
+        "admin.dyn.total_prefix": "Total ",
+        "admin.dyn.queried_suffix": " results",
+        "admin.dyn.elapsed": "elapsed",
     },
 }
 
@@ -6234,7 +6302,7 @@ def render_user_dashboard_html(
           </div>`;
         }).join('');
       } catch(e) {
-        area.innerHTML = '<div class=\"empty\" style=\"color:#f87171\">교차 검증 데이터를 불러올 수 없습니다.</div>';
+        area.innerHTML = `<div class=\"empty\" style=\"color:#f87171\">${tt('dash.dyn.crosscheck_fail','교차 검증 데이터를 불러올 수 없습니다.')}</div>`;
       }
     }
 
@@ -7270,7 +7338,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         return;
       }
       const tone = data?.recognized === false ? 'need-guide' : 'warning';
-      const title = data?.recognized === false ? '이 질문은 다시 써주는 편이 좋습니다.' : '추가 힌트가 있습니다.';
+      const title = data?.recognized === false ? tt('admin.dyn.hint_rewrite','이 질문은 다시 써주는 편이 좋습니다.') : tt('admin.dyn.hint_more','추가 힌트가 있습니다.');
       interpretationHintEl.innerHTML = `
         <div class=\"guide-banner ${escapeHtml(tone)}\">
           <strong>${escapeHtml(title)}</strong>
@@ -7280,7 +7348,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     }
 
     function openGuideModal(message, examples) {
-      guideMessageEl.textContent = message || '질문 의도를 정확히 해석하지 못하면 아래 예시를 눌러 다시 시작할 수 있습니다.';
+      guideMessageEl.textContent = message || tt('admin.dyn.guide_default_msg','질문 의도를 정확히 해석하지 못하면 아래 예시를 눌러 다시 시작할 수 있습니다.');
       renderGuideButtons(guideListEl, examples);
       if (guideModalEl.open) {
         return;
@@ -7612,8 +7680,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     async function interpretNaturalText(options = {}) {
       const text = nlpTextEl.value.trim();
       if (!text) {
-        queryStatusEl.textContent = '자연어 질문을 입력하세요.';
-        renderInterpretationHint({ warnings: ['질문을 먼저 입력해 주세요.'], recognized: false });
+        queryStatusEl.textContent = tt('admin.dyn.enter_nlq','자연어 질문을 입력하세요.');
+        renderInterpretationHint({ warnings: [tt('admin.dyn.enter_question_first','질문을 먼저 입력해 주세요.')], recognized: false });
         return null;
       }
       queryStatusEl.textContent = options.statusText || 'interpreting text...';
@@ -7746,7 +7814,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             `).join('')}
           </tbody>
         </table>
-        <div class=\"status-line\" style=\"margin-top:8px;\">총 ${escapeHtml(String(count))}건 조회됨</div>`;
+        <div class=\"status-line\" style=\"margin-top:8px;\">${tt('admin.dyn.total_prefix','총 ')}${escapeHtml(String(count))}${tt('admin.dyn.queried_suffix','건 조회됨')}</div>`;
       resultEl.innerHTML = html;
     }
 
@@ -7916,8 +7984,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               ${o.email ? `<span style=\"color:#64748b;font-size:11px;margin-left:6px\">${escapeHtml(o.email)}</span>` : ''}
             </div>
             <div style=\"display:flex;gap:6px;flex-shrink:0\">
-              <button onclick=\"editOwner('${escapeHtml(o.hostname)}')\" style=\"background:#1e3a5f;border:1px solid #334155;color:#93c5fd;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px\">✏️ 수정</button>
-              <button onclick=\"deleteOwner('${escapeHtml(o.hostname)}')\" style=\"background:#7f1d1d;border:none;color:#fca5a5;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px\">삭제</button>
+              <button onclick=\"editOwner('${escapeHtml(o.hostname)}')\" style=\"background:#1e3a5f;border:1px solid #334155;color:#93c5fd;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px\">${tt('admin.dyn.edit','✏️ 수정')}</button>
+              <button onclick=\"deleteOwner('${escapeHtml(o.hostname)}')\" style=\"background:#7f1d1d;border:none;color:#fca5a5;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px\">${tt('admin.dyn.delete','삭제')}</button>
             </div>
           </div>`;
         }).join('');
@@ -7934,7 +8002,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         _ownersCache = data.owners || [];
       } catch(e) { /* use empty */ }
       const o = _ownersCache.find(x => x.hostname === hostname);
-      if (!o) { ownerStatusEl.textContent = `'${hostname}' 정보를 찾을 수 없습니다.`; return; }
+      if (!o) { ownerStatusEl.textContent = `'${hostname}' ${tt('admin.dyn.info_not_found','정보를 찾을 수 없습니다.')}`; return; }
       _editingHostname = hostname;
       ownHostnameEl.value = o.hostname;
       ownHostnameEl.readOnly = true;
@@ -7944,7 +8012,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       ownTeamEl.value = o.team || '';
       ownCategoryEl.value = o.category || '';
       ownImportanceEl.value = o.importance || '';
-      ownerFormTitleEl.textContent = `✏️ ${hostname} 수정 중`;
+      ownerFormTitleEl.textContent = `✏️ ${hostname} ${tt('admin.dyn.editing','수정 중')}`;
       ownerFormTitleEl.style.color = '#fde68a';
       cancelEditBtn.style.display = '';
       ownerStatusEl.textContent = '';
@@ -7958,26 +8026,26 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       ownTeamEl.value = ''; ownCategoryEl.value = ''; ownImportanceEl.value = '';
       ownHostnameEl.readOnly = false;
       ownHostnameEl.style.opacity = '1';
-      ownerFormTitleEl.textContent = '➕ 새 자산 등록';
+      ownerFormTitleEl.textContent = tt('admin.dyn.new_asset','➕ 새 자산 등록');
       ownerFormTitleEl.style.color = '#38bdf8';
       cancelEditBtn.style.display = 'none';
     }
 
-    cancelEditBtn?.addEventListener('click', () => { _resetOwnerForm(); ownerStatusEl.textContent = '수정 취소됨'; });
+    cancelEditBtn?.addEventListener('click', () => { _resetOwnerForm(); ownerStatusEl.textContent = tt('admin.dyn.edit_cancelled','수정 취소됨'); });
 
     async function deleteOwner(hostname) {
-      if (!confirm(`'${hostname}' 자산 정보를 삭제하시겠습니까?`)) return;
+      if (!confirm(`'${hostname}' ${tt('admin.dyn.confirm_delete_owner','자산 정보를 삭제하시겠습니까?')}`)) return;
       try {
         await fetch(`/assets/owners/${encodeURIComponent(hostname)}`, {method:'DELETE'});
         if (_editingHostname === hostname) _resetOwnerForm();
         await loadOwners();
-      } catch(e) { ownerStatusEl.textContent = `삭제 실패: ${e.message}`; }
+      } catch(e) { ownerStatusEl.textContent = `${tt('admin.dyn.delete_fail_prefix','삭제 실패: ')}${e.message}`; }
     }
 
     document.getElementById('add_owner')?.addEventListener('click', async () => {
       const hostname = ownHostnameEl.value.trim();
-      if (!hostname) { ownerStatusEl.textContent = '호스트명을 입력하세요.'; return; }
-      ownerStatusEl.textContent = '저장 중…';
+      if (!hostname) { ownerStatusEl.textContent = tt('admin.dyn.enter_hostname','호스트명을 입력하세요.'); return; }
+      ownerStatusEl.textContent = tt('admin.dyn.saving','저장 중…');
       try {
         const res = await fetch('/assets/owners', {
           method: 'POST', headers: {'Content-Type':'application/json'},
@@ -7992,9 +8060,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.status);
         _resetOwnerForm();
-        ownerStatusEl.textContent = '저장 완료 ✓';
+        ownerStatusEl.textContent = tt('admin.dyn.save_done','저장 완료 ✓');
         await loadOwners();
-      } catch(e) { ownerStatusEl.textContent = `오류: ${e.message}`; }
+      } catch(e) { ownerStatusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
     });
     document.getElementById('reload_owners')?.addEventListener('click', loadOwners);
 
@@ -8011,41 +8079,41 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <div class=\"top\"><strong>${escapeHtml(w.name)}</strong><span class=\"meta\">${escapeHtml(w.created_at||'')}</span></div>
             <div class=\"meta mono\" style=\"word-break:break-all\">${escapeHtml(w.url)}</div>
             <div style=\"margin-top:8px;display:flex;gap:8px\">
-              <button class=\"secondary\" style=\"width:auto;padding:4px 12px;font-size:12px\" onclick=\"testWebhook('${escapeHtml(w.id)}', this)\">테스트</button>
-              <button class=\"ghost\" style=\"width:auto;padding:4px 12px;font-size:12px;border-color:#ef4444;color:#fca5a5\" onclick=\"deleteWebhook('${escapeHtml(w.id)}', this)\">삭제</button>
+              <button class=\"secondary\" style=\"width:auto;padding:4px 12px;font-size:12px\" onclick=\"testWebhook('${escapeHtml(w.id)}', this)\">${tt('admin.dyn.test','테스트')}</button>
+              <button class=\"ghost\" style=\"width:auto;padding:4px 12px;font-size:12px;border-color:#ef4444;color:#fca5a5\" onclick=\"deleteWebhook('${escapeHtml(w.id)}', this)\">${tt('admin.dyn.delete','삭제')}</button>
             </div>
           </div>
         `).join('');
       } catch(e) { webhooksListEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`; }
     }
     async function testWebhook(id, btn) {
-      btn.textContent = '전송 중…'; btn.disabled = true;
+      btn.textContent = tt('admin.dyn.sending','전송 중…'); btn.disabled = true;
       try {
         const res = await fetch(`/webhooks/${id}/test`, {method:'POST'});
-        btn.textContent = res.ok ? '✓ 성공' : '✗ 실패';
-      } catch(e) { btn.textContent = '✗ 오류'; }
-      setTimeout(() => { btn.textContent = '테스트'; btn.disabled = false; }, 2000);
+        btn.textContent = res.ok ? tt('admin.dyn.success_check','✓ 성공') : tt('admin.dyn.fail_check','✗ 실패');
+      } catch(e) { btn.textContent = tt('admin.dyn.error_check','✗ 오류'); }
+      setTimeout(() => { btn.textContent = tt('admin.dyn.test','테스트'); btn.disabled = false; }, 2000);
     }
     async function deleteWebhook(id, btn) {
-      if (!confirm('이 webhook을 삭제하시겠습니까?')) return;
-      btn.textContent = '삭제 중…'; btn.disabled = true;
+      if (!confirm(tt('admin.dyn.confirm_delete_webhook','이 webhook을 삭제하시겠습니까?'))) return;
+      btn.textContent = tt('admin.dyn.deleting','삭제 중…'); btn.disabled = true;
       try {
         const res = await fetch(`/webhooks/${id}`, {method:'DELETE'});
         if (!res.ok) throw new Error((await res.json()).detail || res.status);
         await loadWebhooks();
-      } catch(e) { webhookStatusEl.textContent = `삭제 실패: ${e.message}`; btn.disabled = false; btn.textContent = '삭제'; }
+      } catch(e) { webhookStatusEl.textContent = `${tt('admin.dyn.delete_fail_prefix','삭제 실패: ')}${e.message}`; btn.disabled = false; btn.textContent = tt('admin.dyn.delete','삭제'); }
     }
     document.getElementById('add_webhook')?.addEventListener('click', async () => {
       const url = whUrlEl.value.trim();
-      if (!url) { webhookStatusEl.textContent = 'URL을 입력하세요.'; return; }
-      webhookStatusEl.textContent = '추가 중…';
+      if (!url) { webhookStatusEl.textContent = tt('admin.dyn.enter_url','URL을 입력하세요.'); return; }
+      webhookStatusEl.textContent = tt('admin.dyn.adding','추가 중…');
       try {
         const res = await fetch('/webhooks', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name: whNameEl.value.trim() || 'Slack Webhook', url})});
         if (!res.ok) throw new Error((await res.json()).detail || res.status);
         whNameEl.value = ''; whUrlEl.value = '';
-        webhookStatusEl.textContent = '추가 완료 ✓';
+        webhookStatusEl.textContent = tt('admin.dyn.add_done','추가 완료 ✓');
         await loadWebhooks();
-      } catch(e) { webhookStatusEl.textContent = `오류: ${e.message}`; }
+      } catch(e) { webhookStatusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
     });
     document.getElementById('reload_webhooks')?.addEventListener('click', loadWebhooks);
 
@@ -8056,15 +8124,15 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const guideEditStatusEl = document.getElementById('guide_edit_status');
 
     async function loadGuideForEdit(guideId) {
-      guideEditStatusEl.textContent = '불러오는 중…';
+      guideEditStatusEl.textContent = tt('admin.dyn.loading_data','불러오는 중…');
       try {
         const res = await fetch(`/guides/${encodeURIComponent(guideId)}`);
         if (!res.ok) throw new Error(res.status);
         const g = await res.json();
         guideEditTitleEl.value = g.title || '';
         guideEditContentEl.value = g.content || '';
-        guideEditStatusEl.textContent = g.updated_at ? `마지막 저장: ${g.updated_at.slice(0,19).replace('T',' ')}` : '(기본 내용)';
-      } catch(e) { guideEditStatusEl.textContent = `불러오기 실패: ${e.message}`; }
+        guideEditStatusEl.textContent = g.updated_at ? `${tt('admin.dyn.last_saved_prefix','마지막 저장: ')}${g.updated_at.slice(0,19).replace('T',' ')}` : tt('admin.dyn.default_content','(기본 내용)');
+      } catch(e) { guideEditStatusEl.textContent = `${tt('admin.dyn.load_data_fail_prefix','불러오기 실패: ')}${e.message}`; }
     }
 
     document.getElementById('guide_edit_load')?.addEventListener('click', () => {
@@ -8077,16 +8145,16 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       const guideId = guideEditSelectEl.value;
       const title = guideEditTitleEl.value.trim();
       const content = guideEditContentEl.value;
-      if (!title) { guideEditStatusEl.textContent = '제목을 입력하세요.'; return; }
-      guideEditStatusEl.textContent = '저장 중…';
+      if (!title) { guideEditStatusEl.textContent = tt('admin.dyn.enter_title','제목을 입력하세요.'); return; }
+      guideEditStatusEl.textContent = tt('admin.dyn.saving','저장 중…');
       try {
         const res = await fetch(`/guides/${encodeURIComponent(guideId)}`, {
           method: 'PUT', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({title, content}),
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.status);
-        guideEditStatusEl.textContent = '저장 완료 ✓';
-      } catch(e) { guideEditStatusEl.textContent = `오류: ${e.message}`; }
+        guideEditStatusEl.textContent = tt('admin.dyn.save_done','저장 완료 ✓');
+      } catch(e) { guideEditStatusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
     });
 
     /* ── Admin Tab switching ──────────────────────────────── */
@@ -8470,7 +8538,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const items = [
           { label: 'Control Checks', value: total, hint: 'control_check_results' },
           { label: tt('admin.dyn.metric.pending','미조치'), value: data.pending_count || 0, hint: 'fail + warning + Trivy + Alert' },
-          { label: tt('admin.dyn.metric.overdue','기한 초과'), value: data.overdue_count || 0, hint: 'remediation_due_at 경과' },
+          { label: tt('admin.dyn.metric.overdue','기한 초과'), value: data.overdue_count || 0, hint: `remediation_due_at ${tt('admin.dyn.elapsed','경과')}` },
         ];
         const inc = await fetch('/incidents').then(r => r.ok ? r.json() : { total: 0 }).catch(() => ({ total: 0 }));
         items.push({ label: 'Incidents', value: inc.total || (inc.incidents||[]).length, hint: 'incident_store' });
