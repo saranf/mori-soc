@@ -1357,6 +1357,91 @@ _ADMIN_I18N: dict[str, dict[str, str]] = {
         "admin.dyn.total_prefix": "총 ",
         "admin.dyn.queried_suffix": "건 조회됨",
         "admin.dyn.elapsed": "경과",
+        "admin.s.sub.phase2_health": "PostgreSQL → InMemoryQueryStore 로 로드된 Phase 2 시드 데이터의 현재 카운트입니다. 0이면 시드 누락 또는 schema 002 미적용일 수 있습니다.",
+        "admin.s.sub.source_coverage": "Fleet / Wazuh / Zabbix / Trivy / host logs 기준으로 현재 MORI에 연결된 호스트 수입니다.",
+        "admin.s.sub.collector_health": "수집기별 마지막 성공 시각과 SLA 임계 대비 지연(lag)을 표시합니다. SLA 초과 시 🟡 STALE, 마지막 sync가 error면 🔴 표시됩니다.",
+        "admin.s.sub.latest_status": "offline / unknown 호스트를 우선 배치합니다.",
+        "admin.s.sub.risk_summary": "24시간 alert와 누적 취약점 기준 상위 호스트입니다.",
+        "admin.s.sub.recent_activity": "최근 alert / observation / fleet query 결과를 시간순으로 합쳐 보여줍니다.",
+        "admin.s.sub.pdca": '<code>control_check_results</code> 테이블 기준 ISMS-P / ISO 27001 통제 점검 결과입니다. 상세 시각화와 미조치 항목 편집은 <a href="/ui#compliance" style="color:#7dd3fc">사용자 대시보드 Compliance 탭 ↗</a>에서 가능합니다.',
+        "admin.s.sub.pending": "기한 초과는 🔴 표시. 통제 점검 fail/warning + Trivy critical/high + Alert critical/high (7일) 통합.",
+        "admin.s.sub.triage": 'triage 상태가 설정된 alert 목록입니다. 편집은 <a href="/ui#triage" style="color:#7dd3fc">사용자 대시보드 Triage 탭 ↗</a>에서 가능합니다.',
+        "admin.s.sub.incidents": '등록된 인시던트와 처리 상태입니다. 생성·노트는 <a href="/ui#incidents" style="color:#7dd3fc">사용자 대시보드 Incidents 탭 ↗</a>에서 가능합니다.',
+        "admin.s.sub.trivy": 'Critical / High 취약점과 등록된 조치 계획(plan) · 예외(exception) 입니다. 편집은 <a href="/ui#assets" style="color:#7dd3fc">사용자 대시보드 Assets 탭의 취약점 카드 ↗</a>에서 가능합니다.',
+        "admin.s.sub.action_plans": "호스트별 등록된 조치 계획(target_date / text)을 표시합니다.",
+        "admin.s.sub.asset_owners": "서버·PC 자산의 담당자와 팀을 등록합니다. 호스트명과 정확히 일치해야 합니다.",
+        "admin.s.sub.dashboard_prefs": "`/ui` 에서 사용자에게 보이는 카드와 섹션을 제어합니다. 재시작 시 초기값으로 돌아갑니다.",
+        "admin.s.sub.slack": "Critical 경보 발생 시 자동으로 알림을 전송할 Slack Incoming Webhook을 등록합니다.",
+        "admin.s.sub.guides_editor": "사용자 UI에 표시되는 가이드 내용을 수정합니다. 마크다운 형식을 지원합니다.",
+        "admin.s.sub.devtools": '관리자가 직접 백엔드 질의를 시험하기 위한 도구입니다. 일반 사용자 화면은 <a href="/ui" style="color:#7dd3fc">/ui</a> 를 참고하세요.',
+        "admin.s.sub.nlq": "자연스럽게 질문하면 의도를 해석해 실행합니다.",
+        "admin.s.sub.signup_requests": "사용자가 제출한 가입 요청 목록입니다. 승인하면 운영자가 별도로 계정을 생성해야 합니다.",
+        "admin.s.sub.role_perms": "각 계정 역할에서 보이는 탭을 설정합니다. 저장 후 다음 로그인부터 적용됩니다.",
+        "admin.s.sub.user_tabs": "개별 유저에게 역할 기본값과 다른 탭을 지정합니다. 유저별 설정이 있으면 역할 기본값보다 우선 적용됩니다.",
+        "admin.s.sub.asset_audit": "사용자가 수정한 담당자·카테고리 변경 이력입니다. 최신 순으로 표시됩니다.",
+        "admin.s.sub.user_activity": "로그인·로그아웃·탭 전환·쿼리 실행 등 모든 사용자 행동이 기록됩니다.",
+        "admin.s.devtools_tag": "— 자연어 / 구조화 질의 (개발자용)",
+        "admin.s.link.query_guide": "질의 가이드 ↗",
+        "admin.s.btn.refresh": "새로고침",
+        "admin.s.btn.refresh_icon": "🔄 새로고침",
+        "admin.s.btn.pending_csv": "📥 미조치 CSV",
+        "admin.s.btn.incidents_csv": "📥 인시던트 CSV",
+        "admin.s.btn.critical_csv": "📥 Critical CSV",
+        "admin.s.btn.add_edit": "등록 / 수정",
+        "admin.s.btn.reload_list": "목록 새로고침",
+        "admin.s.btn.save": "저장",
+        "admin.s.btn.open_user_ui": "사용자 화면 열기 ↗",
+        "admin.s.btn.add": "추가",
+        "admin.s.btn.load": "불러오기",
+        "admin.s.btn.search": "🔍 검색",
+        "admin.s.btn.close": "닫기",
+        "admin.s.lbl.hostname": "호스트명",
+        "admin.s.lbl.owner": "담당자",
+        "admin.s.lbl.email": "이메일",
+        "admin.s.lbl.team": "팀",
+        "admin.s.lbl.category": "분류 (카테고리)",
+        "admin.s.lbl.importance": "중요도",
+        "admin.s.lbl.docs_url": "문서 / 포털 URL",
+        "admin.s.lbl.user_cards": "사용자 요약 카드",
+        "admin.s.lbl.user_sections": "사용자 섹션",
+        "admin.s.lbl.asset_columns": "자빅스 자산 테이블 컬럼 표시",
+        "admin.s.lbl.guide_tabs": "가이드 탭 노출 설정",
+        "admin.s.lbl.channel_name": "채널 이름 (식별용)",
+        "admin.s.lbl.guide_select": "가이드 선택",
+        "admin.s.lbl.title": "제목",
+        "admin.s.lbl.content_md": "내용 (마크다운)",
+        "admin.s.lbl.question": "질문",
+        "admin.s.opt.auto": "자동 (기본)",
+        "admin.s.opt.all_items": "전체 항목",
+        "admin.s.opt.owner": "담당자",
+        "admin.s.opt.category": "카테고리",
+        "admin.s.opt.all_actions": "전체 액션",
+        "admin.s.gopt.zabbix_setup": "🖧 Zabbix 에이전트 설정",
+        "admin.s.gopt.fleet_install": "🖥️ Fleet 에이전트 설치",
+        "admin.s.gopt.isms_criteria": "📋 ISMS-P 심사 기준",
+        "admin.s.gopt.iso27001_criteria": "🌐 ISO 27001 심사 기준",
+        "admin.s.gopt.ldap_setup": "🔐 LDAP 통합 설정",
+        "admin.s.gopt.incident_response": "🚨 인시던트 대응 절차",
+        "admin.s.gopt.security_policy": "📜 보안 정책 가이드",
+        "admin.s.ph.hostname": "예: db-prod-01",
+        "admin.s.ph.owner": "예: 홍길동",
+        "admin.s.ph.email": "예: hong@company.com",
+        "admin.s.ph.team": "예: 인프라팀",
+        "admin.s.ph.category": "예: DB서버, 웹서버, AP서버",
+        "admin.s.ph.channel": "예: #soc-alerts",
+        "admin.s.ph.guide_title": "가이드 제목",
+        "admin.s.ph.audit_host": "호스트명으로 검색",
+        "admin.s.ph.userlog_user": "사용자명으로 검색",
+        "admin.s.bn.overview": "Overview",
+        "admin.s.bn.compliance": "Compliance",
+        "admin.s.bn.triage": "Triage",
+        "admin.s.bn.remediation": "조치",
+        "admin.s.bn.assets": "자산",
+        "admin.s.bn.access": "권한",
+        "admin.s.bn.logs": "로그",
+        "admin.s.bn.settings": "설정",
+        "admin.s.dlg.nlq_guide_title": "Natural Language Query Guide",
+        "admin.s.dlg.overview_copy": "선택한 카드의 상세 목록입니다.",
     },
     "en": {
         "admin.doctitle": "MORI Security Dashboard",
@@ -1587,6 +1672,91 @@ _ADMIN_I18N: dict[str, dict[str, str]] = {
         "admin.dyn.total_prefix": "Total ",
         "admin.dyn.queried_suffix": " results",
         "admin.dyn.elapsed": "elapsed",
+        "admin.s.sub.phase2_health": "Current counts of Phase 2 seed data loaded from PostgreSQL → InMemoryQueryStore. A value of 0 may indicate missing seed data or that schema 002 was not applied.",
+        "admin.s.sub.source_coverage": "Number of hosts currently connected to MORI across Fleet / Wazuh / Zabbix / Trivy / host logs.",
+        "admin.s.sub.collector_health": "Shows each collector's last success time and lag against the SLA threshold. 🟡 STALE if the SLA is exceeded, 🔴 if the last sync errored.",
+        "admin.s.sub.latest_status": "Prioritizes offline / unknown hosts.",
+        "admin.s.sub.risk_summary": "Top hosts by 24h alerts and cumulative vulnerabilities.",
+        "admin.s.sub.recent_activity": "Combines recent alert / observation / fleet query results in chronological order.",
+        "admin.s.sub.pdca": '<code>control_check_results</code> table-based ISMS-P / ISO 27001 control-check results. Detailed visualization and pending-item editing are available on the <a href="/ui#compliance" style="color:#7dd3fc">user dashboard Compliance tab ↗</a>.',
+        "admin.s.sub.pending": "Overdue items are marked 🔴. Combines control-check fail/warning + Trivy critical/high + Alert critical/high (7 days).",
+        "admin.s.sub.triage": 'Alerts with a triage status set. Editing is available on the <a href="/ui#triage" style="color:#7dd3fc">user dashboard Triage tab ↗</a>.',
+        "admin.s.sub.incidents": 'Registered incidents and their handling status. Creation and notes are available on the <a href="/ui#incidents" style="color:#7dd3fc">user dashboard Incidents tab ↗</a>.',
+        "admin.s.sub.trivy": 'Critical / High vulnerabilities with registered remediation plans and exceptions. Editing is available on the <a href="/ui#assets" style="color:#7dd3fc">vulnerability card of the user dashboard Assets tab ↗</a>.',
+        "admin.s.sub.action_plans": "Shows registered action plans (target_date / text) per host.",
+        "admin.s.sub.asset_owners": "Register owners and teams for server/PC assets. Must match the hostname exactly.",
+        "admin.s.sub.dashboard_prefs": "Controls the cards and sections shown to users at `/ui`. Resets to defaults on restart.",
+        "admin.s.sub.slack": "Register a Slack Incoming Webhook to automatically send alerts when a Critical alert occurs.",
+        "admin.s.sub.guides_editor": "Edit the guide content shown in the user UI. Markdown is supported.",
+        "admin.s.sub.devtools": 'Tools for operators to test backend queries directly. For the regular user view, see <a href="/ui" style="color:#7dd3fc">/ui</a>.',
+        "admin.s.sub.nlq": "Ask naturally and the intent is interpreted and executed.",
+        "admin.s.sub.signup_requests": "List of access requests submitted by users. After approval, an operator must create the account separately.",
+        "admin.s.sub.role_perms": "Configure which tabs are visible for each account role. Applied from the next login after saving.",
+        "admin.s.sub.user_tabs": "Assign tabs that differ from the role default for individual users. Per-user settings take precedence over the role default.",
+        "admin.s.sub.asset_audit": "History of owner/category changes made by users, shown newest first.",
+        "admin.s.sub.user_activity": "All user actions — login, logout, tab switch, query execution, etc. — are recorded.",
+        "admin.s.devtools_tag": "— Natural language / structured queries (for developers)",
+        "admin.s.link.query_guide": "Query guide ↗",
+        "admin.s.btn.refresh": "Refresh",
+        "admin.s.btn.refresh_icon": "🔄 Refresh",
+        "admin.s.btn.pending_csv": "📥 Pending CSV",
+        "admin.s.btn.incidents_csv": "📥 Incidents CSV",
+        "admin.s.btn.critical_csv": "📥 Critical CSV",
+        "admin.s.btn.add_edit": "Add / Update",
+        "admin.s.btn.reload_list": "Reload list",
+        "admin.s.btn.save": "Save",
+        "admin.s.btn.open_user_ui": "Open user view ↗",
+        "admin.s.btn.add": "Add",
+        "admin.s.btn.load": "Load",
+        "admin.s.btn.search": "🔍 Search",
+        "admin.s.btn.close": "Close",
+        "admin.s.lbl.hostname": "Hostname",
+        "admin.s.lbl.owner": "Owner",
+        "admin.s.lbl.email": "Email",
+        "admin.s.lbl.team": "Team",
+        "admin.s.lbl.category": "Category",
+        "admin.s.lbl.importance": "Importance",
+        "admin.s.lbl.docs_url": "Docs / Portal URL",
+        "admin.s.lbl.user_cards": "User summary cards",
+        "admin.s.lbl.user_sections": "User sections",
+        "admin.s.lbl.asset_columns": "Zabbix asset table columns",
+        "admin.s.lbl.guide_tabs": "Guide tab visibility",
+        "admin.s.lbl.channel_name": "Channel name (identifier)",
+        "admin.s.lbl.guide_select": "Select guide",
+        "admin.s.lbl.title": "Title",
+        "admin.s.lbl.content_md": "Content (Markdown)",
+        "admin.s.lbl.question": "Question",
+        "admin.s.opt.auto": "Auto (default)",
+        "admin.s.opt.all_items": "All items",
+        "admin.s.opt.owner": "Owner",
+        "admin.s.opt.category": "Category",
+        "admin.s.opt.all_actions": "All actions",
+        "admin.s.gopt.zabbix_setup": "🖧 Zabbix Agent Setup",
+        "admin.s.gopt.fleet_install": "🖥️ Fleet Agent Install",
+        "admin.s.gopt.isms_criteria": "📋 ISMS-P Audit Criteria",
+        "admin.s.gopt.iso27001_criteria": "🌐 ISO 27001 Audit Criteria",
+        "admin.s.gopt.ldap_setup": "🔐 LDAP Integration",
+        "admin.s.gopt.incident_response": "🚨 Incident Response Procedure",
+        "admin.s.gopt.security_policy": "📜 Security Policy Guide",
+        "admin.s.ph.hostname": "e.g. db-prod-01",
+        "admin.s.ph.owner": "e.g. John Doe",
+        "admin.s.ph.email": "e.g. hong@company.com",
+        "admin.s.ph.team": "e.g. Infra Team",
+        "admin.s.ph.category": "e.g. DB server, web server, AP server",
+        "admin.s.ph.channel": "e.g. #soc-alerts",
+        "admin.s.ph.guide_title": "Guide title",
+        "admin.s.ph.audit_host": "Search by hostname",
+        "admin.s.ph.userlog_user": "Search by username",
+        "admin.s.bn.overview": "Overview",
+        "admin.s.bn.compliance": "Compliance",
+        "admin.s.bn.triage": "Triage",
+        "admin.s.bn.remediation": "Fix",
+        "admin.s.bn.assets": "Assets",
+        "admin.s.bn.access": "Access",
+        "admin.s.bn.logs": "Logs",
+        "admin.s.bn.settings": "Settings",
+        "admin.s.dlg.nlq_guide_title": "Natural Language Query Guide",
+        "admin.s.dlg.overview_copy": "Details of the selected card.",
     },
 }
 
@@ -6736,36 +6906,36 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <div class=\"stack\">
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.phase2_health\">📦 Phase 2 데이터 헬스</h2>
-          <div class=\"subtext\">PostgreSQL → InMemoryQueryStore 로 로드된 Phase 2 시드 데이터의 현재 카운트입니다. 0이면 시드 누락 또는 schema 002 미적용일 수 있습니다.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.phase2_health\">PostgreSQL → InMemoryQueryStore 로 로드된 Phase 2 시드 데이터의 현재 카운트입니다. 0이면 시드 누락 또는 schema 002 미적용일 수 있습니다.</div>
           <div class=\"coverage\" id=\"phase2_health\"></div>
         </section>
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.source_coverage\">Source Coverage</h2>
-          <div class=\"subtext\">Fleet / Wazuh / Zabbix / Trivy / host logs 기준으로 현재 MORI에 연결된 호스트 수입니다.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.source_coverage\">Fleet / Wazuh / Zabbix / Trivy / host logs 기준으로 현재 MORI에 연결된 호스트 수입니다.</div>
           <div class=\"coverage\" id=\"source_coverage\"></div>
           <div class=\"status-line\" id=\"dashboard_status\">dashboard loading...</div>
         </section>
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.collector_health\">📡 Collector Health · Source Freshness</h2>
-          <div class=\"subtext\">수집기별 마지막 성공 시각과 SLA 임계 대비 지연(lag)을 표시합니다. SLA 초과 시 🟡 STALE, 마지막 sync가 error면 🔴 표시됩니다.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.collector_health\">수집기별 마지막 성공 시각과 SLA 임계 대비 지연(lag)을 표시합니다. SLA 초과 시 🟡 STALE, 마지막 sync가 error면 🔴 표시됩니다.</div>
           <div class=\"actions\" style=\"margin-bottom:10px\">
-            <button id=\"admin_reload_freshness\" class=\"secondary\">새로고침</button>
+            <button id=\"admin_reload_freshness\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
           </div>
           <div class=\"table-wrap\" id=\"admin_source_freshness\"></div>
         </section>
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.latest_status\">Latest Host Status</h2>
-          <div class=\"subtext\">offline / unknown 호스트를 우선 배치합니다.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.latest_status\">offline / unknown 호스트를 우선 배치합니다.</div>
           <div class=\"table-wrap\" id=\"latest_status\"></div>
         </section>
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.risk_summary\">Risk Summary</h2>
-          <div class=\"subtext\">24시간 alert와 누적 취약점 기준 상위 호스트입니다.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.risk_summary\">24시간 alert와 누적 취약점 기준 상위 호스트입니다.</div>
           <div class=\"table-wrap\" id=\"risk_summary\"></div>
         </section>
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.recent_activity\">Recent Activity</h2>
-          <div class=\"subtext\">최근 alert / observation / fleet query 결과를 시간순으로 합쳐 보여줍니다.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.recent_activity\">최근 alert / observation / fleet query 결과를 시간순으로 합쳐 보여줍니다.</div>
           <div class=\"list\" id=\"recent_activity\"></div>
         </section>
       </div>
@@ -6777,19 +6947,19 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <div class=\"stack\">
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.pdca_status\">📋 통제 점검 현황 (PDCA)</h2>
-          <div class=\"subtext\">
+          <div class=\"subtext\" data-i18n-html=\"admin.s.sub.pdca\">
             <code>control_check_results</code> 테이블 기준 ISMS-P / ISO 27001 통제 점검 결과입니다.
             상세 시각화와 미조치 항목 편집은 <a href=\"/ui#compliance\" style=\"color:#7dd3fc\">사용자 대시보드 Compliance 탭 ↗</a>에서 가능합니다.
           </div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
-            <button id=\"admin_reload_compliance\" class=\"secondary\">새로고침</button>
-            <a href=\"/compliance/pdca/pending.csv\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\">📥 미조치 CSV</a>
+            <button id=\"admin_reload_compliance\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
+            <a href=\"/compliance/pdca/pending.csv\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\" data-i18n=\"admin.s.btn.pending_csv\">📥 미조치 CSV</a>
           </div>
           <div class=\"table-wrap\" id=\"admin_compliance_categories\"></div>
         </section>
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.pending\">🔧 미조치 항목 (통제 + Trivy + Alert)</h2>
-          <div class=\"subtext\">기한 초과는 🔴 표시. 통제 점검 fail/warning + Trivy critical/high + Alert critical/high (7일) 통합.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.pending\">기한 초과는 🔴 표시. 통제 점검 fail/warning + Trivy critical/high + Alert critical/high (7일) 통합.</div>
           <div class=\"table-wrap\" id=\"admin_compliance_pending\"></div>
         </section>
       </div>
@@ -6800,24 +6970,24 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <div class=\"stack\">
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.triage\">🚨 Alert Triage 현황</h2>
-          <div class=\"subtext\">
+          <div class=\"subtext\" data-i18n-html=\"admin.s.sub.triage\">
             triage 상태가 설정된 alert 목록입니다. 편집은
             <a href=\"/ui#triage\" style=\"color:#7dd3fc\">사용자 대시보드 Triage 탭 ↗</a>에서 가능합니다.
           </div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
-            <button id=\"admin_reload_triage\" class=\"secondary\">새로고침</button>
+            <button id=\"admin_reload_triage\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
           </div>
           <div class=\"table-wrap\" id=\"admin_triage_list\"></div>
         </section>
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.incidents\">📋 인시던트 (incident_store)</h2>
-          <div class=\"subtext\">
+          <div class=\"subtext\" data-i18n-html=\"admin.s.sub.incidents\">
             등록된 인시던트와 처리 상태입니다. 생성·노트는
             <a href=\"/ui#incidents\" style=\"color:#7dd3fc\">사용자 대시보드 Incidents 탭 ↗</a>에서 가능합니다.
           </div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
-            <button id=\"admin_reload_incidents\" class=\"secondary\">새로고침</button>
-            <a href=\"/incidents?format=csv\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\">📥 인시던트 CSV</a>
+            <button id=\"admin_reload_incidents\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
+            <a href=\"/incidents?format=csv\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\" data-i18n=\"admin.s.btn.incidents_csv\">📥 인시던트 CSV</a>
           </div>
           <div class=\"table-wrap\" id=\"admin_incidents_list\"></div>
         </section>
@@ -6829,19 +6999,19 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <div class=\"stack\">
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.trivy_remediation\">🔧 Trivy 취약점 조치 상태</h2>
-          <div class=\"subtext\">
+          <div class=\"subtext\" data-i18n-html=\"admin.s.sub.trivy\">
             Critical / High 취약점과 등록된 조치 계획(plan) · 예외(exception) 입니다.
             편집은 <a href=\"/ui#assets\" style=\"color:#7dd3fc\">사용자 대시보드 Assets 탭의 취약점 카드 ↗</a>에서 가능합니다.
           </div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
-            <button id=\"admin_reload_vulns\" class=\"secondary\">새로고침</button>
-            <a href=\"/trivy/vulnerabilities?format=csv&amp;severity=critical\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\">📥 Critical CSV</a>
+            <button id=\"admin_reload_vulns\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
+            <a href=\"/trivy/vulnerabilities?format=csv&amp;severity=critical\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\" data-i18n=\"admin.s.btn.critical_csv\">📥 Critical CSV</a>
           </div>
           <div class=\"table-wrap\" id=\"admin_vuln_actions\"></div>
         </section>
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.action_plans\">📝 자산 조치 계획 (action_plans)</h2>
-          <div class=\"subtext\">호스트별 등록된 조치 계획(target_date / text)을 표시합니다.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.action_plans\">호스트별 등록된 조치 계획(target_date / text)을 표시합니다.</div>
           <div class=\"table-wrap\" id=\"admin_action_plans\"></div>
         </section>
       </div>
@@ -6851,21 +7021,21 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"atab-panel\" id=\"atab_assets\">
       <section class=\"card\">
         <h2 data-i18n=\"admin.h.asset_owners\">👤 자산 담당자 관리</h2>
-        <div class=\"subtext\">서버·PC 자산의 담당자와 팀을 등록합니다. 호스트명과 정확히 일치해야 합니다.</div>
-        <div id=\"owners_list\" class=\"list\" style=\"margin-bottom:16px;max-height:360px;overflow-y:auto\"><span class=\"empty\">로딩 중…</span></div>
-        <div id=\"owner_form_title\" style=\"font-size:14px;font-weight:700;color:#38bdf8;margin-bottom:8px;\">➕ 새 자산 등록</div>
+        <div class=\"subtext\" data-i18n=\"admin.s.sub.asset_owners\">서버·PC 자산의 담당자와 팀을 등록합니다. 호스트명과 정확히 일치해야 합니다.</div>
+        <div id=\"owners_list\" class=\"list\" style=\"margin-bottom:16px;max-height:360px;overflow-y:auto\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
+        <div id=\"owner_form_title\" style=\"font-size:14px;font-weight:700;color:#38bdf8;margin-bottom:8px;\" data-i18n=\"admin.dyn.new_asset\">➕ 새 자산 등록</div>
         <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
-          <div class=\"row\"><label>호스트명</label><input id=\"own_hostname\" placeholder=\"예: db-prod-01\" /></div>
-          <div class=\"row\"><label>담당자</label><input id=\"own_owner\" placeholder=\"예: 홍길동\" /></div>
-          <div class=\"row\"><label>이메일</label><input id=\"own_email\" placeholder=\"예: hong@company.com\" /></div>
-          <div class=\"row\"><label>팀</label><input id=\"own_team\" placeholder=\"예: 인프라팀\" /></div>
-          <div class=\"row\"><label>분류 (카테고리)</label><input id=\"own_category\" placeholder=\"예: DB서버, 웹서버, AP서버\" /></div>
-          <div class=\"row\"><label>중요도</label><select id=\"own_importance\"><option value=\"\">자동 (기본)</option><option value=\"상\">상</option><option value=\"중\">중</option><option value=\"하\">하</option></select></div>
+          <div class=\"row\"><label data-i18n=\"admin.s.lbl.hostname\">호스트명</label><input id=\"own_hostname\" placeholder=\"예: db-prod-01\" data-i18n-placeholder=\"admin.s.ph.hostname\" /></div>
+          <div class=\"row\"><label data-i18n=\"admin.s.lbl.owner\">담당자</label><input id=\"own_owner\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"admin.s.ph.owner\" /></div>
+          <div class=\"row\"><label data-i18n=\"admin.s.lbl.email\">이메일</label><input id=\"own_email\" placeholder=\"예: hong@company.com\" data-i18n-placeholder=\"admin.s.ph.email\" /></div>
+          <div class=\"row\"><label data-i18n=\"admin.s.lbl.team\">팀</label><input id=\"own_team\" placeholder=\"예: 인프라팀\" data-i18n-placeholder=\"admin.s.ph.team\" /></div>
+          <div class=\"row\"><label data-i18n=\"admin.s.lbl.category\">분류 (카테고리)</label><input id=\"own_category\" placeholder=\"예: DB서버, 웹서버, AP서버\" data-i18n-placeholder=\"admin.s.ph.category\" /></div>
+          <div class=\"row\"><label data-i18n=\"admin.s.lbl.importance\">중요도</label><select id=\"own_importance\"><option value=\"\" data-i18n=\"admin.s.opt.auto\">자동 (기본)</option><option value=\"상\">상</option><option value=\"중\">중</option><option value=\"하\">하</option></select></div>
         </div>
         <div class=\"actions\">
-          <button id=\"add_owner\">등록 / 수정</button>
-          <button id=\"cancel_edit_owner\" class=\"ghost\" style=\"display:none\">취소</button>
-          <button id=\"reload_owners\" class=\"secondary\">목록 새로고침</button>
+          <button id=\"add_owner\" data-i18n=\"admin.s.btn.add_edit\">등록 / 수정</button>
+          <button id=\"cancel_edit_owner\" class=\"ghost\" style=\"display:none\" data-i18n=\"admin.dyn.cancel\">취소</button>
+          <button id=\"reload_owners\" class=\"secondary\" data-i18n=\"admin.s.btn.reload_list\">목록 새로고침</button>
         </div>
         <div class=\"status-line\" id=\"owner_status\"></div>
       </section>
@@ -6877,51 +7047,51 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <div class=\"stack\">
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.dashboard_prefs\">🖥️ 사용자 대시보드 설정</h2>
-          <div class=\"subtext\">`/ui` 에서 사용자에게 보이는 카드와 섹션을 제어합니다. 재시작 시 초기값으로 돌아갑니다.</div>
-          <div class=\"row\"><label for=\"docs_portal_url\">문서 / 포털 URL</label><input id=\"docs_portal_url\" value=\"__DOCS_PORTAL_URL__\" /></div>
-          <div class=\"row\"><label>사용자 요약 카드</label><div class=\"toggle-grid\" id=\"user_dashboard_cards\"></div></div>
-          <div class=\"row\"><label>사용자 섹션</label><div class=\"toggle-grid\" id=\"user_dashboard_sections\"></div></div>
-          <div class=\"row\"><label>자빅스 자산 테이블 컬럼 표시</label><div class=\"toggle-grid\" id=\"user_dashboard_asset_columns\"></div></div>
-          <div class=\"row\"><label>가이드 탭 노출 설정</label><div class=\"toggle-grid\" id=\"user_dashboard_guides\"></div></div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.dashboard_prefs\">`/ui` 에서 사용자에게 보이는 카드와 섹션을 제어합니다. 재시작 시 초기값으로 돌아갑니다.</div>
+          <div class=\"row\"><label for=\"docs_portal_url\" data-i18n=\"admin.s.lbl.docs_url\">문서 / 포털 URL</label><input id=\"docs_portal_url\" value=\"__DOCS_PORTAL_URL__\" /></div>
+          <div class=\"row\"><label data-i18n=\"admin.s.lbl.user_cards\">사용자 요약 카드</label><div class=\"toggle-grid\" id=\"user_dashboard_cards\"></div></div>
+          <div class=\"row\"><label data-i18n=\"admin.s.lbl.user_sections\">사용자 섹션</label><div class=\"toggle-grid\" id=\"user_dashboard_sections\"></div></div>
+          <div class=\"row\"><label data-i18n=\"admin.s.lbl.asset_columns\">자빅스 자산 테이블 컬럼 표시</label><div class=\"toggle-grid\" id=\"user_dashboard_asset_columns\"></div></div>
+          <div class=\"row\"><label data-i18n=\"admin.s.lbl.guide_tabs\">가이드 탭 노출 설정</label><div class=\"toggle-grid\" id=\"user_dashboard_guides\"></div></div>
           <div class=\"actions\">
-            <button id=\"save_dashboard_preferences\" class=\"primary\">저장</button>
-            <a href=\"/ui\">사용자 화면 열기 ↗</a>
+            <button id=\"save_dashboard_preferences\" class=\"primary\" data-i18n=\"admin.s.btn.save\">저장</button>
+            <a href=\"/ui\" data-i18n=\"admin.s.btn.open_user_ui\">사용자 화면 열기 ↗</a>
           </div>
           <div class=\"status-line\" id=\"dashboard_preferences_status\">user dashboard settings loading...</div>
         </section>
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.slack\">🔔 Slack Webhook 관리</h2>
-          <div class=\"subtext\">Critical 경보 발생 시 자동으로 알림을 전송할 Slack Incoming Webhook을 등록합니다.</div>
-          <div id=\"webhooks_list\" class=\"list\" style=\"margin-bottom:12px\"><span class=\"empty\">로딩 중…</span></div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.slack\">Critical 경보 발생 시 자동으로 알림을 전송할 Slack Incoming Webhook을 등록합니다.</div>
+          <div id=\"webhooks_list\" class=\"list\" style=\"margin-bottom:12px\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
           <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
-            <div class=\"row\"><label for=\"wh_name\">채널 이름 (식별용)</label><input id=\"wh_name\" placeholder=\"예: #soc-alerts\" /></div>
+            <div class=\"row\"><label for=\"wh_name\" data-i18n=\"admin.s.lbl.channel_name\">채널 이름 (식별용)</label><input id=\"wh_name\" placeholder=\"예: #soc-alerts\" data-i18n-placeholder=\"admin.s.ph.channel\" /></div>
             <div class=\"row\"><label for=\"wh_url\">Webhook URL</label><input id=\"wh_url\" placeholder=\"https://hooks.slack.com/services/...\" /></div>
           </div>
           <div class=\"actions\">
-            <button id=\"add_webhook\">추가</button>
-            <button id=\"reload_webhooks\" class=\"secondary\">새로고침</button>
+            <button id=\"add_webhook\" data-i18n=\"admin.s.btn.add\">추가</button>
+            <button id=\"reload_webhooks\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
           </div>
           <div class=\"status-line\" id=\"webhook_status\"></div>
         </section>
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.guides_editor\">📖 가이드 &amp; 메뉴얼 편집</h2>
-          <div class=\"subtext\">사용자 UI에 표시되는 가이드 내용을 수정합니다. 마크다운 형식을 지원합니다.</div>
-          <div class=\"row\"><label for=\"guide_edit_select\">가이드 선택</label>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.guides_editor\">사용자 UI에 표시되는 가이드 내용을 수정합니다. 마크다운 형식을 지원합니다.</div>
+          <div class=\"row\"><label for=\"guide_edit_select\" data-i18n=\"admin.s.lbl.guide_select\">가이드 선택</label>
             <select id=\"guide_edit_select\">
-              <option value=\"zabbix_setup\">🖧 Zabbix 에이전트 설정</option>
-              <option value=\"fleet_install\">🖥️ Fleet 에이전트 설치</option>
-              <option value=\"isms_criteria\">📋 ISMS-P 심사 기준</option>
-              <option value=\"iso27001_criteria\">🌐 ISO 27001 심사 기준</option>
-              <option value=\"ldap_setup\">🔐 LDAP 통합 설정</option>
-              <option value=\"incident_response\">🚨 인시던트 대응 절차</option>
-              <option value=\"security_policy\">📜 보안 정책 가이드</option>
+              <option value=\"zabbix_setup\" data-i18n=\"admin.s.gopt.zabbix_setup\">🖧 Zabbix 에이전트 설정</option>
+              <option value=\"fleet_install\" data-i18n=\"admin.s.gopt.fleet_install\">🖥️ Fleet 에이전트 설치</option>
+              <option value=\"isms_criteria\" data-i18n=\"admin.s.gopt.isms_criteria\">📋 ISMS-P 심사 기준</option>
+              <option value=\"iso27001_criteria\" data-i18n=\"admin.s.gopt.iso27001_criteria\">🌐 ISO 27001 심사 기준</option>
+              <option value=\"ldap_setup\" data-i18n=\"admin.s.gopt.ldap_setup\">🔐 LDAP 통합 설정</option>
+              <option value=\"incident_response\" data-i18n=\"admin.s.gopt.incident_response\">🚨 인시던트 대응 절차</option>
+              <option value=\"security_policy\" data-i18n=\"admin.s.gopt.security_policy\">📜 보안 정책 가이드</option>
             </select>
           </div>
-          <div class=\"row\"><label for=\"guide_edit_title\">제목</label><input id=\"guide_edit_title\" placeholder=\"가이드 제목\" /></div>
-          <div class=\"row\"><label for=\"guide_edit_content\">내용 (마크다운)</label><textarea id=\"guide_edit_content\" style=\"min-height:280px;font-family:monospace;font-size:12px\"></textarea></div>
+          <div class=\"row\"><label for=\"guide_edit_title\" data-i18n=\"admin.s.lbl.title\">제목</label><input id=\"guide_edit_title\" placeholder=\"가이드 제목\" data-i18n-placeholder=\"admin.s.ph.guide_title\" /></div>
+          <div class=\"row\"><label for=\"guide_edit_content\" data-i18n=\"admin.s.lbl.content_md\">내용 (마크다운)</label><textarea id=\"guide_edit_content\" style=\"min-height:280px;font-family:monospace;font-size:12px\"></textarea></div>
           <div class=\"actions\">
-            <button id=\"guide_edit_load\" class=\"secondary\">불러오기</button>
-            <button id=\"guide_edit_save\">저장</button>
+            <button id=\"guide_edit_load\" class=\"secondary\" data-i18n=\"admin.s.btn.load\">불러오기</button>
+            <button id=\"guide_edit_save\" data-i18n=\"admin.s.btn.save\">저장</button>
           </div>
           <div class=\"status-line\" id=\"guide_edit_status\"></div>
         </section>
@@ -6929,19 +7099,19 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         <!-- ── Dev Tools (자연어 / 구조화 질의 — 접기 기본) ───────────── -->
         <details class=\"card\" style=\"padding:0\">
           <summary style=\"cursor:pointer;padding:18px 22px;font-size:18px;font-weight:700;color:#e2e8f0;list-style:none\">
-            🛠️ Dev Tools <span style=\"color:#94a3b8;font-weight:400;font-size:13px\">— 자연어 / 구조화 질의 (개발자용)</span>
+            🛠️ Dev Tools <span style=\"color:#94a3b8;font-weight:400;font-size:13px\" data-i18n=\"admin.s.devtools_tag\">— 자연어 / 구조화 질의 (개발자용)</span>
           </summary>
           <div style=\"padding:0 22px 22px 22px\">
-            <div class=\"subtext\" style=\"margin-bottom:12px\">관리자가 직접 백엔드 질의를 시험하기 위한 도구입니다. 일반 사용자 화면은 <a href=\"/ui\" style=\"color:#7dd3fc\">/ui</a> 를 참고하세요.</div>
+            <div class=\"subtext\" style=\"margin-bottom:12px\" data-i18n-html=\"admin.s.sub.devtools\">관리자가 직접 백엔드 질의를 시험하기 위한 도구입니다. 일반 사용자 화면은 <a href=\"/ui\" style=\"color:#7dd3fc\">/ui</a> 를 참고하세요.</div>
             <section style=\"margin-bottom:18px\">
               <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.quick_actions\">⚡ Quick Actions</h3>
               <div class=\"quick-actions\" id=\"quick_queries\"></div>
             </section>
             <section style=\"margin-bottom:18px\">
               <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.nlq\">🗣️ Natural Language Query</h3>
-              <div class=\"subtext\">자연스럽게 질문하면 의도를 해석해 실행합니다. <a href=\"#\" id=\"query_guide_link\" style=\"color:#7dd3fc;\">질의 가이드 ↗</a></div>
+              <div class=\"subtext\"><span data-i18n=\"admin.s.sub.nlq\">자연스럽게 질문하면 의도를 해석해 실행합니다.</span> <a href=\"#\" id=\"query_guide_link\" style=\"color:#7dd3fc;\" data-i18n=\"admin.s.link.query_guide\">질의 가이드 ↗</a></div>
               <div class=\"row\">
-                <label for=\"nlp_text\">질문</label>
+                <label for=\"nlp_text\" data-i18n=\"admin.s.lbl.question\">질문</label>
                 <textarea id=\"nlp_text\">오프라인 호스트 보여줘</textarea>
               </div>
               <div class=\"guide-chips\" id=\"guide_examples\"></div>
@@ -6984,32 +7154,32 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <div class=\"stack\">
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.signup_requests\">🙋 가입 요청 관리</h2>
-          <div class=\"subtext\">사용자가 제출한 가입 요청 목록입니다. 승인하면 운영자가 별도로 계정을 생성해야 합니다.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.signup_requests\">사용자가 제출한 가입 요청 목록입니다. 승인하면 운영자가 별도로 계정을 생성해야 합니다.</div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
-            <button id=\"reload_signup_requests\" class=\"secondary\">새로고침</button>
+            <button id=\"reload_signup_requests\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
           </div>
-          <div id=\"signup_requests_list\" class=\"list\"><span class=\"empty\">로딩 중…</span></div>
+          <div id=\"signup_requests_list\" class=\"list\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
           <div class=\"status-line\" id=\"signup_requests_status\"></div>
         </section>
 
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.role_perms\">🔐 역할별 탭 권한 관리</h2>
-          <div class=\"subtext\">각 계정 역할에서 보이는 탭을 설정합니다. 저장 후 다음 로그인부터 적용됩니다.</div>
-          <div id=\"roleperm_list\" style=\"display:grid;gap:16px;margin-bottom:16px\"><span class=\"empty\">로딩 중…</span></div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.role_perms\">각 계정 역할에서 보이는 탭을 설정합니다. 저장 후 다음 로그인부터 적용됩니다.</div>
+          <div id=\"roleperm_list\" style=\"display:grid;gap:16px;margin-bottom:16px\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
           <div class=\"actions\">
-            <button id=\"save_roleperm\">저장</button>
-            <button id=\"reload_roleperm\" class=\"secondary\">새로고침</button>
+            <button id=\"save_roleperm\" data-i18n=\"admin.s.btn.save\">저장</button>
+            <button id=\"reload_roleperm\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
           </div>
           <div class=\"status-line\" id=\"roleperm_status\"></div>
         </section>
 
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.user_tabs\">👤 유저별 대시보드 탭 관리</h2>
-          <div class=\"subtext\">개별 유저에게 역할 기본값과 다른 탭을 지정합니다. 유저별 설정이 있으면 역할 기본값보다 우선 적용됩니다.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.user_tabs\">개별 유저에게 역할 기본값과 다른 탭을 지정합니다. 유저별 설정이 있으면 역할 기본값보다 우선 적용됩니다.</div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
-            <button id=\"reload_usertab\" class=\"secondary\">🔄 새로고침</button>
+            <button id=\"reload_usertab\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh_icon\">🔄 새로고침</button>
           </div>
-          <div id=\"usertab_list\" style=\"display:grid;gap:14px;margin-bottom:16px\"><span class=\"empty\">로딩 중…</span></div>
+          <div id=\"usertab_list\" style=\"display:grid;gap:14px;margin-bottom:16px\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
           <div class=\"status-line\" id=\"usertab_status\"></div>
         </section>
       </div>
@@ -7020,28 +7190,28 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <div class=\"stack\">
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.asset_audit\">📝 자산 변경 이력</h2>
-          <div class=\"subtext\">사용자가 수정한 담당자·카테고리 변경 이력입니다. 최신 순으로 표시됩니다.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.asset_audit\">사용자가 수정한 담당자·카테고리 변경 이력입니다. 최신 순으로 표시됩니다.</div>
           <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
-            <input id=\"audit_filter_hostname\" placeholder=\"호스트명으로 검색\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:180px\" />
+            <input id=\"audit_filter_hostname\" placeholder=\"호스트명으로 검색\" data-i18n-placeholder=\"admin.s.ph.audit_host\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:180px\" />
             <select id=\"audit_filter_field\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px\">
-              <option value=\"\">전체 항목</option>
-              <option value=\"owner\">담당자</option>
-              <option value=\"category\">카테고리</option>
+              <option value=\"\" data-i18n=\"admin.s.opt.all_items\">전체 항목</option>
+              <option value=\"owner\" data-i18n=\"admin.s.opt.owner\">담당자</option>
+              <option value=\"category\" data-i18n=\"admin.s.opt.category\">카테고리</option>
             </select>
-            <button id=\"audit_search_btn\" class=\"secondary\" style=\"padding:6px 14px\">🔍 검색</button>
-            <button id=\"reload_audit_log\" class=\"secondary\" style=\"padding:6px 14px\">새로고침</button>
+            <button id=\"audit_search_btn\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.search\">🔍 검색</button>
+            <button id=\"reload_audit_log\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
           </div>
-          <div id=\"audit_log_list\" class=\"list\"><span class=\"empty\">로딩 중…</span></div>
+          <div id=\"audit_log_list\" class=\"list\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
           <div class=\"status-line\" id=\"audit_log_status\"></div>
         </section>
 
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.user_activity\">👤 사용자 행동 로그</h2>
-          <div class=\"subtext\">로그인·로그아웃·탭 전환·쿼리 실행 등 모든 사용자 행동이 기록됩니다.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.user_activity\">로그인·로그아웃·탭 전환·쿼리 실행 등 모든 사용자 행동이 기록됩니다.</div>
           <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
-            <input id=\"userlog_filter_user\" placeholder=\"사용자명으로 검색\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:180px\" />
+            <input id=\"userlog_filter_user\" placeholder=\"사용자명으로 검색\" data-i18n-placeholder=\"admin.s.ph.userlog_user\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:180px\" />
             <select id=\"userlog_filter_action\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px\">
-              <option value=\"\">전체 액션</option>
+              <option value=\"\" data-i18n=\"admin.s.opt.all_actions\">전체 액션</option>
               <option value=\"LOGIN\">LOGIN</option>
               <option value=\"LOGIN_FAIL\">LOGIN_FAIL</option>
               <option value=\"LOGOUT\">LOGOUT</option>
@@ -7049,10 +7219,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <option value=\"QUERY\">QUERY</option>
               <option value=\"INTERPRET\">INTERPRET</option>
             </select>
-            <button id=\"userlog_search_btn\" class=\"secondary\" style=\"padding:6px 14px\">🔍 검색</button>
-            <button id=\"reload_userlog\" class=\"secondary\" style=\"padding:6px 14px\">새로고침</button>
+            <button id=\"userlog_search_btn\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.search\">🔍 검색</button>
+            <button id=\"reload_userlog\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
           </div>
-          <div id=\"userlog_list\" class=\"list\"><span class=\"empty\">로딩 중…</span></div>
+          <div id=\"userlog_list\" class=\"list\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
         </section>
       </div>
     </div>
@@ -7061,38 +7231,38 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
   <!-- ── 어드민 하단 탭 바 (모바일 전용) ────────────────────────────────── -->
   <nav class=\"admin-bottom-nav\" id=\"admin_bottom_nav\">
     <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\">
-      <span class=\"bn-icon\">📊</span>Overview
+      <span class=\"bn-icon\">📊</span><span data-i18n=\"admin.s.bn.overview\">Overview</span>
     </button>
     <button data-atab=\"compliance\" onclick=\"switchAdminTab('compliance')\">
-      <span class=\"bn-icon\">✅</span>Compliance
+      <span class=\"bn-icon\">✅</span><span data-i18n=\"admin.s.bn.compliance\">Compliance</span>
     </button>
     <button data-atab=\"triage\" onclick=\"switchAdminTab('triage')\">
-      <span class=\"bn-icon\">🚨</span>Triage
+      <span class=\"bn-icon\">🚨</span><span data-i18n=\"admin.s.bn.triage\">Triage</span>
     </button>
     <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\">
-      <span class=\"bn-icon\">🔧</span>조치
+      <span class=\"bn-icon\">🔧</span><span data-i18n=\"admin.s.bn.remediation\">조치</span>
     </button>
     <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\">
-      <span class=\"bn-icon\">👤</span>자산
+      <span class=\"bn-icon\">👤</span><span data-i18n=\"admin.s.bn.assets\">자산</span>
     </button>
     <button data-atab=\"access\" onclick=\"switchAdminTab('access')\">
-      <span class=\"bn-icon\">🛡️</span>권한
+      <span class=\"bn-icon\">🛡️</span><span data-i18n=\"admin.s.bn.access\">권한</span>
     </button>
     <button data-atab=\"logs\" onclick=\"switchAdminTab('logs')\">
-      <span class=\"bn-icon\">📝</span>로그
+      <span class=\"bn-icon\">📝</span><span data-i18n=\"admin.s.bn.logs\">로그</span>
     </button>
     <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\">
-      <span class=\"bn-icon\">⚙️</span>설정
+      <span class=\"bn-icon\">⚙️</span><span data-i18n=\"admin.s.bn.settings\">설정</span>
     </button>
   </nav>
 
   <dialog id=\"query_guide_modal\">
     <div class=\"guide-dialog\">
       <div class=\"guide-dialog-head\">
-        <h3>Natural Language Query Guide</h3>
-        <form method=\"dialog\"><button class=\"secondary\">닫기</button></form>
+        <h3 data-i18n=\"admin.s.dlg.nlq_guide_title\">Natural Language Query Guide</h3>
+        <form method=\"dialog\"><button class=\"secondary\" data-i18n=\"admin.s.btn.close\">닫기</button></form>
       </div>
-      <div class=\"guide-dialog-copy\" id=\"query_guide_message\">질문 의도를 정확히 해석하지 못하면 아래 예시를 눌러 다시 시작할 수 있습니다.</div>
+      <div class=\"guide-dialog-copy\" id=\"query_guide_message\" data-i18n=\"admin.dyn.guide_default_msg\">질문 의도를 정확히 해석하지 못하면 아래 예시를 눌러 다시 시작할 수 있습니다.</div>
       <div class=\"guide-list\" id=\"query_guide_list\"></div>
     </div>
   </dialog>
@@ -7101,9 +7271,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"guide-dialog\">
       <div class=\"guide-dialog-head\">
         <h3 id=\"overview_modal_title\">Overview Details</h3>
-        <form method=\"dialog\"><button class=\"secondary\">닫기</button></form>
+        <form method=\"dialog\"><button class=\"secondary\" data-i18n=\"admin.s.btn.close\">닫기</button></form>
       </div>
-      <div class=\"guide-dialog-copy\" id=\"overview_modal_copy\">선택한 카드의 상세 목록입니다.</div>
+      <div class=\"guide-dialog-copy\" id=\"overview_modal_copy\" data-i18n=\"admin.s.dlg.overview_copy\">선택한 카드의 상세 목록입니다.</div>
     </div>
     <div class=\"dialog-body\" id=\"overview_modal_body\"></div>
   </dialog>
