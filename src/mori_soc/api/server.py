@@ -1169,6 +1169,159 @@ _ADMIN_I18N: dict[str, dict[str, str]] = {
         "admin.h.user_tabs": "👤 유저별 대시보드 탭 관리",
         "admin.h.asset_audit": "📝 자산 변경 이력",
         "admin.h.user_activity": "👤 사용자 행동 로그",
+        "admin.dyn.loading": "로딩 중…",
+        "admin.dyn.load_fail": "로드 실패",
+        "admin.dyn.load_fail_prefix": "로드 실패: ",
+        "admin.dyn.error_prefix": "오류: ",
+        "admin.dyn.save_done": "저장 완료 ✓",
+        "admin.dyn.add_done": "추가 완료 ✓",
+        "admin.dyn.delete": "삭제",
+        "admin.dyn.edit": "수정",
+        "admin.dyn.cancel": "취소",
+        "admin.dyn.delete_fail_prefix": "삭제 실패: ",
+        "admin.dyn.success": "✓ 성공",
+        "admin.dyn.fail": "✗ 실패",
+        "admin.dyn.error_short": "✗ 오류",
+        "admin.dyn.deleting": "삭제 중…",
+        "admin.dyn.default_content": "(기본 내용)",
+        "admin.dyn.edit_cancelled": "수정 취소됨",
+        "admin.dyn.editing_suffix": " 수정 중",
+        "admin.dyn.not_found_suffix": " 정보를 찾을 수 없습니다.",
+        "admin.dyn.last_saved_prefix": "마지막 저장: ",
+        "admin.dyn.load_fail_guide_prefix": "불러오기 실패: ",
+        "admin.dyn.confirm_delete_asset_suffix": " 자산 정보를 삭제하시겠습니까?",
+        "admin.dyn.confirm_delete_webhook": "이 webhook을 삭제하시겠습니까?",
+        "admin.dyn.none_owners": "등록된 담당자 없음",
+        "admin.dyn.none_webhooks": "등록된 webhook 없음",
+        "admin.dyn.none_signup": "가입 요청이 없습니다.",
+        "admin.dyn.no_reason": "(사유 없음)",
+        "admin.dyn.none_audit": "변경 이력 없음",
+        "admin.dyn.none_users": "등록된 사용자가 없습니다.",
+        "admin.dyn.none_userlog": "로그 없음",
+        "admin.dyn.none_source_syncs": "source_syncs 기록 없음",
+        "admin.dyn.none_category": "카테고리 데이터 없음 — 시드 누락 가능성",
+        "admin.dyn.none_pending": "미조치 항목 없음 🎉",
+        "admin.dyn.none_alert": "표시할 alert 없음",
+        "admin.dyn.none_incidents": "등록된 인시던트 없음",
+        "admin.dyn.none_critical_vuln": "Critical 취약점 없음",
+        "admin.dyn.none_action_plans": "등록된 조치 계획 없음",
+        "admin.dyn.none_source_alias": "아직 연결된 source alias가 없습니다.",
+        "admin.dyn.no_sync_record": "아직 sync 기록 없음",
+        "admin.dyn.none_hosts": "아직 호스트 데이터가 없습니다.",
+        "admin.dyn.none_risk": "아직 위험 요약 데이터가 없습니다.",
+        "admin.dyn.none_recent": "아직 최근 활동 데이터가 없습니다.",
+        "admin.dyn.none_quick": "추천 질의가 없습니다.",
+        "admin.dyn.none_query_result": "조회 결과가 없습니다.",
+        "admin.dyn.signup.pending": "🟡 대기중",
+        "admin.dyn.signup.approved": "🟢 승인됨",
+        "admin.dyn.signup.rejected": "🔴 거절됨",
+        "admin.dyn.approve": "승인",
+        "admin.dyn.reject": "거절",
+        "admin.dyn.approve_done": "✅ 승인 완료",
+        "admin.dyn.reject_done": "❌ 거절 완료",
+        "admin.dyn.atriage.pending": "🟡 대기",
+        "admin.dyn.atriage.reviewing": "🔵 검토중",
+        "admin.dyn.atriage.resolved": "🟢 조치",
+        "admin.dyn.field.owner": "담당자",
+        "admin.dyn.field.category": "카테고리",
+        "admin.dyn.metric.pending": "미조치",
+        "admin.dyn.metric.not_checked": "미점검",
+        "admin.dyn.roleperm_saved": "✅ 권한이 저장되었습니다. 해당 역할 사용자 재로그인 후 적용됩니다.",
+        "admin.dyn.col.changed_by": "변경자",
+        "admin.dyn.col.category": "카테고리",
+        "admin.dyn.col.total": "총",
+        "admin.dyn.col.not_checked": "미점검",
+        "admin.dyn.col.source": "출처",
+        "admin.dyn.col.control_id": "통제 ID",
+        "admin.dyn.col.target": "대상",
+        "admin.dyn.col.status": "상태",
+        "admin.dyn.col.owner": "담당자",
+        "admin.dyn.col.due": "조치기한",
+        "admin.dyn.col.note": "비고",
+        "admin.dyn.col.title": "제목",
+        "admin.dyn.col.host": "호스트",
+        "admin.dyn.col.analyst": "분석관",
+        "admin.dyn.col.created": "등록일",
+        "admin.dyn.col.updated": "업데이트",
+        "admin.dyn.col.package": "패키지",
+        "admin.dyn.col.severity": "심각도",
+        "admin.dyn.col.action_plan": "조치 계획",
+        "admin.dyn.col.exception": "예외",
+        "admin.dyn.col.reviewed": "처리일",
+        "admin.dyn.col.time": "시각",
+        "admin.dyn.col.field": "항목",
+        "admin.dyn.col.old_value": "이전 값",
+        "admin.dyn.col.new_value": "변경 값",
+        "admin.dyn.col.user": "사용자",
+        "admin.dyn.col.action": "액션",
+        "admin.dyn.col.detail": "상세",
+        "admin.dyn.col.collected": "수집",
+        "admin.dyn.col.message": "메시지",
+        "admin.dyn.col.control": "통제",
+        "admin.dyn.col.observed": "발생 시각",
+        "admin.dyn.col.handler": "담당자",
+        "admin.dyn.col.target_date": "목표일",
+        "admin.dyn.col.plan_content": "계획 내용",
+        "admin.dyn.processing": "처리 중…",
+        "admin.dyn.saving": "저장 중…",
+        "admin.dyn.count_suffix": "건",
+        "admin.dyn.tab.dashboard": "📊 대시보드",
+        "admin.dyn.tab.triage": "🚨 Alert Triage",
+        "admin.dyn.tab.incidents": "📋 인시던트",
+        "admin.dyn.tab.assets": "📡 자산 현황",
+        "admin.dyn.tab.compliance": "✅ Compliance PDCA",
+        "admin.dyn.tab.guides": "📖 가이드",
+        "admin.dyn.role.security": "보안담당자 (security)",
+        "admin.dyn.role.monitor": "서버모니터 (monitor)",
+        "admin.dyn.role.auditor": "감사자 (auditor)",
+        "admin.dyn.role.helpdesk": "헬프데스크 (helpdesk)",
+        "admin.dyn.role.user": "일반사용자 (user)",
+        "admin.dyn.rolename.admin": "어드민",
+        "admin.dyn.rolename.security": "보안담당자",
+        "admin.dyn.rolename.monitor": "서버모니터",
+        "admin.dyn.rolename.auditor": "감사자",
+        "admin.dyn.rolename.helpdesk": "헬프데스크",
+        "admin.dyn.rolename.user": "사용자",
+        "admin.dyn.override_custom": "개별 설정",
+        "admin.dyn.override_default": "역할 기본값",
+        "admin.dyn.reset": "초기화",
+        "admin.dyn.reset_done": "✅ 초기화됨",
+        "admin.dyn.saved_relogin": "✅ 저장됨 (재로그인 후 적용)",
+        "admin.dyn.confirm_reset_usertabs": " 유저의 개별 탭 설정을 초기화하시겠습니까?\\n역할 기본값으로 돌아갑니다.",
+        "admin.dyn.metric.overdue": "기한 초과",
+        "admin.dyn.metric.total_checks": "📋 전체 점검",
+        "admin.dyn.metric.pending_icon": "🔧 미조치",
+        "admin.dyn.unit.sec": "초",
+        "admin.dyn.unit.min": "분",
+        "admin.dyn.unit.hour": "시간",
+        "admin.dyn.unit.day": "일",
+        "admin.dyn.recent_error_prefix": "⚠ 최근 에러: ",
+        "admin.dyn.ago_suffix": " 전",
+        "admin.dyn.more_rows_suffix": "건 더 (CSV 다운로드 권장)",
+        "admin.dyn.more_rows_short": "건 더",
+        "admin.dyn.due_prefix": "기한 ",
+        "admin.dyn.unregistered": "미등록",
+        "admin.dyn.unset": "미설정",
+        "admin.dyn.none_word": "없음",
+        "admin.dyn.host_word": "호스트",
+        "admin.dyn.none_show_hosts": "표시할 호스트가 없습니다.",
+        "admin.dyn.none_alert_24h": "최근 24시간 high / critical alert가 없습니다.",
+        "admin.dyn.none_critical_vuln2": "critical 취약점이 없습니다.",
+        "admin.dyn.none_show_source": "표시할 source 상태가 없습니다.",
+        "admin.dyn.none_records": "수집된 레코드가 없습니다.",
+        "admin.dyn.desc.total_hosts": "현재 알려진 전체 호스트 목록입니다.",
+        "admin.dyn.desc.offline_hosts": "즉시 확인이 필요한 offline 호스트 목록입니다.",
+        "admin.dyn.desc.alerts_24h": "최근 24시간 high / critical alert 목록입니다.",
+        "admin.dyn.desc.critical_vulns": "현재 critical 취약점 목록입니다.",
+        "admin.dyn.desc.sources_reporting": "호스트를 보고 중인 source 목록입니다.",
+        "admin.dyn.desc.sources_healthy": "최근 sync가 success인 collector 목록입니다.",
+        "admin.dyn.desc.ingested_records": "저장된 엔터티 타입별 레코드 수입니다.",
+        "admin.dyn.desc.default": "선택한 카드의 상세 데이터입니다.",
+        "admin.dyn.sub.offline": "즉시 확인 대상",
+        "admin.dyn.sub.healthy": "최근 sync success 기준",
+        "admin.dyn.filters_json_error": "filters JSON 오류: ",
+        "admin.dyn.not_run_yet": "아직 실행 전입니다.",
+        "admin.dyn.init_error": "초기화 오류: ",
     },
     "en": {
         "admin.doctitle": "MORI Security Dashboard",
@@ -1213,6 +1366,159 @@ _ADMIN_I18N: dict[str, dict[str, str]] = {
         "admin.h.user_tabs": "👤 Per-user Dashboard Tabs",
         "admin.h.asset_audit": "📝 Asset Change History",
         "admin.h.user_activity": "👤 User Activity Log",
+        "admin.dyn.loading": "Loading…",
+        "admin.dyn.load_fail": "Failed to load",
+        "admin.dyn.load_fail_prefix": "Load failed: ",
+        "admin.dyn.error_prefix": "Error: ",
+        "admin.dyn.save_done": "Saved ✓",
+        "admin.dyn.add_done": "Added ✓",
+        "admin.dyn.delete": "Delete",
+        "admin.dyn.edit": "Edit",
+        "admin.dyn.cancel": "Cancel",
+        "admin.dyn.delete_fail_prefix": "Delete failed: ",
+        "admin.dyn.success": "✓ Success",
+        "admin.dyn.fail": "✗ Failed",
+        "admin.dyn.error_short": "✗ Error",
+        "admin.dyn.deleting": "Deleting…",
+        "admin.dyn.default_content": "(default content)",
+        "admin.dyn.edit_cancelled": "Edit cancelled",
+        "admin.dyn.editing_suffix": " — editing",
+        "admin.dyn.not_found_suffix": " not found.",
+        "admin.dyn.last_saved_prefix": "Last saved: ",
+        "admin.dyn.load_fail_guide_prefix": "Failed to load: ",
+        "admin.dyn.confirm_delete_asset_suffix": " — delete this asset record?",
+        "admin.dyn.confirm_delete_webhook": "Delete this webhook?",
+        "admin.dyn.none_owners": "No owners registered",
+        "admin.dyn.none_webhooks": "No webhooks registered",
+        "admin.dyn.none_signup": "No access requests.",
+        "admin.dyn.no_reason": "(no reason)",
+        "admin.dyn.none_audit": "No change history",
+        "admin.dyn.none_users": "No users registered.",
+        "admin.dyn.none_userlog": "No logs",
+        "admin.dyn.none_source_syncs": "No source_syncs records",
+        "admin.dyn.none_category": "No category data — seed may be missing",
+        "admin.dyn.none_pending": "No pending items 🎉",
+        "admin.dyn.none_alert": "No alerts to display",
+        "admin.dyn.none_incidents": "No incidents registered",
+        "admin.dyn.none_critical_vuln": "No critical vulnerabilities",
+        "admin.dyn.none_action_plans": "No action plans registered",
+        "admin.dyn.none_source_alias": "No source alias connected yet.",
+        "admin.dyn.no_sync_record": "No sync record yet",
+        "admin.dyn.none_hosts": "No host data yet.",
+        "admin.dyn.none_risk": "No risk summary data yet.",
+        "admin.dyn.none_recent": "No recent activity data yet.",
+        "admin.dyn.none_quick": "No suggested queries.",
+        "admin.dyn.none_query_result": "No query results.",
+        "admin.dyn.signup.pending": "🟡 Pending",
+        "admin.dyn.signup.approved": "🟢 Approved",
+        "admin.dyn.signup.rejected": "🔴 Rejected",
+        "admin.dyn.approve": "Approve",
+        "admin.dyn.reject": "Reject",
+        "admin.dyn.approve_done": "✅ Approved",
+        "admin.dyn.reject_done": "❌ Rejected",
+        "admin.dyn.atriage.pending": "🟡 Pending",
+        "admin.dyn.atriage.reviewing": "🔵 Reviewing",
+        "admin.dyn.atriage.resolved": "🟢 Resolved",
+        "admin.dyn.field.owner": "Owner",
+        "admin.dyn.field.category": "Category",
+        "admin.dyn.metric.pending": "Pending",
+        "admin.dyn.metric.not_checked": "Not checked",
+        "admin.dyn.roleperm_saved": "✅ Permissions saved. Applied after affected role users re-login.",
+        "admin.dyn.col.changed_by": "Changed by",
+        "admin.dyn.col.category": "Category",
+        "admin.dyn.col.total": "Total",
+        "admin.dyn.col.not_checked": "Not checked",
+        "admin.dyn.col.source": "Source",
+        "admin.dyn.col.control_id": "Control ID",
+        "admin.dyn.col.target": "Target",
+        "admin.dyn.col.status": "Status",
+        "admin.dyn.col.owner": "Owner",
+        "admin.dyn.col.due": "Due date",
+        "admin.dyn.col.note": "Note",
+        "admin.dyn.col.title": "Title",
+        "admin.dyn.col.host": "Host",
+        "admin.dyn.col.analyst": "Analyst",
+        "admin.dyn.col.created": "Created",
+        "admin.dyn.col.updated": "Updated",
+        "admin.dyn.col.package": "Package",
+        "admin.dyn.col.severity": "Severity",
+        "admin.dyn.col.action_plan": "Action plan",
+        "admin.dyn.col.exception": "Exception",
+        "admin.dyn.col.reviewed": "Reviewed",
+        "admin.dyn.col.time": "Time",
+        "admin.dyn.col.field": "Field",
+        "admin.dyn.col.old_value": "Old value",
+        "admin.dyn.col.new_value": "New value",
+        "admin.dyn.col.user": "User",
+        "admin.dyn.col.action": "Action",
+        "admin.dyn.col.detail": "Detail",
+        "admin.dyn.col.collected": "Collected",
+        "admin.dyn.col.message": "Message",
+        "admin.dyn.col.control": "Control",
+        "admin.dyn.col.observed": "Observed",
+        "admin.dyn.col.handler": "Handler",
+        "admin.dyn.col.target_date": "Target date",
+        "admin.dyn.col.plan_content": "Plan content",
+        "admin.dyn.processing": "Processing…",
+        "admin.dyn.saving": "Saving…",
+        "admin.dyn.count_suffix": "",
+        "admin.dyn.tab.dashboard": "📊 Dashboard",
+        "admin.dyn.tab.triage": "🚨 Alert Triage",
+        "admin.dyn.tab.incidents": "📋 Incidents",
+        "admin.dyn.tab.assets": "📡 Asset Status",
+        "admin.dyn.tab.compliance": "✅ Compliance PDCA",
+        "admin.dyn.tab.guides": "📖 Guides",
+        "admin.dyn.role.security": "Security officer (security)",
+        "admin.dyn.role.monitor": "Server monitor (monitor)",
+        "admin.dyn.role.auditor": "Auditor (auditor)",
+        "admin.dyn.role.helpdesk": "Helpdesk (helpdesk)",
+        "admin.dyn.role.user": "General user (user)",
+        "admin.dyn.rolename.admin": "Admin",
+        "admin.dyn.rolename.security": "Security officer",
+        "admin.dyn.rolename.monitor": "Server monitor",
+        "admin.dyn.rolename.auditor": "Auditor",
+        "admin.dyn.rolename.helpdesk": "Helpdesk",
+        "admin.dyn.rolename.user": "User",
+        "admin.dyn.override_custom": "Custom",
+        "admin.dyn.override_default": "Role default",
+        "admin.dyn.reset": "Reset",
+        "admin.dyn.reset_done": "✅ Reset",
+        "admin.dyn.saved_relogin": "✅ Saved (applied after re-login)",
+        "admin.dyn.confirm_reset_usertabs": " — reset this user's custom tab settings?\\nReverts to role defaults.",
+        "admin.dyn.metric.overdue": "Overdue",
+        "admin.dyn.metric.total_checks": "📋 Total checks",
+        "admin.dyn.metric.pending_icon": "🔧 Pending",
+        "admin.dyn.unit.sec": "s",
+        "admin.dyn.unit.min": "m",
+        "admin.dyn.unit.hour": "h",
+        "admin.dyn.unit.day": "d",
+        "admin.dyn.recent_error_prefix": "⚠ Recent error: ",
+        "admin.dyn.ago_suffix": " ago",
+        "admin.dyn.more_rows_suffix": " more (CSV download recommended)",
+        "admin.dyn.more_rows_short": " more",
+        "admin.dyn.due_prefix": "Due ",
+        "admin.dyn.unregistered": "Not registered",
+        "admin.dyn.unset": "Not set",
+        "admin.dyn.none_word": "None",
+        "admin.dyn.host_word": "hosts",
+        "admin.dyn.none_show_hosts": "No hosts to display.",
+        "admin.dyn.none_alert_24h": "No high / critical alerts in the last 24h.",
+        "admin.dyn.none_critical_vuln2": "No critical vulnerabilities.",
+        "admin.dyn.none_show_source": "No source status to display.",
+        "admin.dyn.none_records": "No collected records.",
+        "admin.dyn.desc.total_hosts": "List of all currently known hosts.",
+        "admin.dyn.desc.offline_hosts": "Offline hosts requiring immediate attention.",
+        "admin.dyn.desc.alerts_24h": "High / critical alerts in the last 24h.",
+        "admin.dyn.desc.critical_vulns": "Current critical vulnerabilities.",
+        "admin.dyn.desc.sources_reporting": "Sources currently reporting hosts.",
+        "admin.dyn.desc.sources_healthy": "Collectors whose latest sync succeeded.",
+        "admin.dyn.desc.ingested_records": "Stored record counts by entity type.",
+        "admin.dyn.desc.default": "Detailed data for the selected card.",
+        "admin.dyn.sub.offline": "Needs immediate attention",
+        "admin.dyn.sub.healthy": "Based on latest successful sync",
+        "admin.dyn.filters_json_error": "filters JSON error: ",
+        "admin.dyn.not_run_yet": "Not run yet.",
+        "admin.dyn.init_error": "Initialization error: ",
     },
 }
 
@@ -6598,7 +6904,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <section>
               <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.request_response\">📨 Request / Response</h3>
               <div class=\"row\"><label for=\"payload\">Request Payload</label><textarea id=\"payload\">__PAYLOAD_JSON__</textarea></div>
-              <div class=\"row\"><label>Response</label><div id=\"result\" class=\"query-result-area\"><span class=\"result-placeholder\">아직 실행 전입니다.</span></div></div>
+              <div class=\"row\"><label>Response</label><div id=\"result\" class=\"query-result-area\"><span class=\"result-placeholder\" data-i18n=\"admin.dyn.not_run_yet\">아직 실행 전입니다.</span></div></div>
             </section>
           </div>
         </details>
@@ -6739,6 +7045,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
   <script>
     const defaultPayload = __DEFAULT_PAYLOAD_JSON__;
     const guideExamples = __GUIDE_EXAMPLES__;
+    // i18n helper — resolves via window.t() with a Korean fallback
+    const tt = (k, f) => (window.t ? window.t(k, f) : f);
     const overviewCardsEl = document.getElementById('overview_cards');
     const sourceCoverageEl = document.getElementById('source_coverage');
     const latestStatusEl = document.getElementById('latest_status');
@@ -6924,7 +7232,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       try {
         filters = filtersEl.value.trim() ? JSON.parse(filtersEl.value) : {};
       } catch (error) {
-        queryStatusEl.textContent = `filters JSON 오류: ${error.message}`;
+        queryStatusEl.textContent = `${tt('admin.dyn.filters_json_error','filters JSON 오류: ')}${error.message}`;
         return null;
       }
       const payload = { intent: intentEl.value, scope: compactScope(), filters };
@@ -7034,7 +7342,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         { label: 'Risk', render: (item) => escapeHtml(item.risk_score) },
         { label: 'Last Seen', render: (item) => escapeHtml(formatTime(item.last_seen_at)) },
         { label: 'Last Alert', render: (item) => escapeHtml(formatTime(item.last_alert_at)) },
-      ], items, '표시할 호스트가 없습니다.');
+      ], items, tt('admin.dyn.none_show_hosts','표시할 호스트가 없습니다.'));
     }
 
     const UI_TRIAGE_COLORS = {new:'#f59e0b', acknowledged:'#38bdf8', investigating:'#a78bfa', closed:'#6ee7b7', false_positive:'#94a3b8'};
@@ -7050,7 +7358,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           label: 'Host',
           render: (item) => `<strong>${escapeHtml(item.hostname || '-')}</strong><br /><span class="subtext">${escapeHtml(item.host_id || '-')}</span>`,
         },
-        { label: '담당자', render: (item) => `<span style="color:#a3e635">${escapeHtml(item.owner || '-')}</span>` },
+        { label: tt('admin.dyn.col.owner','담당자'), render: (item) => `<span style="color:#a3e635">${escapeHtml(item.owner || '-')}</span>` },
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'Severity', render: (item) => escapeHtml(item.severity) },
         { label: 'Message', render: (item) => escapeHtml(item.message) },
@@ -7063,7 +7371,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             return `<span style="background:${color}22;color:${color};padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">${escapeHtml(st)}</span>`;
           }
         },
-      ], items, '최근 24시간 high / critical alert가 없습니다.');
+      ], items, tt('admin.dyn.none_alert_24h','최근 24시간 high / critical alert가 없습니다.'));
     }
 
     function renderVulnerabilityDetailTable(items) {
@@ -7073,22 +7381,22 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           label: 'Host',
           render: (item) => `<strong>${escapeHtml(item.hostname || item.host_id)}</strong><br /><span class="subtext">${escapeHtml(item.host_id)}</span>`,
         },
-        { label: '담당자', render: (item) => `<span style="color:#a3e635">${escapeHtml(item.owner || '-')}</span>` },
+        { label: tt('admin.dyn.col.owner','담당자'), render: (item) => `<span style="color:#a3e635">${escapeHtml(item.owner || '-')}</span>` },
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'CVE', render: (item) => escapeHtml(item.cve || '-') },
         { label: 'Package', render: (item) => escapeHtml(item.package_name || '-') },
-        { label: '조치 계획', render: (item) => {
-          if (!item.plan_text) return '<span style="color:#64748b;font-size:11px">미설정</span>';
+        { label: tt('admin.dyn.col.action_plan','조치 계획'), render: (item) => {
+          if (!item.plan_text) return `<span style="color:#64748b;font-size:11px">${tt('admin.dyn.unset','미설정')}</span>`;
           const tgt = item.plan_target_date ? `<br /><span style="color:#64748b;font-size:11px">~${escapeHtml(item.plan_target_date)}</span>` : '';
           const by = item.plan_updated_by ? ` <span style="color:#94a3b8;font-size:11px">(${escapeHtml(item.plan_updated_by)})</span>` : '';
           return `<span style="color:#a3e635;font-size:12px" title="${escapeHtml(item.plan_text)}">${escapeHtml(item.plan_text.substring(0,30))}${item.plan_text.length>30?'…':''}</span>${by}${tgt}`;
         }},
-        { label: '조치 예외', render: (item) => {
-          if (!item.exception_until) return '<span style="color:#64748b;font-size:11px">없음</span>';
+        { label: tt('admin.dyn.col.exception','조치 예외'), render: (item) => {
+          if (!item.exception_until) return `<span style="color:#64748b;font-size:11px">${tt('admin.dyn.none_word','없음')}</span>`;
           const reason = item.exception_reason ? `<br /><span style="color:#94a3b8;font-size:11px">${escapeHtml(item.exception_reason.substring(0,30))}${item.exception_reason.length>30?'…':''}</span>` : '';
           return `<span style="color:#fbbf24;font-size:12px">~${escapeHtml(item.exception_until)}</span>${reason}`;
         }},
-      ], items, 'critical 취약점이 없습니다.');
+      ], items, tt('admin.dyn.none_critical_vuln2','critical 취약점이 없습니다.'));
     }
 
     function renderSourceDetailTable(items) {
@@ -7098,29 +7406,29 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         { label: 'Status', render: (item) => escapeHtml(item.status) },
         { label: 'Last Sync', render: (item) => escapeHtml(formatTime(item.last_sync_at)) },
         { label: 'Message', render: (item) => escapeHtml(item.message || '-') },
-      ], items, '표시할 source 상태가 없습니다.');
+      ], items, tt('admin.dyn.none_show_source','표시할 source 상태가 없습니다.'));
     }
 
     function renderIngestedDetailTable(items) {
       return renderDetailTable([
         { label: 'Entity', render: (item) => escapeHtml(item.entity_type) },
         { label: 'Count', render: (item) => escapeHtml(item.count) },
-      ], items, '수집된 레코드가 없습니다.');
+      ], items, tt('admin.dyn.none_records','수집된 레코드가 없습니다.'));
     }
 
     async function showOverviewDetail(key, label) {
       const items = Array.isArray(dashboardDetails[key]) ? dashboardDetails[key] : [];
       const renderers = {
-        total_hosts: [renderStatusDetailTable, '현재 알려진 전체 호스트 목록입니다.'],
-        offline_hosts: [renderStatusDetailTable, '즉시 확인이 필요한 offline 호스트 목록입니다.'],
-        alerts_24h: [renderAlertDetailTable, '최근 24시간 high / critical alert 목록입니다.'],
-        critical_vulns: [renderVulnerabilityDetailTable, '현재 critical 취약점 목록입니다.'],
-        sources_reporting: [renderSourceDetailTable, '호스트를 보고 중인 source 목록입니다.'],
-        sources_healthy: [renderSourceDetailTable, '최근 sync가 success인 collector 목록입니다.'],
-        ingested_records: [renderIngestedDetailTable, '저장된 엔터티 타입별 레코드 수입니다.'],
+        total_hosts: [renderStatusDetailTable, tt('admin.dyn.desc.total_hosts','현재 알려진 전체 호스트 목록입니다.')],
+        offline_hosts: [renderStatusDetailTable, tt('admin.dyn.desc.offline_hosts','즉시 확인이 필요한 offline 호스트 목록입니다.')],
+        alerts_24h: [renderAlertDetailTable, tt('admin.dyn.desc.alerts_24h','최근 24시간 high / critical alert 목록입니다.')],
+        critical_vulns: [renderVulnerabilityDetailTable, tt('admin.dyn.desc.critical_vulns','현재 critical 취약점 목록입니다.')],
+        sources_reporting: [renderSourceDetailTable, tt('admin.dyn.desc.sources_reporting','호스트를 보고 중인 source 목록입니다.')],
+        sources_healthy: [renderSourceDetailTable, tt('admin.dyn.desc.sources_healthy','최근 sync가 success인 collector 목록입니다.')],
+        ingested_records: [renderIngestedDetailTable, tt('admin.dyn.desc.ingested_records','저장된 엔터티 타입별 레코드 수입니다.')],
       };
       if (key === 'alerts_24h') await loadUiTriageData();
-      const [renderer, description] = renderers[key] || [renderIngestedDetailTable, '선택한 카드의 상세 데이터입니다.'];
+      const [renderer, description] = renderers[key] || [renderIngestedDetailTable, tt('admin.dyn.desc.default','선택한 카드의 상세 데이터입니다.')];
       openOverviewModal(label, description, renderer(items));
     }
 
@@ -7135,11 +7443,11 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       };
       const cards = [
         ['total_hosts', 'Total Hosts', o.total_hosts, `${o.online_hosts} online / ${o.unknown_hosts} unknown`],
-        ['offline_hosts', 'Offline Hosts', o.offline_hosts, '즉시 확인 대상'],
+        ['offline_hosts', 'Offline Hosts', o.offline_hosts, tt('admin.dyn.sub.offline','즉시 확인 대상')],
         ['alerts_24h', 'High Alerts 24h', o.alerts_24h, 'high + critical'],
         ['critical_vulns', 'Critical Vulns', o.critical_vulns, `high ${o.high_vulns}`],
         ['sources_reporting', 'Sources Reporting', o.sources_reporting, 'fleet / wazuh / zabbix / trivy / host_log'],
-        ['sources_healthy', 'Healthy Collectors', o.sources_healthy, '최근 sync success 기준'],
+        ['sources_healthy', 'Healthy Collectors', o.sources_healthy, tt('admin.dyn.sub.healthy','최근 sync success 기준')],
         ['ingested_records', 'Ingested Records', o.ingested_records, 'alerts + vulns + queries + observations'],
       ];
       overviewCardsEl.innerHTML = cards.map(([key, label, value, sub]) => `
@@ -7163,7 +7471,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     function renderSourceCoverage(items) {
       if (!items.length) {
-        sourceCoverageEl.innerHTML = '<div class=\"empty\">아직 연결된 source alias가 없습니다.</div>';
+        sourceCoverageEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_source_alias','아직 연결된 source alias가 없습니다.')}</div>`;
         return;
       }
       const statusToBadge = { success: 'online', error: 'offline', running: 'unknown', unknown: 'unknown' };
@@ -7173,17 +7481,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         <div class=\"coverage-item\">
           <div class=\"metric-label\">${escapeHtml(item.source.toUpperCase())}</div>
           <strong>${escapeHtml(item.host_count)}</strong>
-          <div class=\"metric-sub\">호스트 · <span class=\"badge ${escapeHtml(statusToBadge[item.status] || 'unknown')}\">${escapeHtml(item.status)}</span>${staleBadge}</div>
+          <div class=\"metric-sub\">${tt('admin.dyn.host_word','호스트')} · <span class=\"badge ${escapeHtml(statusToBadge[item.status] || 'unknown')}\">${escapeHtml(item.status)}</span>${staleBadge}</div>
           <div class=\"metric-sub\">last sync: ${escapeHtml(formatTime(item.last_sync_at))}</div>
           <div class=\"metric-sub\">records ${escapeHtml(item.records_collected)} / entities ${escapeHtml(item.entities_saved)}</div>
-          <div class=\"status-line\">${escapeHtml(item.message || '아직 sync 기록 없음')}</div>
+          <div class=\"status-line\">${escapeHtml(item.message || tt('admin.dyn.no_sync_record','아직 sync 기록 없음'))}</div>
         </div>`;
       }).join('');
     }
 
     function renderLatestStatus(items) {
       if (!items.length) {
-        latestStatusEl.innerHTML = '<div class=\"empty\">아직 호스트 데이터가 없습니다.</div>';
+        latestStatusEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_hosts','아직 호스트 데이터가 없습니다.')}</div>`;
         return;
       }
       latestStatusEl.innerHTML = `
@@ -7208,7 +7516,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     function renderRiskSummary(items) {
       if (!items.length) {
-        riskSummaryEl.innerHTML = '<div class=\"empty\">아직 위험 요약 데이터가 없습니다.</div>';
+        riskSummaryEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_risk','아직 위험 요약 데이터가 없습니다.')}</div>`;
         return;
       }
       riskSummaryEl.innerHTML = `
@@ -7234,7 +7542,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     function renderRecentActivity(items) {
       if (!items.length) {
-        recentActivityEl.innerHTML = '<div class=\"empty\">아직 최근 활동 데이터가 없습니다.</div>';
+        recentActivityEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_recent','아직 최근 활동 데이터가 없습니다.')}</div>`;
         return;
       }
       recentActivityEl.innerHTML = items.map((item) => `
@@ -7250,7 +7558,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     function renderQuickQueries(items) {
       if (!items.length) {
-        quickQueriesEl.innerHTML = '<div class=\"empty\">추천 질의가 없습니다.</div>';
+        quickQueriesEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_quick','추천 질의가 없습니다.')}</div>`;
         return;
       }
       quickQueriesEl.innerHTML = items.map((item, index) => `
@@ -7373,7 +7681,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     function showNoResultsAlert(data) {
       const message = typeof data?.summary === 'string' && data.summary.trim()
         ? data.summary.trim()
-        : '조회 결과가 없습니다.';
+        : tt('admin.dyn.none_query_result','조회 결과가 없습니다.');
       window.alert(message);
     }
 
@@ -7407,7 +7715,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         html += `<div class=\"result-summary\">${escapeHtml(summary)}</div>`;
       }
       if (!evidence.length) {
-        html += `<span class=\"result-placeholder\">조회 결과가 없습니다.</span>`;
+        html += `<span class=\"result-placeholder\">${tt('admin.dyn.none_query_result','조회 결과가 없습니다.')}</span>`;
         resultEl.innerHTML = html;
         return;
       }
@@ -7465,7 +7773,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         }
         const data = await response.json();
         if (!hasQueryResults(data)) {
-          setResultText('조회 결과가 없습니다.');
+          setResultText(tt('admin.dyn.none_query_result','조회 결과가 없습니다.'));
           queryStatusEl.textContent = 'query returned no results';
           showNoResultsAlert(data);
           return;
@@ -7495,7 +7803,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           return;
         }
         if (!hasQueryResults(previewData)) {
-          setResultText('조회 결과가 없습니다.');
+          setResultText(tt('admin.dyn.none_query_result','조회 결과가 없습니다.'));
           queryStatusEl.textContent = 'csv download skipped: no results';
           showNoResultsAlert(previewData);
           return;
@@ -7535,7 +7843,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     function resetForm() {
       nlpTextEl.value = '오프라인 호스트 보여줘';
       populateFormFromPayload(defaultPayload, { mode: 'natural' });
-      setResultText('아직 실행 전입니다.');
+      setResultText(tt('admin.dyn.not_run_yet','아직 실행 전입니다.'));
       interpretationHintEl.innerHTML = '';
       queryStatusEl.textContent = 'form reset';
     }
@@ -7590,12 +7898,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const impColor = { '\uc0c1':'#fca5a5', '\uc911':'#fde68a', '\ud558':'#86efac' };
 
     async function loadOwners() {
-      ownersListEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      ownersListEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</span>`;
       try {
         const res = await fetch('/assets/owners');
         const data = await res.json();
         const list = data.owners || [];
-        if (!list.length) { ownersListEl.innerHTML = '<span class=\"empty\">등록된 담당자 없음</span>'; return; }
+        if (!list.length) { ownersListEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.none_owners','등록된 담당자 없음')}</span>`; return; }
         ownersListEl.innerHTML = list.map(o => {
           const imp = o.importance || '';
           const impBadge = imp ? `<span style=\"background:#1e293b;color:${impColor[imp]||'#94a3b8'};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px\">${escapeHtml(imp)}</span>` : '';
@@ -7613,7 +7921,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             </div>
           </div>`;
         }).join('');
-      } catch(e) { ownersListEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(e.message)}</span>`; }
+      } catch(e) { ownersListEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`; }
     }
 
     // ── 자산 정보를 폼에 채워서 수정 모드 진입 ──
@@ -7692,12 +8000,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     // ── Webhooks ───────────────────────────────────────────────────────────
     async function loadWebhooks() {
-      webhooksListEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      webhooksListEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</span>`;
       try {
         const res = await fetch('/webhooks');
         const data = await res.json();
         const whs = data.webhooks || [];
-        if (!whs.length) { webhooksListEl.innerHTML = '<span class=\"empty\">등록된 webhook 없음</span>'; return; }
+        if (!whs.length) { webhooksListEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.none_webhooks','등록된 webhook 없음')}</span>`; return; }
         webhooksListEl.innerHTML = whs.map(w => `
           <div class=\"list-item\">
             <div class=\"top\"><strong>${escapeHtml(w.name)}</strong><span class=\"meta\">${escapeHtml(w.created_at||'')}</span></div>
@@ -7708,7 +8016,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             </div>
           </div>
         `).join('');
-      } catch(e) { webhooksListEl.innerHTML = `<span class=\"empty\">오류: ${escapeHtml(e.message)}</span>`; }
+      } catch(e) { webhooksListEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`; }
     }
     async function testWebhook(id, btn) {
       btn.textContent = '전송 중…'; btn.disabled = true;
@@ -7811,42 +8119,42 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     async function loadSignupRequests() {
       if (!signupListEl) return;
-      signupListEl.innerHTML = '<span class="empty">로딩 중…</span>';
+      signupListEl.innerHTML = `<span class="empty">${tt('admin.dyn.loading','로딩 중…')}</span>`;
       try {
         const res = await fetch('/auth/signup-requests');
         const data = await res.json();
         const reqs = data.requests || [];
         if (reqs.length === 0) {
-          signupListEl.innerHTML = '<span class="empty">가입 요청이 없습니다.</span>';
+          signupListEl.innerHTML = `<span class="empty">${tt('admin.dyn.none_signup','가입 요청이 없습니다.')}</span>`;
           return;
         }
-        const statusBadge = s => ({pending:'🟡 대기중', approved:'🟢 승인됨', rejected:'🔴 거절됨'}[s] || s);
+        const statusBadge = s => ({pending:tt('admin.dyn.signup.pending','🟡 대기중'), approved:tt('admin.dyn.signup.approved','🟢 승인됨'), rejected:tt('admin.dyn.signup.rejected','🔴 거절됨')}[s] || s);
         signupListEl.innerHTML = reqs.map(r => `
           <div class="owner-row" style="border:1px solid #1e3a5f;border-radius:10px;padding:12px;margin-bottom:10px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
               <div>
                 <strong>${r.name}</strong> <span style="color:#94a3b8;font-size:12px;">${r.email}</span>
                 ${r.department ? `<span style="color:#64748b;font-size:12px;margin-left:6px;">[${r.department}]</span>` : ''}
-                <div style="font-size:12px;color:#94a3b8;margin-top:4px;">${r.reason || '(사유 없음)'}</div>
-                <div style="font-size:11px;color:#475569;margin-top:4px;">요청일: ${r.created_at || '-'}${r.reviewed_at ? ' / 처리일: ' + r.reviewed_at : ''}</div>
+                <div style="font-size:12px;color:#94a3b8;margin-top:4px;">${r.reason || tt('admin.dyn.no_reason','(사유 없음)')}</div>
+                <div style="font-size:11px;color:#475569;margin-top:4px;">${tt('admin.dyn.col.created','요청일')}: ${r.created_at || '-'}${r.reviewed_at ? ' / ' + tt('admin.dyn.col.reviewed','처리일') + ': ' + r.reviewed_at : ''}</div>
               </div>
               <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                 <span>${statusBadge(r.status)}</span>
                 ${r.status === 'pending' ? `
-                  <button class="secondary" style="font-size:12px;padding:4px 10px" onclick="handleSignupRequest('${r.id}','approved')">승인</button>
-                  <button class="danger" style="font-size:12px;padding:4px 10px" onclick="handleSignupRequest('${r.id}','rejected')">거절</button>
+                  <button class="secondary" style="font-size:12px;padding:4px 10px" onclick="handleSignupRequest('${r.id}','approved')">${tt('admin.dyn.approve','승인')}</button>
+                  <button class="danger" style="font-size:12px;padding:4px 10px" onclick="handleSignupRequest('${r.id}','rejected')">${tt('admin.dyn.reject','거절')}</button>
                 ` : ''}
               </div>
             </div>
           </div>`).join('');
       } catch(e) {
-        signupListEl.innerHTML = `<span class="empty">오류: ${e.message}</span>`;
+        signupListEl.innerHTML = `<span class="empty">${tt('admin.dyn.error_prefix','오류: ')}${e.message}</span>`;
       }
     }
 
     async function handleSignupRequest(id, status) {
       if (!signupStatusEl) return;
-      signupStatusEl.textContent = '처리 중…';
+      signupStatusEl.textContent = tt('admin.dyn.processing','처리 중…');
       try {
         const res = await fetch(`/auth/signup-requests/${id}`, {
           method: 'PATCH',
@@ -7854,10 +8162,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           body: JSON.stringify({status})
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.status);
-        signupStatusEl.textContent = status === 'approved' ? '✅ 승인 완료' : '❌ 거절 완료';
+        signupStatusEl.textContent = status === 'approved' ? tt('admin.dyn.approve_done','✅ 승인 완료') : tt('admin.dyn.reject_done','❌ 거절 완료');
         await loadSignupRequests();
       } catch(e) {
-        signupStatusEl.textContent = `오류: ${e.message}`;
+        signupStatusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`;
       }
     }
 
@@ -7871,7 +8179,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     async function loadAuditLog() {
       if (!auditLogListEl) return;
-      auditLogListEl.innerHTML = '<span class="empty">로딩 중…</span>';
+      auditLogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.loading','로딩 중…')}</span>`;
       const hostname = (document.getElementById('audit_filter_hostname')?.value || '').trim();
       const field = document.getElementById('audit_filter_field')?.value || '';
       let url = '/admin/audit-log';
@@ -7881,19 +8189,19 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       if (params.toString()) url += '?' + params.toString();
       try {
         const res = await fetch(url);
-        if (!res.ok) { auditLogListEl.innerHTML = '<span class="empty">로드 실패</span>'; return; }
+        if (!res.ok) { auditLogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.load_fail','로드 실패')}</span>`; return; }
         const data = await res.json();
         const logs = data.audit_log || [];
-        if (!logs.length) { auditLogListEl.innerHTML = '<span class="empty">변경 이력 없음</span>'; return; }
-        const FIELD_LABEL = { owner: '담당자', category: '카테고리' };
+        if (!logs.length) { auditLogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.none_audit','변경 이력 없음')}</span>`; return; }
+        const FIELD_LABEL = { owner: tt('admin.dyn.field.owner','담당자'), category: tt('admin.dyn.field.category','카테고리') };
         auditLogListEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead><tr style="background:#0f2035;">
-            <th style="padding:8px;color:#7dd3fc;text-align:left">시각</th>
-            <th style="padding:8px;color:#7dd3fc;text-align:left">호스트</th>
-            <th style="padding:8px;color:#7dd3fc;text-align:left">항목</th>
-            <th style="padding:8px;color:#7dd3fc;text-align:left">이전 값</th>
-            <th style="padding:8px;color:#a3e635;text-align:left">변경 값</th>
-            <th style="padding:8px;color:#7dd3fc;text-align:left">변경자</th>
+            <th style="padding:8px;color:#7dd3fc;text-align:left">${tt('admin.dyn.col.time','시각')}</th>
+            <th style="padding:8px;color:#7dd3fc;text-align:left">${tt('admin.dyn.col.host','호스트')}</th>
+            <th style="padding:8px;color:#7dd3fc;text-align:left">${tt('admin.dyn.col.field','항목')}</th>
+            <th style="padding:8px;color:#7dd3fc;text-align:left">${tt('admin.dyn.col.old_value','이전 값')}</th>
+            <th style="padding:8px;color:#a3e635;text-align:left">${tt('admin.dyn.col.new_value','변경 값')}</th>
+            <th style="padding:8px;color:#7dd3fc;text-align:left">${tt('admin.dyn.col.changed_by','변경자')}</th>
           </tr></thead>
           <tbody>
           ${logs.map(l => `<tr style="border-bottom:1px solid #1e293b;">
@@ -7905,9 +8213,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <td style="padding:7px 8px;color:#93c5fd">${escapeHtml(l.changed_by)}</td>
           </tr>`).join('')}
           </tbody></table>`;
-        if (auditLogStatusEl) auditLogStatusEl.textContent = `총 ${data.total}건`;
+        if (auditLogStatusEl) auditLogStatusEl.textContent = `${tt('admin.dyn.col.total','총')} ${data.total}${tt('admin.dyn.count_suffix','건')}`;
       } catch(e) {
-        auditLogListEl.innerHTML = `<span class="empty">오류: ${escapeHtml(e.message)}</span>`;
+        auditLogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`;
       }
     }
 
@@ -7920,26 +8228,26 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     // ── Role Permissions ─────────────────────────────────────────────────────
     const ROLE_PERM_TABS = [
-      { id: 'dashboard', label: '📊 대시보드' },
-      { id: 'triage', label: '🚨 Alert Triage' },
-      { id: 'incidents', label: '📋 인시던트' },
-      { id: 'assets', label: '📡 자산 현황' },
-      { id: 'compliance', label: '✅ Compliance PDCA' },
-      { id: 'guides', label: '📖 가이드' },
+      { id: 'dashboard', label: '📊 대시보드', labelKey: 'admin.dyn.tab.dashboard' },
+      { id: 'triage', label: '🚨 Alert Triage', labelKey: 'admin.dyn.tab.triage' },
+      { id: 'incidents', label: '📋 인시던트', labelKey: 'admin.dyn.tab.incidents' },
+      { id: 'assets', label: '📡 자산 현황', labelKey: 'admin.dyn.tab.assets' },
+      { id: 'compliance', label: '✅ Compliance PDCA', labelKey: 'admin.dyn.tab.compliance' },
+      { id: 'guides', label: '📖 가이드', labelKey: 'admin.dyn.tab.guides' },
     ];
     const ROLE_PERM_ROLES = [
-      { key: 'security', label: '보안담당자 (security)' },
-      { key: 'monitor', label: '서버모니터 (monitor)' },
-      { key: 'auditor', label: '감사자 (auditor)' },
-      { key: 'helpdesk', label: '헬프데스크 (helpdesk)' },
-      { key: 'user', label: '일반사용자 (user)' },
+      { key: 'security', label: '보안담당자 (security)', labelKey: 'admin.dyn.role.security' },
+      { key: 'monitor', label: '서버모니터 (monitor)', labelKey: 'admin.dyn.role.monitor' },
+      { key: 'auditor', label: '감사자 (auditor)', labelKey: 'admin.dyn.role.auditor' },
+      { key: 'helpdesk', label: '헬프데스크 (helpdesk)', labelKey: 'admin.dyn.role.helpdesk' },
+      { key: 'user', label: '일반사용자 (user)', labelKey: 'admin.dyn.role.user' },
     ];
 
     async function loadRolePermissions() {
       const listEl = document.getElementById('roleperm_list');
       const statusEl = document.getElementById('roleperm_status');
       if (!listEl) return;
-      listEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</span>`;
       try {
         const res = await fetch('/admin/role-permissions');
         if (!res.ok) throw new Error(res.status);
@@ -7951,16 +8259,16 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             const checked = allowed.includes(tab.id) ? 'checked' : '';
             return `<label style=\"display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #223148;border-radius:8px;background:#0b1220;cursor:pointer\">
               <input type=\"checkbox\" data-role=\"${role.key}\" data-tab=\"${tab.id}\" ${checked} style=\"width:auto;margin:0\" />
-              <span style=\"font-size:13px\">${tab.label}</span>
+              <span style=\"font-size:13px\">${tt(tab.labelKey, tab.label)}</span>
             </label>`;
           }).join('');
           return `<div style=\"background:#0f172a;border:1px solid #233046;border-radius:12px;padding:14px\">
-            <div style=\"font-weight:700;color:#38bdf8;margin-bottom:10px\">${escapeHtml(role.label)}</div>
+            <div style=\"font-weight:700;color:#38bdf8;margin-bottom:10px\">${escapeHtml(tt(role.labelKey, role.label))}</div>
             <div style=\"display:flex;flex-wrap:wrap;gap:8px\">${checks}</div>
           </div>`;
         }).join('');
       } catch(e) {
-        listEl.innerHTML = `<span class=\"empty\">로드 실패: ${escapeHtml(e.message)}</span>`;
+        listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</span>`;
       }
     }
 
@@ -7978,17 +8286,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           if (!payload[role]) payload[role] = [];
           if (cb.checked) payload[role].push(tab);
         });
-        statusEl.textContent = '저장 중...';
+        statusEl.textContent = tt('admin.dyn.saving','저장 중...');
         try {
           const res = await fetch('/admin/role-permissions', {
             method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload),
           });
           if (!res.ok) throw new Error(await res.text());
           statusEl.style.color = '#86efac';
-          statusEl.textContent = '✅ 권한이 저장되었습니다. 해당 역할 사용자 재로그인 후 적용됩니다.';
+          statusEl.textContent = tt('admin.dyn.roleperm_saved','✅ 권한이 저장되었습니다. 해당 역할 사용자 재로그인 후 적용됩니다.');
         } catch(e) {
           statusEl.style.color = '#fca5a5';
-          statusEl.textContent = `오류: ${e.message}`;
+          statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`;
         }
       });
     }
@@ -7998,30 +8306,30 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       const listEl = document.getElementById('usertab_list');
       const statusEl = document.getElementById('usertab_status');
       if (!listEl) return;
-      listEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</span>`;
       try {
         const res = await fetch('/admin/user-tab-permissions');
         if (!res.ok) throw new Error(res.status);
         const data = await res.json();
         const users = data.users || [];
         if (users.length === 0) {
-          listEl.innerHTML = '<span class=\"empty\">등록된 사용자가 없습니다.</span>';
+          listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.none_users','등록된 사용자가 없습니다.')}</span>`;
           return;
         }
         listEl.innerHTML = users.map(u => {
           const activeTabs = u.has_override ? u.user_tabs : u.role_default_tabs;
           const overrideBadge = u.has_override
-            ? '<span style=\"background:#854d0e;color:#fbbf24;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px\">개별 설정</span>'
-            : '<span style=\"background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px\">역할 기본값</span>';
+            ? `<span style=\"background:#854d0e;color:#fbbf24;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px\">${tt('admin.dyn.override_custom','개별 설정')}</span>`
+            : `<span style=\"background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px\">${tt('admin.dyn.override_default','역할 기본값')}</span>`;
           const checks = ROLE_PERM_TABS.map(tab => {
             const checked = activeTabs.includes(tab.id) ? 'checked' : '';
             return `<label style=\"display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #223148;border-radius:6px;background:#0b1220;cursor:pointer;font-size:12px\">
               <input type=\"checkbox\" data-user=\"${escapeHtml(u.username)}\" data-utab=\"${tab.id}\" ${checked} style=\"width:auto;margin:0\" onchange=\"_onUserTabChange('${escapeHtml(u.username)}')\" />
-              <span>${tab.label}</span>
+              <span>${tt(tab.labelKey, tab.label)}</span>
             </label>`;
           }).join('');
           const resetBtn = u.has_override
-            ? `<button onclick=\"_resetUserTabs('${escapeHtml(u.username)}')\" style=\"font-size:11px;padding:3px 10px;background:#450a0a;color:#fca5a5;border:1px solid #7f1d1d;border-radius:6px;cursor:pointer;margin-left:8px\">초기화</button>`
+            ? `<button onclick=\"_resetUserTabs('${escapeHtml(u.username)}')\" style=\"font-size:11px;padding:3px 10px;background:#450a0a;color:#fca5a5;border:1px solid #7f1d1d;border-radius:6px;cursor:pointer;margin-left:8px\">${tt('admin.dyn.reset','초기화')}</button>`
             : '';
           return `<div style=\"background:#0f172a;border:1px solid #233046;border-radius:12px;padding:14px\" id=\"usertab_row_${escapeHtml(u.username)}\">
             <div style=\"display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px\">
@@ -8037,7 +8345,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           </div>`;
         }).join('');
       } catch(e) {
-        listEl.innerHTML = `<span class=\"empty\">로드 실패: ${escapeHtml(e.message)}</span>`;
+        listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</span>`;
       }
     }
 
@@ -8046,32 +8354,32 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       const tabs = [];
       checkboxes.forEach(cb => { if (cb.checked) tabs.push(cb.dataset.utab); });
       const statusEl = document.getElementById('usertab_status_' + username);
-      if (statusEl) { statusEl.style.color = '#94a3b8'; statusEl.textContent = '저장 중…'; }
+      if (statusEl) { statusEl.style.color = '#94a3b8'; statusEl.textContent = tt('admin.dyn.saving','저장 중…'); }
       try {
         const res = await fetch(`/admin/user-tab-permissions/${encodeURIComponent(username)}`, {
           method: 'POST', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ tabs }),
         });
         if (!res.ok) throw new Error(await res.text());
-        if (statusEl) { statusEl.style.color = '#86efac'; statusEl.textContent = '✅ 저장됨 (재로그인 후 적용)'; }
+        if (statusEl) { statusEl.style.color = '#86efac'; statusEl.textContent = tt('admin.dyn.saved_relogin','✅ 저장됨 (재로그인 후 적용)'); }
         // 배지 업데이트
         setTimeout(() => loadUserTabPermissions(), 500);
       } catch(e) {
-        if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = `오류: ${e.message}`; }
+        if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
       }
     }
     window._onUserTabChange = _onUserTabChange;
 
     async function _resetUserTabs(username) {
-      if (!confirm(`${username} 유저의 개별 탭 설정을 초기화하시겠습니까?\\n역할 기본값으로 돌아갑니다.`)) return;
+      if (!confirm(`${username}${tt('admin.dyn.confirm_reset_usertabs',' 유저의 개별 탭 설정을 초기화하시겠습니까?\\n역할 기본값으로 돌아갑니다.')}`)) return;
       const statusEl = document.getElementById('usertab_status_' + username);
       try {
         const res = await fetch(`/admin/user-tab-permissions/${encodeURIComponent(username)}`, { method: 'DELETE' });
         if (!res.ok) throw new Error(await res.text());
-        if (statusEl) { statusEl.style.color = '#86efac'; statusEl.textContent = '✅ 초기화됨'; }
+        if (statusEl) { statusEl.style.color = '#86efac'; statusEl.textContent = tt('admin.dyn.reset_done','✅ 초기화됨'); }
         setTimeout(() => loadUserTabPermissions(), 500);
       } catch(e) {
-        if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = `오류: ${e.message}`; }
+        if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
       }
     }
     window._resetUserTabs = _resetUserTabs;
@@ -8084,7 +8392,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     async function loadUserActivityLog(filterUser, filterAction) {
       const listEl = document.getElementById('userlog_list');
       if (!listEl) return;
-      listEl.innerHTML = '<span class=\"empty\">로딩 중…</span>';
+      listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</span>`;
       try {
         let url = '/admin/action-audit-log?limit=500';
         if (filterUser) url += `&username=${encodeURIComponent(filterUser)}`;
@@ -8093,17 +8401,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const data = await res.json();
         let logs = data.logs || [];
         if (filterAction) logs = logs.filter(e => e.action === filterAction);
-        if (!logs.length) { listEl.innerHTML = '<span class=\"empty\">로그 없음</span>'; return; }
+        if (!logs.length) { listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.none_userlog','로그 없음')}</span>`; return; }
         const ACTION_COLOR = {
           LOGIN:'#86efac', LOGIN_FAIL:'#fca5a5', LOGOUT:'#94a3b8',
           TAB_SWITCH:'#7dd3fc', QUERY:'#fbbf24', INTERPRET:'#c4b5fd', UNKNOWN:'#cbd5e1',
         };
         listEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
           <thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155\">
-            <th style=\"text-align:left;padding:6px 10px;white-space:nowrap\">시각</th>
-            <th style=\"text-align:left;padding:6px 10px\">사용자</th>
-            <th style=\"text-align:left;padding:6px 10px\">액션</th>
-            <th style=\"text-align:left;padding:6px 10px\">상세</th>
+            <th style=\"text-align:left;padding:6px 10px;white-space:nowrap\">${tt('admin.dyn.col.time','시각')}</th>
+            <th style=\"text-align:left;padding:6px 10px\">${tt('admin.dyn.col.user','사용자')}</th>
+            <th style=\"text-align:left;padding:6px 10px\">${tt('admin.dyn.col.action','액션')}</th>
+            <th style=\"text-align:left;padding:6px 10px\">${tt('admin.dyn.col.detail','상세')}</th>
           </tr></thead>
           <tbody>${logs.map(e => {
             const col = ACTION_COLOR[e.action] || ACTION_COLOR.UNKNOWN;
@@ -8116,7 +8424,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           }).join('')}</tbody>
         </table>`;
       } catch(e) {
-        listEl.innerHTML = `<span class=\"empty\">로드 실패: ${escapeHtml(e.message)}</span>`;
+        listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</span>`;
       }
     }
 
@@ -8141,7 +8449,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       fail:'<span style=\"background:rgba(248,113,113,.12);color:#fca5a5;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">FAIL</span>',
       warning:'<span style=\"background:rgba(250,204,21,.12);color:#fde68a;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">WARN</span>',
       not_applicable:'<span style=\"background:rgba(148,163,184,.12);color:#cbd5e1;padding:2px 8px;border-radius:6px;font-size:12px\">N/A</span>',
-      not_checked:'<span style=\"background:rgba(100,116,139,.12);color:#94a3b8;padding:2px 8px;border-radius:6px;font-size:12px\">미점검</span>',
+      not_checked:`<span style=\"background:rgba(100,116,139,.12);color:#94a3b8;padding:2px 8px;border-radius:6px;font-size:12px\">${tt('admin.dyn.metric.not_checked','미점검')}</span>`,
     };
     const _statusBadge = (s) => STATUS_BADGE[s] || `<span>${escapeHtml(s||'')}</span>`;
     const _sourceBadge = (src) => {
@@ -8153,7 +8461,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     async function loadAdminPhase2Health() {
       const el = document.getElementById('phase2_health');
       if (!el) return;
-      el.innerHTML = '<div class=\"coverage-item\"><span style=\"color:#94a3b8\">로딩 중…</span></div>';
+      el.innerHTML = `<div class=\"coverage-item\"><span style=\"color:#94a3b8\">${tt('admin.dyn.loading','로딩 중…')}</span></div>`;
       try {
         const res = await fetch('/compliance/pdca');
         const data = res.ok ? await res.json() : { summary: {}, pending_count: 0 };
@@ -8161,8 +8469,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const total = Object.values(summary).reduce((a,b)=>a+(b||0),0);
         const items = [
           { label: 'Control Checks', value: total, hint: 'control_check_results' },
-          { label: '미조치', value: data.pending_count || 0, hint: 'fail + warning + Trivy + Alert' },
-          { label: '기한 초과', value: data.overdue_count || 0, hint: 'remediation_due_at 경과' },
+          { label: tt('admin.dyn.metric.pending','미조치'), value: data.pending_count || 0, hint: 'fail + warning + Trivy + Alert' },
+          { label: tt('admin.dyn.metric.overdue','기한 초과'), value: data.overdue_count || 0, hint: 'remediation_due_at 경과' },
         ];
         const inc = await fetch('/incidents').then(r => r.ok ? r.json() : { total: 0 }).catch(() => ({ total: 0 }));
         items.push({ label: 'Incidents', value: inc.total || (inc.incidents||[]).length, hint: 'incident_store' });
@@ -8173,7 +8481,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <div style=\"color:#64748b;font-size:11px;margin-top:4px\">${escapeHtml(it.hint)}</div>
           </div>`).join('');
       } catch (e) {
-        el.innerHTML = `<div class=\"coverage-item\"><span style=\"color:#fca5a5\">로드 실패: ${escapeHtml(e.message)}</span></div>`;
+        el.innerHTML = `<div class=\"coverage-item\"><span style=\"color:#fca5a5\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</span></div>`;
       }
     }
 
@@ -8181,27 +8489,28 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     function _humanizeLag(seconds) {
       if (seconds == null || !isFinite(seconds)) return '-';
       const s = Math.max(0, Math.floor(seconds));
-      if (s < 60) return s + '초';
-      if (s < 3600) return Math.floor(s/60) + '분';
+      const U = (k, f) => tt('admin.dyn.unit.' + k, f);
+      if (s < 60) return s + U('sec','초');
+      if (s < 3600) return Math.floor(s/60) + U('min','분');
       if (s < 86400) {
         const h = Math.floor(s/3600); const m = Math.floor((s%3600)/60);
-        return m ? `${h}시간 ${m}분` : `${h}시간`;
+        return m ? `${h}${U('hour','시간')} ${m}${U('min','분')}` : `${h}${U('hour','시간')}`;
       }
       const d = Math.floor(s/86400); const h = Math.floor((s%86400)/3600);
-      return h ? `${d}일 ${h}시간` : `${d}일`;
+      return h ? `${d}${U('day','일')} ${h}${U('hour','시간')}` : `${d}${U('day','일')}`;
     }
 
     async function loadAdminSourceFreshness() {
       const el = document.getElementById('admin_source_freshness');
       if (!el) return;
-      el.innerHTML = '<div class=\"empty\">로딩 중…</div>';
+      el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</div>`;
       try {
         const res = await fetch('/dashboard');
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         const rows = data.source_coverage || [];
         if (!rows.length) {
-          el.innerHTML = '<div class=\"empty\">source_syncs 기록 없음</div>';
+          el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_source_syncs','source_syncs 기록 없음')}</div>`;
           return;
         }
         const nowMs = Date.now();
@@ -8216,22 +8525,22 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           else if (rec.status === 'running') { statusColor = '#93c5fd'; }
           const lagColor = rec.is_stale ? '#fbbf24' : (lagSec != null ? '#cbd5e1' : '#64748b');
           const slaText = sla ? _humanizeLag(sla) : '-';
-          const errBadge = lastErr ? `<div style=\"color:#fca5a5;font-size:11px;margin-top:2px\">⚠ 최근 에러: ${escapeHtml(formatTime(rec.last_error_at))}</div>` : '';
+          const errBadge = lastErr ? `<div style=\"color:#fca5a5;font-size:11px;margin-top:2px\">${tt('admin.dyn.recent_error_prefix','⚠ 최근 에러: ')}${escapeHtml(formatTime(rec.last_error_at))}</div>` : '';
           return `<tr>
             <td><strong>${escapeHtml((rec.source||'-').toUpperCase())}</strong></td>
             <td><span style=\"background:rgba(56,189,248,.08);color:${statusColor};padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">${escapeHtml(statusLabel)}</span></td>
             <td style=\"text-align:right\">${rec.host_count||0}</td>
-            <td style=\"color:${lagColor}\">${lagSec != null ? _humanizeLag(lagSec) + ' 전' : '-'}</td>
+            <td style=\"color:${lagColor}\">${lagSec != null ? _humanizeLag(lagSec) + tt('admin.dyn.ago_suffix',' 전') : '-'}</td>
             <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(slaText)}</td>
             <td style=\"text-align:right;color:#cbd5e1\">${rec.records_collected||0}<div style=\"color:#64748b;font-size:11px\">env ${rec.envelopes_normalized||0} · save ${rec.entities_saved||0}</div></td>
             <td style=\"color:#64748b;font-size:12px;max-width:280px;overflow:hidden;text-overflow:ellipsis\">${escapeHtml(rec.message||'-')}${errBadge}</td>
           </tr>`;
         };
         el.innerHTML = `<table class=\"result-table\">
-          <thead><tr><th>Source</th><th>Status</th><th style=\"text-align:right\">호스트</th><th>Lag</th><th>SLA</th><th style=\"text-align:right\">수집</th><th>메시지</th></tr></thead>
+          <thead><tr><th>Source</th><th>Status</th><th style=\"text-align:right\">${tt('admin.dyn.col.host','호스트')}</th><th>Lag</th><th>SLA</th><th style=\"text-align:right\">${tt('admin.dyn.col.collected','수집')}</th><th>${tt('admin.dyn.col.message','메시지')}</th></tr></thead>
           <tbody>${rows.map(fmt).join('')}</tbody></table>`;
       } catch (e) {
-        el.innerHTML = `<div class=\"empty\">로드 실패: ${escapeHtml(e.message)}</div>`;
+        el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</div>`;
       }
     }
     if (document.getElementById('admin_reload_freshness')) {
@@ -8243,7 +8552,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       const catEl = document.getElementById('admin_compliance_categories');
       const pendingEl = document.getElementById('admin_compliance_pending');
       if (!cardsEl) return;
-      cardsEl.innerHTML = '<div class=\"metric-card card\"><span class=\"empty\">로딩 중…</span></div>';
+      cardsEl.innerHTML = `<div class=\"metric-card card\"><span class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</span></div>`;
       try {
         const res = await fetch('/compliance/pdca');
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -8253,19 +8562,19 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const passRate = total > 0 ? Math.round(((s.pass||0)/total)*100) : null;
         const ps = data.pending_sources || {};
         cardsEl.innerHTML = `
-          <div class=\"metric-card card\"><div class=\"metric-label\">📋 전체 점검</div><div class=\"metric-value\">${total}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">${tt('admin.dyn.metric.total_checks','📋 전체 점검')}</div><div class=\"metric-value\">${total}</div></div>
           <div class=\"metric-card card\"><div class=\"metric-label\">✅ Pass</div><div class=\"metric-value\" style=\"color:#86efac\">${s.pass||0}</div></div>
           <div class=\"metric-card card\"><div class=\"metric-label\">❌ Fail</div><div class=\"metric-value\" style=\"color:#fca5a5\">${s.fail||0}</div></div>
           <div class=\"metric-card card\"><div class=\"metric-label\">⚠️ Warning</div><div class=\"metric-value\" style=\"color:#fde68a\">${s.warning||0}</div></div>
           <div class=\"metric-card card\"><div class=\"metric-label\">📊 Pass Rate</div><div class=\"metric-value\" style=\"color:#a78bfa\">${passRate===null?'—':passRate+'%'}</div></div>
-          <div class=\"metric-card card\"><div class=\"metric-label\">🔧 미조치</div><div class=\"metric-value\" style=\"color:#fb923c\">${data.pending_count||0}</div><div class=\"metric-sub\">통제 ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">${tt('admin.dyn.metric.pending_icon','🔧 미조치')}</div><div class=\"metric-value\" style=\"color:#fb923c\">${data.pending_count||0}</div><div class=\"metric-sub\">${tt('admin.dyn.col.control','통제')} ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}</div></div>
         `;
         const cats = data.categories || [];
         if (!cats.length) {
-          catEl.innerHTML = '<div class=\"empty\">카테고리 데이터 없음 — 시드 누락 가능성</div>';
+          catEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_category','카테고리 데이터 없음 — 시드 누락 가능성')}</div>`;
         } else {
           catEl.innerHTML = `<table class=\"result-table\">
-            <thead><tr><th>카테고리</th><th>총</th><th style=\"color:#86efac\">Pass</th><th style=\"color:#fca5a5\">Fail</th><th style=\"color:#fde68a\">Warning</th><th style=\"color:#cbd5e1\">N/A</th><th style=\"color:#94a3b8\">미점검</th></tr></thead>
+            <thead><tr><th>${tt('admin.dyn.col.category','카테고리')}</th><th>${tt('admin.dyn.col.total','총')}</th><th style=\"color:#86efac\">Pass</th><th style=\"color:#fca5a5\">Fail</th><th style=\"color:#fde68a\">Warning</th><th style=\"color:#cbd5e1\">N/A</th><th style=\"color:#94a3b8\">${tt('admin.dyn.col.not_checked','미점검')}</th></tr></thead>
             <tbody>${cats.map(c => `<tr>
               <td><strong>${escapeHtml(c.category||'-')}</strong></td>
               <td>${c.total||0}</td>
@@ -8278,10 +8587,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         }
         const pending = data.pending_remediations || [];
         if (!pending.length) {
-          pendingEl.innerHTML = '<div class=\"empty\">미조치 항목 없음 🎉</div>';
+          pendingEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_pending','미조치 항목 없음 🎉')}</div>`;
         } else {
           pendingEl.innerHTML = `<table class=\"result-table\">
-            <thead><tr><th>출처</th><th>통제 ID</th><th>대상</th><th>상태</th><th>담당자</th><th>조치기한</th><th>비고</th></tr></thead>
+            <thead><tr><th>${tt('admin.dyn.col.source','출처')}</th><th>${tt('admin.dyn.col.control_id','통제 ID')}</th><th>${tt('admin.dyn.col.target','대상')}</th><th>${tt('admin.dyn.col.status','상태')}</th><th>${tt('admin.dyn.col.owner','담당자')}</th><th>${tt('admin.dyn.col.due','조치기한')}</th><th>${tt('admin.dyn.col.note','비고')}</th></tr></thead>
             <tbody>${pending.slice(0,100).map(p => `<tr>
               <td>${_sourceBadge(p.source)}</td>
               <td><strong>${escapeHtml(p.control_id||'-')}</strong></td>
@@ -8290,10 +8599,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <td>${escapeHtml(p.owner||'-')}</td>
               <td style=\"${p.overdue?'color:#fca5a5;font-weight:700':''}\">${p.overdue?'🔴 ':''}${escapeHtml(p.remediation_due_at?formatTime(p.remediation_due_at):'-')}</td>
               <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(p.note||'')}</td>
-            </tr>`).join('')}${pending.length>100?`<tr><td colspan=\"7\" style=\"color:#64748b;text-align:center;padding:8px\">… ${pending.length-100}건 더 (CSV 다운로드 권장)</td></tr>`:''}</tbody></table>`;
+            </tr>`).join('')}${pending.length>100?`<tr><td colspan=\"7\" style=\"color:#64748b;text-align:center;padding:8px\">… ${pending.length-100}${tt('admin.dyn.more_rows_suffix','건 더 (CSV 다운로드 권장)')}</td></tr>`:''}</tbody></table>`;
         }
       } catch (e) {
-        cardsEl.innerHTML = `<div class=\"metric-card card\"><span class=\"empty\">로드 실패: ${escapeHtml(e.message)}</span></div>`;
+        cardsEl.innerHTML = `<div class=\"metric-card card\"><span class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</span></div>`;
         if (catEl) catEl.innerHTML = '';
         if (pendingEl) pendingEl.innerHTML = '';
       }
@@ -8306,7 +8615,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     async function loadAdminTriage() {
       const el = document.getElementById('admin_triage_list');
       if (!el) return;
-      el.innerHTML = '<div class=\"empty\">로딩 중…</div>';
+      el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</div>`;
       try {
         const res = await fetch('/alerts');
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -8317,12 +8626,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           .filter(a => (a.triage && a.triage.status && a.triage.status !== 'pending') || ['critical','high'].includes(a.severity))
           .slice(0, 100);
         if (!rows.length) {
-          el.innerHTML = '<div class=\"empty\">표시할 alert 없음</div>';
+          el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_alert','표시할 alert 없음')}</div>`;
           return;
         }
-        const TRIAGE_LABEL = { pending:'🟡 대기', reviewing:'🔵 검토중', resolved:'🟢 조치' };
+        const TRIAGE_LABEL = { pending:tt('admin.dyn.atriage.pending','🟡 대기'), reviewing:tt('admin.dyn.atriage.reviewing','🔵 검토중'), resolved:tt('admin.dyn.atriage.resolved','🟢 조치') };
         el.innerHTML = `<table class=\"result-table\">
-          <thead><tr><th>심각도</th><th>호스트</th><th>메시지</th><th>Triage</th><th>분석관</th><th>발생 시각</th></tr></thead>
+          <thead><tr><th>${tt('admin.dyn.col.severity','심각도')}</th><th>${tt('admin.dyn.col.host','호스트')}</th><th>${tt('admin.dyn.col.message','메시지')}</th><th>Triage</th><th>${tt('admin.dyn.col.analyst','분석관')}</th><th>${tt('admin.dyn.col.observed','발생 시각')}</th></tr></thead>
           <tbody>${rows.map(a => {
             const sev = a.severity || '-';
             const sevColor = sev==='critical'?'#fca5a5':sev==='high'?'#fbbf24':'#94a3b8';
@@ -8331,13 +8640,13 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <td><strong style=\"color:${sevColor}\">${escapeHtml(sev.toUpperCase())}</strong></td>
               <td>${escapeHtml(a.hostname||a.host_id||'-')}</td>
               <td style=\"color:#cbd5e1;max-width:380px;overflow:hidden;text-overflow:ellipsis\">${escapeHtml(a.message||'')}</td>
-              <td>${escapeHtml(TRIAGE_LABEL[t.status]||t.status||'🟡 대기')}</td>
+              <td>${escapeHtml(TRIAGE_LABEL[t.status]||t.status||tt('admin.dyn.atriage.pending','🟡 대기'))}</td>
               <td style=\"color:#93c5fd\">${escapeHtml(t.analyst||'-')}</td>
               <td style=\"color:#64748b;font-size:12px\">${escapeHtml(formatTime(a.observed_at))}</td>
             </tr>`;
           }).join('')}</tbody></table>`;
       } catch (e) {
-        el.innerHTML = `<div class=\"empty\">로드 실패: ${escapeHtml(e.message)}</div>`;
+        el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</div>`;
       }
     }
     if (document.getElementById('admin_reload_triage')) {
@@ -8348,19 +8657,19 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     async function loadAdminIncidents() {
       const el = document.getElementById('admin_incidents_list');
       if (!el) return;
-      el.innerHTML = '<div class=\"empty\">로딩 중…</div>';
+      el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</div>`;
       try {
         const res = await fetch('/incidents');
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         const list = data.incidents || [];
         if (!list.length) {
-          el.innerHTML = '<div class=\"empty\">등록된 인시던트 없음</div>';
+          el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_incidents','등록된 인시던트 없음')}</div>`;
           return;
         }
         const STATUS_COLOR = { open:'#ef4444', investigating:'#f59e0b', resolved:'#22c55e', closed:'#6b7280' };
         el.innerHTML = `<table class=\"result-table\">
-          <thead><tr><th>제목</th><th>상태</th><th>호스트</th><th>담당자</th><th>분석관</th><th>등록일</th><th>업데이트</th></tr></thead>
+          <thead><tr><th>${tt('admin.dyn.col.title','제목')}</th><th>${tt('admin.dyn.col.status','상태')}</th><th>${tt('admin.dyn.col.host','호스트')}</th><th>${tt('admin.dyn.col.handler','담당자')}</th><th>${tt('admin.dyn.col.analyst','분석관')}</th><th>${tt('admin.dyn.col.created','등록일')}</th><th>${tt('admin.dyn.col.updated','업데이트')}</th></tr></thead>
           <tbody>${list.slice(0,100).map(i => `<tr>
             <td><strong>${escapeHtml(i.title||'-')}</strong></td>
             <td><span style=\"background:rgba(56,189,248,.08);color:${STATUS_COLOR[i.status]||'#94a3b8'};padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">${escapeHtml((i.status||'').toUpperCase())}</span></td>
@@ -8371,7 +8680,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <td style=\"color:#64748b;font-size:12px\">${escapeHtml(formatTime(i.status_updated_at))}</td>
           </tr>`).join('')}</tbody></table>`;
       } catch (e) {
-        el.innerHTML = `<div class=\"empty\">로드 실패: ${escapeHtml(e.message)}</div>`;
+        el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</div>`;
       }
     }
     if (document.getElementById('admin_reload_incidents')) {
@@ -8382,7 +8691,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     async function loadAdminVulnActions() {
       const el = document.getElementById('admin_vuln_actions');
       if (!el) return;
-      el.innerHTML = '<div class=\"empty\">로딩 중…</div>';
+      el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</div>`;
       try {
         const res = await fetch('/trivy/vulnerabilities?severity=critical');
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -8394,14 +8703,14 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           (h.vulnerabilities || []).forEach(v => flatRows.push({ ...v, hostname: h.hostname || h.host_id }));
         });
         if (!flatRows.length) {
-          el.innerHTML = '<div class=\"empty\">Critical 취약점 없음</div>';
+          el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_critical_vuln','Critical 취약점 없음')}</div>`;
           return;
         }
         el.innerHTML = `<table class=\"result-table\">
-          <thead><tr><th>호스트</th><th>CVE</th><th>패키지</th><th>심각도</th><th>조치 계획</th><th>예외</th></tr></thead>
+          <thead><tr><th>${tt('admin.dyn.col.host','호스트')}</th><th>CVE</th><th>${tt('admin.dyn.col.package','패키지')}</th><th>${tt('admin.dyn.col.severity','심각도')}</th><th>${tt('admin.dyn.col.action_plan','조치 계획')}</th><th>${tt('admin.dyn.col.exception','예외')}</th></tr></thead>
           <tbody>${flatRows.slice(0,150).map(v => {
             const act = v.action || {};
-            const planTxt = act.plan_text ? `<div>${escapeHtml(act.plan_text.substring(0,80))}${act.plan_text.length>80?'…':''}</div><div style=\"color:#64748b;font-size:11px\">기한 ${escapeHtml(act.plan_target_date||'-')} · ${escapeHtml(act.plan_updated_by||'-')}</div>` : '<span style=\"color:#64748b\">미등록</span>';
+            const planTxt = act.plan_text ? `<div>${escapeHtml(act.plan_text.substring(0,80))}${act.plan_text.length>80?'…':''}</div><div style=\"color:#64748b;font-size:11px\">${tt('admin.dyn.due_prefix','기한 ')}${escapeHtml(act.plan_target_date||'-')} · ${escapeHtml(act.plan_updated_by||'-')}</div>` : `<span style=\"color:#64748b\">${tt('admin.dyn.unregistered','미등록')}</span>`;
             const excTxt = act.exception_until ? `<div style=\"color:#fde68a\">~${escapeHtml(act.exception_until)}</div><div style=\"color:#64748b;font-size:11px\">${escapeHtml((act.exception_reason||'').substring(0,60))}</div>` : '<span style=\"color:#64748b\">-</span>';
             return `<tr>
               <td><strong>${escapeHtml(v.hostname||'-')}</strong></td>
@@ -8411,9 +8720,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <td style=\"color:#cbd5e1;font-size:12px\">${planTxt}</td>
               <td style=\"font-size:12px\">${excTxt}</td>
             </tr>`;
-          }).join('')}${flatRows.length>150?`<tr><td colspan=\"6\" style=\"color:#64748b;text-align:center;padding:8px\">… ${flatRows.length-150}건 더</td></tr>`:''}</tbody></table>`;
+          }).join('')}${flatRows.length>150?`<tr><td colspan=\"6\" style=\"color:#64748b;text-align:center;padding:8px\">… ${flatRows.length-150}${tt('admin.dyn.more_rows_short','건 더')}</td></tr>`:''}</tbody></table>`;
       } catch (e) {
-        el.innerHTML = `<div class=\"empty\">로드 실패: ${escapeHtml(e.message)}</div>`;
+        el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</div>`;
       }
     }
     if (document.getElementById('admin_reload_vulns')) {
@@ -8424,7 +8733,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     async function loadAdminActionPlans() {
       const el = document.getElementById('admin_action_plans');
       if (!el) return;
-      el.innerHTML = '<div class=\"empty\">로딩 중…</div>';
+      el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</div>`;
       try {
         const res = await fetch('/assets');
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -8447,11 +8756,11 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         collect((data.fleet||{}).by_host);
         collect((data.trivy||{}).by_host);
         if (!rows.length) {
-          el.innerHTML = '<div class=\"empty\">등록된 조치 계획 없음</div>';
+          el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_action_plans','등록된 조치 계획 없음')}</div>`;
           return;
         }
         el.innerHTML = `<table class=\"result-table\">
-          <thead><tr><th>호스트</th><th>목표일</th><th>계획 내용</th><th>업데이트</th></tr></thead>
+          <thead><tr><th>${tt('admin.dyn.col.host','호스트')}</th><th>${tt('admin.dyn.col.target_date','목표일')}</th><th>${tt('admin.dyn.col.plan_content','계획 내용')}</th><th>${tt('admin.dyn.col.updated','업데이트')}</th></tr></thead>
           <tbody>${rows.slice(0,100).map(r => `<tr>
             <td><strong>${escapeHtml(r.hostname)}</strong></td>
             <td style=\"color:#fde68a\">${escapeHtml(r.plan.target_date||'-')}</td>
@@ -8459,12 +8768,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <td style=\"color:#64748b;font-size:12px\">${escapeHtml(formatTime(r.plan.updated_at)||'-')} · ${escapeHtml(r.plan.updated_by||'-')}</td>
           </tr>`).join('')}</tbody></table>`;
       } catch (e) {
-        el.innerHTML = `<div class=\"empty\">로드 실패: ${escapeHtml(e.message)}</div>`;
+        el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</div>`;
       }
     }
 
     /* ── 관리자 콘솔 역할별 탭 제한 ────────────────────────────────────────── */
-    const _ADMIN_ROLE_LABELS = { admin: '어드민', security: '보안담당자', monitor: '서버모니터', auditor: '감사자', helpdesk: '헬프데스크', user: '사용자' };
+    const _adminRoleLabel = (r) => tt('admin.dyn.rolename.' + r, ({ admin: '어드민', security: '보안담당자', monitor: '서버모니터', auditor: '감사자', helpdesk: '헬프데스크', user: '사용자' })[r] || r);
     // admin: 전체, monitor: 모니터링/자산, security: 모니터링/자산/권한관리,
     // auditor: 모니터링/변경이력(읽기전용), helpdesk: 모니터링/자산
     const _ADMIN_TAB_BY_ROLE = {
@@ -8498,7 +8807,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         // 상단 헤더에 사용자/역할 배지 표시
         const badge = document.getElementById('admin_user_badge');
         if (badge && me.username) {
-          const roleLabel = _ADMIN_ROLE_LABELS[role] || role;
+          const roleLabel = _adminRoleLabel(role);
           badge.innerHTML = '<strong style="color:#38bdf8">' + me.username + '</strong> <span style="background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:6px;font-size:12px">' + roleLabel + '</span>';
         }
       } catch(e) { /* ignore */ }
@@ -8522,7 +8831,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     initialize().catch(err => {
       console.error('[MORI Admin] initialize error:', err);
-      if (dashboardStatusEl) dashboardStatusEl.textContent = `초기화 오류: ${err.message}`;
+      if (dashboardStatusEl) dashboardStatusEl.textContent = `${tt('admin.dyn.init_error','초기화 오류: ')}${err.message}`;
     });
   </script>
   __I18N_SCRIPT__
