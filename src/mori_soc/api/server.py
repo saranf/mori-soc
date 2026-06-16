@@ -2108,6 +2108,52 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     vuln_actions: dict[str, dict[str, Any]] = {}
     # User profiles: username -> {display_name, department, assigned_servers: [hostname...], updated_at}
     user_profiles: dict[str, dict[str, Any]] = {}
+
+    # ── Demo seed (in-memory) ────────────────────────────────────────────────
+    # triage_store / asset_owners / user_profiles 는 런타임 인메모리 저장소라 SQL 시드로
+    # 채울 수 없다. MORI_DEMO_SEED 활성화 시에만 초기값을 주입해 데모 임팩트를 확보한다.
+    # (hostname/alert_id 는 scripts/mori-seed-sample-data.sh 의 값과 일치)
+    if os.environ.get("MORI_DEMO_SEED", "").strip().lower() in ("1", "true", "yes", "on"):
+        _seed_now = _isoformat(datetime.now(tz=timezone.utc))
+        _demo_triage = {
+            "al-01": {"status": "reviewing", "analyst": "보안담당자", "note": "SSH 브루트포스 출처 IP 차단 진행 중"},
+            "al-02": {"status": "resolved", "analyst": "보안담당자", "note": "루트킷 격리·재이미지 완료"},
+            "al-03": {"status": "pending", "analyst": "", "note": ""},
+            "al-07": {"status": "reviewing", "analyst": "운영자1", "note": "비정상 아웃바운드 트래픽 조사 중"},
+        }
+        for _aid, _t in _demo_triage.items():
+            triage_store.setdefault(_aid, {
+                "status": _t["status"],
+                "analyst": _t["analyst"],
+                "note": _t["note"],
+                "changed_by": _t["analyst"] or "system",
+                "updated_at": _seed_now,
+                "history": [{"to_status": _t["status"], "analyst": _t["analyst"] or "system", "changed_at": _seed_now}],
+            })
+        _demo_owners = [
+            {"hostname": "web-server-01", "owner": "보안담당자", "team": "보안팀", "category": "웹 서버", "importance": "상"},
+            {"hostname": "web-server-02", "owner": "보안담당자", "team": "보안팀", "category": "웹 서버", "importance": "중"},
+            {"hostname": "db-primary", "owner": "DBA", "team": "DBA팀", "category": "DB 서버", "importance": "상"},
+            {"hostname": "app-server-01", "owner": "운영자1", "team": "인프라팀", "category": "앱 서버", "importance": "중"},
+        ]
+        for _o in _demo_owners:
+            asset_owners.setdefault(_o["hostname"], {
+                "hostname": _o["hostname"], "owner": _o["owner"], "category": _o["category"],
+                "importance": _o["importance"], "exception_until": "", "exception_reason": "",
+                "email": "", "team": _o["team"], "updated_at": _seed_now,
+            })
+        _demo_profiles = {
+            "admin": {"display_name": "시스템관리자", "department": "IT팀",
+                      "assigned_servers": ["web-server-01", "db-primary", "app-server-01"]},
+            "security": {"display_name": "보안담당자", "department": "보안팀",
+                         "assigned_servers": ["web-server-01", "web-server-02"]},
+        }
+        for _u, _p in _demo_profiles.items():
+            user_profiles.setdefault(_u, {
+                "display_name": _p["display_name"], "department": _p["department"],
+                "assigned_servers": list(_p["assigned_servers"]), "updated_at": _seed_now,
+            })
+
     # Guides: guide_id -> {id, title, content, updated_at}
     guides: dict[str, dict[str, Any]] = {
         "zabbix_setup": {

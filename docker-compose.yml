@@ -55,6 +55,8 @@ services:
     environment:
       MORI_QUERY_BACKEND: postgres
       MORI_DATABASE_URL: postgresql://${MORI_DB_USER:-mori}:${MORI_DB_PASSWORD:-mori}@soc-postgres:5432/${MORI_DB_NAME:-mori_soc}
+      # 데모 임팩트용 인메모리 시드(triage/asset owners/user profiles) — 운영에선 0으로 비활성화
+      MORI_DEMO_SEED: ${MORI_DEMO_SEED:-1}
       MORI_GRAFANA_URL: ${GRAFANA_URL:-http://mori.rmstudio.co.kr:13000}
       MORI_ZABBIX_UI_URL: ${MORI_ZABBIX_UI_URL:-http://mori.rmstudio.co.kr:18081}
       MORI_FLEET_UI_URL: ${MORI_FLEET_UI_URL:-http://mori.rmstudio.co.kr:1337}

@@ -237,7 +237,9 @@ class FastAPIAppTests(unittest.TestCase):
         store = InMemoryQueryStore(
             hosts=[Host(host_id="host-1", hostname="mbp-01", status="online", last_seen_at=datetime.now(tz=timezone.utc))]
         )
-        self.client = TestClient(create_app(QueryService(store)))
+        # 데모 시드는 비활성화하여 테스트를 결정적으로 유지 (compose 기본값 MORI_DEMO_SEED=1 무력화)
+        with patch.dict(os.environ, {"MORI_DEMO_SEED": "0"}, clear=False):
+            self.client = TestClient(create_app(QueryService(store)))
 
     def test_health_endpoint(self) -> None:
         response = self.client.get("/health")
@@ -507,11 +509,76 @@ class FastAPIAppTests(unittest.TestCase):
         response = self.client.get("/ui")
         self.assertIn("/auth/logout", response.text)
 
+    def test_auth_profile_requires_login(self) -> None:
+        """비로그인 상태의 /auth/profile 접근은 401을 반환해야 한다."""
+        self.assertEqual(self.client.get("/auth/profile").status_code, 401)
+        post = self.client.post("/auth/profile", json={"display_name": "x"})
+        self.assertEqual(post.status_code, 401)
+
+    def test_auth_profile_roundtrip_and_me_merge(self) -> None:
+        """로그인 후 프로필 업서트 → GET /auth/profile 및 /auth/me 에 병합 반영되어야 한다."""
+        login = self.client.post("/auth/login", json={"username": "admin", "password": "1234"})
+        self.assertEqual(login.status_code, 200)
+
+        # 초기 /auth/me 에는 빈 프로필 필드가 포함된다
+        me0 = self.client.get("/auth/me").json()
+        self.assertEqual(me0["display_name"], "")
+        self.assertEqual(me0["department"], "")
+        self.assertEqual(me0["assigned_servers"], [])
+
+        # 업서트: assigned_servers 는 줄바꿈/쉼표 혼용 문자열도 허용
+        up = self.client.post(
+            "/auth/profile",
+            json={"display_name": "홍길동", "department": "인프라팀", "assigned_servers": "web-01\nweb-02, db-01"},
+        )
+        self.assertEqual(up.status_code, 200)
+        self.assertTrue(up.json()["ok"])
+        self.assertEqual(up.json()["assigned_servers"], ["web-01", "web-02", "db-01"])
+
+        # GET /auth/profile 로 영속 확인
+        prof = self.client.get("/auth/profile").json()
+        self.assertEqual(prof["display_name"], "홍길동")
+        self.assertEqual(prof["department"], "인프라팀")
+        self.assertEqual(prof["assigned_servers"], ["web-01", "web-02", "db-01"])
+
+        # /auth/me 응답에 프로필 필드 병합
+        me1 = self.client.get("/auth/me").json()
+        self.assertEqual(me1["display_name"], "홍길동")
+        self.assertEqual(me1["assigned_servers"], ["web-01", "web-02", "db-01"])
+
+    def test_user_dashboard_has_profile_modal_and_my_servers(self) -> None:
+        """/ui 에 프로필 편집 모달과 '내 서버' 서브탭 요소가 있어야 한다."""
+        response = self.client.get("/ui")
+        self.assertIn("profile_modal", response.text)
+        self.assertIn("assets_mine_section", response.text)
+        self.assertIn("renderMyServers", response.text)
+
     def test_admin_has_signup_requests_tab(self) -> None:
         """/admin 어드민 콘솔에 가입 요청 탭이 있어야 한다 (Phase 2: Access Control 탭 통합)."""
         response = self.client.get("/admin")
         self.assertIn("가입 요청", response.text)
         self.assertIn("atab_access", response.text)
+
+    def test_demo_seed_populates_stores_when_enabled(self) -> None:
+        """MORI_DEMO_SEED 활성화 시 triage/owner/profile 스토어에 데모 데이터가 주입되어야 한다."""
+        from fastapi.testclient import TestClient
+
+        store = InMemoryQueryStore(
+            hosts=[Host(host_id="host-1", hostname="mbp-01", status="online", last_seen_at=datetime.now(tz=timezone.utc))]
+        )
+        with patch.dict(os.environ, {"MORI_DEMO_SEED": "1"}, clear=False):
+            client = TestClient(create_app(QueryService(store)))
+
+        # asset owners 시드 확인
+        owners = {o["hostname"]: o for o in client.get("/assets/owners").json()["owners"]}
+        self.assertIn("web-server-01", owners)
+        self.assertEqual(owners["web-server-01"]["owner"], "보안담당자")
+
+        # user profile 시드 → /auth/me 병합 확인
+        self.assertEqual(client.post("/auth/login", json={"username": "security", "password": "1234"}).status_code, 200)
+        me = client.get("/auth/me").json()
+        self.assertEqual(me["display_name"], "보안담당자")
+        self.assertIn("web-server-01", me["assigned_servers"])
 
 
 # ---------------------------------------------------------------------------
