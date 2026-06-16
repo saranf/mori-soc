@@ -916,12 +916,20 @@ def _i18n_script(translations: dict[str, dict[str, str]]) -> str:
     )
 
 
-def _i18n_toggle_html() -> str:
-    """우측 상단 KO/EN 토글 위젯 — inline style, 외부 CSS 의존 없음."""
+def _i18n_toggle_html(fixed: bool = True) -> str:
+    """KO/EN 토글 위젯 — inline style, 외부 CSS 의존 없음.
+
+    fixed=True 면 우측 상단 고정(로그인/가입 등 비인증 페이지),
+    fixed=False 면 인라인 배치(인증 페이지의 계정 메뉴 내부 임베드)."""
+    wrap_style = (
+        'position:fixed;top:16px;right:16px;z-index:9999;'
+        if fixed
+        else ''
+    )
     return (
-        '<div class="lang-toggle" style="position:fixed;top:16px;right:16px;'
+        '<div class="lang-toggle" style="' + wrap_style +
         'display:flex;gap:4px;background:#0f2035;border:1px solid #1e3a5f;'
-        'border-radius:8px;padding:3px;z-index:9999;">'
+        'border-radius:8px;padding:3px;">'
         '<button data-i18n-toggle data-lang="ko" onclick="setLang(\'ko\')" '
         'style="background:transparent;border:none;color:#94a3b8;font-size:12px;'
         'font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer;">KO</button>'
@@ -1017,6 +1025,29 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.links.docs": "운영 문서 / 포털",
         "dash.actions.refresh": "🔄 새로고침",
         "dash.actions.logout": "🚪 로그아웃",
+        "dash.account.title": "계정",
+        "dash.account.language": "언어 / Language",
+        "dash.account.edit_profile": "👤 프로필 편집",
+        "dash.profile.title": "내 프로필 편집",
+        "dash.profile.display_name": "이름",
+        "dash.profile.display_name_ph": "예: 홍길동",
+        "dash.profile.department": "부서",
+        "dash.profile.department_ph": "예: 인프라팀",
+        "dash.profile.assigned_servers": "담당 서버 (호스트명)",
+        "dash.profile.assigned_servers_ph": "한 줄에 하나씩 또는 쉼표로 구분",
+        "dash.profile.assigned_servers_hint": "⭐ 내 서버 탭에서 이 호스트만 모아 볼 수 있습니다.",
+        "dash.profile.save": "저장",
+        "dash.profile.cancel": "취소",
+        "dash.profile.saving": "저장 중...",
+        "dash.profile.saved": "저장 완료 ✓",
+        "dash.profile.save_fail": "저장 실패: ",
+        "dash.assets.tab.fleet": "🖥️ PC 자산 (Fleet)",
+        "dash.assets.tab.zabbix": "🖧 서버 자산 (Zabbix)",
+        "dash.assets.tab.trivy": "🔍 취약점 (Trivy)",
+        "dash.assets.tab.mine": "⭐ 내 서버",
+        "dash.card.assets.mine": "⭐ 내 담당 서버",
+        "dash.assets.mine.sub": "프로필의 담당 서버 목록 또는 담당자(이름)가 일치하는 PC·서버 자산을 모아 보여줍니다.",
+        "dash.assets.mine.empty": "담당 자산이 없습니다. 계정 메뉴 → 프로필 편집에서 담당 서버를 등록하세요.",
         "dash.tab.dashboard": "📊 대시보드",
         "dash.tab.triage": "🚨 Alert Triage",
         "dash.tab.incidents": "📋 인시던트",
@@ -1074,6 +1105,29 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.links.docs": "Operations docs / portal",
         "dash.actions.refresh": "🔄 Refresh",
         "dash.actions.logout": "🚪 Sign out",
+        "dash.account.title": "Account",
+        "dash.account.language": "Language / 언어",
+        "dash.account.edit_profile": "👤 Edit profile",
+        "dash.profile.title": "Edit my profile",
+        "dash.profile.display_name": "Name",
+        "dash.profile.display_name_ph": "e.g. John Doe",
+        "dash.profile.department": "Department",
+        "dash.profile.department_ph": "e.g. Infra Team",
+        "dash.profile.assigned_servers": "Assigned servers (hostnames)",
+        "dash.profile.assigned_servers_ph": "One per line or comma-separated",
+        "dash.profile.assigned_servers_hint": "⭐ Listed hosts appear together under the My Servers tab.",
+        "dash.profile.save": "Save",
+        "dash.profile.cancel": "Cancel",
+        "dash.profile.saving": "Saving...",
+        "dash.profile.saved": "Saved ✓",
+        "dash.profile.save_fail": "Save failed: ",
+        "dash.assets.tab.fleet": "🖥️ PCs (Fleet)",
+        "dash.assets.tab.zabbix": "🖧 Servers (Zabbix)",
+        "dash.assets.tab.trivy": "🔍 Vulnerabilities (Trivy)",
+        "dash.assets.tab.mine": "⭐ My Servers",
+        "dash.card.assets.mine": "⭐ My Assigned Servers",
+        "dash.assets.mine.sub": "Shows PC/server assets matching your assigned-server list or your name as owner.",
+        "dash.assets.mine.empty": "No assigned assets. Add servers via Account menu → Edit profile.",
         "dash.tab.dashboard": "📊 Dashboard",
         "dash.tab.triage": "🚨 Alert Triage",
         "dash.tab.incidents": "📋 Incidents",
@@ -1138,6 +1192,8 @@ _ADMIN_I18N: dict[str, dict[str, str]] = {
         "admin.actions.query_guide": "Query Guide",
         "admin.actions.refresh": "Refresh Dashboard",
         "admin.actions.logout": "로그아웃",
+        "admin.actions.account": "⚙️ 계정 ▾",
+        "admin.account.language": "언어 / Language",
         "admin.tab.overview": "📊 Overview",
         "admin.tab.compliance": "✅ Compliance",
         "admin.tab.triage": "🚨 Triage & Incidents",
@@ -1453,6 +1509,8 @@ _ADMIN_I18N: dict[str, dict[str, str]] = {
         "admin.actions.query_guide": "Query Guide",
         "admin.actions.refresh": "Refresh Dashboard",
         "admin.actions.logout": "Sign out",
+        "admin.actions.account": "⚙️ Account ▾",
+        "admin.account.language": "Language / 언어",
         "admin.tab.overview": "📊 Overview",
         "admin.tab.compliance": "✅ Compliance",
         "admin.tab.triage": "🚨 Triage & Incidents",
@@ -2048,6 +2106,8 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     # Per-vulnerability actions: vuln_id -> {plan_text, plan_target_date, plan_updated_by,
     #                                        exception_until, exception_reason, exception_updated_by, updated_at}
     vuln_actions: dict[str, dict[str, Any]] = {}
+    # User profiles: username -> {display_name, department, assigned_servers: [hostname...], updated_at}
+    user_profiles: dict[str, dict[str, Any]] = {}
     # Guides: guide_id -> {id, title, content, updated_at}
     guides: dict[str, dict[str, Any]] = {
         "zabbix_setup": {
@@ -2674,6 +2734,15 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
                 return req
         raise HTTPException(status_code=404, detail="가입 요청을 찾을 수 없습니다.")
 
+    def _user_profile(uname: str) -> dict[str, Any]:
+        """username → 프로필 dict (없으면 빈 기본값)."""
+        p = user_profiles.get(uname, {})
+        return {
+            "display_name": p.get("display_name", ""),
+            "department": p.get("department", ""),
+            "assigned_servers": list(p.get("assigned_servers", [])),
+        }
+
     @app.get("/auth/me", tags=["Auth"])
     def auth_me(request: Request) -> dict[str, Any]:
         """현재 로그인한 사용자 정보 조회."""
@@ -2684,6 +2753,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
                 "username": "anonymous",
                 "role": "user",
                 "allowed_tabs": _DEFAULT_ROLE_PERMISSIONS.get("user", ["dashboard", "assets", "guides"]),
+                **_user_profile("anonymous"),
             }
         role = sess.get("role", "user")
         uname = sess["username"]
@@ -2696,7 +2766,40 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             "username": uname,
             "role": role,
             "allowed_tabs": allowed,
+            **_user_profile(uname),
         }
+
+    @app.get("/auth/profile", tags=["Auth"])
+    def get_profile(request: Request) -> dict[str, Any]:
+        """현재 로그인한 사용자의 프로필 조회."""
+        token = request.cookies.get("mori_session", "")
+        sess = sessions.get(token)
+        if not sess:
+            raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+        uname = sess["username"]
+        return {"username": uname, **_user_profile(uname)}
+
+    @app.post("/auth/profile", tags=["Auth"])
+    def update_profile(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """현재 로그인한 사용자의 프로필 업서트. {display_name, department, assigned_servers[]}"""
+        token = request.cookies.get("mori_session", "")
+        sess = sessions.get(token)
+        if not sess:
+            raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+        uname = sess["username"]
+        display_name = str(payload.get("display_name", "")).strip()
+        department = str(payload.get("department", "")).strip()
+        raw_servers = payload.get("assigned_servers", [])
+        if isinstance(raw_servers, str):
+            raw_servers = [s for s in raw_servers.replace(",", "\n").splitlines()]
+        assigned_servers = [str(s).strip() for s in raw_servers if str(s).strip()]
+        user_profiles[uname] = {
+            "display_name": display_name,
+            "department": department,
+            "assigned_servers": assigned_servers,
+            "updated_at": _isoformat(datetime.now(tz=timezone.utc)),
+        }
+        return {"ok": True, "username": uname, **_user_profile(uname)}
 
     @app.get("/admin/role-permissions", tags=["Admin"])
     def get_role_permissions_api() -> dict[str, Any]:
@@ -3896,7 +3999,6 @@ def render_user_dashboard_html(
   </style>
 </head>
 <body>
-  __I18N_TOGGLE__
   <div class=\"wrap\">
     <section class=\"hero\">
       <div>
@@ -3908,7 +4010,17 @@ def render_user_dashboard_html(
       </div>
       <div class=\"top-actions\">
         <button id=\"refresh_dashboard\" type=\"button\" data-i18n=\"dash.actions.refresh\">🔄 새로고침</button>
-        <a href=\"/auth/logout\" class=\"logout-btn\" data-i18n=\"dash.actions.logout\">🚪 로그아웃</a>
+        <div class=\"account-wrap\" style=\"position:relative\">
+          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" style=\"background:#0f2035;border:1px solid #1e3a5f;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer\">👤 <span id=\"ui_user_badge\" data-i18n=\"dash.account.title\">계정</span> ▾</button>
+          <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0f2035;border:1px solid #1e3a5f;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
+            <button type=\"button\" onclick=\"openProfileModal()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.edit_profile\">👤 프로필 편집</button>
+            <div style=\"border-top:1px solid #1e3a5f;margin:10px 0\"></div>
+            <div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\" data-i18n=\"dash.account.language\">언어 / Language</div>
+            __I18N_TOGGLE__
+            <div style=\"border-top:1px solid #1e3a5f;margin:10px 0\"></div>
+            <a href=\"/auth/logout\" class=\"logout-btn\" style=\"display:block;text-align:center\" data-i18n=\"dash.actions.logout\">🚪 로그아웃</a>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -4024,9 +4136,10 @@ def render_user_dashboard_html(
     <div class=\"tab-panel\" id=\"tab_assets\">
       <!-- Sub-nav -->
       <nav class=\"asset-sub-nav\">
-        <button class=\"active\" id=\"asset_tab_fleet\" onclick=\"switchAssetTab('fleet')\">🖥️ PC 자산 (Fleet)</button>
-        <button id=\"asset_tab_zabbix\" onclick=\"switchAssetTab('zabbix')\">🖧 서버 자산 (Zabbix)</button>
-        <button id=\"asset_tab_trivy\" onclick=\"switchAssetTab('trivy')\">🔍 취약점 (Trivy)</button>
+        <button class=\"active\" id=\"asset_tab_fleet\" onclick=\"switchAssetTab('fleet')\"><span data-i18n=\"dash.assets.tab.fleet\">🖥️ PC 자산 (Fleet)</span></button>
+        <button id=\"asset_tab_zabbix\" onclick=\"switchAssetTab('zabbix')\"><span data-i18n=\"dash.assets.tab.zabbix\">🖧 서버 자산 (Zabbix)</span></button>
+        <button id=\"asset_tab_trivy\" onclick=\"switchAssetTab('trivy')\"><span data-i18n=\"dash.assets.tab.trivy\">🔍 취약점 (Trivy)</span></button>
+        <button id=\"asset_tab_mine\" onclick=\"switchAssetTab('mine')\"><span data-i18n=\"dash.assets.tab.mine\">⭐ 내 서버</span></button>
       </nav>
 
       <!-- Fleet PC Section -->
@@ -4104,6 +4217,18 @@ def render_user_dashboard_html(
           </div>
           <div class=\"subtext\">Trivy가 탐지한 취약점을 호스트별로 집계한 현황입니다. Critical/High 우선 정렬.</div>
           <div class=\"table-wrap\" id=\"trivy_table\"><span class=\"empty\">로딩 중…</span></div>
+        </section>
+      </div>
+
+      <!-- My Servers Section -->
+      <div id=\"assets_mine_section\" class=\"hidden\">
+        <section class=\"card\">
+          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
+            <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.mine\">⭐ 내 담당 서버</h2>
+            <span class=\"asset-search-count\" id=\"mine_search_count\"></span>
+          </div>
+          <div class=\"subtext\" data-i18n=\"dash.assets.mine.sub\">프로필의 담당 서버 목록 또는 담당자(이름)가 일치하는 PC·서버 자산을 모아 보여줍니다.</div>
+          <div class=\"table-wrap\" id=\"mine_table\"><span class=\"empty\" data-i18n=\"dash.assets.mine.empty\">담당 자산이 없습니다. 계정 메뉴 → 프로필 편집에서 담당 서버를 등록하세요.</span></div>
         </section>
       </div>
       <div class=\"status-line\" id=\"assets_status\"></div>
@@ -4300,6 +4425,33 @@ def render_user_dashboard_html(
         <div style=\"display:flex;gap:10px;justify-content:flex-end;margin-top:4px\">
           <button id=\"plan_modal_save\" style=\"background:#16a34a;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\">저장</button>
           <button onclick=\"closePlanModal()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\">취소</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 프로필 편집 모달 -->
+  <div id=\"profile_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
+    <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:28px 32px;width:440px;max-width:95vw\">
+      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
+        <h3 id=\"profile_modal_title\" style=\"color:#38bdf8;margin:0\" data-i18n=\"dash.profile.title\">내 프로필 편집</h3>
+        <button onclick=\"closeProfileModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+      </div>
+      <div style=\"display:flex;flex-direction:column;gap:12px\">
+        <div><label style=\"color:#94a3b8;font-size:13px\" data-i18n=\"dash.profile.display_name\">이름</label>
+          <input id=\"profile_display_name\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"dash.profile.display_name_ph\" />
+        </div>
+        <div><label style=\"color:#94a3b8;font-size:13px\" data-i18n=\"dash.profile.department\">부서</label>
+          <input id=\"profile_department\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 인프라팀\" data-i18n-placeholder=\"dash.profile.department_ph\" />
+        </div>
+        <div><label style=\"color:#94a3b8;font-size:13px\" data-i18n=\"dash.profile.assigned_servers\">담당 서버 (호스트명)</label>
+          <textarea id=\"profile_assigned_servers\" rows=\"4\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"한 줄에 하나씩 또는 쉼표로 구분\" data-i18n-placeholder=\"dash.profile.assigned_servers_ph\"></textarea>
+          <span style=\"color:#64748b;font-size:11px\" data-i18n=\"dash.profile.assigned_servers_hint\">⭐ 내 서버 탭에서 이 호스트만 모아 볼 수 있습니다.</span>
+        </div>
+        <div id=\"profile_modal_status\" style=\"font-size:13px;color:#94a3b8;\"></div>
+        <div style=\"display:flex;gap:10px;justify-content:flex-end;margin-top:4px\">
+          <button id=\"profile_modal_save\" onclick=\"saveProfile()\" style=\"background:#1d4ed8;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\" data-i18n=\"dash.profile.save\">저장</button>
+          <button onclick=\"closeProfileModal()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\" data-i18n=\"dash.profile.cancel\">취소</button>
         </div>
       </div>
     </div>
@@ -5389,13 +5541,51 @@ def render_user_dashboard_html(
 
     function switchAssetTab(tab) {
       currentAssetTab = tab;
-      ['fleet', 'zabbix', 'trivy'].forEach(t => {
+      ['fleet', 'zabbix', 'trivy', 'mine'].forEach(t => {
         const sec = document.getElementById(`assets_${t}_section`);
         const btn = document.getElementById(`asset_tab_${t}`);
         if (sec) sec.classList.toggle('hidden', t !== tab);
         if (btn) btn.classList.toggle('active', t === tab);
       });
+      if (tab === 'mine') renderMyServers();
     }
+
+    /* ⭐ 내 서버: assigned_servers(호스트명) 또는 owner==display_name 인 자산만 모아 렌더 */
+    function renderMyServers() {
+      const containerEl = document.getElementById('mine_table');
+      const countEl = document.getElementById('mine_search_count');
+      if (!containerEl) return;
+      const assigned = new Set((_currentProfile.assigned_servers || []).map(s => String(s).toLowerCase()));
+      const myName = (_currentProfile.display_name || '').trim().toLowerCase();
+      const matches = h => {
+        if (assigned.has(String(h.hostname || '').toLowerCase())) return true;
+        if (myName && String(h.owner || '').trim().toLowerCase() === myName) return true;
+        return false;
+      };
+      const fleetHosts = (_assetCache.fleet || []).filter(matches);
+      const zabbixHosts = (_assetCache.zabbix || []).filter(matches);
+      const total = fleetHosts.length + zabbixHosts.length;
+      if (countEl) countEl.textContent = total ? `${total}` : '';
+      if (!total) {
+        containerEl.innerHTML = `<span class=\"empty\">${tt('dash.assets.mine.empty', '담당 자산이 없습니다. 계정 메뉴 → 프로필 편집에서 담당 서버를 등록하세요.')}</span>`;
+        return;
+      }
+      let html = '';
+      if (fleetHosts.length) {
+        html += `<div class=\"subtext\" style=\"margin:4px 0\">🖥️ ${tt('dash.assets.tab.fleet','PC 자산 (Fleet)')} (${fleetHosts.length})</div>`;
+        const wrap = document.createElement('div');
+        renderFleetTable(fleetHosts, wrap);
+        html += wrap.innerHTML;
+      }
+      if (zabbixHosts.length) {
+        html += `<div class=\"subtext\" style=\"margin:12px 0 4px\">🖧 ${tt('dash.assets.tab.zabbix','서버 자산 (Zabbix)')} (${zabbixHosts.length})</div>`;
+        const wrap = document.createElement('div');
+        renderZabbixTable(zabbixHosts, wrap);
+        html += wrap.innerHTML;
+      }
+      containerEl.innerHTML = html;
+    }
+    window.renderMyServers = renderMyServers;
 
     const FLEET_URL = '__FLEET_UI_URL__';
     const ZABBIX_URL = '__ZABBIX_UI_URL__';
@@ -5985,6 +6175,7 @@ def render_user_dashboard_html(
         _updateSearchCount('fleet', _assetCache.fleet.length, _assetCache.fleet.length);
         _updateSearchCount('zabbix', _assetCache.zabbix.length, _assetCache.zabbix.length);
         _updateSearchCount('trivy', _assetCache.trivy.length, _assetCache.trivy.length);
+        if (currentAssetTab === 'mine') renderMyServers();
         statusEl.textContent = `자산 현황 업데이트: ${formatTime(data.generated_at)}`;
       } catch (err) { statusEl.textContent = `오류: ${err.message}`; }
     }
@@ -6555,6 +6746,7 @@ def render_user_dashboard_html(
     // ── Role-based tab visibility ─────────────────────────────────────────────
     const ROLE_LABELS = { admin: '어드민', security: '보안담당자', monitor: '서버모니터', auditor: '감사자', helpdesk: '헬프데스크', user: '사용자' };
     let _currentUserRole = 'user';
+    let _currentProfile = { display_name: '', department: '', assigned_servers: [] };
     // Grafana 접근 등급: admin/monitor → full, security → limited, auditor/helpdesk/user → summary only
     const _GRAFANA_FULL_ROLES = ['admin', 'monitor'];
     const _GRAFANA_LIMITED_ROLES = ['security'];
@@ -6567,6 +6759,11 @@ def render_user_dashboard_html(
         if (!res.ok) return;
         const me = await res.json();
         _currentUserRole = me.role || 'user';
+        _currentProfile = {
+          display_name: me.display_name || '',
+          department: me.department || '',
+          assigned_servers: Array.isArray(me.assigned_servers) ? me.assigned_servers : [],
+        };
         const allowed = me.allowed_tabs || [];
         ['dashboard', 'triage', 'incidents', 'assets', 'compliance', 'guides'].forEach(tab => {
           const navBtn = document.querySelector(`.tabs-nav [data-tab="${tab}"]`);
@@ -6586,8 +6783,62 @@ def render_user_dashboard_html(
         if (heroP && me.username) {
           heroP.innerHTML = `환영합니다, <strong style="color:#38bdf8">${escapeHtml(me.username)}</strong> <span style="background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:6px;font-size:12px">${escapeHtml(roleLabel)}</span>`;
         }
+        const badge = document.getElementById('ui_user_badge');
+        if (badge && me.username) { badge.removeAttribute('data-i18n'); badge.textContent = me.username; }
       } catch(e) { /* 비로그인 상태에서도 대시보드는 동작 */ }
     }
+
+    // ── 계정 메뉴 (언어 설정 등) ───────────────────────────────────────────────
+    window.toggleAccountMenu = function() {
+      const m = document.getElementById('account_menu');
+      if (m) m.style.display = (!m.style.display || m.style.display === 'none') ? 'block' : 'none';
+    };
+    document.addEventListener('click', function(e) {
+      const wrap = document.querySelector('.account-wrap');
+      const menu = document.getElementById('account_menu');
+      if (wrap && menu && !wrap.contains(e.target)) menu.style.display = 'none';
+    });
+
+    // ── 프로필 편집 모달 ───────────────────────────────────────────────────────
+    window.openProfileModal = function() {
+      const menu = document.getElementById('account_menu');
+      if (menu) menu.style.display = 'none';
+      document.getElementById('profile_display_name').value = _currentProfile.display_name || '';
+      document.getElementById('profile_department').value = _currentProfile.department || '';
+      document.getElementById('profile_assigned_servers').value = (_currentProfile.assigned_servers || []).join('\\n');
+      const st = document.getElementById('profile_modal_status');
+      st.textContent = ''; st.style.color = '#94a3b8';
+      document.getElementById('profile_modal').style.display = 'flex';
+    };
+    window.closeProfileModal = function() { document.getElementById('profile_modal').style.display = 'none'; };
+    window.saveProfile = async function() {
+      const st = document.getElementById('profile_modal_status');
+      const display_name = document.getElementById('profile_display_name').value.trim();
+      const department = document.getElementById('profile_department').value.trim();
+      const assigned_servers = document.getElementById('profile_assigned_servers').value;
+      st.style.color = '#94a3b8';
+      st.textContent = tt('dash.profile.saving', '저장 중...');
+      try {
+        const res = await fetch('/auth/profile', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ display_name, department, assigned_servers })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        _currentProfile = {
+          display_name: data.display_name || '',
+          department: data.department || '',
+          assigned_servers: Array.isArray(data.assigned_servers) ? data.assigned_servers : [],
+        };
+        st.style.color = '#34d399';
+        st.textContent = tt('dash.profile.saved', '저장 완료 ✓');
+        if (typeof renderMyServers === 'function') renderMyServers();
+        setTimeout(closeProfileModal, 700);
+      } catch(e) {
+        st.style.color = '#f87171';
+        st.textContent = tt('dash.profile.save_fail', '저장 실패: ') + e.message;
+      }
+    };
 
     // ── NLQ 핸들러 ─────────────────────────────────────────────────────────
     // nlq_textarea, nlq_interpret_btn 등 모든 NLQ 요소는 script 태그 이후의 dialog 안에 있음.
@@ -6690,7 +6941,7 @@ def render_user_dashboard_html(
         .replace("__FLEET_UI_URL__", fleet_ui_url)
         .replace("__ZABBIX_UI_URL__", zabbix_ui_url)
         .replace("__GUIDE_LABELS_JSON__", guide_labels_json)
-        .replace("__I18N_TOGGLE__", _i18n_toggle_html())
+        .replace("__I18N_TOGGLE__", _i18n_toggle_html(fixed=False))
         .replace("__I18N_SCRIPT__", _i18n_script(_DASHBOARD_I18N))
     )
 
@@ -6865,7 +7116,6 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
   </style>
 </head>
 <body>
-  __I18N_TOGGLE__
   <div class=\"wrap\">
     <section class=\"hero\">
       <div>
@@ -6884,7 +7134,15 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         <a href=\"/ui\" data-i18n=\"admin.actions.user_dashboard\">사용자 대시보드</a>
         <button id=\"query_guide\" class=\"ghost\" data-i18n=\"admin.actions.query_guide\">Query Guide</button>
         <button id=\"refresh_dashboard\" class=\"ghost\" data-i18n=\"admin.actions.refresh\">Refresh Dashboard</button>
-        <a href=\"/auth/logout\" style=\"color:#ef4444;font-size:13px;margin-left:4px\" data-i18n=\"admin.actions.logout\">로그아웃</a>
+        <div class=\"account-wrap\" style=\"position:relative\">
+          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" class=\"ghost\" data-i18n=\"admin.actions.account\">⚙️ 계정 ▾</button>
+          <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0f2035;border:1px solid #1e3a5f;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
+            <div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\" data-i18n=\"admin.account.language\">언어 / Language</div>
+            __I18N_TOGGLE__
+            <div style=\"border-top:1px solid #1e3a5f;margin:10px 0\"></div>
+            <a href=\"/auth/logout\" style=\"display:block;text-align:center;color:#ef4444;font-size:13px\" data-i18n=\"admin.actions.logout\">로그아웃</a>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -8351,6 +8609,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       try { switchAdminTab(tab); } catch (e) { /* best-effort */ }
     };
 
+    // ── 계정 메뉴 (언어 설정 등) ───────────────────────────────────────────────
+    window.toggleAccountMenu = function() {
+      const m = document.getElementById('account_menu');
+      if (m) m.style.display = (!m.style.display || m.style.display === 'none') ? 'block' : 'none';
+    };
+    document.addEventListener('click', function(e) {
+      const wrap = document.querySelector('.account-wrap');
+      const menu = document.getElementById('account_menu');
+      if (wrap && menu && !wrap.contains(e.target)) menu.style.display = 'none';
+    });
+
     // ── Signup Requests ────────────────────────────────────────────────────
     const signupListEl = document.getElementById('signup_requests_list');
     const signupStatusEl = document.getElementById('signup_requests_status');
@@ -9085,7 +9354,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         .replace("__SECTION_LABELS_JSON__", section_labels_json)
         .replace("__ASSET_COLUMN_LABELS_JSON__", asset_column_labels_json)
         .replace("__GUIDE_LABELS_JSON__", guide_labels_json)
-        .replace("__I18N_TOGGLE__", _i18n_toggle_html())
+        .replace("__I18N_TOGGLE__", _i18n_toggle_html(fixed=False))
         .replace("__I18N_SCRIPT__", _i18n_script(_ADMIN_I18N))
     )
 
