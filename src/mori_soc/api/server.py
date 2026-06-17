@@ -17,6 +17,14 @@ from mori_soc.services.query_catalog import PHASE1_QUERY_CATALOG
 from mori_soc.services.query_service import InMemoryQueryStore, QueryService, query_response_to_csv
 from mori_soc.services.reports import REPORT_TYPES, generate_report, report_to_csv, report_to_pdf
 from mori_soc.services.views import host_risk_summary_view, latest_host_status_view
+from mori_soc.api.i18n import (
+    _i18n_script,
+    _i18n_toggle_html,
+    _LOGIN_I18N,
+    _SIGNUP_I18N,
+    _DASHBOARD_I18N,
+    _ADMIN_I18N,
+)
 
 try:
     from fastapi import FastAPI, HTTPException, Request
@@ -864,81 +872,9 @@ def _ldap_verify(username: str, password: str, ldap_url: str, bind_dn: str, bind
 
 
 # ── i18n shared runtime ──────────────────────────────────────────────────────
-# Translation dictionaries live alongside each render function. The runtime
-# script below reads `mori_lang` from localStorage/cookie, exposes window.t(key)
-# + window.setLang(lang), and auto-applies on DOMContentLoaded.
-
-def _i18n_script(translations: dict[str, dict[str, str]]) -> str:
-    """공통 i18n 런타임 — translations: {'ko': {...}, 'en': {...}}."""
-    return (
-        "<script>(function(){"
-        "window.MORI_I18N=" + json.dumps(translations, ensure_ascii=False) + ";"
-        "function readLang(){"
-        "try{var l=localStorage.getItem('mori_lang');if(l==='ko'||l==='en')return l;}catch(e){}"
-        "var m=document.cookie.match(/(?:^|; )mori_lang=([^;]+)/);"
-        "if(m&&(m[1]==='ko'||m[1]==='en'))return m[1];"
-        "return 'ko';}"
-        "window.lang=readLang();"
-        "window.t=function(key,fallback){"
-        "var d=(window.MORI_I18N[window.lang]||{});"
-        "if(d[key]!=null)return d[key];"
-        "var f=(window.MORI_I18N['ko']||{})[key];"
-        "return f!=null?f:(fallback!=null?fallback:key);};"
-        "window.applyI18n=function(root){"
-        "var scope=root||document;"
-        "scope.querySelectorAll('[data-i18n]').forEach(function(el){"
-        "var k=el.getAttribute('data-i18n');el.textContent=window.t(k,el.textContent);});"
-        "scope.querySelectorAll('[data-i18n-html]').forEach(function(el){"
-        "var k=el.getAttribute('data-i18n-html');el.innerHTML=window.t(k,el.innerHTML);});"
-        "scope.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){"
-        "var k=el.getAttribute('data-i18n-placeholder');"
-        "el.setAttribute('placeholder',window.t(k,el.getAttribute('placeholder')||''));});"
-        "scope.querySelectorAll('[data-i18n-title]').forEach(function(el){"
-        "var k=el.getAttribute('data-i18n-title');"
-        "el.setAttribute('title',window.t(k,el.getAttribute('title')||''));});"
-        "var dt=document.querySelector('[data-i18n-doctitle]');"
-        "if(dt){var dk=dt.getAttribute('data-i18n-doctitle');document.title=window.t(dk,document.title);}"
-        "document.documentElement.setAttribute('lang',window.lang);"
-        "document.querySelectorAll('[data-i18n-toggle]').forEach(function(b){"
-        "var bl=b.getAttribute('data-lang');"
-        "if(bl===window.lang)b.classList.add('active');else b.classList.remove('active');});"
-        "};"
-        "window.setLang=function(l){if(l!=='ko'&&l!=='en')return;"
-        "window.lang=l;"
-        "try{localStorage.setItem('mori_lang',l);}catch(e){}"
-        "document.cookie='mori_lang='+l+'; path=/; max-age='+(60*60*24*365)+'; samesite=lax';"
-        "window.applyI18n();"
-        "if(typeof window.onLangChange==='function'){try{window.onLangChange(l);}catch(e){}}};"
-        "if(document.readyState==='loading'){"
-        "document.addEventListener('DOMContentLoaded',function(){window.applyI18n();});"
-        "}else{window.applyI18n();}"
-        "})();</script>"
-    )
-
-
-def _i18n_toggle_html(fixed: bool = True) -> str:
-    """KO/EN 토글 위젯 — inline style, 외부 CSS 의존 없음.
-
-    fixed=True 면 우측 상단 고정(로그인/가입 등 비인증 페이지),
-    fixed=False 면 인라인 배치(인증 페이지의 계정 메뉴 내부 임베드)."""
-    wrap_style = (
-        'position:fixed;top:16px;right:16px;z-index:9999;'
-        if fixed
-        else ''
-    )
-    return (
-        '<div class="lang-toggle" style="' + wrap_style +
-        'display:flex;gap:4px;background:#0f2035;border:1px solid #1e3a5f;'
-        'border-radius:8px;padding:3px;">'
-        '<button data-i18n-toggle data-lang="ko" onclick="setLang(\'ko\')" '
-        'style="background:transparent;border:none;color:#94a3b8;font-size:12px;'
-        'font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer;">KO</button>'
-        '<button data-i18n-toggle data-lang="en" onclick="setLang(\'en\')" '
-        'style="background:transparent;border:none;color:#94a3b8;font-size:12px;'
-        'font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer;">EN</button>'
-        '</div>'
-        '<style>.lang-toggle button.active{background:#2563eb!important;color:#fff!important;}</style>'
-    )
+# The runtime script + translation dictionaries now live in ``i18n.py`` and are
+# imported at the top of this module (Task J-1 modularization). The render
+# functions below embed them via :func:`_i18n_script`.
 
 
 _LOGIN_I18N: dict[str, dict[str, str]] = {
