@@ -565,33 +565,55 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 | **LDAP / AD** | 디렉토리 계정 + 권한 바인딩 정합성 점검(시드) | 🔲 운영 적용 시 `LDAP_URL` 활성화 |
 | **Grafana** | Postgres / Loki를 직접 조회하는 운영 대시보드 | ✅ 동작 |
 
-### 🔭 확장 로드맵
+## 🗺️ Phase 로드맵 (Phase 2 → 4)
 
-1. **Zabbix 공식 템플릿 패키지로 배포** — MORI에서 정의한 자산·통제 점검·감사 증적 항목을 Zabbix 템플릿 YAML로 export하여, Zabbix만 운영 중인 조직에서도 MORI 컨셉을 부분 도입 가능.
-   - *예상 산출물*: `templates/zabbix/mori-soc-template.yaml` + 가져오기 가이드 + Zabbix Share 등록
-2. **MORI Agent 패키징** — 호스트 단위 수집/리포트용 경량 에이전트 (Linux systemd timer / macOS launchd) — Trivy 정기 스캔 + 결과 ingest 자동화 + Wazuh agent 보완
-3. **Postgres 영속화 + REST poller 활성화** — 위 통합 도구의 라이브 데이터로 시드를 대체 (UI 운영 상태 6종 store 영속화 포함)
-4. **Webhook 연동** — Slack / Teams / Email 알림 (`SLACK_WEBHOOK_URL` 자리만 존재)
-5. **Phase 3 — 조사형 multi-hop pivot 에이전트** — alert → host → user → 다른 host로 이어지는 조사 자동화
+> MORI는 **Phase 1(데이터 수집/정규화 코어) 완료 + Phase 2 Alpha(Audit-Ready 운영·증적 UI)** 상태입니다. 아래는 장기 방향으로, 각 Phase는 이전 단계 위에 쌓입니다 — Phase 2(운영 가능화) → Phase 3(판단 보조) → Phase 4(도입·생태계화).
 
----
+### Phase 2 — Persistent Evidence & Security Signal Integration
 
-## 🛣️ 다음 작업 후보
+*인메모리로 동작하는 운영 상태를 PostgreSQL에 영속화하고, Zabbix/Trivy/CVE Lite/Fleet/Wazuh 신호를 실제 운영 데이터 흐름으로 연결.*
 
-### 🔴 데이터 신뢰성
+| ID | 작업 | 상태 |
+|---|---|---|
+| **J** (기반) | `server.py`(~9,200줄) 모듈 분리 — i18n / templates / auth / routes. 이후 영속화·폴러 작업의 회귀 위험을 낮추는 리팩터 기반 | 🔲 다음 |
+| **M2-1** | UI 운영 상태 6종 store(`asset_owners`·`asset_audit_log`·`vuln_actions`·`triage_store`·`incident_store`·`user_profiles`) → PostgreSQL 영속화 (`repositories/postgres.py` + `schema/002_*.sql`) | 🔲 최우선 |
+| **M2-2** | Zabbix API polling 통합 검증 — trigger/item → ingestion → alert/observation → triage → incident | 🟡 Collector 완료, 검증 중 |
+| **M2-3** | Fleet / Wazuh REST poller 연결 — host/osquery·alert → asset/triage, `source_syncs` freshness 반영 | 🔲 Parser·Collector 준비됨 |
+| **M2-4** | Trivy JSON ingestion 자동화 — `trivy-*-scan.sh` 결과 → vulnerabilities → vuln_actions → 리포트 | 🟡 자동화 패키징 중 |
+| **M2-5** | CVE Lite collector 추가 — JS/TS lockfile 의존성 취약점 source(`source=cve_lite`, direct/transitive, fix_command) | 🔲 신규 |
+| **M2-6** | MORI → Zabbix Template/export — `templates/zabbix/mori-soc-template.yaml` + `mori-zabbix-export-metrics.py` (critical/high/pending/lag metric) | 🔲 신규 |
 
-1. **PostgreSQL 영속화** — `asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store`, `user_profiles` 6개 인메모리 store를 `repositories/postgres.py`로 매핑.
-2. **실시간 수집 연동** — Zabbix · Fleet · Wazuh API 폴링을 `pollers/`에서 활성화 (현재 코드만 준비).
+### Phase 3 — Guided Investigation & Evidence Assistant
 
-### 🟡 운영 안정성
+*쌓인 데이터·증적을 기반으로 보안 담당자 1인이 "무엇을 먼저 볼지" 판단하도록 보조. AI 자동 패치가 아니라 조사/요약 보조에 한정.*
 
-3. **LDAP 인증** — `LDAP_URL` 환경변수 설정 + 조직 AD/LDAP 검증.
-4. **HTTPS / 리버스 프록시** — Nginx/Caddy + TLS.
+| ID | 작업 |
+|---|---|
+| **P3-1** | Evidence Gap Detector — 조치계획 없는 Critical/High, 예외 만료 임박, 재스캔 없는 완료 항목, 미트리아지 alert, 리포트 미export incident |
+| **P3-2** | Guided Triage Summary — alert/finding 요약 + 영향 자산·관련 CVE/trigger·최근 observation·권장 확인 포인트 |
+| **P3-3** | Multi-source Investigation Pivot — Zabbix problem → host → Fleet/Wazuh/Trivy → user/ip/process → 동일 owner/team 자산 확장 |
+| **P3-4** | Audit Report Draft — 월간 Critical/High·조치 완료/미조치/예외·증적 누락·SLA 초과 요약 초안 |
+| **P3-5** | Control Mapping Assistant — Finding/Incident를 ISMS-P / ISO 27001 통제 후보에 매핑(담당자 승인 후 반영) |
 
-### 🟢 기능 확장
+> 🚫 **Phase 3 금지선**: 자동 패치 / 자동 예외 승인 / 자동 Incident close 금지. **판단 보조**까지만.
 
-5. **Trivy 자동 적재** — 온디맨드 스캔 결과를 ingestion 경로로 자동 적재.
-6. **Phase 3 — 조사형 에이전트** — host/user/ip 다단계 pivot + 교차검증 자동화.
+### Phase 4 — Deployment, Ecosystem & Small-Team Adoption
+
+*실제 도입 가능성과 생태계화. 인프라 전담자가 없는 중소형 조직이 보안 담당자 1인으로 ISMS-P/ISO 27001 대응을 끌고 갈 수 있게.*
+
+| ID | 작업 |
+|---|---|
+| **P4-1** | MORI Lite 패키징 — (API/UI + PostgreSQL + Trivy + CVE Lite) 경량 구성 vs MORI Full Demo(Zabbix/Fleet/Wazuh/Loki/Grafana) 분리 |
+| **P4-2** | Zabbix-only Adoption Pack — Zabbix 템플릿 + export 스크립트 + `docs/zabbix-only.md` (MORI 전체 설치 없이 Trivy/CVE Lite 결과 → zabbix_sender) |
+| **P4-3** | ISMS-P / ISO 27001 Evidence Pack — 통제별 샘플 리포트(`docs/evidence-pack/`): 취약점 관리, 로깅/모니터링, 월간 리포트, 예외 등록부, 조치계획 |
+| **P4-4** | Integration Marketplace 구조 — `integrations/{zabbix,trivy,cvelite,wazuh,fleet,ldap}` connector 구조/문서 정리(실제 플러그인 시스템은 추후) |
+| **P4-5** | 운영 안정화 — HTTPS/리버스 프록시, LDAP/AD 운영 적용, backup/restore 검증, upgrade guide, `SECURITY.md`·`CONTRIBUTING.md`·`CHANGELOG.md`, release checklist |
+| **P4-6** | 데모 시나리오 / 영상 — compose up → Trivy import → Zabbix alert → CVE 조치계획 → 예외 → Incident → 감사 PDF → Zabbix template 확인 (5~8분) |
+
+### 그 외 백로그
+
+- **Webhook 연동** — Slack / Teams / Email 알림 (`SLACK_WEBHOOK_URL` 자리만 존재)
+- **SQL 기반 읽기 최적화** — snapshot 조회를 Postgres view 기반으로 점진 전환
 
 ---
 

@@ -12,8 +12,9 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 | MVC 3 — Docker/Compose 배포선 | ✅ 완료 | `docker-compose.yml`, GitHub Actions, `scripts/mori-backup.sh` · `mori-restore.sh` |
 | MVC 4 — 자연어 질의 + 운영 UI | ✅ 완료 | `intent_parser` + `/ui` |
 | **Phase 2 — 운영 UI + 감사 증적 + 운영성 폴리시** | ✅ 패키징 준비 완료 | RBAC, 자산/취약점/Triage/인시던트/PDCA, 감사 로그, 5종 증적(CSV+PDF) 리포트, Source Freshness, 8탭 어드민 콘솔, KO/EN 다국어, 사용자 프로필 + 내 서버 뷰 |
-| Phase 2.5 — 영속화 + 실시간 폴링 | 🔲 다음 작업 | 인메모리 store → Postgres, 폴러 연결 |
-| Phase 3 — 조사형 멀티 피벗 에이전트 | 🔲 미착수 | host/user/ip 다단계 pivot |
+| **Phase 2 (남은 작업) — Persistent Evidence & Signal Integration** | 🔲 다음 작업 | 모듈 분리(J) → 인메모리 6종 store Postgres 영속화(M2-1) → Zabbix/Fleet/Wazuh/Trivy 폴러(M2-2~4) + CVE Lite(M2-5) + Zabbix 템플릿 export(M2-6) |
+| Phase 3 — Guided Investigation & Evidence Assistant | 🔲 미착수 | Evidence Gap Detector / Triage 요약 / multi-hop pivot / 리포트 초안 / 통제 매핑 (판단 보조까지만) |
+| Phase 4 — Deployment, Ecosystem & Small-Team Adoption | 🔲 미착수 | MORI Lite / Zabbix-only Pack / ISMS-P Evidence Pack / Integration 구조 / 운영 안정화 |
 
 ---
 
@@ -159,23 +160,24 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 
 ---
 
-## 6. 다음 큰 작업 (우선순위 순)
+## 6. 다음 큰 작업 — Phase 2 → 4 (자세한 항목·상태는 README "🗺️ Phase 로드맵" 참조)
 
-### 🔴 데이터 신뢰성
+### Phase 2 — Persistent Evidence & Security Signal Integration
 
-1. **PostgreSQL 영속화** — 인메모리 6개 store(asset_owners / asset_audit_log / vuln_actions / triage_store / incident_store / user_profiles)를 `repositories/postgres.py` 에 매핑
-2. **실시간 ingestion worker** — Fleet/Wazuh/Zabbix API 폴링을 `pollers/` 에서 활성화 (코드는 준비됨)
+- **J (기반)** — `server.py`(~9,200줄) 모듈 분리(i18n / templates / auth / routes). 이후 영속화·폴러 작업의 회귀 위험 완화
+- **M2-1 PostgreSQL 영속화** — 인메모리 6개 store(asset_owners / asset_audit_log / vuln_actions / triage_store / incident_store / user_profiles)를 `repositories/postgres.py` 에 매핑
+- **M2-2~4 실시간 신호 연결** — Zabbix API polling 검증 / Fleet·Wazuh REST poller 연결 / Trivy JSON ingestion 자동화 (`pollers/` 활성화, 코드는 준비됨)
+- **M2-5 CVE Lite collector** — JS/TS lockfile 의존성 취약점 source(`source=cve_lite`, direct/transitive, fix_command)
+- **M2-6 Zabbix Template/export** — `templates/zabbix/mori-soc-template.yaml` + metric export 스크립트
 
-### 🟡 운영 안정성
+### Phase 3 — Guided Investigation & Evidence Assistant (판단 보조)
 
-3. **LDAP 인증 운영 적용** — `LDAP_URL` 환경변수 + AD/LDAP 검증
-4. **HTTPS / 리버스 프록시** — Nginx/Caddy + TLS
+- Evidence Gap Detector / Guided Triage Summary / Multi-source Investigation Pivot / Audit Report Draft / Control Mapping Assistant
+- 🚫 자동 패치·자동 예외 승인·자동 Incident close 금지
 
-### 🟢 기능 확장
+### Phase 4 — Deployment, Ecosystem & Small-Team Adoption
 
-5. **Trivy 결과 자동 적재** — 온디맨드 스캔 결과를 ingestion 파이프라인에 연결
-6. **SQL 기반 읽기 최적화** — snapshot 조회를 Postgres view 기반으로 점진 전환
-7. **Phase 3 — 조사형 multi-hop pivot 에이전트**
+- MORI Lite 패키징 / Zabbix-only Adoption Pack / ISMS-P·ISO 27001 Evidence Pack / Integration 구조 / 운영 안정화(HTTPS·LDAP·backup·SECURITY/CONTRIBUTING/CHANGELOG) / 데모 시나리오
 
 ### ✅ Phase 2 에서 마무리된 항목
 
