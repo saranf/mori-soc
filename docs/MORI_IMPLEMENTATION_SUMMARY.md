@@ -11,7 +11,7 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 | MVC 2 — PostgresRepository | ✅ 코드 완료 / 🔲 운영 미연결 | `repositories/postgres.py` (인메모리에서 운영 중) |
 | MVC 3 — Docker/Compose 배포선 | ✅ 완료 | `docker-compose.yml`, GitHub Actions, `scripts/mori-backup.sh` · `mori-restore.sh` |
 | MVC 4 — 자연어 질의 + 운영 UI | ✅ 완료 | `intent_parser` + `/ui` |
-| **Phase 2 — 운영 UI + 감사 증적 + 운영성 폴리시** | ✅ 패키징 준비 완료 | RBAC, 자산/취약점/Triage/인시던트/PDCA, 감사 로그, 5종 증적(CSV+PDF) 리포트, Source Freshness, 8탭 어드민 콘솔 |
+| **Phase 2 — 운영 UI + 감사 증적 + 운영성 폴리시** | ✅ 패키징 준비 완료 | RBAC, 자산/취약점/Triage/인시던트/PDCA, 감사 로그, 5종 증적(CSV+PDF) 리포트, Source Freshness, 8탭 어드민 콘솔, KO/EN 다국어, 사용자 프로필 + 내 서버 뷰 |
 | Phase 2.5 — 영속화 + 실시간 폴링 | 🔲 다음 작업 | 인메모리 store → Postgres, 폴러 연결 |
 | Phase 3 — 조사형 멀티 피벗 에이전트 | 🔲 미착수 | host/user/ip 다단계 pivot |
 
@@ -25,6 +25,13 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 - RBAC (admin / security / monitor / auditor / helpdesk) — 역할별 탭/기능 on·off
 - LDAP 인증 (코드 준비, `LDAP_URL` 설정 시 활성화)
 - **기본 비밀번호 감지** — startup 시 `change_this_*` / `generate_with_*` placeholder 잔존 환경변수 + 기본 admin 비밀번호(`1234`) 사용 시 경고 로그(`[security] insecure default credentials detected for: ...`) 출력 및 `/health` 응답에 `insecure_defaults` 노출
+
+### 다국어 UI / 사용자 프로필
+
+- **KO/EN 다국어 토글** — 로그인·대시보드·어드민 콘솔 전 페이지 `data-i18n` 정적 치환 + `window.t()` 동적 메시지. 선택 언어는 쿠키·localStorage 저장, 새로고침 없이 활성 탭 즉시 재렌더
+- **언어 토글 위치 이동** — 기존 우상단 고정 위젯 → **계정 메뉴(👤)** 안으로 이동하여 사용자 설정 영역에 통합
+- **사용자 프로필** — 계정에 이름(`display_name`)·부서(`department`)·담당 서버(`assigned_servers[]`) 저장. `user_profiles` store + `GET/POST /auth/profile` + `/auth/me` 병합. 계정 메뉴 → 프로필 편집 모달에서 수정 (`assigned_servers`는 줄바꿈/쉼표 혼용 입력 허용 후 정규화)
+- **⭐ 내 서버(My Servers) 뷰** — 자산 탭 서브탭. `assigned_servers`(명시 호스트명) **또는** `owner == display_name`(암시 소유) 인 Fleet+Zabbix 호스트만 필터링해 통합 표시
 
 ### 자산 관리
 
@@ -92,6 +99,7 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 - `scripts/mori-restore.sh` — 확인 프롬프트 + `--force` 지원, `pg_restore --clean --if-exists`
 - `scripts/mori-seed-sample-data.sh` — 시드 데이터 다양화 (source_syncs를 success-healthy / success-stale / error / running 4가지 상태로 동시 노출하여 Collector Lag UI 시연 가능)
 - `scripts/mori-start-demo.sh` — 데모 시작 시 triage 분포 자동 시드 (reviewing 2건 / resolved 2건 / pending 5건)
+- **`MORI_DEMO_SEED`** (앱 env 플래그) — `1/true/yes/on` 시 앱 기동 시점에 `triage_store` / `asset_owners` / `user_profiles` 에 데모 데이터를 in-memory 주입(`setdefault`로 기존 값 보존). `docker-compose.yml` 기본값 `1`, 운영에선 `0`으로 비활성화. hostname/alert_id는 SQL 시드 값과 일치
 
 ---
 
@@ -104,8 +112,9 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 | `vuln_actions` | vuln_id → {plan, plan_target_date, plan_updated_by, exception_until, exception_reason, exception_updated_by} | 🔴 |
 | `triage_store` | alert_id → {status, analyst, note, changed_by, changed_at, history[]} | 🔴 |
 | `incident_store` | incident_id → {…, history[]} | 🔴 |
+| `user_profiles` | username → {display_name, department, assigned_servers[], updated_at} | 🟡 |
 
-→ 다음 마일스톤은 위 5개 store를 **PostgreSQL 테이블로 매핑**하여 영속화하는 작업입니다. `repositories/postgres.py`에 모듈 골격은 준비됨.
+→ 다음 마일스톤은 위 6개 store를 **PostgreSQL 테이블로 매핑**하여 영속화하는 작업입니다. `repositories/postgres.py`에 모듈 골격은 준비됨.
 
 ---
 
@@ -154,7 +163,7 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 
 ### 🔴 데이터 신뢰성
 
-1. **PostgreSQL 영속화** — 인메모리 5개 store(asset_owners / asset_audit_log / vuln_actions / triage_store / incident_store)를 `repositories/postgres.py` 에 매핑
+1. **PostgreSQL 영속화** — 인메모리 6개 store(asset_owners / asset_audit_log / vuln_actions / triage_store / incident_store / user_profiles)를 `repositories/postgres.py` 에 매핑
 2. **실시간 ingestion worker** — Fleet/Wazuh/Zabbix API 폴링을 `pollers/` 에서 활성화 (코드는 준비됨)
 
 ### 🟡 운영 안정성

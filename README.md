@@ -16,7 +16,8 @@
 - 🎯 **대상** — 보안 담당자 1~2명 + IT 헬프데스크로 ISMS-P / ISO 27001을 준비해야 하는 중소형 조직
 - 🚀 **한 줄 시작** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, 데모 전용)
 - 📊 **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · Compliance PDCA · 5종 감사 증적 CSV/PDF
-- 🌐 **다국어 UI** — 로그인·대시보드·어드민 콘솔 전 페이지 한국어/영어 토글 지원 (선택 언어는 쿠키·localStorage에 저장, 새로고침 없이 즉시 전환)
+- 🌐 **다국어 UI** — 로그인·대시보드·어드민 콘솔 전 페이지 한국어/영어 토글 (우상단 고정 위젯 → **계정 메뉴(👤)**로 이동, 쿠키·localStorage 저장, 새로고침 없이 즉시 전환)
+- 👤 **사용자 프로필 + 내 서버** — 이름·부서·담당 서버를 계정에 저장하고, 담당 자산만 모아 보는 **⭐ 내 서버** 뷰 제공
 - 🧾 **자동 증적** — 자산 담당자·중요도, 호스트/CVE 단위 조치 계획·예외, Triage·인시던트 상태 변경
 - ⚠️ **Alpha** — 시드 + 인메모리 store 기반. PostgreSQL 영속화·실시간 폴러는 다음 마일스톤 ([Integrations & 확장 방향](#-integrations--확장-방향) 참조)
 
@@ -74,7 +75,7 @@ flowchart LR
     subgraph REPO["저장소 (repositories)"]
         PG["PostgreSQL<br/>정규화 시드 데이터<br/>(hosts/alerts/vulns/observations…)"]
         MEM["InMemoryRepository<br/>(질의 캐시 — 현재 운영)"]
-        STR["UI 운영 상태 (인메모리)<br/>asset_owners / asset_audit_log<br/>vuln_actions / triage_store / incident_store"]
+        STR["UI 운영 상태 (인메모리)<br/>asset_owners / asset_audit_log / vuln_actions<br/>triage_store / incident_store / user_profiles"]
     end
 
     subgraph API["MORI API (api/server.py)"]
@@ -113,7 +114,7 @@ flowchart LR
     STR -.Phase 2 영속화 예정.-> PG
 ```
 
-> 실선은 현재 운영 중인 흐름. PostgreSQL은 **정규화 시드 데이터**(hosts/alerts/vulns/observations)를 보유하며 부팅 시 InMemoryRepository로 로드되어 질의에 사용됩니다. UI 운영 상태(triage / incidents / asset owners / vuln actions / asset audit log) 5종은 현재 인메모리에서 동작하며, **점선 = 다음 마일스톤(Postgres 영속화 + 실시간 폴러 활성화)** 입니다.
+> 실선은 현재 운영 중인 흐름. PostgreSQL은 **정규화 시드 데이터**(hosts/alerts/vulns/observations)를 보유하며 부팅 시 InMemoryRepository로 로드되어 질의에 사용됩니다. UI 운영 상태(triage / incidents / asset owners / vuln actions / asset audit log / user profiles) 6종은 현재 인메모리에서 동작하며, **점선 = 다음 마일스톤(Postgres 영속화 + 실시간 폴러 활성화)** 입니다.
 
 ---
 
@@ -157,16 +158,17 @@ flowchart LR
 | **🔀 교차 검증** | Zabbix × Fleet × Trivy 호스트 매핑 차이 / 미매핑 자산 검출 | source_coverage / orphan check |
 | **💬 자연어 질의 (FAB)** | 12개 인텐트 디스패치 (alert_summary, offline_hosts, top_vulnerable_hosts, host_timeline …) | `/interpret` + `/query` |
 | **📚 가이드 시스템** | 7종 가이드 어드민 on/off + 직접 편집 | ISMS-P / ISO 27001 운영 가이드 |
-| **🌐 다국어 (KO/EN)** | 로그인·대시보드·어드민 전 페이지 우상단 토글 + `data-i18n` 정적 치환 + `window.t()` 동적 메시지 | 쿠키·localStorage 저장, 토글 시 활성 탭 즉시 재렌더 |
+| **🌐 다국어 (KO/EN)** | 로그인·대시보드·어드민 전 페이지 **계정 메뉴 내** 토글 + `data-i18n` 정적 치환 + `window.t()` 동적 메시지 | 쿠키·localStorage 저장, 토글 시 활성 탭 즉시 재렌더 |
+| **👤 사용자 프로필 / ⭐ 내 서버** | 계정 메뉴 → 프로필 편집(이름·부서·담당 서버) + 자산 탭 **내 서버** 서브탭 | `assigned_servers` 또는 `owner == display_name` 인 Fleet+Zabbix 호스트만 필터링 |
 | **API 문서** | Swagger `/docs` | FastAPI 자동 생성 |
 
-> ⚠️ **저장소 분리 안내** — PostgreSQL은 **정규화된 시드 보안 데이터**(hosts/alerts/vulnerabilities/observations 등)를 보유하며 부팅 시 InMemoryRepository로 로드되어 질의에 사용됩니다. 한편 **UI 운영 상태 5종**(triage / incidents / asset owners / vuln actions / asset audit log)은 현재 API 프로세스의 인메모리 dict이므로 **재시작 시 초기화**됩니다. Postgres 영속화 매핑은 `repositories/postgres.py` + `schema/002_phase2_compliance_identity.sql`에 코드/스키마가 준비되어 있고 실제 연결만 미완입니다.
+> ⚠️ **저장소 분리 안내** — PostgreSQL은 **정규화된 시드 보안 데이터**(hosts/alerts/vulnerabilities/observations 등)를 보유하며 부팅 시 InMemoryRepository로 로드되어 질의에 사용됩니다. 한편 **UI 운영 상태 6종**(triage / incidents / asset owners / vuln actions / asset audit log / user profiles)은 현재 API 프로세스의 인메모리 dict이므로 **재시작 시 초기화**됩니다. Postgres 영속화 매핑은 `repositories/postgres.py` + `schema/002_phase2_compliance_identity.sql`에 코드/스키마가 준비되어 있고 실제 연결만 미완입니다.
 
 ### 🟡 In progress / 다음 단계 (다음 마일스톤)
 
 | 항목 | 현황 | 우선순위 |
 |---|---|---|
-| **UI 운영 상태 → PostgreSQL 영속화** | `repositories/postgres.py` + `schema/002_*.sql` 준비됨. 5종 store 매핑 미연결 | 🔴 높음 |
+| **UI 운영 상태 → PostgreSQL 영속화** | `repositories/postgres.py` + `schema/002_*.sql` 준비됨. 6종 store 매핑 미연결 | 🔴 높음 |
 | **Zabbix API polling** | Collector 구현 완료(`collectors/zabbix_events.py`), 통합 검증 진행 중 | 🔴 높음 |
 | **Fleet / Wazuh API polling** | Parser·Collector 준비됨, REST poller(`pollers/fleet.py`, `pollers/wazuh.py`) 미연결 | 🔴 높음 |
 | **Trivy JSON ingestion** | Collector 구현 완료, 정기 실행 패키징/자동화 진행 중 | 🔴 높음 |
@@ -293,10 +295,10 @@ src/mori_soc/
 | 저장 영역 | 현재 상태 | 위치 |
 |---|---|---|
 | **Normalized security data** (hosts / alerts / vulnerabilities / observations / fleet_query_results / control_checks / directory_accounts / source_syncs …) | PostgreSQL **시드 스키마 + 시드 데이터** 적재. 부팅 시 InMemoryRepository로 로드되어 질의에 사용 | `schema/001_phase1_initial.sql`, `repositories/postgres.py`, `repositories/memory.py` |
-| **UI operational state — 인메모리 5종** (재시작 시 초기화) | API 프로세스의 모듈 스코프 dict로 동작 중. Postgres 영속화 미연결 | `api/server.py` |
-| Phase 2 영속화 (5종 store → Postgres) | 🔲 Planned — `schema/002_phase2_compliance_identity.sql` + `repositories/postgres.py`에 매핑 코드/스키마 준비됨 | — |
+| **UI operational state — 인메모리 6종** (재시작 시 초기화) | API 프로세스의 모듈 스코프 dict로 동작 중. Postgres 영속화 미연결 | `api/server.py` |
+| Phase 2 영속화 (6종 store → Postgres) | 🔲 Planned — `schema/002_phase2_compliance_identity.sql` + `repositories/postgres.py`에 매핑 코드/스키마 준비됨 | — |
 
-#### 인메모리 5종 store 상세
+#### 인메모리 6종 store 상세
 
 | 변수 | 내용 |
 |---|---|
@@ -305,8 +307,9 @@ src/mori_soc/
 | `vuln_actions` | vuln_id → {plan_text, plan_target_date, plan_updated_by, exception_until, exception_reason, exception_updated_by} |
 | `triage_store` | alert_id → {status, analyst, note, changed_by, changed_at, history[]} |
 | `incident_store` | incident_id → {…, history[]} |
+| `user_profiles` | username → {display_name, department, assigned_servers[], updated_at} |
 
-→ Phase 2의 다음 마일스톤은 위 5개 store를 **PostgreSQL 테이블로 매핑**하여 영속화하는 것.
+→ Phase 2의 다음 마일스톤은 위 6개 store를 **PostgreSQL 테이블로 매핑**하여 영속화하는 것.
 
 ### 12개 자연어 질의 인텐트
 
@@ -342,6 +345,7 @@ src/mori_soc/
 | 카테고리 | 메서드 / 경로 | 설명 |
 |---|---|---|
 | Health / Catalog | `GET /health`, `GET /catalog` | 헬스체크, 질의 카탈로그 |
+| Auth / Profile | `POST /auth/login`, `GET /auth/logout`, `GET /auth/me`, `GET/POST /auth/profile` | 로그인/세션 + 사용자 프로필(이름·부서·담당 서버) 조회·업서트. `/auth/me`에 프로필 병합 |
 | Query | `POST /query`, `POST /interpret` | 구조화 질의 / 자연어 해석 |
 | Dashboard | `GET /dashboard/summary` | 개요 카드 + Critical 취약점 상세(plan/exception 포함) |
 | Assets | `GET /assets`, `POST /assets/owners` | 자산 목록 / 담당자·중요도 변경(감사 로그) |
@@ -516,7 +520,10 @@ API 인메모리 저장(재시작 시 초기화)으로 별도 생성되는 항�
 | 항목 | 수량 | 생성 시점 |
 |---|---|---|
 | Incidents | 3 | `mori-start-demo.sh`가 시드 후 `POST /incidents` 호출 |
-| Triage / 자산 담당자 / 취약점 조치 / 인시던트 변경 | 0 | UI에서 직접 변경 시 누적 |
+| Triage / 자산 담당자 / 사용자 프로필 | `MORI_DEMO_SEED=1` 시 시드 | 앱 기동 시 in-memory 주입 (아래 참조) |
+| 취약점 조치 / 인시던트 변경 | 0 | UI에서 직접 변경 시 누적 |
+
+> 🌱 **`MORI_DEMO_SEED`** — `1/true` 일 때 앱 기동 시점에 `triage_store`(4건, reviewing/resolved/pending 분포) · `asset_owners`(web-server-01·02 / db-primary / app-server-01) · `user_profiles`(`admin`=시스템관리자 / `security`=보안담당자, 담당 서버 매핑)를 in-memory로 주입합니다. hostname/alert_id는 SQL 시드 값과 일치하므로 **⭐ 내 서버** 뷰가 실제 자산과 매칭됩니다. `docker-compose.yml` 기본값 `1`, **운영 배포 시 `0`으로 비활성화**하세요.
 
 ---
 
@@ -563,7 +570,7 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 1. **Zabbix 공식 템플릿 패키지로 배포** — MORI에서 정의한 자산·통제 점검·감사 증적 항목을 Zabbix 템플릿 YAML로 export하여, Zabbix만 운영 중인 조직에서도 MORI 컨셉을 부분 도입 가능.
    - *예상 산출물*: `templates/zabbix/mori-soc-template.yaml` + 가져오기 가이드 + Zabbix Share 등록
 2. **MORI Agent 패키징** — 호스트 단위 수집/리포트용 경량 에이전트 (Linux systemd timer / macOS launchd) — Trivy 정기 스캔 + 결과 ingest 자동화 + Wazuh agent 보완
-3. **Postgres 영속화 + REST poller 활성화** — 위 통합 도구의 라이브 데이터로 시드를 대체 (UI 운영 상태 5종 store 영속화 포함)
+3. **Postgres 영속화 + REST poller 활성화** — 위 통합 도구의 라이브 데이터로 시드를 대체 (UI 운영 상태 6종 store 영속화 포함)
 4. **Webhook 연동** — Slack / Teams / Email 알림 (`SLACK_WEBHOOK_URL` 자리만 존재)
 5. **Phase 3 — 조사형 multi-hop pivot 에이전트** — alert → host → user → 다른 host로 이어지는 조사 자동화
 
@@ -573,7 +580,7 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 
 ### 🔴 데이터 신뢰성
 
-1. **PostgreSQL 영속화** — `asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store` 5개 인메모리 store를 `repositories/postgres.py`로 매핑.
+1. **PostgreSQL 영속화** — `asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store`, `user_profiles` 6개 인메모리 store를 `repositories/postgres.py`로 매핑.
 2. **실시간 수집 연동** — Zabbix · Fleet · Wazuh API 폴링을 `pollers/`에서 활성화 (현재 코드만 준비).
 
 ### 🟡 운영 안정성
@@ -615,6 +622,7 @@ README의 "🗺️ 현재 상태", src/mori_soc, schema/*.sql 읽고 바로 이�
 |---|---|
 | 인증·RBAC·자산·취약점·Triage·인시던트·PDCA·증적 리포트 | ✅ 운영 가능 (인메모리, 재시작 시 초기화) |
 | 어드민 콘솔 8탭 (Phase 2 정렬) + 역할별 탭 자동 제한 | ✅ 동작 |
+| KO/EN 다국어 토글 (계정 메뉴로 이동) + 사용자 프로필 + ⭐ 내 서버 뷰 | ✅ 동작 |
 | 자산/취약점/Triage/인시던트 **변경 감사 로그** | ✅ 누적 (CVE별 라벨 포함) |
 | PDCA Do 카드 클릭 → 미조치 모달 + CSV 다운로드 | ✅ 동작 |
 | 감사 증적 리포트 미리보기 모달 + **PDF 다운로드** (NanumGothic) | ✅ 동작 (5종 CSV+PDF) |
@@ -623,7 +631,7 @@ README의 "🗺️ 현재 상태", src/mori_soc, schema/*.sql 읽고 바로 이�
 | 인시던트 CSV "변경 내역 미포함" 안내 모달 | ✅ 동작 |
 | 대시보드 자산·경보 데이터 | ⚠️ 시드 + 인메모리 기반 (실시간 폴링 미연결) |
 | PostgreSQL — 정규화 보안 데이터 (Phase 1 스키마) | ✅ 시드 적재 + 부팅 시 로드 |
-| PostgreSQL — UI 운영 상태 5종 영속화 (Phase 2) | 🔲 미완 (`schema/002_*.sql` + `repositories/postgres.py` 매핑 준비됨) |
+| PostgreSQL — UI 운영 상태 6종 영속화 (Phase 2) | 🔲 미완 (`schema/002_*.sql` + `repositories/postgres.py` 매핑 준비됨) |
 | Zabbix API polling | 🟡 In progress (Collector 구현 완료, 통합 검증 중) |
 | Fleet / Wazuh API polling | 🔲 미완 (Parser·Collector 준비됨, REST poller 미연결) |
 | Trivy JSON ingestion | 🟡 In progress (Collector 구현 완료, 자동화 패키징 중) |
