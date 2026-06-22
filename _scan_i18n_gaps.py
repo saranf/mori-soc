@@ -17,6 +17,25 @@ from mori_soc.api.server import (
 KO = re.compile(r"[\uac00-\ud7a3]")
 COVER_TEXT = {"data-i18n", "data-i18n-html"}
 
+# t('key','fallback') / tt('key','fallback') / window.t('key','fallback')
+# Both the key and the (optional) fallback may legitimately contain Korean,
+# so strip the whole call before looking for genuine, unwrapped KO literals.
+_TT_CALL = re.compile(
+    r"\b(?:window\.t|tt|t)\(\s*"
+    r"(['\"])(?:\\.|(?!\1).)*\1"          # key string
+    r"(?:\s*,\s*(['\"`])(?:\\.|(?!\2).)*\2)?"  # optional fallback string/template
+    r"\s*\)",
+    re.S,
+)
+
+
+def strip_i18n_calls(js: str) -> str:
+    prev = None
+    while prev != js:
+        prev = js
+        js = _TT_CALL.sub("", js)
+    return js
+
 
 def strip_dict_script(html: str) -> str:
     # Remove the window.MORI_I18N={...}; dictionary so its KO isn't flagged.
@@ -80,6 +99,7 @@ class Scanner(HTMLParser):
             self.static_leaks.append((path, snippet))
 
     def _scan_js(self, js):
+        js = strip_i18n_calls(js)
         # KO string literals not immediately preceded by t( / tt( / window.t(
         for m in re.finditer(r"(['\"`])((?:\\.|(?!\1).)*?)\1", js):
             s = m.group(2)

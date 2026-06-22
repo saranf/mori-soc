@@ -4642,13 +4642,13 @@ def render_user_dashboard_html(
         let planCell;
         if (r.has_vuln_plans) {
           const cnt = (r.vuln_plans_count || 0) + (r.vuln_exceptions_count || 0);
-          planCell = `<span style=\"color:#fbbf24;font-size:12px;font-weight:600\">📋 CVE별 상세 계획</span>
-            <br><span style=\"color:#94a3b8;font-size:11px\">계획 ${r.vuln_plans_count||0} · 예외 ${r.vuln_exceptions_count||0}</span>
-            <br><button onclick=\"showVulnPlansNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">ℹ️ 안내</button>`;
+          planCell = `<span style=\"color:#fbbf24;font-size:12px;font-weight:600\">${tt('dash.dyn.cve_plan_detail','📋 CVE별 상세 계획')}</span>
+            <br><span style=\"color:#94a3b8;font-size:11px\">${tt('dash.dyn.plan_count','계획')} ${r.vuln_plans_count||0} · ${tt('dash.dyn.exception_count','예외')} ${r.vuln_exceptions_count||0}</span>
+            <br><button onclick=\"showVulnPlansNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">${tt('dash.dyn.notice_btn','ℹ️ 안내')}</button>`;
         } else if (r.action_plan) {
-          planCell = `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(r.action_plan)}\">${planText}</span>${r.action_target_date ? '<br><span style=\"color:#64748b;font-size:11px\">~' + escapeHtml(r.action_target_date) + '</span>' : ''}<br><button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:1px 6px;background:#1e3a5f;border:1px solid #334155;border-radius:3px;color:#7dd3fc;cursor:pointer;margin-top:2px\">✏️ 수정</button>`;
+          planCell = `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(r.action_plan)}\">${planText}</span>${r.action_target_date ? '<br><span style=\"color:#64748b;font-size:11px\">~' + escapeHtml(r.action_target_date) + '</span>' : ''}<br><button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:1px 6px;background:#1e3a5f;border:1px solid #334155;border-radius:3px;color:#7dd3fc;cursor:pointer;margin-top:2px\">${tt('dash.dyn.edit_btn','✏️ 수정')}</button>`;
         } else {
-          planCell = `<button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e3a5f;border:1px solid #334155;border-radius:4px;color:#7dd3fc;cursor:pointer\">+ 계획 추가</button>`;
+          planCell = `<button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e3a5f;border:1px solid #334155;border-radius:4px;color:#7dd3fc;cursor:pointer\">${tt('dash.dyn.add_plan_btn','+ 계획 추가')}</button>`;
         }
         const ownerLabel = _ownerForHost(r.hostname);
         const ownerData = _getOwnerData(r.hostname);
@@ -4657,16 +4657,16 @@ def render_user_dashboard_html(
         let exCell;
         if (r.has_vuln_exceptions) {
           const cnt = (r.vuln_plans_count || 0) + (r.vuln_exceptions_count || 0);
-          exCell = `<span style=\"color:#fbbf24;font-size:12px;font-weight:600\">📋 CVE별 상세 예외</span>
-            <br><span style=\"color:#94a3b8;font-size:11px\">예외 ${r.vuln_exceptions_count||0} · 계획 ${r.vuln_plans_count||0}</span>
-            <br><button onclick=\"showVulnExceptionsNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">ℹ️ 안내</button>`;
+          exCell = `<span style=\"color:#fbbf24;font-size:12px;font-weight:600\">${tt('dash.dyn.cve_exception_detail','📋 CVE별 상세 예외')}</span>
+            <br><span style=\"color:#94a3b8;font-size:11px\">${tt('dash.dyn.exception_count','예외')} ${r.vuln_exceptions_count||0} · ${tt('dash.dyn.plan_count','계획')} ${r.vuln_plans_count||0}</span>
+            <br><button onclick=\"showVulnExceptionsNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">${tt('dash.dyn.notice_btn','ℹ️ 안내')}</button>`;
         } else if (exUntil) {
-          exCell = `<span style=\"color:#fde68a;font-size:12px\">~${escapeHtml(exUntil)}</span>${exReason ? '<br><span style=\"color:#94a3b8;font-size:11px\" title=\"'+escapeHtml(exReason)+'\">'+escapeHtml(exReason.substring(0,20))+(exReason.length>20?'…':'')+'</span>' : ''}<br><button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','${escapeHtml(exUntil)}','${escapeHtml(exReason).replace(/'/g,"\\\\'")}')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">✏️ 수정</button>`;
+          exCell = `<span style=\"color:#fde68a;font-size:12px\">~${escapeHtml(exUntil)}</span>${exReason ? '<br><span style=\"color:#94a3b8;font-size:11px\" title=\"'+escapeHtml(exReason)+'\">'+escapeHtml(exReason.substring(0,20))+(exReason.length>20?'…':'')+'</span>' : ''}<br><button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','${escapeHtml(exUntil)}','${escapeHtml(exReason).replace(/'/g,"\\\\'")}')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">${tt('dash.dyn.edit_btn','✏️ 수정')}</button>`;
         } else {
-          exCell = `<button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','','')\" style=\"font-size:11px;padding:2px 7px;background:#3b1f00;border:1px solid #78350f;border-radius:4px;color:#fbbf24;cursor:pointer\">+ 예외 설정</button>`;
+          exCell = `<button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','','')\" style=\"font-size:11px;padding:2px 7px;background:#3b1f00;border:1px solid #78350f;border-radius:4px;color:#fbbf24;cursor:pointer\">${tt('dash.dyn.add_exception_btn','+ 예외 설정')}</button>`;
         }
         const totalCell = r.total > 0
-          ? `<button onclick=\"openVulnListModal('${escapeHtml(r.host_id)}')\" title=\"취약점 상세 보기\" style=\"background:#1e3a5f;border:1px solid #334155;color:#7dd3fc;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:13px;font-weight:700\">${r.total} 건 ↗</button>`
+          ? `<button onclick=\"openVulnListModal('${escapeHtml(r.host_id)}')\" title=\"${tt('dash.dyn.view_vuln_detail','취약점 상세 보기')}\" style=\"background:#1e3a5f;border:1px solid #334155;color:#7dd3fc;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:13px;font-weight:700\">${r.total} ${tt('dash.dyn.cases_unit','건 ↗')}</button>`
           : `<span style=\"color:#64748b\">${r.total}</span>`;
         return `<tr>
           <td><strong>${escapeHtml(r.hostname)}</strong><br><span style=\"color:#64748b;font-size:11px\">${escapeHtml(r.host_id)}</span></td>
@@ -4680,23 +4680,23 @@ def render_user_dashboard_html(
           <td style=\"font-size:12px;color:#64748b\">${escapeHtml(formatTime(r.latest_detected_at))}</td>
           <td style=\"min-width:130px\">${planCell}</td>
           <td style=\"min-width:110px\">${exCell}</td>
-          <td style=\"text-align:center\"><button onclick=\"openAuditModal('${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:2px 6px;background:#1e293b;border:1px solid #334155;border-radius:3px;color:#94a3b8;cursor:pointer\" title=\"수정 이력\">📋</button></td>
+          <td style=\"text-align:center\"><button onclick=\"openAuditModal('${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:2px 6px;background:#1e293b;border:1px solid #334155;border-radius:3px;color:#94a3b8;cursor:pointer\" title=\"${tt('dash.dyn.edit_history','수정 이력')}\">📋</button></td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
         <thead><tr style=\"background:#0f2035;\">
-          <th style=\"padding:8px;color:#fdba74\">호스트</th>
-          <th style=\"padding:8px;color:#a3e635\">담당자</th>
+          <th style=\"padding:8px;color:#fdba74\">${tt('dash.dyn.lbl.host','호스트')}</th>
+          <th style=\"padding:8px;color:#a3e635\">${tt('dash.dyn.lbl.owner','담당자')}</th>
           <th style=\"padding:8px;color:#fca5a5\">Critical</th>
           <th style=\"padding:8px;color:#fdba74\">High</th>
           <th style=\"padding:8px;color:#fde68a\">Medium</th>
           <th style=\"padding:8px;color:#86efac\">Low</th>
-          <th style=\"padding:8px;color:#93c5fd\">합계</th>
-          <th style=\"padding:8px;color:#94a3b8\">최근 CVE</th>
-          <th style=\"padding:8px;color:#64748b\">탐지일</th>
-          <th style=\"padding:8px;color:#a3e635\">조치 계획</th>
-          <th style=\"padding:8px;color:#fbbf24\">조치 예외</th>
-          <th style=\"padding:8px;color:#94a3b8\">이력</th>
+          <th style=\"padding:8px;color:#93c5fd\">${tt('dash.dyn.lbl.total','합계')}</th>
+          <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.latest_cve','최근 CVE')}</th>
+          <th style=\"padding:8px;color:#64748b\">${tt('dash.dyn.lbl.detected_date','탐지일')}</th>
+          <th style=\"padding:8px;color:#a3e635\">${tt('dash.dyn.lbl.action_plan','조치 계획')}</th>
+          <th style=\"padding:8px;color:#fbbf24\">${tt('dash.dyn.lbl.action_exception','조치 예외')}</th>
+          <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.history','이력')}</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
       </table>`;
@@ -4735,36 +4735,36 @@ def render_user_dashboard_html(
         const parts = [];
         if (hasHostPlan) {
           parts.push(`<div style=\"flex:1;min-width:240px\">
-              <div style=\"color:#86efac;font-size:11px;font-weight:600;margin-bottom:3px\">📋 호스트 단위 조치 계획</div>
+              <div style=\"color:#86efac;font-size:11px;font-weight:600;margin-bottom:3px\">${tt('dash.dyn.host_plan_title','📋 호스트 단위 조치 계획')}</div>
               <div style=\"color:#e2e8f0;font-size:13px\">${escapeHtml(hostPlan)}</div>
-              <div style=\"color:#64748b;font-size:11px;margin-top:2px\">${hostPlanDate?'목표일 '+escapeHtml(hostPlanDate):''}${hostPlanBy?(hostPlanDate?' · ':'')+'작성자 '+escapeHtml(hostPlanBy):''}</div>
+              <div style=\"color:#64748b;font-size:11px;margin-top:2px\">${hostPlanDate?tt('dash.dyn.target_date_label','목표일')+' '+escapeHtml(hostPlanDate):''}${hostPlanBy?(hostPlanDate?' · ':'')+tt('dash.dyn.author_label','작성자')+' '+escapeHtml(hostPlanBy):''}</div>
             </div>`);
         }
         if (hasHostEx) {
           parts.push(`<div style=\"flex:1;min-width:200px\">
-              <div style=\"color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:3px\">⚠️ 호스트 단위 조치 예외</div>
-              <div style=\"color:#e2e8f0;font-size:13px\">~${escapeHtml(hostEx)} 까지</div>
+              <div style=\"color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:3px\">${tt('dash.dyn.host_exception_title','⚠️ 호스트 단위 조치 예외')}</div>
+              <div style=\"color:#e2e8f0;font-size:13px\">~${escapeHtml(hostEx)}${tt('dash.dyn.until_suffix',' 까지')}</div>
             </div>`);
         }
         hostBanner = `<div style=\"background:#0f2035;border:1px solid #1e3a5f;border-radius:6px;padding:10px 14px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:18px\">
           ${parts.join('')}
-          <div style=\"width:100%;color:#64748b;font-size:11px;margin-top:4px\">※ 아래 CVE별 계획/예외가 설정된 경우 해당 CVE에 한해 우선 적용됩니다.</div>
+          <div style=\"width:100%;color:#64748b;font-size:11px;margin-top:4px\">${tt('dash.dyn.cve_priority_note','※ 아래 CVE별 계획/예외가 설정된 경우 해당 CVE에 한해 우선 적용됩니다.')}</div>
         </div>`;
       }
       if (!vulns.length) {
-        return hostBanner + '<div style=\"color:#64748b;text-align:center;padding:20px\">취약점이 없습니다.</div>';
+        return hostBanner + '<div style=\"color:#64748b;text-align:center;padding:20px\">' + tt('dash.dyn.empty.vulns','취약점이 없습니다.') + '</div>';
       }
       const rows = vulns.map(v => {
         const planLabel = v.plan_text
           ? `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(v.plan_text)}\">${escapeHtml(v.plan_text.substring(0,30))}${v.plan_text.length>30?'…':''}</span>${v.plan_target_date?'<br><span style=\"color:#64748b;font-size:11px\">~'+escapeHtml(v.plan_target_date)+'</span>':''}`
           : (hasHostPlan
-              ? `<span style=\"color:#86efac;font-size:11px;font-style:italic\">호스트 단위 적용</span>${hostPlanDate?'<br><span style=\"color:#64748b;font-size:11px\">~'+escapeHtml(hostPlanDate)+'</span>':''}`
-              : '<span style=\"color:#64748b;font-size:11px\">미설정</span>');
+              ? `<span style=\"color:#86efac;font-size:11px;font-style:italic\">${tt('dash.dyn.host_level_applied','호스트 단위 적용')}</span>${hostPlanDate?'<br><span style=\"color:#64748b;font-size:11px\">~'+escapeHtml(hostPlanDate)+'</span>':''}`
+              : '<span style=\"color:#64748b;font-size:11px\">' + tt('dash.dyn.not_set','미설정') + '</span>');
         const exLabel = v.exception_until
           ? `<span style=\"color:#fbbf24;font-size:12px\">~${escapeHtml(v.exception_until)}</span>${v.exception_reason?'<br><span style=\"color:#94a3b8;font-size:11px\" title=\"'+escapeHtml(v.exception_reason)+'\">'+escapeHtml(v.exception_reason.substring(0,24))+(v.exception_reason.length>24?'…':'')+'</span>':''}`
           : (hasHostEx
-              ? `<span style=\"color:#fbbf24;font-size:11px;font-style:italic\">호스트 단위 적용</span><br><span style=\"color:#64748b;font-size:11px\">~${escapeHtml(hostEx)}</span>`
-              : '<span style=\"color:#64748b;font-size:11px\">없음</span>');
+              ? `<span style=\"color:#fbbf24;font-size:11px;font-style:italic\">${tt('dash.dyn.host_level_applied','호스트 단위 적용')}</span><br><span style=\"color:#64748b;font-size:11px\">~${escapeHtml(hostEx)}</span>`
+              : '<span style=\"color:#64748b;font-size:11px\">' + tt('dash.dyn.none','없음') + '</span>');
         const versionStr = v.installed_version
           ? `${escapeHtml(v.installed_version)}${v.fixed_version?' → <span style=\"color:#86efac\">'+escapeHtml(v.fixed_version)+'</span>':''}`
           : '-';
@@ -4774,19 +4774,19 @@ def render_user_dashboard_html(
           <td style=\"padding:6px 8px;font-size:12px\">${escapeHtml(v.package_name||'-')}</td>
           <td style=\"padding:6px 8px;font-size:12px;color:#94a3b8\">${versionStr}</td>
           <td style=\"padding:6px 8px;font-size:11px;color:#64748b\">${escapeHtml(formatTime(v.detected_at))}</td>
-          <td style=\"padding:6px 8px;min-width:140px\">${planLabel}<br><button onclick=\"openVulnActionModal('${escapeHtml(v.vuln_id)}','plan')\" style=\"font-size:10px;padding:1px 6px;background:#0f3a1d;border:1px solid #14532d;border-radius:3px;color:#86efac;cursor:pointer;margin-top:3px\">✏️ 조치 계획</button></td>
-          <td style=\"padding:6px 8px;min-width:140px\">${exLabel}<br><button onclick=\"openVulnActionModal('${escapeHtml(v.vuln_id)}','exception')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:3px\">⚠️ 조치 예외</button></td>
+          <td style=\"padding:6px 8px;min-width:140px\">${planLabel}<br><button onclick=\"openVulnActionModal('${escapeHtml(v.vuln_id)}','plan')\" style=\"font-size:10px;padding:1px 6px;background:#0f3a1d;border:1px solid #14532d;border-radius:3px;color:#86efac;cursor:pointer;margin-top:3px\">${tt('dash.dyn.edit_plan_btn','✏️ 조치 계획')}</button></td>
+          <td style=\"padding:6px 8px;min-width:140px\">${exLabel}<br><button onclick=\"openVulnActionModal('${escapeHtml(v.vuln_id)}','exception')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:3px\">${tt('dash.dyn.edit_exception_btn','⚠️ 조치 예외')}</button></td>
         </tr>`;
       }).join('');
       return hostBanner + `<table style=\"width:100%;border-collapse:collapse;font-size:12px\">
         <thead><tr style=\"background:#0f2035\">
           <th style=\"padding:8px;color:#7dd3fc;text-align:left\">CVE</th>
-          <th style=\"padding:8px;color:#fdba74\">심각도</th>
-          <th style=\"padding:8px;color:#94a3b8;text-align:left\">패키지</th>
-          <th style=\"padding:8px;color:#94a3b8;text-align:left\">설치 → 권장</th>
-          <th style=\"padding:8px;color:#64748b\">탐지일</th>
-          <th style=\"padding:8px;color:#a3e635;text-align:left\">조치 계획</th>
-          <th style=\"padding:8px;color:#fbbf24;text-align:left\">조치 예외</th>
+          <th style=\"padding:8px;color:#fdba74\">${tt('dash.dyn.lbl.severity','심각도')}</th>
+          <th style=\"padding:8px;color:#94a3b8;text-align:left\">${tt('dash.dyn.lbl.package','패키지')}</th>
+          <th style=\"padding:8px;color:#94a3b8;text-align:left\">${tt('dash.dyn.lbl.install_recommend','설치 → 권장')}</th>
+          <th style=\"padding:8px;color:#64748b\">${tt('dash.dyn.lbl.detected_date','탐지일')}</th>
+          <th style=\"padding:8px;color:#a3e635;text-align:left\">${tt('dash.dyn.lbl.action_plan','조치 계획')}</th>
+          <th style=\"padding:8px;color:#fbbf24;text-align:left\">${tt('dash.dyn.lbl.action_exception','조치 예외')}</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
@@ -4943,15 +4943,15 @@ def render_user_dashboard_html(
             <span style=\"color:#64748b;font-size:11px\">${escapeHtml(l.changed_at||'')}</span>
           </div>
           <div style=\"font-size:12px;margin-top:4px\">
-            <span style=\"color:#fca5a5\">${escapeHtml(l.old_value||'(없음)')}</span>
+            <span style=\"color:#fca5a5\">${escapeHtml(l.old_value||tt('dash.dyn.no_value','(없음)'))}</span>
             <span style=\"color:#64748b\"> → </span>
-            <span style=\"color:#86efac\">${escapeHtml(l.new_value||'(없음)')}</span>
+            <span style=\"color:#86efac\">${escapeHtml(l.new_value||tt('dash.dyn.no_value','(없음)'))}</span>
           </div>
-          <div style=\"font-size:11px;color:#94a3b8;margin-top:2px\">수정자: ${escapeHtml(l.changed_by||'unknown')}</div>
+          <div style=\"font-size:11px;color:#94a3b8;margin-top:2px\">${tt('dash.dyn.editor_prefix','수정자: ')}${escapeHtml(l.changed_by||'unknown')}</div>
         </div>`).join('');
         document.getElementById('audit_modal_body').innerHTML = rows;
       } catch(e) {
-        document.getElementById('audit_modal_body').innerHTML = `<div style=\"color:#fca5a5\">오류: ${escapeHtml(e.message)}</div>`;
+        document.getElementById('audit_modal_body').innerHTML = `<div style=\"color:#fca5a5\">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</div>`;
       }
     }
     function closeAuditModal() { document.getElementById('audit_modal').style.display = 'none'; }
@@ -4976,8 +4976,8 @@ def render_user_dashboard_html(
       document.getElementById('owner_modal_importance_row').style.display = isServer ? '' : 'none';
       // 처리 예외 기한은 Trivy에서만 필요
       document.getElementById('owner_modal_exception_row').style.display = isTrivy ? '' : 'none';
-      const titleMap = { server: '서버 자산 상세페이지', pc: 'PC 자산 상세페이지', trivy: '취약점 상세페이지' };
-      document.getElementById('owner_modal_title').textContent = `${titleMap[assetType] || '자산 수정'} — ${hostname}`;
+      const titleMap = { server: tt('dash.dyn.asset_detail.server','서버 자산 상세페이지'), pc: tt('dash.dyn.asset_detail.pc','PC 자산 상세페이지'), trivy: tt('dash.dyn.asset_detail.trivy','취약점 상세페이지') };
+      document.getElementById('owner_modal_title').textContent = `${titleMap[assetType] || tt('dash.dyn.asset_detail.default','자산 수정')} — ${hostname}`;
       document.getElementById('owner_modal').style.display = 'flex';
     }
     function closeOwnerModal() { document.getElementById('owner_modal').style.display = 'none'; }
@@ -4994,7 +4994,7 @@ def render_user_dashboard_html(
         const impEl = document.getElementById('owner_modal_importance');
         const importance = (impEl && impEl.closest('#owner_modal_importance_row').style.display !== 'none') ? impEl.value : '';
         const statusEl = document.getElementById('owner_modal_status');
-        statusEl.textContent = '저장 중...';
+        statusEl.textContent = tt('dash.dyn.saving','저장 중...');
         try {
           const res = await fetch('/assets/owners', {
             method: 'POST', headers: {'Content-Type':'application/json'},
@@ -5002,11 +5002,11 @@ def render_user_dashboard_html(
           });
           if (!res.ok) throw new Error(await res.text());
           statusEl.style.color = '#86efac';
-          statusEl.textContent = '✅ 저장되었습니다.';
+          statusEl.textContent = tt('dash.dyn.saved','✅ 저장되었습니다.');
           setTimeout(() => { closeOwnerModal(); loadAssets(); }, 800);
         } catch(e) {
           statusEl.style.color = '#fca5a5';
-          statusEl.textContent = `오류: ${e.message}`;
+          statusEl.textContent = `${tt('dash.dyn.error_prefix','오류: ')}${e.message}`;
         }
       });
     });
@@ -5020,7 +5020,7 @@ def render_user_dashboard_html(
           body: JSON.stringify({
             text: document.getElementById('plan_text').value,
             target_date: document.getElementById('plan_target_date').value,
-            updated_by: document.getElementById('plan_updated_by').value || '운영자',
+            updated_by: document.getElementById('plan_updated_by').value || tt('dash.dyn.operator','운영자'),
           })
         });
         closePlanModal();
@@ -5032,7 +5032,7 @@ def render_user_dashboard_html(
       if (vulnSaveBtn) vulnSaveBtn.addEventListener('click', async () => {
         if (!_vulnActionId) return;
         const statusEl = document.getElementById('vuln_action_modal_status');
-        statusEl.style.color = '#94a3b8'; statusEl.textContent = '저장 중...';
+        statusEl.style.color = '#94a3b8'; statusEl.textContent = tt('dash.dyn.saving','저장 중...');
         try {
           let res;
           if (_vulnActionMode === 'exception') {
@@ -5041,7 +5041,7 @@ def render_user_dashboard_html(
               body: JSON.stringify({
                 exception_until: document.getElementById('vuln_exception_until').value,
                 exception_reason: document.getElementById('vuln_exception_reason').value,
-                exception_updated_by: document.getElementById('vuln_exception_updated_by').value || '운영자',
+                exception_updated_by: document.getElementById('vuln_exception_updated_by').value || tt('dash.dyn.operator','운영자'),
               })
             });
           } else {
@@ -5050,7 +5050,7 @@ def render_user_dashboard_html(
               body: JSON.stringify({
                 plan_text: document.getElementById('vuln_plan_text').value,
                 plan_target_date: document.getElementById('vuln_plan_target_date').value,
-                plan_updated_by: document.getElementById('vuln_plan_updated_by').value || '운영자',
+                plan_updated_by: document.getElementById('vuln_plan_updated_by').value || tt('dash.dyn.operator','운영자'),
               })
             });
           }
@@ -5061,16 +5061,16 @@ def render_user_dashboard_html(
           if (hostId) openVulnListModal(hostId);
         } catch(err) {
           statusEl.style.color = '#fca5a5';
-          statusEl.textContent = `오류: ${err.message}`;
+          statusEl.textContent = `${tt('dash.dyn.error_prefix','오류: ')}${err.message}`;
         }
       });
 
       const vulnClearBtn = document.getElementById('vuln_action_modal_clear');
       if (vulnClearBtn) vulnClearBtn.addEventListener('click', async () => {
         if (!_vulnActionId) return;
-        if (!confirm('이 취약점의 예외 처리를 해제하시겠습니까?')) return;
+        if (!confirm(tt('dash.dyn.confirm_clear_exception','이 취약점의 예외 처리를 해제하시겠습니까?'))) return;
         const statusEl = document.getElementById('vuln_action_modal_status');
-        statusEl.style.color = '#94a3b8'; statusEl.textContent = '해제 중...';
+        statusEl.style.color = '#94a3b8'; statusEl.textContent = tt('dash.dyn.clearing','해제 중...');
         try {
           const res = await fetch(`/vulnerabilities/${encodeURIComponent(_vulnActionId)}/exception`, { method: 'DELETE' });
           if (!res.ok) throw new Error(res.status);
@@ -5080,7 +5080,7 @@ def render_user_dashboard_html(
           if (hostId) openVulnListModal(hostId);
         } catch(err) {
           statusEl.style.color = '#fca5a5';
-          statusEl.textContent = `오류: ${err.message}`;
+          statusEl.textContent = `${tt('dash.dyn.error_prefix','오류: ')}${err.message}`;
         }
       });
     });
@@ -5124,8 +5124,8 @@ def render_user_dashboard_html(
         _updateSearchCount('zabbix', _assetCache.zabbix.length, _assetCache.zabbix.length);
         _updateSearchCount('trivy', _assetCache.trivy.length, _assetCache.trivy.length);
         if (currentAssetTab === 'mine') renderMyServers();
-        statusEl.textContent = `자산 현황 업데이트: ${formatTime(data.generated_at)}`;
-      } catch (err) { statusEl.textContent = `오류: ${err.message}`; }
+        statusEl.textContent = `${tt('dash.dyn.assets_updated','자산 현황 업데이트: ')}${formatTime(data.generated_at)}`;
+      } catch (err) { statusEl.textContent = `${tt('dash.dyn.error_prefix','오류: ')}${err.message}`; }
     }
 
     function _populateZabbixCategories(hosts) {
@@ -5729,7 +5729,7 @@ def render_user_dashboard_html(
         const roleLabel = ROLE_LABELS[me.role] || me.role;
         const heroP = document.querySelector('.hero p');
         if (heroP && me.username) {
-          heroP.innerHTML = `환영합니다, <strong style="color:#38bdf8">${escapeHtml(me.username)}</strong> <span style="background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:6px;font-size:12px">${escapeHtml(roleLabel)}</span>`;
+          heroP.innerHTML = `${tt('dash.dyn.welcome_prefix','환영합니다, ')}<strong style="color:#38bdf8">${escapeHtml(me.username)}</strong> <span style="background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:6px;font-size:12px">${escapeHtml(roleLabel)}</span>`;
         }
         const badge = document.getElementById('ui_user_badge');
         if (badge && me.username) { badge.removeAttribute('data-i18n'); badge.textContent = me.username; }
@@ -5803,14 +5803,14 @@ def render_user_dashboard_html(
 
       nlqInterpretBtn?.addEventListener('click', async () => {
         const text = nlqTextarea.value.trim();
-        if (!text) { showInfoModal('입력 필요', '질의할 내용을 입력해 주세요.'); return; }
-        nlqInterpretResult.textContent = '해석 중...';
+        if (!text) { showInfoModal(tt('dash.dyn.nlq.need_input_title','입력 필요'), tt('dash.dyn.nlq.need_input_msg','질의할 내용을 입력해 주세요.')); return; }
+        nlqInterpretResult.textContent = tt('dash.dyn.nlq.interpreting','해석 중...');
         try {
           const res = await fetch('/interpret', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text}) });
           const data = await res.json();
           if (!res.ok) { nlqInterpretResult.textContent = `오류: ${data.detail || res.status}`; return; }
           lastInterpretedPayload = { intent: data.intent, scope: data.scope || {time_range:'24h'}, filters: data.filters || {} };
-          nlqInterpretResult.textContent = `해석 결과: ${data.intent} (${data.recognized ? '인식됨' : '유사 매칭'})${data.warnings?.length ? ' ⚠ ' + data.warnings.join(', ') : ''}`;
+          nlqInterpretResult.textContent = `${tt('dash.dyn.nlq.interpret_result','해석 결과')}: ${data.intent} (${data.recognized ? tt('dash.dyn.nlq.recognized','인식됨') : tt('dash.dyn.nlq.fuzzy','유사 매칭')})${data.warnings?.length ? ' ⚠ ' + data.warnings.join(', ') : ''}`;
           logUserAction('INTERPRET', text.substring(0, 200));
           if (!data.recognized) { openNlqGuideModal(); }
         } catch (err) { nlqInterpretResult.textContent = `오류: ${err.message}`; }
@@ -5846,11 +5846,11 @@ def render_user_dashboard_html(
         console.error('[MORI] loadDashboard error:', e);
         dashboardStatusEl.textContent = `❌ 대시보드 로드 실패: ${e.message}`;
         // 빈 데이터라도 placeholder 표시
-        if (!sourceCoverageEl.children.length) sourceCoverageEl.innerHTML = '<div class=\"empty\">데이터 소스가 아직 연결되지 않았습니다.</div>';
-        if (!latestStatusEl.children.length || latestStatusEl.querySelector('.empty')) latestStatusEl.innerHTML = '<div class=\"empty\">호스트 데이터 없음 — API 연결을 확인하세요.</div>';
-        if (!riskSummaryEl.children.length || riskSummaryEl.querySelector('.empty')) riskSummaryEl.innerHTML = '<div class=\"empty\">위험 요약 데이터 없음</div>';
-        if (!recentActivityEl.children.length || recentActivityEl.querySelector('.empty')) recentActivityEl.innerHTML = '<div class=\"empty\">최근 활동 데이터 없음</div>';
-        overviewCardsEl.innerHTML = '<div class=\"empty\" style=\"padding:16px;color:#fca5a5\">⚠️ 대시보드 데이터를 불러올 수 없습니다. 서버 상태를 확인하세요.</div>';
+        if (!sourceCoverageEl.children.length) sourceCoverageEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_source_connected','데이터 소스가 아직 연결되지 않았습니다.') + '</div>';
+        if (!latestStatusEl.children.length || latestStatusEl.querySelector('.empty')) latestStatusEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_host_api','호스트 데이터 없음 — API 연결을 확인하세요.') + '</div>';
+        if (!riskSummaryEl.children.length || riskSummaryEl.querySelector('.empty')) riskSummaryEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_risk_summary','위험 요약 데이터 없음') + '</div>';
+        if (!recentActivityEl.children.length || recentActivityEl.querySelector('.empty')) recentActivityEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_recent_activity','최근 활동 데이터 없음') + '</div>';
+        overviewCardsEl.innerHTML = '<div class=\"empty\" style=\"padding:16px;color:#fca5a5\">' + tt('dash.dyn.dash_load_fail_full','⚠️ 대시보드 데이터를 불러올 수 없습니다. 서버 상태를 확인하세요.') + '</div>';
       }
     }
 
