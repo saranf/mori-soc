@@ -32,6 +32,13 @@ from mori_soc.api.templates import (
     USER_DASHBOARD_GUIDE_LABELS,
     DEFAULT_USER_DASHBOARD_PREFERENCES,
 )
+from mori_soc.api.auth import (
+    DEFAULT_ROLE_PERMISSIONS,
+    build_session_auth_middleware,
+    default_local_users,
+    read_auth_config,
+    verify_credentials,
+)
 
 try:
     from fastapi import FastAPI, HTTPException, Request
@@ -42,16 +49,6 @@ except ImportError:  # pragma: no cover - exercised by runtime guard tests
     HTMLResponse = None
     RedirectResponse = None
     StreamingResponse = None
-
-try:
-    from ldap3 import Server as _LdapServer, Connection as _LdapConnection, ALL as _LDAP_ALL, SUBTREE as _LDAP_SUBTREE
-    _ldap3_available = True
-except ImportError:  # pragma: no cover
-    _LdapServer = None
-    _LdapConnection = None
-    _LDAP_ALL = None
-    _LDAP_SUBTREE = None
-    _ldap3_available = False
 
 
 logger = logging.getLogger("mori_soc.api")
@@ -785,29 +782,6 @@ def _merge_dashboard_preferences(current: Mapping[str, Any], payload: Mapping[st
     }
 
 
-def _ldap_verify(username: str, password: str, ldap_url: str, bind_dn: str, bind_pw: str, base_dn: str, user_attr: str) -> bool:
-    """Synchronous LDAP credential verification. Returns True if authenticated."""
-    if not _ldap3_available or _LdapServer is None:
-        return False
-    try:
-        server = _LdapServer(ldap_url, get_info=_LDAP_ALL, connect_timeout=5)
-        user_dn: str
-        if bind_dn and base_dn:
-            # Search-then-bind: use service account to find the user DN
-            admin_conn = _LdapConnection(server, bind_dn, bind_pw, auto_bind=True)
-            admin_conn.search(base_dn, f"({user_attr}={username})", search_scope=_LDAP_SUBTREE, attributes=["dn"])
-            if not admin_conn.entries:
-                return False
-            user_dn = str(admin_conn.entries[0].entry_dn)
-        else:
-            # Simple bind: construct DN directly
-            user_dn = f"{user_attr}={username},{base_dn}" if base_dn else f"{user_attr}={username}"
-        conn = _LdapConnection(server, user_dn, password, auto_bind=True)
-        return conn.bound
-    except Exception:
-        return False
-
-
 # ── i18n shared runtime ──────────────────────────────────────────────────────
 # The runtime script + translation dictionaries live in ``i18n.py`` and are
 # imported at the top of this module (Task J-1 modularization). The login/signup
@@ -828,25 +802,14 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     # Per-user dashboard preferences: username -> preferences dict
     user_dashboard_prefs: dict[str, dict[str, Any]] = {}
 
-    # ── Auth configuration ────────────────────────────────────────────────────
-    _ldap_url = os.environ.get("LDAP_URL", "").strip()
-    _ldap_bind_dn = os.environ.get("LDAP_BIND_DN", "").strip()
-    _ldap_bind_pw = os.environ.get("LDAP_BIND_PASSWORD", "").strip()
-    _ldap_base_dn = os.environ.get("LDAP_BASE_DN", "").strip()
-    _ldap_user_attr = os.environ.get("LDAP_USER_ATTR", "uid").strip()
-    _ldap_enabled = bool(_ldap_url and _ldap3_available)
-    _admin_user = os.environ.get("MORI_ADMIN_USER", "admin")
-    _admin_password = os.environ.get("MORI_ADMIN_PASSWORD", "1234")
-    _auth_enabled = bool(os.environ.get("MORI_AUTH_ENABLED", "") or _ldap_enabled)
+    # ── Auth configuration (env-driven; see auth.py) ──────────────────────────
+    _auth_config = read_auth_config()
+    _auth_enabled = _auth_config.auth_enabled
 
     # Predefined local accounts: username -> {password, role}
-    local_users: dict[str, dict[str, str]] = {
-        _admin_user: {"password": _admin_password, "role": "admin"},
-        "security": {"password": "1234", "role": "security"},
-        "monitor": {"password": "1234", "role": "monitor"},
-        "auditor": {"password": "1234", "role": "auditor"},
-        "helpdesk": {"password": "1234", "role": "helpdesk"},
-    }
+    local_users: dict[str, dict[str, str]] = default_local_users(
+        _auth_config.admin_user, _auth_config.admin_password
+    )
 
     # Sessions: token -> {username, role, created_at}
     sessions: dict[str, dict[str, Any]] = {}
@@ -867,15 +830,8 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
         if len(action_audit_log) > 2000:
             del action_audit_log[:-2000]
 
-    # Role permissions: role -> list of allowed tab ids
-    _DEFAULT_ROLE_PERMISSIONS: dict[str, list[str]] = {
-        "admin": ["dashboard", "triage", "incidents", "assets", "compliance", "guides"],
-        "security": ["dashboard", "triage", "incidents", "assets", "compliance", "guides"],
-        "monitor": ["dashboard", "triage", "assets", "compliance", "guides"],
-        "auditor": ["dashboard", "compliance", "guides"],
-        "helpdesk": ["dashboard", "assets", "guides"],
-        "user": ["dashboard", "assets", "guides"],
-    }
+    # Role permissions: role -> list of allowed tab ids (defaults from auth.py)
+    _DEFAULT_ROLE_PERMISSIONS = DEFAULT_ROLE_PERMISSIONS
     role_permissions: dict[str, list[str]] = {k: list(v) for k, v in _DEFAULT_ROLE_PERMISSIONS.items()}
 
     # Per-user tab overrides: username -> list of allowed tab ids (overrides role default)
@@ -883,50 +839,10 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
 
     def _verify_credentials(username: str, password: str) -> bool:
         """LDAP(설정 시) → 로컬 계정 순으로 인증."""
-        if _ldap_enabled:
-            try:
-                ok = _ldap_verify(username, password, _ldap_url, _ldap_bind_dn, _ldap_bind_pw, _ldap_base_dn, _ldap_user_attr)
-                if ok:
-                    return True
-            except Exception:
-                pass
-        user = local_users.get(username)
-        return user is not None and user["password"] == password
+        return verify_credentials(username, password, _auth_config, local_users)
 
     if _auth_enabled:
-        from starlette.middleware.base import BaseHTTPMiddleware
-        from starlette.requests import Request as _StarletteRequest
-        from starlette.responses import Response as _StarletteResponse
-
-        _AUTH_PUBLIC_PATHS = {
-            "/login", "/signup-request",
-            "/auth/login", "/auth/logout", "/auth/signup-request", "/auth/me",
-            "/docs", "/openapi.json", "/redoc", "/health",
-        }
-
-        class _SessionAuthMiddleware(BaseHTTPMiddleware):
-            async def dispatch(self, request: _StarletteRequest, call_next):  # type: ignore[override]
-                path = request.url.path
-                if path in _AUTH_PUBLIC_PATHS or path.startswith("/redoc") or path.startswith("/static"):
-                    return await call_next(request)
-                token = request.cookies.get("mori_session", "")
-                if token and token in sessions:
-                    return await call_next(request)
-                # Not authenticated
-                accept = request.headers.get("accept", "")
-                if "text/html" in accept:
-                    return _StarletteResponse(
-                        status_code=302,
-                        headers={"location": f"/login?next={_url_quote(path)}"},
-                        content="",
-                    )
-                return _StarletteResponse(
-                    status_code=401,
-                    content='{"detail":"Unauthorized. Please login at /login"}',
-                    media_type="application/json",
-                )
-
-        app.add_middleware(_SessionAuthMiddleware)
+        app.add_middleware(build_session_auth_middleware(sessions))
 
     # Triage: alert_id -> {status, analyst, note, updated_at}
     triage_store: dict[str, dict[str, Any]] = {}
