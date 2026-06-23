@@ -35,7 +35,7 @@
 
 ### MORI 통합 운영 UI (`/ui`)
 
-- **인증 / RBAC** — 로그인, 세션, 가입 요청·승인, admin/security/moniter 역할별 탭 on·off
+- **인증 / RBAC** — 로그인, 세션, 가입 요청·승인, admin/security/monitor 역할별 탭 on·off
 - **자산 관리** — 호스트별 담당자·팀·카테고리 + **서버 자산 중요도 수동 재정의** + 변경 감사 로그
 - **취약점 관리** — 호스트 단위 + **CVE별 조치 계획/예외** (작성자·목표일·만료일·사유) + 호스트↔CVE 충돌 안내 모달
 - **Alert Triage** — 3단계 상태 + 분석관/**변경자 actor 분리 기록** + 변경 history
@@ -139,4 +139,4 @@
 
 ## 7. 비고
 
-현재 저장소는 **"통합 운영 UI + 감사 증적이 PostgreSQL에 영속화된 단계(M2-1 완료)"** 입니다. 기능 정의서의 ISMS-P / ISO 27001 요구사항 중 **운영자 워크플로우와 변경 이력 누적은 충족**되고 6종 운영 store는 재시작 후에도 유지됩니다. 다음 단계는 **config 기반 read-only 소스 온보딩(N-series)** 으로 기존 도구를 무변경 연결한 뒤 그 위에서 **실시간 수집(폴러 활성화)** 으로 확장하는 것입니다. MORI는 기존 도구를 대체하지 않고 위에 얹는 read-only 증적 레이어를 지향합니다. 각 솔루션 내부 설정(Fleet query, Wazuh rule, Zabbix template, Grafana panel)은 별도 트랙으로 점진 보강합니다.
+현재 저장소는 **"통합 운영 UI + 감사 증적이 PostgreSQL에 영속화된 단계(M2-1 완료)"** 입니다. ISMS-P / ISO 27001 대응에 필요한 **운영자 워크플로우와 변경 이력 누적을 지원하는 기반은 구현**되었고 6종 운영 store는 재시작 후에도 유지됩니다. 다음 단계는 **config 기반 read-only 소스 온보딩(N-series)** 으로 기존 도구를 무변경 연결한 뒤 그 위에서 **실시간 수집(폴러 활성화)** 으로 확장하는 것입니다. MORI는 기존 도구를 대체하지 않고 위에 얹는 read-only 증적 레이어를 지향합니다. 각 솔루션 내부 설정(Fleet query, Wazuh rule, Zabbix template, Grafana panel)은 별도 트랙으로 점진 보강합니다.

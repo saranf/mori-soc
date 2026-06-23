@@ -78,7 +78,7 @@ flowchart LR
     subgraph REPO["저장소 (repositories)"]
         PG["PostgreSQL<br/>정규화 시드 데이터<br/>(hosts/alerts/vulns/observations…)"]
         MEM["InMemoryRepository<br/>(질의 캐시 — 현재 운영)"]
-        STR["UI 운영 상태 (인메모리)<br/>asset_owners / asset_audit_log / vuln_actions<br/>triage_store / incident_store / user_profiles"]
+        STR["UI 운영 상태<br/>PostgreSQL-backed cache<br/>asset_owners / asset_audit_log / vuln_actions<br/>triage_store / incident_store / user_profiles"]
     end
 
     subgraph API["MORI API (api/)"]
@@ -148,11 +148,11 @@ flowchart LR
 
 ## 🗺️ 현재 상태 한눈에 보기
 
-### ✅ What works now — 시드 + 인메모리 store 기반 동작
+### ✅ What works now — 시드 보안 데이터 + PostgreSQL 영속 UI 운영 상태
 
 | 카테고리 | 기능 | 비고 |
 |---|---|---|
-| **인증/권한** | 로그인 / 세션 / RBAC (역할별 탭 on·off) / 가입 요청·승인 | 데모 계정 `admin` / `security` / `moniter` (비밀번호 `1234`) — **seeded sample data only · 데모 전용. 운영 배포 시 반드시 변경** |
+| **인증/권한** | 로그인 / 세션 / RBAC (역할별 탭 on·off) / 가입 요청·승인 | 데모 계정 `admin` / `security` / `monitor` (비밀번호 `1234`) — **seeded sample data only · 데모 전용. 운영 배포 시 반드시 변경** |
 | **개요 (Overview)** | 자산·경보·취약점 요약 카드 + Critical 취약점 상세 모달에 **조치 계획 / 조치 예외** 컬럼 노출 | 호스트별 진행 상태를 대시보드에서 즉시 확인 |
 | **자산 (서버 / PC / Trivy)** | 호스트별 담당자·팀·카테고리 편집 + **서버 자산 중요도 수동 재정의** | 자동 분류(asset_classifier)보다 우선 적용. 변경분 감사 로그 |
 | **취약점 관리 (Trivy)** | 호스트 단위 조치 계획 / 조치 예외 + **CVE별 상세 조치 계획 / 조치 예외** | 작성자·목표일·만료일·사유 기록. 충돌 안내 모달 |
@@ -242,7 +242,7 @@ flowchart LR
 
 ### 데모 공개 서버 (Demo Only)
 
-> ⚠️ **아래 URL과 계정은 포트폴리오 데모용 인스턴스입니다.** 시드 데이터 + 인메모리 store 기반이며, 실제 운영 데이터가 아닙니다. 운영 환경에서는 **반드시 자체 도메인·HTTPS·강력한 비밀번호로 재배포**해야 합니다.
+> ⚠️ **아래 URL과 계정은 포트폴리오 데모용 인스턴스입니다.** 시드 보안 데이터 + PostgreSQL 영속 운영 상태 기반이며, 실제 운영 데이터가 아닙니다. 운영 환경에서는 **반드시 자체 도메인·HTTPS·강력한 비밀번호로 재배포**해야 합니다.
 
 | 항목 | 데모 값 | 비고 |
 |---|---|---|
@@ -251,7 +251,7 @@ flowchart LR
 | Grafana | `mori.rmstudio.co.kr:13000` | 데모 전용 |
 | Zabbix Web | `mori.rmstudio.co.kr:18081` | 데모 전용 |
 | FleetDM | `mori.rmstudio.co.kr:1337` | 데모 전용 |
-| 데모 계정 | `admin` / `security` / `moniter` (비밀번호 `1234`) | **seeded sample data only · 데모 전용. 운영 배포 시 즉시 비밀번호 변경 + RBAC 재설정 필수** |
+| 데모 계정 | `admin` / `security` / `monitor` (비밀번호 `1234`) | **seeded sample data only · 데모 전용. 운영 배포 시 즉시 비밀번호 변경 + RBAC 재설정 필수** |
 
 배포 동작: `docker compose down && docker compose up -d` (GitHub Actions가 `/backup/rmstudio/mori`로 rsync 후 동일 명령을 수행).
 
@@ -542,7 +542,7 @@ docker compose up -d mori-api
 | Group Memberships | 8 | Domain Admins, Developers, DBA 등 |
 | Source Syncs | 4 | Zabbix/Fleet/Trivy/Wazuh 수집 상태 |
 
-API 인메모리 저장(재시작 시 초기화)으로 별도 생성되는 항목:
+데모 시드 및 운영 중 생성되는 운영 상태 (6종 UI 운영 store는 PostgreSQL에 write-through 영속화 — 재시작 후에도 유지):
 
 | 항목 | 수량 | 생성 시점 |
 |---|---|---|
