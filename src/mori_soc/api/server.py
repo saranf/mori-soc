@@ -21,6 +21,7 @@ from mori_soc.api.auth import (
     verify_credentials,
 )
 from mori_soc.api.routes import RouteContext
+from mori_soc.repositories import InMemoryStateRepository, StateRepository
 from mori_soc.api.payloads import (
     build_dashboard_payload,
     build_pdca_payload,
@@ -97,6 +98,25 @@ def create_query_service_from_env() -> QueryService:
     raise RuntimeError(f"Unsupported MORI_QUERY_BACKEND: {backend}")
 
 
+def create_state_repository_from_env() -> StateRepository:
+    """Select the operational-state backend from env (mirrors query-service selection).
+
+    Defaults to in-memory unless ``MORI_DATABASE_URL`` is set; ``MORI_QUERY_BACKEND``
+    forces the choice. Postgres requires ``MORI_DATABASE_URL``.
+    """
+    database_url = os.getenv("MORI_DATABASE_URL", "").strip()
+    backend = os.getenv("MORI_QUERY_BACKEND", "postgres" if database_url else "memory").strip().lower()
+    if backend == "memory":
+        return InMemoryStateRepository()
+    if backend == "postgres":
+        if not database_url:
+            raise RuntimeError("MORI_DATABASE_URL must be set when MORI_QUERY_BACKEND=postgres")
+        from mori_soc.repositories import PostgresStateRepository
+
+        return PostgresStateRepository(database_url)
+    raise RuntimeError(f"Unsupported MORI_QUERY_BACKEND: {backend}")
+
+
 # ── i18n shared runtime ──────────────────────────────────────────────────────
 # The runtime script + translation dictionaries live in ``i18n.py`` and are
 # imported at the top of this module (Task J-1 modularization). The login/signup
@@ -105,11 +125,21 @@ def create_query_service_from_env() -> QueryService:
 # :func:`_i18n_script`.
 
 
-def create_app(service: QueryService | None = None, service_factory=None) -> Any:
+def create_app(
+    service: QueryService | None = None,
+    service_factory=None,
+    state_repo: StateRepository | None = None,
+) -> Any:
     if FastAPI is None or HTTPException is None:
         raise RuntimeError(
             "FastAPI is not installed. Install fastapi and uvicorn to run MVC 1 HTTP server."
         )
+
+    # Operational-state persistence backend (M2-1.0d). Defaults to in-memory,
+    # which loads empty and write-throughs to nothing observable — identical to
+    # the pre-persistence behaviour relied on by the unit tests / lossless gate.
+    if state_repo is None:
+        state_repo = InMemoryStateRepository()
 
     app = FastAPI(title="MORI SOC — Audit-Ready Security Operations API", version="0.2.0")
     insecure_defaults = _warn_insecure_defaults()
@@ -176,6 +206,18 @@ def create_app(service: QueryService | None = None, service_factory=None) -> Any
     vuln_actions: dict[str, dict[str, Any]] = {}
     # User profiles: username -> {display_name, department, assigned_servers: [hostname...], updated_at}
     user_profiles: dict[str, dict[str, Any]] = {}
+
+    # ── Warm caches from the persistence backend (M2-1.0d) ────────────────────
+    # Cache-aside: load persisted operational state once at boot so the dicts
+    # above act as a read cache. The default in-memory backend returns empty,
+    # leaving behaviour identical to the pre-persistence path; a Postgres backend
+    # repopulates prior state before the demo seed (which only fills gaps).
+    triage_store.update(state_repo.load_triage())
+    incidents.update(state_repo.load_incidents())
+    asset_owners.update(state_repo.load_asset_owners())
+    asset_audit_log.extend(state_repo.load_asset_audit_log())
+    vuln_actions.update(state_repo.load_vuln_actions())
+    user_profiles.update(state_repo.load_user_profiles())
 
     # ── Demo seed (in-memory) ────────────────────────────────────────────────
     # triage_store / asset_owners / user_profiles 는 런타임 인메모리 저장소라 SQL 시드로
@@ -786,8 +828,41 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         user_dashboard_prefs=user_dashboard_prefs,
         admin_dashboard_preferences=admin_dashboard_preferences,
         role_permissions=role_permissions,
+        state_repo=state_repo,
     )
     ctx.log_action = _log_action
+
+    # ── Write-through hooks (M2-1.0d) ─────────────────────────────────────────
+    # Handlers mutate the in-memory cache then call ctx.persist_*(key) to flush
+    # that single record through to state_repo (no-op for the in-memory backend).
+    def _persist_user_profile(username: str) -> None:
+        state_repo.save_user_profile(username, user_profiles[username])
+
+    def _persist_asset_owner(hostname: str) -> None:
+        state_repo.save_asset_owner(hostname, asset_owners[hostname])
+
+    def _delete_asset_owner(hostname: str) -> None:
+        state_repo.delete_asset_owner(hostname)
+
+    def _persist_asset_audit(record: dict[str, Any]) -> None:
+        state_repo.append_asset_audit(record)
+
+    def _persist_vuln_action(vuln_id: str) -> None:
+        state_repo.save_vuln_action(vuln_id, vuln_actions[vuln_id])
+
+    def _persist_triage(alert_id: str) -> None:
+        state_repo.save_triage(alert_id, triage_store[alert_id])
+
+    def _persist_incident(incident_id: str) -> None:
+        state_repo.save_incident(incident_id, incidents[incident_id])
+
+    ctx.persist_user_profile = _persist_user_profile
+    ctx.persist_asset_owner = _persist_asset_owner
+    ctx.delete_asset_owner = _delete_asset_owner
+    ctx.persist_asset_audit = _persist_asset_audit
+    ctx.persist_vuln_action = _persist_vuln_action
+    ctx.persist_triage = _persist_triage
+    ctx.persist_incident = _persist_incident
 
     def get_query_service() -> QueryService:
         if service is not None:
@@ -872,7 +947,10 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
 
 
 def create_app_from_env() -> Any:
-    return create_app(service_factory=create_query_service_from_env)
+    return create_app(
+        service_factory=create_query_service_from_env,
+        state_repo=create_state_repository_from_env(),
+    )
 
 
 __all__ = [
@@ -883,6 +961,7 @@ __all__ = [
     "create_app_from_env",
     "create_query_service",
     "create_query_service_from_env",
+    "create_state_repository_from_env",
     "interpret_query_text",
     "render_query_console_html",
     "render_user_dashboard_html",

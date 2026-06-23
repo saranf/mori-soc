@@ -72,5 +72,19 @@ class RouteContext:
     vuln_lookup: Optional[Callable[[str], tuple[Any, str, str]]] = None
     record_vuln_audit: Optional[Callable[..., None]] = None
 
+    # ── Persistence write-through hooks (M2-1.0d) ─────────────────────────────
+    # ``state_repo`` is the StateRepository backing the 6 operational stores.
+    # The ``persist_*`` closures read the just-mutated record back out of the
+    # in-memory cache and write it through; ``delete_asset_owner`` removes a row.
+    # With the default in-memory backend these are observably no-ops.
+    state_repo: Any = None
+    persist_user_profile: Optional[Callable[[str], None]] = None
+    persist_asset_owner: Optional[Callable[[str], None]] = None
+    delete_asset_owner: Optional[Callable[[str], None]] = None
+    persist_asset_audit: Optional[Callable[[dict[str, Any]], None]] = None
+    persist_vuln_action: Optional[Callable[[str], None]] = None
+    persist_triage: Optional[Callable[[str], None]] = None
+    persist_incident: Optional[Callable[[str], None]] = None
+
 
 __all__ = ["RouteContext"]
