@@ -1544,21 +1544,8 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         return {"audit_log": result, "total": len(result)}
 
     # ── Action Plans ──────────────────────────────────────────────────────────
-    @app.get("/assets/plans/{host_id}")
-    def plan_get(host_id: str) -> Any:
-        return action_plans.get(host_id, {"host_id": host_id, "text": "", "target_date": "", "updated_by": "", "updated_at": None})
-
-    @app.put("/assets/plans/{host_id}")
-    def plan_upsert(host_id: str, payload: dict[str, Any]) -> Any:
-        entry = {
-            "host_id": host_id,
-            "text": str(payload.get("text", "")).strip(),
-            "target_date": str(payload.get("target_date", "")).strip(),
-            "updated_by": str(payload.get("updated_by", "")).strip() or "unknown",
-            "updated_at": _isoformat(datetime.now(tz=timezone.utc)),
-        }
-        action_plans[host_id] = entry
-        return entry
+    from mori_soc.api.routes.plans import register_plans
+    register_plans(ctx)
 
     # ── Per-Vulnerability Actions (조치 계획 / 조치 예외) ─────────────────────
     def _vuln_action_default(vuln_id: str) -> dict[str, Any]:
