@@ -105,17 +105,17 @@
 - **감사 증적 리포트 미리보기 모달** (5종 CSV)
 - 인시던트 CSV 다운로드 시 안내 모달 (변경 이력 미포함 명시)
 
-### Phase 5. 데이터 신뢰성 (🔲 다음 작업)
+### Phase 5. 데이터 신뢰성 (🟡 진행 중)
 
-- 인메모리 store 6개를 **PostgreSQL 영속화** (`asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store`, `user_profiles`) — 신규 `schema/003_*` + `repositories` 계층 확장 필요(현재 6종 전용 매핑 없음)
-- **실시간 ingestion worker** — Fleet/Wazuh/Zabbix API 폴링 활성화 (`pollers/`)
+- 운영 store 6개 **PostgreSQL 영속화** ✅ 완료(M2-1) (`asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store`, `user_profiles`) — `schema/003_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through, 재시작 후 상태 유지
+- **실시간 ingestion worker** 🔲 — Fleet/Wazuh/Zabbix API 폴링 활성화 (`pollers/`)
 - collector lag / source freshness 시각화
 
 ## 5. 현재 기준 구현 가능한 세부 항목
 
 저장소만으로 바로 추가 구현하기 좋은 우선순위는 아래입니다.
 
-1. **인메모리 store → Postgres 매핑** (6개 store) — 신규 `schema/003_*` + `repositories` 계층(`base.py`/`postgres.py`) 확장 필요(`schema/002`는 ID/컴플라이언스용으로 무관). Task J로 `RouteContext` 주입 지점 단순화
+1. **운영 store → Postgres 매핑** (6개 store) ✅ 완료(M2-1) — `schema/003_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through, `tests/test_state_persistence.py` 라운드트립 검증
 2. **폴러 활성화** — Zabbix/Fleet/Wazuh API 키 환경변수 설정 + `pollers/worker.py`
 3. FleetDM용 osquery query pack 파일 추가
 4. Wazuh 룰/로컬 룰 추가
@@ -125,7 +125,7 @@
 
 가장 효율적인 다음 단계는 아래 순서입니다.
 
-1. **PostgreSQL 영속화** — Phase 2 Alpha의 모든 변경 이력을 재시작 후에도 유지
+1. **PostgreSQL 영속화** ✅ 완료(M2-1) — Phase 2의 6종 운영 store 변경 이력이 재시작 후에도 유지됨
 2. **실시간 폴링 활성화** — 시드 데이터 의존을 끊고 실데이터 기반으로 전환
 3. PDF 증적 리포트 출력 (현재 CSV 5종에 추가)
 4. Slack/Email 알림 연결
@@ -134,4 +134,4 @@
 
 ## 7. 비고
 
-현재 저장소는 **"통합 운영 UI + 감사 증적이 인메모리에서 동작하는 Alpha 단계"** 입니다. 기능 정의서의 ISMS-P / ISO 27001 요구사항 중 **운영자 워크플로우와 변경 이력 누적은 충족**되어 있으며, 다음 단계는 **데이터 영속성 + 실시간 수집** 입니다. 각 솔루션 내부 설정(Fleet query, Wazuh rule, Zabbix template, Grafana panel)은 별도 트랙으로 점진 보강합니다.
+현재 저장소는 **"통합 운영 UI + 감사 증적이 PostgreSQL에 영속화된 단계(M2-1 완료)"** 입니다. 기능 정의서의 ISMS-P / ISO 27001 요구사항 중 **운영자 워크플로우와 변경 이력 누적은 충족**되고 6종 운영 store는 재시작 후에도 유지되며, 다음 단계는 **실시간 수집(폴러 활성화)** 입니다. 각 솔루션 내부 설정(Fleet query, Wazuh rule, Zabbix template, Grafana panel)은 별도 트랙으로 점진 보강합니다.

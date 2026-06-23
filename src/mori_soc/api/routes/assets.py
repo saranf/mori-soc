@@ -32,6 +32,9 @@ def register_assets(ctx: RouteContext) -> None:
     action_plans = ctx.action_plans
     vuln_actions = ctx.vuln_actions
     _get_session_username = ctx.get_session_username
+    _persist_asset_owner = ctx.persist_asset_owner
+    _delete_asset_owner = ctx.delete_asset_owner
+    _persist_asset_audit = ctx.persist_asset_audit
 
     # ── Asset Owners ─────────────────────────────────────────────────────────
     @app.get("/assets/owners", tags=["Assets"])
@@ -68,7 +71,7 @@ def register_assets(ctx: RouteContext) -> None:
             old_val = old_entry.get(field, "")
             new_val = entry[field]
             if new_val != old_val:
-                asset_audit_log.append({
+                audit_entry = {
                     "log_id": str(uuid.uuid4()),
                     "hostname": hostname,
                     "field": field,
@@ -76,8 +79,11 @@ def register_assets(ctx: RouteContext) -> None:
                     "new_value": new_val,
                     "changed_by": changed_by,
                     "changed_at": now_str,
-                })
+                }
+                asset_audit_log.append(audit_entry)
+                _persist_asset_audit(audit_entry)
         asset_owners[hostname] = entry
+        _persist_asset_owner(hostname)
         return entry
 
     @app.delete("/assets/owners/{hostname}")
@@ -85,6 +91,7 @@ def register_assets(ctx: RouteContext) -> None:
         if hostname not in asset_owners:
             raise HTTPException(status_code=404, detail="owner not found")
         asset_owners.pop(hostname)
+        _delete_asset_owner(hostname)
         return {"deleted": hostname}
 
     # ── Asset Collection Board ───────────────────────────────────────────────

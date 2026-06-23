@@ -25,6 +25,8 @@ def register_vulnerabilities(ctx: RouteContext) -> None:
     asset_audit_log = ctx.asset_audit_log
     vuln_actions = ctx.vuln_actions
     _get_session_username = ctx.get_session_username
+    _persist_asset_audit = ctx.persist_asset_audit
+    _persist_vuln_action = ctx.persist_vuln_action
 
     def _vuln_action_default(vuln_id: str) -> dict[str, Any]:
         return {
@@ -66,7 +68,7 @@ def register_vulnerabilities(ctx: RouteContext) -> None:
             new_val = new_entry.get(fld, "")
             if old_val == new_val:
                 continue
-            asset_audit_log.append({
+            audit_entry = {
                 "log_id": str(uuid.uuid4()),
                 "hostname": hostname,
                 "field": f"vuln_{fld} [{cve_label}]",
@@ -74,7 +76,9 @@ def register_vulnerabilities(ctx: RouteContext) -> None:
                 "new_value": new_val,
                 "changed_by": changed_by,
                 "changed_at": now_str,
-            })
+            }
+            asset_audit_log.append(audit_entry)
+            _persist_asset_audit(audit_entry)
 
     @app.get("/vulnerabilities/{vuln_id}/action", tags=["Vulnerabilities"])
     def vuln_action_get(vuln_id: str) -> Any:
@@ -94,6 +98,7 @@ def register_vulnerabilities(ctx: RouteContext) -> None:
         entry["plan_updated_by"] = str(payload.get("plan_updated_by", "")).strip() or "unknown"
         entry["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
         vuln_actions[vuln_id] = entry
+        _persist_vuln_action(vuln_id)
         changed_by = entry["plan_updated_by"] if entry["plan_updated_by"] != "unknown" else (_get_session_username(request) or "unknown")
         _record_vuln_audit(hostname, cve_label, old_entry, entry, changed_by, entry["updated_at"], ("plan_text", "plan_target_date"))
         return entry
@@ -110,6 +115,7 @@ def register_vulnerabilities(ctx: RouteContext) -> None:
         entry["exception_updated_by"] = str(payload.get("exception_updated_by", "")).strip() or "unknown"
         entry["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
         vuln_actions[vuln_id] = entry
+        _persist_vuln_action(vuln_id)
         changed_by = entry["exception_updated_by"] if entry["exception_updated_by"] != "unknown" else (_get_session_username(request) or "unknown")
         _record_vuln_audit(hostname, cve_label, old_entry, entry, changed_by, entry["updated_at"], ("exception_until", "exception_reason"))
         return entry
@@ -127,6 +133,7 @@ def register_vulnerabilities(ctx: RouteContext) -> None:
         entry["exception_reason"] = ""
         entry["exception_updated_by"] = ""
         entry["updated_at"] = _isoformat(datetime.now(tz=timezone.utc))
+        _persist_vuln_action(vuln_id)
         changed_by = _get_session_username(request) or "unknown"
         _record_vuln_audit(hostname, cve_label, old_entry, entry, changed_by, entry["updated_at"], ("exception_until", "exception_reason"))
         return {"ok": True, "vuln_id": vuln_id}

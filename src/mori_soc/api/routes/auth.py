@@ -32,6 +32,7 @@ def register_auth(ctx: RouteContext) -> None:
     role_permissions = ctx.role_permissions
     _verify_credentials = ctx.verify_credentials
     _log_action = ctx.log_action
+    _persist_user_profile = ctx.persist_user_profile
     _DEFAULT_ROLE_PERMISSIONS = DEFAULT_ROLE_PERMISSIONS
 
     @app.get("/login", include_in_schema=False, response_class=HTMLResponse)
@@ -181,6 +182,7 @@ def register_auth(ctx: RouteContext) -> None:
             "assigned_servers": assigned_servers,
             "updated_at": _isoformat(datetime.now(tz=timezone.utc)),
         }
+        _persist_user_profile(uname)
         return {"ok": True, "username": uname, **_user_profile(uname)}
 
 

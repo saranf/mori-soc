@@ -24,6 +24,7 @@ def register_incidents(ctx: RouteContext) -> None:
     incidents = ctx.incidents
     asset_owners = ctx.asset_owners
     _get_session_username = ctx.get_session_username
+    _persist_incident = ctx.persist_incident
 
     @app.get("/incidents", tags=["Incidents"])
     def incidents_list(date_from: str = "", date_to: str = "", search: str = "", format: str = "json") -> Any:
@@ -133,6 +134,7 @@ def register_incidents(ctx: RouteContext) -> None:
             "updated_at": now_str,
         }
         incidents[incident["incident_id"]] = incident
+        _persist_incident(incident["incident_id"])
         return incident
 
     @app.patch("/incidents/{incident_id}", tags=["Incidents"])
@@ -187,6 +189,7 @@ def register_incidents(ctx: RouteContext) -> None:
         if "alert_ids" in payload:
             incident["alert_ids"] = list(payload["alert_ids"] or [])
         incident["updated_at"] = now_str
+        _persist_incident(incident_id)
         return incident
 
     @app.post("/incidents/{incident_id}/notes", tags=["Incidents"])
@@ -205,6 +208,7 @@ def register_incidents(ctx: RouteContext) -> None:
         }
         incident["notes"].append(note)
         incident["updated_at"] = note["created_at"]
+        _persist_incident(incident_id)
         return note
 
 

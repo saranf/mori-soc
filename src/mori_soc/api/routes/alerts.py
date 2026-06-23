@@ -22,6 +22,7 @@ def register_alerts(ctx: RouteContext) -> None:
     triage_store = ctx.triage_store
     webhooks = ctx.webhooks
     _get_session_username = ctx.get_session_username
+    _persist_triage = ctx.persist_triage
 
     @app.get("/alerts", tags=["Alerts"])
     def alerts_list() -> dict[str, Any]:
@@ -57,6 +58,7 @@ def register_alerts(ctx: RouteContext) -> None:
             "changed_by": changed_by,
             "changed_at": entry["updated_at"],
         })
+        _persist_triage(alert_id)
         # Slack 알림: reviewing/resolved 전환 시
         if status in {"reviewing", "resolved"} and webhooks:
             store = get_query_service().store
