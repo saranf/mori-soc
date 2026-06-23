@@ -798,6 +798,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         admin_dashboard_preferences=admin_dashboard_preferences,
         role_permissions=role_permissions,
     )
+    ctx.log_action = _log_action
 
     def get_query_service() -> QueryService:
         if service is not None:
@@ -958,63 +959,9 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         }
         return {"ok": True, "username": uname, **_user_profile(uname)}
 
-    @app.get("/admin/role-permissions", tags=["Admin"])
-    def get_role_permissions_api() -> dict[str, Any]:
-        """역할별 탭 권한 조회."""
-        return {"permissions": role_permissions}
-
-    @app.post("/admin/role-permissions", tags=["Admin"])
-    def update_role_permissions_api(payload: dict[str, Any]) -> dict[str, Any]:
-        """역할별 탭 권한 업데이트. {role: [tab_id, ...]}"""
-        nonlocal role_permissions
-        valid_tabs = {"dashboard", "triage", "incidents", "assets", "compliance", "guides"}
-        for role_key, tabs in payload.items():
-            if not isinstance(tabs, list):
-                raise HTTPException(status_code=400, detail=f"tabs for {role_key} must be a list")
-            role_permissions[role_key] = [t for t in tabs if t in valid_tabs]
-        return {"permissions": role_permissions}
-
-    @app.get("/admin/user-tab-permissions", tags=["Admin"])
-    def get_user_tab_permissions_api() -> dict[str, Any]:
-        """유저별 탭 권한 오버라이드 목록 + 전체 유저 목록 조회."""
-        # 로컬 유저 + 로그인 이력이 있는 세션 유저
-        all_users: dict[str, str] = {}
-        for uname, info in local_users.items():
-            all_users[uname] = info.get("role", "user")
-        for _tok, sess in sessions.items():
-            uname = sess.get("username", "")
-            if uname and uname not in all_users:
-                all_users[uname] = sess.get("role", "user")
-        users_list = []
-        for uname, role in sorted(all_users.items()):
-            role_default = role_permissions.get(role, _DEFAULT_ROLE_PERMISSIONS.get(role, ["dashboard", "assets", "guides"]))
-            override = user_tab_permissions.get(uname)
-            users_list.append({
-                "username": uname,
-                "role": role,
-                "role_default_tabs": role_default,
-                "user_tabs": override,  # None이면 역할 기본값 사용 중
-                "has_override": override is not None,
-            })
-        return {"users": users_list}
-
-    @app.post("/admin/user-tab-permissions/{username}", tags=["Admin"])
-    def set_user_tab_permissions_api(username: str, payload: dict[str, Any]) -> dict[str, Any]:
-        """특정 유저의 탭 권한 개별 설정. {"tabs": ["dashboard","assets",...]}"""
-        valid_tabs = {"dashboard", "triage", "incidents", "assets", "compliance", "guides"}
-        tabs = payload.get("tabs")
-        if not isinstance(tabs, list):
-            raise HTTPException(status_code=400, detail="tabs must be a list")
-        user_tab_permissions[username] = [t for t in tabs if t in valid_tabs]
-        _log_action("admin", "USER_TAB_PERM_SET", f"user={username} tabs={user_tab_permissions[username]}")
-        return {"username": username, "tabs": user_tab_permissions[username]}
-
-    @app.delete("/admin/user-tab-permissions/{username}", tags=["Admin"])
-    def reset_user_tab_permissions_api(username: str) -> dict[str, Any]:
-        """특정 유저의 탭 권한 개별 설정 초기화 (역할 기본값으로 복원)."""
-        removed = user_tab_permissions.pop(username, None)
-        _log_action("admin", "USER_TAB_PERM_RESET", f"user={username}")
-        return {"username": username, "reset": removed is not None}
+    # ── RBAC: role / user-tab permissions ─────────────────────────────────────
+    from mori_soc.api.routes.rbac import register_rbac
+    register_rbac(ctx)
 
     @app.get("/admin/action-audit-log", tags=["Admin"])
     def get_action_audit_log(limit: int = 500, username: str = "") -> dict[str, Any]:
