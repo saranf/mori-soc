@@ -78,8 +78,9 @@ flowchart LR
         STR["UI operational state (in-memory)<br/>asset_owners / asset_audit_log / vuln_actions<br/>triage_store / incident_store / user_profiles"]
     end
 
-    subgraph API["MORI API (api/server.py)"]
-        EP["FastAPI endpoints<br/>/dashboard /assets /alerts<br/>/vulnerabilities /incidents<br/>/compliance /reports /interpret /query"]
+    subgraph API["MORI API (api/)"]
+        SRV["server.py<br/>orchestrator (888 lines)<br/>builds RouteContext + registers modules"]
+        RT["routes/ package (16 domain modules)<br/>auth · assets · alerts · vulnerabilities<br/>incidents · compliance · query · pages<br/>rbac · audit · plans · guides · sources<br/>webhooks · dashboard_prefs"]
         UI["Unified ops UI (/ui)<br/>Overview · Assets · Trivy · Triage<br/>Incidents · Compliance · Reports"]
     end
 
@@ -103,11 +104,12 @@ flowchart LR
 
     MEM --> V & QS & RP
     QC --> QS
-    STR <--> EP
+    SRV --> RT
+    STR <-->|RouteContext| RT
 
-    V & QS & RP --> EP
-    EP --> UI
-    EP --> CSV
+    V & QS & RP --> RT
+    RT --> UI
+    RT --> CSV
     UI --> AUD
 
     PG --> MEM
@@ -115,6 +117,8 @@ flowchart LR
 ```
 
 > Solid lines = current operating flow. PostgreSQL holds **normalized seed data** (hosts/alerts/vulns/observations) which is loaded into InMemoryRepository at boot for queries. The 6 UI operational stores (triage / incidents / asset owners / vuln actions / asset audit log / user profiles) currently run in-memory; the **dashed line = next milestone (Postgres persistence + activating real-time pollers)**.
+>
+> **API structure (Task J done):** `server.py` is now a **thin orchestrator (888 lines)** that assembles in-memory state and helper closures into a `RouteContext`, then registers 16 domain modules. Each endpoint is owned by `register_<domain>(ctx)` in `routes/<domain>.py`, and the 6 in-memory stores are shared across modules via the `RouteContext`.
 
 ---
 
@@ -272,7 +276,17 @@ Deployment behavior: `docker compose down && docker compose up -d` (GitHub Actio
 ```text
 src/mori_soc/
 ├── api/
-│   ├── server.py          ← FastAPI endpoints + unified ops UI (/ui) HTML/JS
+│   ├── server.py          ← thin orchestrator (888 lines): builds RouteContext + registers modules
+│   ├── routes/            ← 16 domain route modules (register_<domain>(ctx))
+│   │   ├── context.py     ← RouteContext (stores + helper closures, ~35 fields)
+│   │   ├── auth.py · assets.py · alerts.py · vulnerabilities.py
+│   │   ├── incidents.py · compliance.py · query.py · pages.py
+│   │   ├── rbac.py · audit.py · plans.py · guides.py · sources.py
+│   │   └── webhooks.py · dashboard_prefs.py
+│   ├── templates.py       ← /ui · /login · dashboard · console HTML/JS renderers
+│   ├── payloads.py        ← dashboard/pdca/query payload builders
+│   ├── i18n.py            ← UI localization strings
+│   ├── auth.py            ← session middleware · credential verify · default role perms
 │   └── contracts.py       ← QueryRequest/Response, EvidenceRef, QueryScope
 ├── collectors/            ← Fleet · Wazuh · Zabbix · Trivy · LDAP collectors
 ├── pollers/               ← Per-source periodic pollers (worker.py orchestrates)
@@ -297,7 +311,7 @@ src/mori_soc/
 | Storage area | Current status | Location |
 |---|---|---|
 | **Normalized security data** (hosts / alerts / vulnerabilities / observations / fleet_query_results / control_checks / directory_accounts / source_syncs …) | PostgreSQL **seed schema + seed data** loaded. Boot-time load into InMemoryRepository for queries | `schema/001_phase1_initial.sql`, `repositories/postgres.py`, `repositories/memory.py` |
-| **UI operational state — 6 in-memory stores** (reset on restart) | Module-scope dicts in API process. Postgres persistence not yet connected | `api/server.py` |
+| **UI operational state — 6 in-memory stores** (reset on restart) | Created by `server.py`, injected via `RouteContext`, shared/mutated by domain route modules. Postgres persistence not yet connected | `api/server.py` → `api/routes/context.py` |
 | Phase 2 persistence (6 stores → Postgres) | 🔲 Planned — mapping code/schema ready in `schema/002_phase2_compliance_identity.sql` + `repositories/postgres.py` | — |
 
 #### In-memory 6-store detail
@@ -428,15 +442,22 @@ curl -OJ "http://localhost:18000/compliance/reports/monthly_operations?format=pd
 docker compose restart mori-api                   # Reload snapshot after restore
 ```
 
-### Code validation (when editing server.py)
+### Code validation (when editing routes / templates)
 
-`server.py` is very large and contains HTML/JS inside Python triple-quoted strings. Always validate after edits:
+Task J split routes into `api/routes/` and HTML/JS renderers into `api/templates.py`. To guarantee a lossless refactor, run the **3-gate check** after changes:
 
 ```bash
-python3 -c "import ast; ast.parse(open('src/mori_soc/api/server.py').read()); print('AST OK')"
+# 1) OpenAPI route diff — registered paths/methods/schema match the baseline
+#    compare _routes_snapshot.py output against _routes_baseline.json → must be IDENTICAL
+# 2) Rendered-template SHA — 6 hashes (login/signup/dashboard/console) match baseline
+#    python /app/_verify_templates.py
+# 3) Full unit-test suite
+docker compose run --rm --no-deps -e MORI_DEMO_SEED=0 \
+  -v "$(pwd)/tests:/app/tests" -v "$(pwd)/src:/app/src" \
+  mori-api python -m unittest discover -s tests   # → 115 OK (skipped=2)
 ```
 
-Additionally, a helper script that verifies brace balance in `<script>...</script>` blocks (used during the Audit-Ready work in this README) can catch JS breakage before runtime.
+Each domain's routes are owned by `register_<domain>(ctx)` in `routes/<domain>.py`; shared state/helpers are injected via the `RouteContext` in `routes/context.py`.
 
 ---
 
@@ -581,7 +602,7 @@ MORI SOC combines open-source security tools to provide a single ops screen, wit
 
 | ID | Work | Status |
 |---|---|---|
-| **J** (foundation) | Split `server.py` (~9,200 lines) into modules — i18n / templates / auth / routes. A refactor that lowers regression risk for the persistence/poller work that follows | 🔲 Next |
+| **J** (foundation) | Split `server.py` into modules — i18n / templates / auth / payloads + a `routes/` package (16 domain modules, `RouteContext`). **2,962→888 lines (-70%)**, lossless-verified (OpenAPI diff · SHA · 115 tests). A refactor that lowers regression risk for the persistence/poller work that follows | ✅ Done |
 | **M2-1** | Persist the 6 UI operational state stores (`asset_owners`·`asset_audit_log`·`vuln_actions`·`triage_store`·`incident_store`·`user_profiles`) to PostgreSQL (`repositories/postgres.py` + `schema/002_*.sql`) | 🔲 Top priority |
 | **M2-2** | Zabbix API polling integration verification — trigger/item → ingestion → alert/observation → triage → incident | 🟡 Collector done, verifying |
 | **M2-3** | Fleet / Wazuh REST poller connection — host/osquery·alert → asset/triage, reflect `source_syncs` freshness | 🔲 Parser·Collector ready |
@@ -631,7 +652,9 @@ Fastest context-restoration prompt when continuing work in a different environme
 This repo is MORI SOC-lite (Audit-Ready Compliance-Evidence Platform).
 Phase 1 (data collection/normalization core) is complete; Phase 2 (ops query
 engine + ops UI) is in Alpha. Read the "Current Status at a Glance" section of
-the README, src/mori_soc/api/server.py, docs/SECURITY_DATA_QUERY_PLATFORM.md,
+Task J (server.py modularization) is done — the API is now src/mori_soc/api/server.py
+(orchestrator) + src/mori_soc/api/routes/ (16 domain modules, RouteContext).
+Read the README, routes/context.py, docs/SECURITY_DATA_QUERY_PLATFORM.md,
 and schema/*.sql, then continue with the next priorities (persistence + real-time polling).
 ```
 

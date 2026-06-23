@@ -78,8 +78,9 @@ flowchart LR
         STR["UI 운영 상태 (인메모리)<br/>asset_owners / asset_audit_log / vuln_actions<br/>triage_store / incident_store / user_profiles"]
     end
 
-    subgraph API["MORI API (api/server.py)"]
-        EP["FastAPI 엔드포인트<br/>/dashboard /assets /alerts<br/>/vulnerabilities /incidents<br/>/compliance /reports /interpret /query"]
+    subgraph API["MORI API (api/)"]
+        SRV["server.py<br/>오케스트레이터 (888줄)<br/>RouteContext 조립 + 모듈 등록"]
+        RT["routes/ 패키지 (16 도메인 모듈)<br/>auth · assets · alerts · vulnerabilities<br/>incidents · compliance · query · pages<br/>rbac · audit · plans · guides · sources<br/>webhooks · dashboard_prefs"]
         UI["통합 운영 UI (/ui)<br/>Overview · Assets · Trivy · Triage<br/>Incidents · Compliance · Reports"]
     end
 
@@ -103,11 +104,12 @@ flowchart LR
 
     MEM --> V & QS & RP
     QC --> QS
-    STR <--> EP
+    SRV --> RT
+    STR <-->|RouteContext| RT
 
-    V & QS & RP --> EP
-    EP --> UI
-    EP --> CSV
+    V & QS & RP --> RT
+    RT --> UI
+    RT --> CSV
     UI --> AUD
 
     PG --> MEM
@@ -115,6 +117,8 @@ flowchart LR
 ```
 
 > 실선은 현재 운영 중인 흐름. PostgreSQL은 **정규화 시드 데이터**(hosts/alerts/vulns/observations)를 보유하며 부팅 시 InMemoryRepository로 로드되어 질의에 사용됩니다. UI 운영 상태(triage / incidents / asset owners / vuln actions / asset audit log / user profiles) 6종은 현재 인메모리에서 동작하며, **점선 = 다음 마일스톤(Postgres 영속화 + 실시간 폴러 활성화)** 입니다.
+>
+> **API 구조(Task J 완료):** `server.py`는 인메모리 상태와 헬퍼 클로저를 `RouteContext`로 조립한 뒤 16개 도메인 모듈을 등록하는 **얇은 오케스트레이터(888줄)** 로 슬림화되었습니다. 각 엔드포인트는 `routes/<domain>.py`의 `register_<domain>(ctx)`가 소유하며, 인메모리 6종 store는 `RouteContext`를 통해 모듈 간 공유됩니다.
 
 ---
 
@@ -270,7 +274,17 @@ flowchart LR
 ```text
 src/mori_soc/
 ├── api/
-│   ├── server.py          ← FastAPI 엔드포인트 + 통합 운영 UI(/ui) HTML/JS
+│   ├── server.py          ← 얇은 오케스트레이터(888줄): RouteContext 조립 + 모듈 등록
+│   ├── routes/            ← 16개 도메인 라우트 모듈 (register_<domain>(ctx))
+│   │   ├── context.py     ← RouteContext (store + 헬퍼 클로저 ~35 필드)
+│   │   ├── auth.py · assets.py · alerts.py · vulnerabilities.py
+│   │   ├── incidents.py · compliance.py · query.py · pages.py
+│   │   ├── rbac.py · audit.py · plans.py · guides.py · sources.py
+│   │   └── webhooks.py · dashboard_prefs.py
+│   ├── templates.py       ← /ui · /login · 대시보드 · 콘솔 HTML/JS 렌더러
+│   ├── payloads.py        ← dashboard/pdca/query payload 빌더
+│   ├── i18n.py            ← UI 다국어 문자열
+│   ├── auth.py            ← 세션 미들웨어 · 자격증명 검증 · 역할 기본 권한
 │   └── contracts.py       ← QueryRequest/Response, EvidenceRef, QueryScope
 ├── collectors/            ← Fleet · Wazuh · Zabbix · Trivy · LDAP 수집기
 ├── pollers/               ← 각 소스별 주기 폴러 (worker.py 가 오케스트레이션)
@@ -295,7 +309,7 @@ src/mori_soc/
 | 저장 영역 | 현재 상태 | 위치 |
 |---|---|---|
 | **Normalized security data** (hosts / alerts / vulnerabilities / observations / fleet_query_results / control_checks / directory_accounts / source_syncs …) | PostgreSQL **시드 스키마 + 시드 데이터** 적재. 부팅 시 InMemoryRepository로 로드되어 질의에 사용 | `schema/001_phase1_initial.sql`, `repositories/postgres.py`, `repositories/memory.py` |
-| **UI operational state — 인메모리 6종** (재시작 시 초기화) | API 프로세스의 모듈 스코프 dict로 동작 중. Postgres 영속화 미연결 | `api/server.py` |
+| **UI operational state — 인메모리 6종** (재시작 시 초기화) | `server.py`가 생성해 `RouteContext`로 주입, 도메인 라우트 모듈이 공유·변경. Postgres 영속화 미연결 | `api/server.py` → `api/routes/context.py` |
 | Phase 2 영속화 (6종 store → Postgres) | 🔲 Planned — `schema/002_phase2_compliance_identity.sql` + `repositories/postgres.py`에 매핑 코드/스키마 준비됨 | — |
 
 #### 인메모리 6종 store 상세
@@ -426,15 +440,22 @@ curl -OJ "http://localhost:18000/compliance/reports/monthly_operations?format=pd
 docker compose restart mori-api                   # 복원 후 snapshot 재로드
 ```
 
-### 코드 검증 (server.py 변경 시)
+### 코드 검증 (라우트 / 템플릿 변경 시)
 
-`server.py`는 매우 크고 HTML/JS가 Python triple-quoted string 안에 포함됩니다. 편집 후 항상 다음 검증을 수행합니다.
+Task J로 라우트는 `api/routes/`로, HTML/JS 렌더러는 `api/templates.py`로 분리되었습니다. 무손실 리팩터를 보장하기 위해 변경 후 **3중 게이트**를 수행합니다.
 
 ```bash
-python3 -c "import ast; ast.parse(open('src/mori_soc/api/server.py').read()); print('AST OK')"
+# 1) OpenAPI 라우트 diff — 등록된 경로/메서드/스키마가 baseline과 동일한지
+#    _routes_snapshot.py 출력과 _routes_baseline.json 비교 → IDENTICAL 이어야 함
+# 2) 렌더 템플릿 SHA — login/signup/dashboard/console 6종 해시가 baseline과 일치
+#    python /app/_verify_templates.py
+# 3) 전체 단위 테스트
+docker compose run --rm --no-deps -e MORI_DEMO_SEED=0 \
+  -v "$(pwd)/tests:/app/tests" -v "$(pwd)/src:/app/src" \
+  mori-api python -m unittest discover -s tests   # → 115 OK (skipped=2)
 ```
 
-추가로 `<script>...</script>` 블록의 중괄호 균형을 확인하는 헬퍼 스크립트(이 README의 Audit-Ready 작업에서 사용)를 활용해 JS 깨짐 여부를 사전에 잡을 수 있습니다.
+각 도메인 라우트는 `routes/<domain>.py`의 `register_<domain>(ctx)`가 소유하며, 공유 상태/헬퍼는 `routes/context.py`의 `RouteContext`를 통해 주입됩니다.
 
 ---
 
@@ -575,7 +596,7 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 
 | ID | 작업 | 상태 |
 |---|---|---|
-| **J** (기반) | `server.py`(~9,200줄) 모듈 분리 — i18n / templates / auth / routes. 이후 영속화·폴러 작업의 회귀 위험을 낮추는 리팩터 기반 | 🔲 다음 |
+| **J** (기반) | `server.py` 모듈 분리 — i18n / templates / auth / payloads + `routes/` 패키지(16 도메인 모듈, `RouteContext`). **2,962→888줄(-70%)**, 무손실 검증(OpenAPI diff·SHA·115 테스트). 이후 영속화·폴러 작업의 회귀 위험을 낮추는 리팩터 기반 | ✅ 완료 |
 | **M2-1** | UI 운영 상태 6종 store(`asset_owners`·`asset_audit_log`·`vuln_actions`·`triage_store`·`incident_store`·`user_profiles`) → PostgreSQL 영속화 (`repositories/postgres.py` + `schema/002_*.sql`) | 🔲 최우선 |
 | **M2-2** | Zabbix API polling 통합 검증 — trigger/item → ingestion → alert/observation → triage → incident | 🟡 Collector 완료, 검증 중 |
 | **M2-3** | Fleet / Wazuh REST poller 연결 — host/osquery·alert → asset/triage, `source_syncs` freshness 반영 | 🔲 Parser·Collector 준비됨 |
@@ -624,7 +645,9 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 ```
 이 저장소는 MORI SOC-lite (Audit-Ready Compliance-Evidence Platform).
 Phase 1(데이터 수집/정규화 코어) 완료, Phase 2(관제 질의 엔진 + 운영 UI) Alpha 운영 중.
-README의 "현재 상태 한눈에 보기"와 src/mori_soc/api/server.py,
+Task J(server.py 모듈 분리) 완료 — API는 src/mori_soc/api/server.py(오케스트레이터)
++ src/mori_soc/api/routes/ (16 도메인 모듈, RouteContext) 구조.
+README의 "현재 상태 한눈에 보기", routes/context.py,
 docs/SECURITY_DATA_QUERY_PLATFORM.md, schema/*.sql을 확인하고
 다음 우선순위(영속화 + 실시간 폴링)를 이어서 진행해줘.
 ```
