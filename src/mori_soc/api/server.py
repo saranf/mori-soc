@@ -25,6 +25,7 @@ from mori_soc.api.auth import (
     read_auth_config,
     verify_credentials,
 )
+from mori_soc.api.routes import RouteContext
 from mori_soc.api.payloads import (
     build_assets_payload,
     build_crosscheck_payload,
@@ -40,7 +41,6 @@ from mori_soc.api.payloads import (
     _merge_dashboard_preferences,
     _notify_all_webhooks,
     _query_csv_filename,
-    _send_slack_message,
     _source_coverage,
 )
 
@@ -776,6 +776,36 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         },
     }
 
+    # ── Route context (Task J-4b) ─────────────────────────────────────────────
+    # Shared in-memory state passed to the domain route modules in routes/.
+    # Helper closures (get_query_service 등) are wired onto ctx as they are
+    # defined below, immediately before the domain that first needs them.
+    ctx = RouteContext(
+        app=app,
+        service=service,
+        service_factory=service_factory,
+        auth_config=_auth_config,
+        auth_enabled=_auth_enabled,
+        insecure_defaults=insecure_defaults,
+        local_users=local_users,
+        sessions=sessions,
+        signup_requests=signup_requests,
+        action_audit_log=action_audit_log,
+        user_tab_permissions=user_tab_permissions,
+        triage_store=triage_store,
+        webhooks=webhooks,
+        incidents=incidents,
+        asset_owners=asset_owners,
+        asset_audit_log=asset_audit_log,
+        action_plans=action_plans,
+        vuln_actions=vuln_actions,
+        user_profiles=user_profiles,
+        guides=guides,
+        user_dashboard_prefs=user_dashboard_prefs,
+        admin_dashboard_preferences=admin_dashboard_preferences,
+        role_permissions=role_permissions,
+    )
+
     def get_query_service() -> QueryService:
         if service is not None:
             return service
@@ -1301,42 +1331,8 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         return {"alert_id": alert_id, "triage": entry}
 
     # ── Slack Webhooks ───────────────────────────────────────────────────────────
-    @app.get("/webhooks")
-    def webhooks_list() -> dict[str, Any]:
-        return {"webhooks": webhooks}
-
-    @app.post("/webhooks")
-    def webhooks_add(payload: dict[str, Any]) -> dict[str, Any]:
-        name = str(payload.get("name", "")).strip()
-        url = str(payload.get("url", "")).strip()
-        if not url.startswith("https://hooks.slack.com/") and not url.startswith("http"):
-            raise HTTPException(status_code=400, detail="url must be a valid webhook URL")
-        entry: dict[str, Any] = {
-            "id": str(uuid.uuid4()),
-            "name": name or "Slack Webhook",
-            "url": url,
-            "created_at": _isoformat(datetime.now(tz=timezone.utc)),
-        }
-        webhooks.append(entry)
-        return entry
-
-    @app.delete("/webhooks/{webhook_id}")
-    def webhooks_delete(webhook_id: str) -> dict[str, Any]:
-        idx = next((i for i, w in enumerate(webhooks) if w["id"] == webhook_id), None)
-        if idx is None:
-            raise HTTPException(status_code=404, detail="webhook not found")
-        removed = webhooks.pop(idx)
-        return {"deleted": removed["id"]}
-
-    @app.post("/webhooks/{webhook_id}/test")
-    def webhooks_test(webhook_id: str) -> dict[str, Any]:
-        wh = next((w for w in webhooks if w["id"] == webhook_id), None)
-        if wh is None:
-            raise HTTPException(status_code=404, detail="webhook not found")
-        ok, err = _send_slack_message(wh["url"], ":white_check_mark: MORI SOC 알림 테스트 메시지입니다.")
-        if not ok:
-            raise HTTPException(status_code=502, detail=f"slack delivery failed: {err}")
-        return {"ok": True}
+    from mori_soc.api.routes.webhooks import register_webhooks
+    register_webhooks(ctx)
 
     # ── Incidents ────────────────────────────────────────────────────────────────
     @app.get("/incidents", tags=["Incidents"])
