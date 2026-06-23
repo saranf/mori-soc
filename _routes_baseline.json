@@ -1,0 +1,630 @@
+[
+  {
+    "path": "/",
+    "methods": [
+      "GET"
+    ],
+    "name": "index",
+    "tags": []
+  },
+  {
+    "path": "/admin",
+    "methods": [
+      "GET"
+    ],
+    "name": "admin",
+    "tags": []
+  },
+  {
+    "path": "/admin/action-audit-log",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_action_audit_log",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "path": "/admin/action-audit-log",
+    "methods": [
+      "POST"
+    ],
+    "name": "record_action_audit",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "path": "/admin/audit-log",
+    "methods": [
+      "GET"
+    ],
+    "name": "audit_log_list",
+    "tags": [
+      "Assets"
+    ]
+  },
+  {
+    "path": "/admin/dashboard/preferences",
+    "methods": [
+      "GET"
+    ],
+    "name": "admin_dashboard_preferences_get",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "path": "/admin/dashboard/preferences",
+    "methods": [
+      "POST"
+    ],
+    "name": "admin_dashboard_preferences_update",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "path": "/admin/dashboard/user-preferences",
+    "methods": [
+      "GET"
+    ],
+    "name": "admin_user_prefs_list",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "path": "/admin/dashboard/user-preferences/{username}",
+    "methods": [
+      "DELETE"
+    ],
+    "name": "admin_user_prefs_reset",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "path": "/admin/role-permissions",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_role_permissions_api",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "path": "/admin/role-permissions",
+    "methods": [
+      "POST"
+    ],
+    "name": "update_role_permissions_api",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "path": "/admin/user-tab-permissions",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_user_tab_permissions_api",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "path": "/admin/user-tab-permissions/{username}",
+    "methods": [
+      "DELETE"
+    ],
+    "name": "reset_user_tab_permissions_api",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "path": "/admin/user-tab-permissions/{username}",
+    "methods": [
+      "POST"
+    ],
+    "name": "set_user_tab_permissions_api",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "path": "/alerts",
+    "methods": [
+      "GET"
+    ],
+    "name": "alerts_list",
+    "tags": [
+      "Alerts"
+    ]
+  },
+  {
+    "path": "/alerts/{alert_id}/triage",
+    "methods": [
+      "PATCH"
+    ],
+    "name": "alert_triage_update",
+    "tags": [
+      "Alerts"
+    ]
+  },
+  {
+    "path": "/assets",
+    "methods": [
+      "GET"
+    ],
+    "name": "assets_get",
+    "tags": [
+      "Assets"
+    ]
+  },
+  {
+    "path": "/assets/owners",
+    "methods": [
+      "GET"
+    ],
+    "name": "owners_list",
+    "tags": [
+      "Assets"
+    ]
+  },
+  {
+    "path": "/assets/owners",
+    "methods": [
+      "POST"
+    ],
+    "name": "owners_upsert",
+    "tags": []
+  },
+  {
+    "path": "/assets/owners/{hostname}",
+    "methods": [
+      "DELETE"
+    ],
+    "name": "owners_delete",
+    "tags": []
+  },
+  {
+    "path": "/assets/plans/{host_id}",
+    "methods": [
+      "GET"
+    ],
+    "name": "plan_get",
+    "tags": []
+  },
+  {
+    "path": "/assets/plans/{host_id}",
+    "methods": [
+      "PUT"
+    ],
+    "name": "plan_upsert",
+    "tags": []
+  },
+  {
+    "path": "/assets/refresh",
+    "methods": [
+      "POST"
+    ],
+    "name": "assets_refresh",
+    "tags": [
+      "Assets"
+    ]
+  },
+  {
+    "path": "/auth/login",
+    "methods": [
+      "POST"
+    ],
+    "name": "auth_login",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "path": "/auth/logout",
+    "methods": [
+      "GET"
+    ],
+    "name": "auth_logout",
+    "tags": []
+  },
+  {
+    "path": "/auth/me",
+    "methods": [
+      "GET"
+    ],
+    "name": "auth_me",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "path": "/auth/profile",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_profile",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "path": "/auth/profile",
+    "methods": [
+      "POST"
+    ],
+    "name": "update_profile",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "path": "/auth/signup-request",
+    "methods": [
+      "POST"
+    ],
+    "name": "submit_signup_request",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "path": "/auth/signup-requests",
+    "methods": [
+      "GET"
+    ],
+    "name": "list_signup_requests",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "path": "/auth/signup-requests/{req_id}",
+    "methods": [
+      "PATCH"
+    ],
+    "name": "update_signup_request",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "path": "/catalog",
+    "methods": [
+      "GET"
+    ],
+    "name": "catalog",
+    "tags": []
+  },
+  {
+    "path": "/compliance/crosscheck",
+    "methods": [
+      "GET"
+    ],
+    "name": "compliance_crosscheck",
+    "tags": [
+      "Compliance"
+    ]
+  },
+  {
+    "path": "/compliance/pdca",
+    "methods": [
+      "GET"
+    ],
+    "name": "compliance_pdca_summary",
+    "tags": [
+      "Compliance"
+    ]
+  },
+  {
+    "path": "/compliance/pdca/pending.csv",
+    "methods": [
+      "GET"
+    ],
+    "name": "compliance_pdca_pending_csv",
+    "tags": [
+      "Compliance"
+    ]
+  },
+  {
+    "path": "/compliance/reports",
+    "methods": [
+      "GET"
+    ],
+    "name": "compliance_reports_list",
+    "tags": [
+      "Compliance"
+    ]
+  },
+  {
+    "path": "/compliance/reports/{report_type}",
+    "methods": [
+      "GET"
+    ],
+    "name": "compliance_report_get",
+    "tags": [
+      "Compliance"
+    ]
+  },
+  {
+    "path": "/dashboard/preferences",
+    "methods": [
+      "GET"
+    ],
+    "name": "dashboard_preferences_get",
+    "tags": []
+  },
+  {
+    "path": "/dashboard/preferences",
+    "methods": [
+      "POST"
+    ],
+    "name": "dashboard_preferences_update",
+    "tags": []
+  },
+  {
+    "path": "/dashboard/summary",
+    "methods": [
+      "GET"
+    ],
+    "name": "dashboard_summary",
+    "tags": []
+  },
+  {
+    "path": "/docs",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "swagger_ui_html",
+    "tags": []
+  },
+  {
+    "path": "/docs/oauth2-redirect",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "swagger_ui_redirect",
+    "tags": []
+  },
+  {
+    "path": "/fleet/hosts",
+    "methods": [
+      "GET"
+    ],
+    "name": "fleet_hosts_get",
+    "tags": [
+      "Fleet"
+    ]
+  },
+  {
+    "path": "/guides",
+    "methods": [
+      "GET"
+    ],
+    "name": "guides_list",
+    "tags": []
+  },
+  {
+    "path": "/guides/{guide_id}",
+    "methods": [
+      "GET"
+    ],
+    "name": "guide_get",
+    "tags": []
+  },
+  {
+    "path": "/guides/{guide_id}",
+    "methods": [
+      "PUT"
+    ],
+    "name": "guide_upsert",
+    "tags": []
+  },
+  {
+    "path": "/health",
+    "methods": [
+      "GET"
+    ],
+    "name": "health",
+    "tags": []
+  },
+  {
+    "path": "/incidents",
+    "methods": [
+      "GET"
+    ],
+    "name": "incidents_list",
+    "tags": [
+      "Incidents"
+    ]
+  },
+  {
+    "path": "/incidents",
+    "methods": [
+      "POST"
+    ],
+    "name": "incidents_create",
+    "tags": [
+      "Incidents"
+    ]
+  },
+  {
+    "path": "/incidents/{incident_id}",
+    "methods": [
+      "PATCH"
+    ],
+    "name": "incidents_update",
+    "tags": [
+      "Incidents"
+    ]
+  },
+  {
+    "path": "/incidents/{incident_id}/notes",
+    "methods": [
+      "POST"
+    ],
+    "name": "incidents_add_note",
+    "tags": [
+      "Incidents"
+    ]
+  },
+  {
+    "path": "/interpret",
+    "methods": [
+      "POST"
+    ],
+    "name": "interpret",
+    "tags": []
+  },
+  {
+    "path": "/login",
+    "methods": [
+      "GET"
+    ],
+    "name": "login_page",
+    "tags": []
+  },
+  {
+    "path": "/openapi.json",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "openapi",
+    "tags": []
+  },
+  {
+    "path": "/query",
+    "methods": [
+      "POST"
+    ],
+    "name": "query",
+    "tags": []
+  },
+  {
+    "path": "/redoc",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "redoc_html",
+    "tags": []
+  },
+  {
+    "path": "/signup-request",
+    "methods": [
+      "GET"
+    ],
+    "name": "signup_request_page",
+    "tags": []
+  },
+  {
+    "path": "/trivy/vulnerabilities",
+    "methods": [
+      "GET"
+    ],
+    "name": "trivy_vulnerabilities_get",
+    "tags": [
+      "Trivy"
+    ]
+  },
+  {
+    "path": "/ui",
+    "methods": [
+      "GET"
+    ],
+    "name": "ui",
+    "tags": []
+  },
+  {
+    "path": "/vulnerabilities/{vuln_id}/action",
+    "methods": [
+      "GET"
+    ],
+    "name": "vuln_action_get",
+    "tags": [
+      "Vulnerabilities"
+    ]
+  },
+  {
+    "path": "/vulnerabilities/{vuln_id}/exception",
+    "methods": [
+      "DELETE"
+    ],
+    "name": "vuln_exception_clear",
+    "tags": [
+      "Vulnerabilities"
+    ]
+  },
+  {
+    "path": "/vulnerabilities/{vuln_id}/exception",
+    "methods": [
+      "PUT"
+    ],
+    "name": "vuln_exception_upsert",
+    "tags": [
+      "Vulnerabilities"
+    ]
+  },
+  {
+    "path": "/vulnerabilities/{vuln_id}/plan",
+    "methods": [
+      "PUT"
+    ],
+    "name": "vuln_plan_upsert",
+    "tags": [
+      "Vulnerabilities"
+    ]
+  },
+  {
+    "path": "/webhooks",
+    "methods": [
+      "GET"
+    ],
+    "name": "webhooks_list",
+    "tags": []
+  },
+  {
+    "path": "/webhooks",
+    "methods": [
+      "POST"
+    ],
+    "name": "webhooks_add",
+    "tags": []
+  },
+  {
+    "path": "/webhooks/{webhook_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "name": "webhooks_delete",
+    "tags": []
+  },
+  {
+    "path": "/webhooks/{webhook_id}/test",
+    "methods": [
+      "POST"
+    ],
+    "name": "webhooks_test",
+    "tags": []
+  },
+  {
+    "path": "/zabbix/hosts",
+    "methods": [
+      "GET"
+    ],
+    "name": "zabbix_hosts_get",
+    "tags": [
+      "Zabbix"
+    ]
+  }
+]
