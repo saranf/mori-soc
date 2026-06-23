@@ -1667,27 +1667,8 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         return {"ok": True, "vuln_id": vuln_id}
 
     # ── Guides ───────────────────────────────────────────────────────────────
-    @app.get("/guides")
-    def guides_list() -> Any:
-        return {"guides": list(guides.values())}
-
-    @app.get("/guides/{guide_id}")
-    def guide_get(guide_id: str) -> Any:
-        if guide_id not in guides:
-            raise HTTPException(status_code=404, detail="guide not found")
-        return guides[guide_id]
-
-    @app.put("/guides/{guide_id}")
-    def guide_upsert(guide_id: str, payload: dict[str, Any]) -> Any:
-        existing = guides.get(guide_id, {"id": guide_id})
-        entry = {
-            **existing,
-            "title": str(payload.get("title", existing.get("title", guide_id))).strip(),
-            "content": str(payload.get("content", existing.get("content", ""))),
-            "updated_at": _isoformat(datetime.now(tz=timezone.utc)),
-        }
-        guides[guide_id] = entry
-        return entry
+    from mori_soc.api.routes.guides import register_guides
+    register_guides(ctx)
 
     # ── Asset Collection Board ───────────────────────────────────────────────
     @app.get("/assets", tags=["Assets"])
