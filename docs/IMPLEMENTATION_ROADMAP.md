@@ -107,7 +107,7 @@
 
 ### Phase 5. 데이터 신뢰성 (🔲 다음 작업)
 
-- 인메모리 store 5개를 **PostgreSQL 영속화** (`asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store`)
+- 인메모리 store 6개를 **PostgreSQL 영속화** (`asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store`, `user_profiles`) — 신규 `schema/003_*` + `repositories` 계층 확장 필요(현재 6종 전용 매핑 없음)
 - **실시간 ingestion worker** — Fleet/Wazuh/Zabbix API 폴링 활성화 (`pollers/`)
 - collector lag / source freshness 시각화
 
@@ -115,7 +115,7 @@
 
 저장소만으로 바로 추가 구현하기 좋은 우선순위는 아래입니다.
 
-1. **인메모리 store → Postgres 매핑** (5개 store) — `repositories/postgres.py` 골격 활용
+1. **인메모리 store → Postgres 매핑** (6개 store) — 신규 `schema/003_*` + `repositories` 계층(`base.py`/`postgres.py`) 확장 필요(`schema/002`는 ID/컴플라이언스용으로 무관). Task J로 `RouteContext` 주입 지점 단순화
 2. **폴러 활성화** — Zabbix/Fleet/Wazuh API 키 환경변수 설정 + `pollers/worker.py`
 3. FleetDM용 osquery query pack 파일 추가
 4. Wazuh 룰/로컬 룰 추가

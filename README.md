@@ -166,13 +166,13 @@ flowchart LR
 | **👤 사용자 프로필 / ⭐ 내 서버** | 계정 메뉴 → 프로필 편집(이름·부서·담당 서버) + 자산 탭 **내 서버** 서브탭 | `assigned_servers` 또는 `owner == display_name` 인 Fleet+Zabbix 호스트만 필터링 |
 | **API 문서** | Swagger `/docs` | FastAPI 자동 생성 |
 
-> ⚠️ **저장소 분리 안내** — PostgreSQL은 **정규화된 시드 보안 데이터**(hosts/alerts/vulnerabilities/observations 등)를 보유하며 부팅 시 InMemoryRepository로 로드되어 질의에 사용됩니다. 한편 **UI 운영 상태 6종**(triage / incidents / asset owners / vuln actions / asset audit log / user profiles)은 현재 API 프로세스의 인메모리 dict이므로 **재시작 시 초기화**됩니다. Postgres 영속화 매핑은 `repositories/postgres.py` + `schema/002_phase2_compliance_identity.sql`에 코드/스키마가 준비되어 있고 실제 연결만 미완입니다.
+> ⚠️ **저장소 분리 안내** — PostgreSQL은 **정규화된 시드 보안 데이터**(hosts/alerts/vulnerabilities/observations 등)를 보유하며 부팅 시 InMemoryRepository로 로드되어 질의에 사용됩니다. 한편 **UI 운영 상태 6종**(triage / incidents / asset owners / vuln actions / asset audit log / user profiles)은 현재 API 프로세스의 인메모리 dict이므로 **재시작 시 초기화**됩니다. 이 6종을 위한 전용 Postgres 스키마·저장소 매핑은 **아직 없습니다** — `schema/002_phase2_compliance_identity.sql`은 정규화된 ID/컴플라이언스 엔티티(통제 점검·디렉터리 계정 등)용이며 6종 store와 무관합니다. 영속화에는 신규 스키마(`schema/003_*`)와 `repositories` 계층 확장이 필요합니다(Task J로 6종이 `RouteContext` 한 곳에 모여 주입 지점은 단순화됨).
 
 ### 🟡 In progress / 다음 단계 (다음 마일스톤)
 
 | 항목 | 현황 | 우선순위 |
 |---|---|---|
-| **UI 운영 상태 → PostgreSQL 영속화** | `repositories/postgres.py` + `schema/002_*.sql` 준비됨. 6종 store 매핑 미연결 | 🔴 높음 |
+| **UI 운영 상태 → PostgreSQL 영속화** | 6종 store용 전용 스키마·저장소 매핑 미구현(신규 `schema/003_*` + `repositories` 확장 필요). `RouteContext`로 주입 지점은 단순화됨 | 🔴 높음 |
 | **Zabbix API polling** | Collector 구현 완료(`collectors/zabbix_events.py`), 통합 검증 진행 중 | 🔴 높음 |
 | **Fleet / Wazuh API polling** | Parser·Collector 준비됨, REST poller(`pollers/fleet.py`, `pollers/wazuh.py`) 미연결 | 🔴 높음 |
 | **Trivy JSON ingestion** | Collector 구현 완료, 정기 실행 패키징/자동화 진행 중 | 🔴 높음 |
@@ -310,7 +310,7 @@ src/mori_soc/
 |---|---|---|
 | **Normalized security data** (hosts / alerts / vulnerabilities / observations / fleet_query_results / control_checks / directory_accounts / source_syncs …) | PostgreSQL **시드 스키마 + 시드 데이터** 적재. 부팅 시 InMemoryRepository로 로드되어 질의에 사용 | `schema/001_phase1_initial.sql`, `repositories/postgres.py`, `repositories/memory.py` |
 | **UI operational state — 인메모리 6종** (재시작 시 초기화) | `server.py`가 생성해 `RouteContext`로 주입, 도메인 라우트 모듈이 공유·변경. Postgres 영속화 미연결 | `api/server.py` → `api/routes/context.py` |
-| Phase 2 영속화 (6종 store → Postgres) | 🔲 Planned — `schema/002_phase2_compliance_identity.sql` + `repositories/postgres.py`에 매핑 코드/스키마 준비됨 | — |
+| Phase 2 영속화 (6종 store → Postgres) | 🔲 Planned — 6종 전용 스키마·저장소 매핑 미구현(신규 `schema/003_*` + `repositories` 확장 필요). `schema/002`는 ID/컴플라이언스 엔티티용으로 무관 | — |
 
 #### 인메모리 6종 store 상세
 
@@ -597,7 +597,7 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 | ID | 작업 | 상태 |
 |---|---|---|
 | **J** (기반) | `server.py` 모듈 분리 — i18n / templates / auth / payloads + `routes/` 패키지(16 도메인 모듈, `RouteContext`). **2,962→888줄(-70%)**, 무손실 검증(OpenAPI diff·SHA·115 테스트). 이후 영속화·폴러 작업의 회귀 위험을 낮추는 리팩터 기반 | ✅ 완료 |
-| **M2-1** | UI 운영 상태 6종 store(`asset_owners`·`asset_audit_log`·`vuln_actions`·`triage_store`·`incident_store`·`user_profiles`) → PostgreSQL 영속화 (`repositories/postgres.py` + `schema/002_*.sql`) | 🔲 최우선 |
+| **M2-1** | UI 운영 상태 6종 store(`asset_owners`·`asset_audit_log`·`vuln_actions`·`triage_store`·`incident_store`·`user_profiles`) → PostgreSQL 영속화 — 신규 `schema/003_*` + `repositories` 계층 확장 필요(현재 6종 전용 스키마·매핑 없음). `RouteContext` seam으로 주입 단순화 | 🔲 최우선 |
 | **M2-2** | Zabbix API polling 통합 검증 — trigger/item → ingestion → alert/observation → triage → incident | 🟡 Collector 완료, 검증 중 |
 | **M2-3** | Fleet / Wazuh REST poller 연결 — host/osquery·alert → asset/triage, `source_syncs` freshness 반영 | 🔲 Parser·Collector 준비됨 |
 | **M2-4** | Trivy JSON ingestion 자동화 — `trivy-*-scan.sh` 결과 → vulnerabilities → vuln_actions → 리포트 | 🟡 자동화 패키징 중 |
@@ -676,7 +676,7 @@ README의 "🗺️ 현재 상태", src/mori_soc, schema/*.sql 읽고 바로 이�
 | 인시던트 CSV "변경 내역 미포함" 안내 모달 | ✅ 동작 |
 | 대시보드 자산·경보 데이터 | ⚠️ 시드 + 인메모리 기반 (실시간 폴링 미연결) |
 | PostgreSQL — 정규화 보안 데이터 (Phase 1 스키마) | ✅ 시드 적재 + 부팅 시 로드 |
-| PostgreSQL — UI 운영 상태 6종 영속화 (Phase 2) | 🔲 미완 (`schema/002_*.sql` + `repositories/postgres.py` 매핑 준비됨) |
+| PostgreSQL — UI 운영 상태 6종 영속화 (Phase 2) | 🔲 미완 (6종 전용 스키마·매핑 미구현 — 신규 `schema/003_*` + `repositories` 확장 필요) |
 | Zabbix API polling | 🟡 In progress (Collector 구현 완료, 통합 검증 중) |
 | Fleet / Wazuh API polling | 🔲 미완 (Parser·Collector 준비됨, REST poller 미연결) |
 | Trivy JSON ingestion | 🟡 In progress (Collector 구현 완료, 자동화 패키징 중) |

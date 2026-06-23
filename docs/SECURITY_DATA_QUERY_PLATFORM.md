@@ -218,9 +218,9 @@
 
 운영 신뢰도 갭은 **데이터 영속성 + 실시간 수집** 입니다. 구체적으로:
 
-1. **인메모리 5개 store → PostgreSQL 영속화**
-   - `asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store`
-   - `repositories/postgres.py` 골격 + `schema/002_phase2_compliance_identity.sql` 활용
+1. **인메모리 6개 store → PostgreSQL 영속화**
+   - `asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store`, `user_profiles`
+   - 6종 전용 스키마·저장소 매핑은 아직 없음 → 신규 `schema/003_*` + `repositories` 계층(`base.py`/`postgres.py`) 확장 필요(`schema/002`는 ID/컴플라이언스 엔티티용으로 무관). Task J의 `RouteContext`로 주입 지점은 단순화됨
 2. **실시간 ingestion worker 활성화** — `pollers/worker.py`
    - Fleet `/api/v1/fleet/hosts`, Zabbix JSON-RPC, Wazuh `/security/user/authenticate` + alerts
    - 정규화 후 Postgres 적재
