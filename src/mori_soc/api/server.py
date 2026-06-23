@@ -963,26 +963,9 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     from mori_soc.api.routes.rbac import register_rbac
     register_rbac(ctx)
 
-    @app.get("/admin/action-audit-log", tags=["Admin"])
-    def get_action_audit_log(limit: int = 500, username: str = "") -> dict[str, Any]:
-        """사용자 행동 감사 로그 조회 (최신순). ?username=xxx 로 필터 가능."""
-        logs = list(reversed(action_audit_log))
-        if username:
-            logs = [e for e in logs if e["username"] == username]
-        return {"logs": logs[:limit], "total": len(logs)}
-
-    @app.post("/admin/action-audit-log", tags=["Admin"])
-    def record_action_audit(payload: dict[str, Any], request: Any = None) -> dict[str, Any]:
-        """프런트엔드에서 탭 전환·쿼리 실행 등을 기록할 때 호출."""
-        token = ""
-        if hasattr(request, "cookies"):
-            token = request.cookies.get("mori_session", "")
-        sess = sessions.get(token, {})
-        uname = sess.get("username", "anonymous")
-        action = str(payload.get("action", "UNKNOWN"))
-        detail = str(payload.get("detail", ""))
-        _log_action(uname, action, detail)
-        return {"ok": True}
+    # ── Audit logs (user action / asset change) ───────────────────────────────
+    from mori_soc.api.routes.audit import register_audit
+    register_audit(ctx)
 
     @app.get("/", include_in_schema=False)
     def index() -> Any:
@@ -1151,17 +1134,6 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             raise HTTPException(status_code=404, detail="owner not found")
         asset_owners.pop(hostname)
         return {"deleted": hostname}
-
-    # ── Asset Audit Log ───────────────────────────────────────────────────────
-    @app.get("/admin/audit-log", tags=["Assets"])
-    def audit_log_list(hostname: str = "", field: str = "") -> Any:
-        """자산 담당자/카테고리 변경 이력 조회 (어드민 전용)."""
-        result = list(reversed(asset_audit_log))  # 최신 순
-        if hostname:
-            result = [r for r in result if r["hostname"] == hostname]
-        if field:
-            result = [r for r in result if r["field"] == field]
-        return {"audit_log": result, "total": len(result)}
 
     # ── Action Plans ──────────────────────────────────────────────────────────
     from mori_soc.api.routes.plans import register_plans
