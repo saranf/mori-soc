@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from mori_soc.services.query_catalog import PHASE1_QUERY_CATALOG
-from mori_soc.services.query_service import InMemoryQueryStore, QueryService, query_response_to_csv
+from mori_soc.services.query_service import InMemoryQueryStore, QueryService
 from mori_soc.api.templates import (
     render_login_html,
     render_signup_request_html,
@@ -36,7 +36,6 @@ from mori_soc.api.payloads import (
     _default_dashboard_preferences,
     _isoformat,
     _merge_dashboard_preferences,
-    _query_csv_filename,
     _source_coverage,
 )
 
@@ -1122,12 +1121,9 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
             ]
         }
 
-    @app.get("/dashboard/summary")
-    def dashboard_summary() -> dict[str, Any]:
-        try:
-            return build_dashboard_payload(get_query_service(), asset_owners=asset_owners, vuln_actions=vuln_actions)
-        except Exception as exc:
-            raise HTTPException(status_code=503, detail=f"dashboard summary unavailable: {exc}") from exc
+    # ── Query / Interpret / Dashboard summary ────────────────────────────────
+    from mori_soc.api.routes.query import register_query
+    register_query(ctx)
 
     # ── Compliance (PDCA / crosscheck / 증적 리포트) ─────────────────────────
     from mori_soc.api.routes.compliance import register_compliance
@@ -1198,37 +1194,6 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         """특정 사용자의 개인 설정 초기화 (관리자 기본값으로 복원)."""
         removed = user_dashboard_prefs.pop(username, None)
         return {"username": username, "reset": removed is not None}
-
-    @app.post("/query")
-    def query(payload: dict[str, Any], format: str = "json") -> Any:
-        try:
-            request = build_query_request(payload)
-            response = get_query_service().execute(request)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        except Exception as exc:
-            raise HTTPException(status_code=503, detail=f"query execution failed: {exc}") from exc
-        if format == "csv":
-            csv_payload = query_response_to_csv(response)
-            filename = _query_csv_filename(request.intent)
-            return StreamingResponse(
-                iter([csv_payload]),
-                media_type="text/csv; charset=utf-8",
-                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-            )
-        if format != "json":
-            raise HTTPException(status_code=400, detail="format must be either json or csv")
-        return response.to_dict()
-
-    @app.post("/interpret")
-    def interpret(payload: dict[str, Any]) -> dict[str, Any]:
-        text = payload.get("text")
-        if not isinstance(text, str) or not text.strip():
-            raise HTTPException(status_code=400, detail="payload must include non-empty string text")
-        try:
-            return interpret_query_text(text)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # ── Alert Triage ────────────────────────────────────────────────────────────
     from mori_soc.api.routes.alerts import register_alerts
