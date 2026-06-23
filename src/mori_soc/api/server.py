@@ -8,7 +8,6 @@ from typing import Any
 
 from mori_soc.services.query_catalog import PHASE1_QUERY_CATALOG
 from mori_soc.services.query_service import InMemoryQueryStore, QueryService, query_response_to_csv
-from mori_soc.services.reports import REPORT_TYPES, generate_report, report_to_csv, report_to_pdf
 from mori_soc.api.templates import (
     render_login_html,
     render_signup_request_html,
@@ -28,7 +27,6 @@ from mori_soc.api.auth import (
 from mori_soc.api.routes import RouteContext
 from mori_soc.api.payloads import (
     build_assets_payload,
-    build_crosscheck_payload,
     build_dashboard_payload,
     build_pdca_payload,
     build_query_request,
@@ -1131,64 +1129,9 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"dashboard summary unavailable: {exc}") from exc
 
-    @app.get("/compliance/pdca", tags=["Compliance"])
-    def compliance_pdca_summary() -> dict[str, Any]:
-        """Compliance PDCA 대시보드 요약 데이터."""
-        try:
-            return build_pdca_payload(
-                get_query_service(),
-                vuln_actions=vuln_actions,
-                alert_triage=triage_store,
-            )
-        except Exception as exc:
-            raise HTTPException(status_code=503, detail=f"compliance pdca unavailable: {exc}") from exc
-
-    @app.get("/compliance/pdca/pending.csv", tags=["Compliance"])
-    def compliance_pdca_pending_csv() -> Any:
-        """미조치 / 기한 초과 항목(PDCA Do 단계)을 CSV로 다운로드."""
-        try:
-            payload = build_pdca_payload(
-                get_query_service(),
-                vuln_actions=vuln_actions,
-                alert_triage=triage_store,
-            )
-        except Exception as exc:
-            raise HTTPException(status_code=503, detail=f"compliance pdca unavailable: {exc}") from exc
-        import io, csv as csv_mod
-        buf = io.StringIO()
-        header_map = {
-            "source": "출처",
-            "control_id": "통제ID",
-            "entity_type": "대상유형",
-            "entity_id": "대상",
-            "status": "상태",
-            "owner": "담당자",
-            "checked_at": "점검일시",
-            "remediation_due_at": "조치기한",
-            "overdue": "기한초과",
-            "note": "비고",
-        }
-        fieldnames = list(header_map.keys())
-        writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
-        writer.writerow(header_map)
-        for item in payload.get("pending_remediations", []):
-            row = {k: item.get(k, "") for k in fieldnames}
-            row["overdue"] = "Y" if item.get("overdue") else "N"
-            writer.writerow(row)
-        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        return StreamingResponse(
-            iter([buf.getvalue()]),
-            media_type="text/csv; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="mori-pdca-pending-{timestamp}.csv"'},
-        )
-
-    @app.get("/compliance/crosscheck", tags=["Compliance"])
-    def compliance_crosscheck() -> dict[str, Any]:
-        """소스 간 교차 검증 데이터."""
-        try:
-            return build_crosscheck_payload(get_query_service())
-        except Exception as exc:
-            raise HTTPException(status_code=503, detail=f"crosscheck unavailable: {exc}") from exc
+    # ── Compliance (PDCA / crosscheck / 증적 리포트) ─────────────────────────
+    from mori_soc.api.routes.compliance import register_compliance
+    register_compliance(ctx)
 
     def _get_session_username(request: Request) -> str | None:
         """현재 세션의 사용자명을 반환 (미인증 시 None)."""
@@ -1440,64 +1383,6 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     # ── Per-source asset API (Fleet / Zabbix / Trivy) ─────────────────────────
     from mori_soc.api.routes.sources import register_sources
     register_sources(ctx)
-
-    # ── Compliance Reports (증적 Export) ────────────────────────────────────
-    @app.get("/compliance/reports", tags=["Compliance"])
-    def compliance_reports_list() -> dict[str, Any]:
-        """사용 가능한 증적 리포트 타입 목록."""
-        labels = {
-            "asset_inspection": "자산 점검 리포트",
-            "account_privilege": "계정/권한 점검 리포트",
-            "log_collection_status": "로그 수집 상태 리포트",
-            "vulnerability_assessment": "취약점 점검 리포트",
-            "monthly_operations": "월간 운영 리포트",
-        }
-        return {
-            "report_types": [
-                {
-                    "id": rt,
-                    "label": labels.get(rt, rt),
-                    "url_json": f"/compliance/reports/{rt}",
-                    "url_csv": f"/compliance/reports/{rt}?format=csv",
-                    "url_pdf": f"/compliance/reports/{rt}?format=pdf",
-                }
-                for rt in REPORT_TYPES
-            ]
-        }
-
-    @app.get("/compliance/reports/{report_type}", tags=["Compliance"])
-    def compliance_report_get(report_type: str, format: str = "json") -> Any:
-        """증적 리포트 생성. format=json|csv|pdf"""
-        if report_type not in REPORT_TYPES:
-            raise HTTPException(status_code=400, detail=f"Unknown report type: {report_type}. Valid: {', '.join(REPORT_TYPES)}")
-        try:
-            report = generate_report(report_type, get_query_service())
-        except Exception as exc:
-            raise HTTPException(status_code=503, detail=f"report generation failed: {exc}") from exc
-        if format == "csv":
-            csv_content = "\ufeff" + report_to_csv(report)
-            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            filename = f"mori-{report_type.replace('_', '-')}-{timestamp}.csv"
-            return StreamingResponse(
-                iter([csv_content]),
-                media_type="text/csv; charset=utf-8-sig",
-                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-            )
-        if format == "pdf":
-            try:
-                pdf_bytes = report_to_pdf(report)
-            except RuntimeError as exc:
-                raise HTTPException(status_code=503, detail=str(exc)) from exc
-            except Exception as exc:
-                raise HTTPException(status_code=500, detail=f"PDF rendering failed: {exc}") from exc
-            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            filename = f"mori-{report_type.replace('_', '-')}-{timestamp}.pdf"
-            return StreamingResponse(
-                iter([pdf_bytes]),
-                media_type="application/pdf",
-                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-            )
-        return report
 
     return app
 
