@@ -32,10 +32,8 @@ from mori_soc.api.payloads import (
     build_query_request,
     interpret_query_text,
     _assets_csv,
-    _dashboard_preferences_response,
     _default_dashboard_preferences,
     _isoformat,
-    _merge_dashboard_preferences,
     _source_coverage,
 )
 
@@ -1046,14 +1044,14 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     @app.get("/ui", include_in_schema=False, response_class=HTMLResponse)
     def ui() -> str:
         return render_user_dashboard_html(
-            docs_url=admin_dashboard_preferences["docs_url"],
+            docs_url=ctx.admin_dashboard_preferences["docs_url"],
             fleet_ui_url=FLEET_UI_URL,
             zabbix_ui_url=ZABBIX_UI_URL,
         )
 
     @app.get("/admin", include_in_schema=False, response_class=HTMLResponse)
     def admin() -> str:
-        return render_query_console_html(admin_dashboard_preferences["docs_url"])
+        return render_query_console_html(ctx.admin_dashboard_preferences["docs_url"])
 
     @app.get("/health")
     def health() -> dict[str, Any]:
@@ -1137,63 +1135,9 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
 
     ctx.get_session_username = _get_session_username
 
-    @app.get("/dashboard/preferences")
-    def dashboard_preferences_get(request: Request) -> dict[str, Any]:
-        """현재 사용자의 대시보드 설정 조회 (개인 설정 → 관리자 기본값 순)."""
-        username = _get_session_username(request)
-        if username and username in user_dashboard_prefs:
-            return _dashboard_preferences_response(user_dashboard_prefs[username])
-        return _dashboard_preferences_response(admin_dashboard_preferences)
-
-    @app.post("/dashboard/preferences")
-    def dashboard_preferences_update(request: Request, payload: dict[str, Any]) -> dict[str, Any]:
-        """현재 사용자의 대시보드 설정 저장 (개인별)."""
-        nonlocal admin_dashboard_preferences
-        username = _get_session_username(request)
-        if username:
-            base = user_dashboard_prefs.get(username, dict(admin_dashboard_preferences))
-            try:
-                user_dashboard_prefs[username] = _merge_dashboard_preferences(base, payload)
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail=str(exc)) from exc
-            return _dashboard_preferences_response(user_dashboard_prefs[username])
-        # 인증 미사용 환경: 글로벌 설정 업데이트
-        try:
-            admin_dashboard_preferences = _merge_dashboard_preferences(admin_dashboard_preferences, payload)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return _dashboard_preferences_response(admin_dashboard_preferences)
-
-    @app.get("/admin/dashboard/preferences", tags=["Admin"])
-    def admin_dashboard_preferences_get() -> dict[str, Any]:
-        """관리자 기본 대시보드 설정 조회 (모든 사용자 기본값)."""
-        return _dashboard_preferences_response(admin_dashboard_preferences)
-
-    @app.post("/admin/dashboard/preferences", tags=["Admin"])
-    def admin_dashboard_preferences_update(payload: dict[str, Any]) -> dict[str, Any]:
-        """관리자 기본 대시보드 설정 변경 (모든 사용자 기본값)."""
-        nonlocal admin_dashboard_preferences
-        try:
-            admin_dashboard_preferences = _merge_dashboard_preferences(admin_dashboard_preferences, payload)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return _dashboard_preferences_response(admin_dashboard_preferences)
-
-    @app.get("/admin/dashboard/user-preferences", tags=["Admin"])
-    def admin_user_prefs_list() -> dict[str, Any]:
-        """모든 사용자의 개인 설정 목록 조회 (관리자용)."""
-        return {
-            "users": {
-                uname: _dashboard_preferences_response(prefs)
-                for uname, prefs in user_dashboard_prefs.items()
-            }
-        }
-
-    @app.delete("/admin/dashboard/user-preferences/{username}", tags=["Admin"])
-    def admin_user_prefs_reset(username: str) -> dict[str, Any]:
-        """특정 사용자의 개인 설정 초기화 (관리자 기본값으로 복원)."""
-        removed = user_dashboard_prefs.pop(username, None)
-        return {"username": username, "reset": removed is not None}
+    # ── Dashboard preferences (user / admin) ─────────────────────────────────
+    from mori_soc.api.routes.dashboard_prefs import register_dashboard_prefs
+    register_dashboard_prefs(ctx)
 
     # ── Alert Triage ────────────────────────────────────────────────────────────
     from mori_soc.api.routes.alerts import register_alerts
