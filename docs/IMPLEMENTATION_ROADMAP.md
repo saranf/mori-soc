@@ -7,6 +7,8 @@
 
 지향점은 **ISMS-P / ISO 27001 인증 심사를 일상 운영과 같이 진행할 수 있는 Audit-Ready Compliance-Evidence Platform** 입니다.
 
+> 🔌 **포지셔닝 — 기존 도구를 대체하지 않고 그 위에 얹는 read-only 증적 레이어.** MORI-SOC는 운영 중인 Zabbix / Wazuh / FleetDM / Trivy에 **config만으로(에이전트 설치·기존 도구 설정 변경 없이) read-only로 연결**해 운영 증적·인시던트 이력·취약점 조치·컴플라이언스 뷰를 정리합니다. *(MORI-SOC is designed to sit on top of existing monitoring and security tools, not replace them.)* read-only 통합 5원칙: ① read-only 토큰 권장 ② 기존 시스템 설정 변경 없음 ③ 소스 장애 격리(MORI 전체 장애로 번지지 않음) ④ source freshness 표시 ⑤ 마지막 수집 시각·실패 사유 저장.
+
 ## 2. 기능 모듈 매핑
 
 | 기능 모듈 | 현재 구성 요소 | 현재 상태 | 다음 구현 포인트 |
@@ -107,8 +109,9 @@
 
 ### Phase 5. 데이터 신뢰성 (🟡 진행 중)
 
-- 운영 store 6개 **PostgreSQL 영속화** ✅ 완료(M2-1) (`asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store`, `user_profiles`) — `schema/003_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through, 재시작 후 상태 유지
-- **실시간 ingestion worker** 🔲 — Fleet/Wazuh/Zabbix API 폴링 활성화 (`pollers/`)
+- 운영 store 6개 **PostgreSQL 영속화** ✅ 완료(M2-1, M-series) (`asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store`, `user_profiles`) — `schema/003_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through, 재시작 후 상태 유지
+- **Config 기반 read-only 소스 온보딩(N-series)** 🔲 — `config/sources.yaml` 스키마+로더(소스별 `enabled`/`url`/`username`/`token_env`/`input_dir`, 시크릿은 `*_env`로만 참조) → 소스 연결 메타데이터 저장(`source_syncs` 확장) → read-only 가드레일(에이전트 미설치·기존 도구 설정 무변경·소스 장애 격리). **실시간 폴러보다 먼저** 잡는 온보딩 틀
+- **실시간 ingestion worker** 🔲 — N-series 위에서 Fleet/Wazuh/Zabbix API 폴링 활성화 (`pollers/`)
 - collector lag / source freshness 시각화
 
 ## 5. 현재 기준 구현 가능한 세부 항목
@@ -116,22 +119,24 @@
 저장소만으로 바로 추가 구현하기 좋은 우선순위는 아래입니다.
 
 1. **운영 store → Postgres 매핑** (6개 store) ✅ 완료(M2-1) — `schema/003_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through, `tests/test_state_persistence.py` 라운드트립 검증
-2. **폴러 활성화** — Zabbix/Fleet/Wazuh API 키 환경변수 설정 + `pollers/worker.py`
-3. FleetDM용 osquery query pack 파일 추가
-4. Wazuh 룰/로컬 룰 추가
-5. Slack 알림 webhook 활성화 (`SLACK_WEBHOOK_URL` 환경변수)
+2. **Config 기반 read-only 소스 온보딩(N-series)** — `config/sources.yaml`로 기존 Zabbix/Wazuh/Fleet/Trivy를 read-only 연결(에이전트·기존 설정 무변경), 연결 메타데이터+freshness 저장
+3. **폴러 활성화** — N-series config 기반으로 Zabbix/Fleet/Wazuh API 키 환경변수 설정 + `pollers/worker.py`
+4. FleetDM용 osquery query pack 파일 추가
+5. Wazuh 룰/로컬 룰 추가
+6. Slack 알림 webhook 활성화 (`SLACK_WEBHOOK_URL` 환경변수)
 
 ## 6. 다음 추천 작업
 
 가장 효율적인 다음 단계는 아래 순서입니다.
 
 1. **PostgreSQL 영속화** ✅ 완료(M2-1) — Phase 2의 6종 운영 store 변경 이력이 재시작 후에도 유지됨
-2. **실시간 폴링 활성화** — 시드 데이터 의존을 끊고 실데이터 기반으로 전환
-3. PDF 증적 리포트 출력 (현재 CSV 5종에 추가)
-4. Slack/Email 알림 연결
-5. FleetDM endpoint compliance 쿼리팩 추가
-6. Wazuh 이벤트 탐지 룰 튜닝
+2. **Config 기반 read-only 소스 온보딩(N-series)** — `config/sources.yaml`로 기존 도구를 무변경·read-only 연결하는 온보딩 틀 (실시간 폴링의 전제)
+3. **실시간 폴링 활성화** — N-series 위에서 시드 데이터 의존을 끊고 실데이터 기반으로 전환
+4. PDF 증적 리포트 출력 (현재 CSV 5종에 추가)
+5. Slack/Email 알림 연결
+6. FleetDM endpoint compliance 쿼리팩 추가
+7. Wazuh 이벤트 탐지 룰 튜닝
 
 ## 7. 비고
 
-현재 저장소는 **"통합 운영 UI + 감사 증적이 PostgreSQL에 영속화된 단계(M2-1 완료)"** 입니다. 기능 정의서의 ISMS-P / ISO 27001 요구사항 중 **운영자 워크플로우와 변경 이력 누적은 충족**되고 6종 운영 store는 재시작 후에도 유지되며, 다음 단계는 **실시간 수집(폴러 활성화)** 입니다. 각 솔루션 내부 설정(Fleet query, Wazuh rule, Zabbix template, Grafana panel)은 별도 트랙으로 점진 보강합니다.
+현재 저장소는 **"통합 운영 UI + 감사 증적이 PostgreSQL에 영속화된 단계(M2-1 완료)"** 입니다. 기능 정의서의 ISMS-P / ISO 27001 요구사항 중 **운영자 워크플로우와 변경 이력 누적은 충족**되고 6종 운영 store는 재시작 후에도 유지됩니다. 다음 단계는 **config 기반 read-only 소스 온보딩(N-series)** 으로 기존 도구를 무변경 연결한 뒤 그 위에서 **실시간 수집(폴러 활성화)** 으로 확장하는 것입니다. MORI는 기존 도구를 대체하지 않고 위에 얹는 read-only 증적 레이어를 지향합니다. 각 솔루션 내부 설정(Fleet query, Wazuh rule, Zabbix template, Grafana panel)은 별도 트랙으로 점진 보강합니다.

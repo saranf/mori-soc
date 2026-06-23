@@ -27,6 +27,8 @@ A lightweight SOC platform built by integrating open-source security tools so th
 
 > **Goal:** A "Compliance-Evidence Platform" that lets IT helpdesk + 1 designated owner at a small/mid-sized organization deploy with a single `docker compose` command, running ISMS-P / ISO 27001 preparation alongside daily security operations.
 
+> 🔌 **A read-only evidence layer on top of your existing tools** — **MORI-SOC is designed to sit on top of existing monitoring and security tools, not replace them.** It connects to your running Zabbix / Wazuh / FleetDM / Trivy in **read-only mode via configuration only** (no agent installation, no change to existing tool configuration) and organizes operational evidence, incident history, vulnerability actions, and compliance views.
+
 | Area | Tool | MORI's role |
 |---|---|---|
 | Infrastructure monitoring | Zabbix | Asset state / availability evidence |
@@ -599,14 +601,19 @@ MORI SOC combines open-source security tools to provide a single ops screen, wit
 
 > MORI is at **Phase 1 (data collection/normalization core) complete + Phase 2 Alpha (Audit-Ready ops & evidence UI)**. The following is the long-term direction; each Phase builds on the previous one — Phase 2 (make it operational) → Phase 3 (assist judgment) → Phase 4 (adoption & ecosystem).
 
-### Phase 2 — Persistent Evidence & Security Signal Integration
+### Phase 2 — Read-only Evidence Layer over Existing Tools
 
-*Persist the operational state that used to live only in memory to PostgreSQL (M2-1 done), and connect Zabbix/Trivy/CVE Lite/Fleet/Wazuh signals into real operational data flows.*
+*Sit **on top of** your existing tools rather than replacing them — persist the in-memory operational state to PostgreSQL (M2-1 done), connect Zabbix/Wazuh/Fleet/Trivy in **config-based read-only** mode (N-series), then extend into real signal flows (M2-2~5) and a Zabbix template (M2-6).*
+
+> **5 read-only integration principles** — ① read-only token recommended ② no change to existing system configuration ③ a single source failure must not break MORI as a whole (isolated failure) ④ source freshness is shown ⑤ last sync time / failure reason is stored
 
 | ID | Work | Status |
 |---|---|---|
 | **J** (foundation) | Split `server.py` into modules — i18n / templates / auth / payloads + a `routes/` package (16 domain modules, `RouteContext`). **2,962→888 lines (-70%)**, lossless-verified (OpenAPI diff · SHA · 115 tests). A refactor that lowers regression risk for the persistence/poller work that follows | ✅ Done |
-| **M2-1** | Persist the 6 UI operational state stores (`asset_owners`·`asset_audit_log`·`vuln_actions`·`triage_store`·`incident_store`·`user_profiles`) to PostgreSQL — `schema/003_*` + `repositories/state_*.py` (StateRepository) cache-aside + write-through. Round-trip integration test passes (`tests/test_state_persistence.py`), 120 tests green | ✅ Done |
+| **M2-1** (M-series) | Persist the 6 UI operational state stores (`asset_owners`·`asset_audit_log`·`vuln_actions`·`triage_store`·`incident_store`·`user_profiles`) to PostgreSQL — `schema/003_*` + `repositories/state_*.py` (StateRepository) cache-aside + write-through. Round-trip integration test passes (`tests/test_state_persistence.py`), 120 tests green | ✅ Done |
+| **N-1** (config onboarding) | Config-based source onboarding — `config/sources.yaml` schema + loader (per-source `enabled`/`url`/`username`/`token_env`/`input_dir`). Secrets referenced only by `*_env` env-var names (never stored in the repo/DB) | 🔲 New |
+| **N-2** (connection metadata) | Source connection metadata store — persist per-source enabled flag, last sync time, last failure reason (extends `source_syncs`) | 🔲 New |
+| **N-3** (guardrails) | Read-only onboarding guardrails — no agent install, no change to existing tool config, isolated source failure, freshness surfacing (healthy/warning/stale) | 🔲 New |
 | **M2-2** | Zabbix API polling integration verification — trigger/item → ingestion → alert/observation → triage → incident | 🟡 Collector done, verifying |
 | **M2-3** | Fleet / Wazuh REST poller connection — host/osquery·alert → asset/triage, reflect `source_syncs` freshness | 🔲 Parser·Collector ready |
 | **M2-4** | Trivy JSON ingestion automation — `trivy-*-scan.sh` output → vulnerabilities → vuln_actions → reports | 🟡 Automation packaging |

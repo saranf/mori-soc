@@ -211,20 +211,24 @@
 | 첫 번째 조회 기능 구현 | ✅ 완료 | 12개 인텐트 + 3개 논리 뷰 |
 | **Phase 2 — 운영 UI + 감사 증적** | ✅ Alpha 운영 중 | RBAC, 자산/취약점/Triage/인시던트/PDCA, 5종 증적 리포트 |
 | Phase 2 — Compliance/Identity 스키마 확장 | ✅ 완료 | `schema/002_phase2_compliance_identity.sql` |
-| **Phase 2 — 영속화 + 실시간 폴링** | 🟡 진행 중 | 6종 운영 store → Postgres ✅ 완료(M2-1), 폴러 활성화 🔲 |
+| **Phase 2 — 영속화 + read-only 소스 통합 + 실시간 폴링** | 🟡 진행 중 | 6종 운영 store → Postgres ✅ 완료(M2-1), config 기반 read-only 소스 온보딩(N-series) 🔲, 폴러 활성화 🔲 |
 | Phase 3 — 조사형 multi-hop pivot 에이전트 | 🔲 미착수 | 8절 원칙 유지하며 점진 도입 |
 
 ### 다음 실제 구현 대상
 
-운영 신뢰도 갭은 이제 **실시간 수집**입니다(데이터 영속성은 M2-1로 해소). 구체적으로:
+운영 신뢰도 갭은 이제 **기존 도구를 read-only로 연결한 실시간 수집**입니다(데이터 영속성은 M2-1로 해소). MORI는 기존 도구를 대체하지 않고 그 위에 얹는 read-only 증적 레이어를 지향하며, 구체적 순서는:
 
 1. **6개 운영 store → PostgreSQL 영속화** ✅ 완료(M2-1)
    - `asset_owners`, `asset_audit_log`, `vuln_actions`, `triage_store`, `incident_store`, `user_profiles`
    - `schema/003_phase2_ui_operational_state.sql` + `repositories/state_*.py`(StateRepository: ABC / in-memory / postgres)로 cache-aside + write-through 영속화. 재시작 후 상태 유지, `tests/test_state_persistence.py` 라운드트립 검증. `MORI_QUERY_BACKEND=memory` 또는 `MORI_DATABASE_URL` 미설정 시 인메모리 fallback
-2. **실시간 ingestion worker 활성화** — `pollers/worker.py`
+2. **Config 기반 read-only 소스 온보딩(N-series)** 🔲 — 실시간 폴러의 전제
+   - `config/sources.yaml` 스키마+로더(소스별 `enabled`/`url`/`username`/`token_env`/`input_dir`). 시크릿은 `*_env` 환경변수 이름으로만 참조(리포지토리·DB에 비저장)
+   - 소스 연결 메타데이터(`source_syncs` 확장: enabled·마지막 sync·마지막 실패 사유) + read-only 가드레일(에이전트 미설치·기존 도구 설정 무변경·소스 장애 격리·freshness 노출)
+   - read-only 통합 5원칙: ① read-only 토큰 권장 ② 기존 설정 무변경 ③ 소스 장애 격리 ④ freshness 표시 ⑤ 마지막 수집 시각·실패 사유 저장
+3. **실시간 ingestion worker 활성화** — N-series config 위에서 `pollers/worker.py`
    - Fleet `/api/v1/fleet/hosts`, Zabbix JSON-RPC, Wazuh `/security/user/authenticate` + alerts
    - 정규화 후 Postgres 적재
-3. **수집 freshness 가시화** — `/dashboard/summary` 에 `source_health` 카드 (마지막 sync, lag, 에러율)
-4. **감사 증적 PDF 출력** — 현재 5종 CSV 미리보기에 PDF 옵션 추가
+4. **수집 freshness 가시화** — `/dashboard/summary` 에 `source_health` 카드 (마지막 sync, lag, 에러율)
+5. **감사 증적 PDF 출력** — 현재 5종 CSV 미리보기에 PDF 옵션 추가
 
 세부 입력 소스 명세는 `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md`, 논리 테이블은 `docs/PHASE1_LOGICAL_SCHEMA.md` + `docs/PHASE2_*` 시리즈를 참조합니다. 운영 + 감사 증적 UI 의 현재 상태는 `docs/MORI_IMPLEMENTATION_SUMMARY.md` 의 §2 를 참고하세요.

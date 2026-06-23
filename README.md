@@ -27,6 +27,9 @@
 
 > **목표:** 중소형 조직에서 IT 헬프데스크 + 담당자 1명이 `docker compose` 한 줄로 배포하여 ISMS-P / ISO 27001 준비와 일상 보안 운영을 같이 할 수 있는 **"Compliance-Evidence Platform"**
 
+> 🔌 **기존 도구 위에 얹는 read-only 증적 레이어** — MORI-SOC는 운영 중인 모니터링·보안 도구를 **대체하지 않습니다.** 기존 Zabbix / Wazuh / FleetDM / Trivy에 **config만으로(에이전트 설치·기존 도구 설정 변경 없이) read-only로 연결**해 운영 증적·인시던트 이력·취약점 조치·컴플라이언스 뷰를 정리합니다.
+> *(MORI-SOC is designed to sit on top of existing monitoring and security tools, not replace them.)*
+
 | 영역 | 도구 | MORI 역할 |
 |---|---|---|
 | 인프라 모니터링 | Zabbix | 자산 현황·가용성 증적 |
@@ -593,14 +596,19 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 
 > MORI는 **Phase 1(데이터 수집/정규화 코어) 완료 + Phase 2 Alpha(Audit-Ready 운영·증적 UI)** 상태입니다. 아래는 장기 방향으로, 각 Phase는 이전 단계 위에 쌓입니다 — Phase 2(운영 가능화) → Phase 3(판단 보조) → Phase 4(도입·생태계화).
 
-### Phase 2 — Persistent Evidence & Security Signal Integration
+### Phase 2 — Read-only Evidence Layer over Existing Tools
 
-*인메모리로 동작하던 운영 상태를 PostgreSQL에 영속화하고(M2-1 완료), Zabbix/Trivy/CVE Lite/Fleet/Wazuh 신호를 실제 운영 데이터 흐름으로 연결.*
+*기존 운영 중인 도구를 **대체하지 않고** 그 위에 얹는다 — 인메모리 운영 상태를 PostgreSQL에 영속화하고(M2-1 완료), Zabbix/Wazuh/Fleet/Trivy를 **config 기반 read-only**로 연결(N-series)한 뒤 실제 신호 흐름(M2-2~5)·Zabbix 템플릿(M2-6)으로 확장.*
+
+> **read-only 통합 5원칙** — ① read-only 토큰 권장 ② 기존 시스템 설정 변경 없음 ③ 특정 소스 장애가 MORI 전체 장애로 번지지 않음(격리) ④ source freshness 표시 ⑤ 마지막 수집 시각·실패 사유 저장
 
 | ID | 작업 | 상태 |
 |---|---|---|
 | **J** (기반) | `server.py` 모듈 분리 — i18n / templates / auth / payloads + `routes/` 패키지(16 도메인 모듈, `RouteContext`). **2,962→888줄(-70%)**, 무손실 검증(OpenAPI diff·SHA·115 테스트). 이후 영속화·폴러 작업의 회귀 위험을 낮추는 리팩터 기반 | ✅ 완료 |
-| **M2-1** | UI 운영 상태 6종 store(`asset_owners`·`asset_audit_log`·`vuln_actions`·`triage_store`·`incident_store`·`user_profiles`) → PostgreSQL 영속화 — `schema/003_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through. 6종 라운드트립 통합 테스트 통과(`tests/test_state_persistence.py`), 120 테스트 그린 | ✅ 완료 |
+| **M2-1** (M-series) | UI 운영 상태 6종 store(`asset_owners`·`asset_audit_log`·`vuln_actions`·`triage_store`·`incident_store`·`user_profiles`) → PostgreSQL 영속화 — `schema/003_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through. 6종 라운드트립 통합 테스트 통과(`tests/test_state_persistence.py`), 120 테스트 그린 | ✅ 완료 |
+| **N-1** (config 온보딩) | Config 기반 소스 온보딩 — `config/sources.yaml` 스키마 + 로더(소스별 `enabled`/`url`/`username`/`token_env`/`input_dir`). 시크릿은 `*_env` 환경변수 이름으로만 참조(리포지토리·DB에 비저장) | 🔲 신규 |
+| **N-2** (연결 메타) | 소스 연결 메타데이터 저장 — 소스별 enabled·마지막 sync 시각·마지막 실패 사유 영속화(`source_syncs` 확장) | 🔲 신규 |
+| **N-3** (가드레일) | Read-only 온보딩 가드레일 — 에이전트 미설치·기존 도구 설정 무변경·소스 장애 격리·freshness 노출(healthy/warning/stale) | 🔲 신규 |
 | **M2-2** | Zabbix API polling 통합 검증 — trigger/item → ingestion → alert/observation → triage → incident | 🟡 Collector 완료, 검증 중 |
 | **M2-3** | Fleet / Wazuh REST poller 연결 — host/osquery·alert → asset/triage, `source_syncs` freshness 반영 | 🔲 Parser·Collector 준비됨 |
 | **M2-4** | Trivy JSON ingestion 자동화 — `trivy-*-scan.sh` 결과 → vulnerabilities → vuln_actions → 리포트 | 🟡 자동화 패키징 중 |

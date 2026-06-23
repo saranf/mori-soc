@@ -4,6 +4,8 @@
 
 MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규화/질의 코어 (Phase 1)** + **운영 + 감사 증적 UI + 운영성 폴리시 (Phase 2)** 단계까지 진행됐습니다. 지향점은 **ISMS-P / ISO 27001 인증 심사를 일상 운영과 같이 끌고 갈 수 있는 Audit-Ready Compliance-Evidence Platform** 입니다.
 
+> 🔌 **포지셔닝 — 기존 도구 위에 얹는 read-only 증적 레이어.** MORI는 운영 중인 Zabbix / Wazuh / FleetDM / Trivy를 **대체하지 않고**, **config만으로(에이전트 설치·기존 설정 변경 없이) read-only로 연결**해 증적·이력·조치·컴플라이언스를 정리합니다. *(MORI-SOC is designed to sit on top of existing monitoring and security tools, not replace them.)* — read-only 통합 5원칙: ① read-only 토큰 권장 ② 기존 설정 무변경 ③ 소스 장애 격리 ④ source freshness 표시 ⑤ 마지막 수집 시각·실패 사유 저장.
+
 | 단계 | 상태 | 핵심 산출물 |
 | --- | --- | --- |
 | Phase 1 — 데이터 수집/정규화 코어 | ✅ 완료 | collectors / normalization / ingestion / 12 intent query catalog |
@@ -12,7 +14,7 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 | MVC 3 — Docker/Compose 배포선 | ✅ 완료 | `docker-compose.yml`, GitHub Actions, `scripts/mori-backup.sh` · `mori-restore.sh` |
 | MVC 4 — 자연어 질의 + 운영 UI | ✅ 완료 | `intent_parser` + `/ui` |
 | **Phase 2 — 운영 UI + 감사 증적 + 운영성 폴리시** | ✅ 패키징 준비 완료 | RBAC, 자산/취약점/Triage/인시던트/PDCA, 감사 로그, 5종 증적(CSV+PDF) 리포트, Source Freshness, 8탭 어드민 콘솔, KO/EN 다국어, 사용자 프로필 + 내 서버 뷰 |
-| **Phase 2 (남은 작업) — Persistent Evidence & Signal Integration** | 🟡 진행 중 | 모듈 분리(J) ✅ 완료(`server.py` 2,962→888줄, `routes/` 16모듈 + `RouteContext`) → 6종 store Postgres 영속화(M2-1) ✅ 완료(`schema/003_*` + `repositories/state_*.py`, write-through) → Zabbix/Fleet/Wazuh/Trivy 폴러(M2-2~4) + CVE Lite(M2-5) + Zabbix 템플릿 export(M2-6) |
+| **Phase 2 (남은 작업) — Persistent Evidence & Signal Integration** | 🟡 진행 중 | 모듈 분리(J) ✅ 완료(`server.py` 2,962→888줄, `routes/` 16모듈 + `RouteContext`) → 6종 store Postgres 영속화(M2-1) ✅ 완료(`schema/003_*` + `repositories/state_*.py`, write-through) → **config 기반 read-only 소스 온보딩(N-series)** → Zabbix/Fleet/Wazuh/Trivy 폴러(M2-2~4) + CVE Lite(M2-5) + Zabbix 템플릿 export(M2-6) |
 | Phase 3 — Guided Investigation & Evidence Assistant | 🔲 미착수 | Evidence Gap Detector / Triage 요약 / multi-hop pivot / 리포트 초안 / 통제 매핑 (판단 보조까지만) |
 | Phase 4 — Deployment, Ecosystem & Small-Team Adoption | 🔲 미착수 | MORI Lite / Zabbix-only Pack / ISMS-P Evidence Pack / Integration 구조 / 운영 안정화 |
 
@@ -165,8 +167,9 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 ### Phase 2 — Persistent Evidence & Security Signal Integration
 
 - **J (기반)** ✅ 완료 — `server.py` 모듈 분리(i18n / templates / auth / payloads + `routes/` 패키지 16모듈, `RouteContext`). **2,962→888줄(-70%)**, 무손실 검증(OpenAPI diff·SHA·115 테스트). 이후 영속화·폴러 작업의 회귀 위험 완화
-- **M2-1 PostgreSQL 영속화** ✅ 완료 — 6개 store(asset_owners / asset_audit_log / vuln_actions / triage_store / incident_store / user_profiles)를 `schema/003_*` + `repositories/state_*.py`(StateRepository) 계층으로 cache-aside + write-through 영속화. 재시작 후 상태 유지, 통합 테스트(`tests/test_state_persistence.py`) 검증, 120 테스트 green
-- **M2-2~4 실시간 신호 연결** — Zabbix API polling 검증 / Fleet·Wazuh REST poller 연결 / Trivy JSON ingestion 자동화 (`pollers/` 활성화, 코드는 준비됨)
+- **M2-1 PostgreSQL 영속화 (M-series)** ✅ 완료 — 6개 store(asset_owners / asset_audit_log / vuln_actions / triage_store / incident_store / user_profiles)를 `schema/003_*` + `repositories/state_*.py`(StateRepository) 계층으로 cache-aside + write-through 영속화. 재시작 후 상태 유지, 통합 테스트(`tests/test_state_persistence.py`) 검증, 120 테스트 green
+- **N-series Config 기반 read-only 소스 온보딩** 🔲 신규 — 기존 도구를 **대체하지 않고 무변경·read-only로 연결**하는 온보딩 틀(실시간 폴러의 전제). **N-1** `config/sources.yaml` 스키마+로더(소스별 `enabled`/`url`/`username`/`token_env`/`input_dir`, 시크릿은 `*_env`로만 참조) · **N-2** 소스 연결 메타데이터 저장(`source_syncs` 확장: enabled·마지막 sync·마지막 실패 사유) · **N-3** read-only 가드레일(에이전트 미설치·기존 설정 무변경·소스 장애 격리·freshness 노출)
+- **M2-2~4 실시간 신호 연결** — N-series config 위에서 Zabbix API polling 검증 / Fleet·Wazuh REST poller 연결 / Trivy JSON ingestion 자동화 (`pollers/` 활성화, 코드는 준비됨)
 - **M2-5 CVE Lite collector** — JS/TS lockfile 의존성 취약점 source(`source=cve_lite`, direct/transitive, fix_command)
 - **M2-6 Zabbix Template/export** — `templates/zabbix/mori-soc-template.yaml` + metric export 스크립트
 
@@ -192,4 +195,4 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 
 ## 7. 한 줄 정리
 
-MORI는 **"보안 데이터를 모으고, 한눈에 보고, 자연어로 질의하고, 변경을 감사 증적으로 누적하는" Audit-Ready 운영 플랫폼 — Phase 2 패키징 단계**입니다. 6종 운영 store의 Postgres 영속화(M2-1)는 완료되었고, 다음 핵심은 **실시간 폴링을 연결하는 것**입니다.
+MORI는 **"보안 데이터를 모으고, 한눈에 보고, 자연어로 질의하고, 변경을 감사 증적으로 누적하는" Audit-Ready 운영 플랫폼 — 기존 도구를 대체하지 않고 그 위에 얹는 read-only 증적 레이어, Phase 2 패키징 단계**입니다. 6종 운영 store의 Postgres 영속화(M2-1)는 완료되었고, 다음 핵심은 **config 기반 read-only 소스 온보딩(N-series)으로 기존 도구를 무변경 연결한 뒤 실시간 폴링을 얹는 것**입니다.
