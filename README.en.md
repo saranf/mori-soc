@@ -28,14 +28,15 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 
 ## ⚡ Status — 30-second overview
 
-| ✅ Works now | 🧪 Partially integrated | 🚧 Planned |
+| ✅ Works now | 🧪 Partially integrated | 🚧 Next |
 |---|---|---|
-| Login / RBAC | Zabbix collector | Real-time polling |
-| Asset owner / importance editing | Trivy collector | FleetDM live integration |
-| Vulnerability action plan + **per-CVE risk assessment** | Source freshness | Wazuh live integration |
-| Alert triage / Incident workflow | Worker cycle | LDAP/AD production integration |
-| PostgreSQL-backed UI state persistence | | |
-| CSV/PDF evidence export | | |
+| **✅ Zabbix real-time polling → alerts (verified)** | Trivy collector (ingest done, automation WIP) | **FleetDM live integration** |
+| Alert triage / Incident workflow | Source freshness / Worker cycle | **Wazuh live integration** |
+| Per-CVE **risk assessment** + vuln action plans | | LDAP/AD production integration |
+| Login / RBAC · asset owner / importance editing | | Slack / Email notifications |
+| PostgreSQL-backed UI state · CSV/PDF evidence export | | Live-read caching (perf) |
+
+> ✅ **Zabbix** is **verified end-to-end** against the real API (*problem → collect → Triage → Incident → evidence → resolve*, see [🎬 scenario](#-end-to-end-scenario--zabbix-operational-problem--audit-evidence-verified-against-the-live-api)). **Fleet / Wazuh** collectors/parsers are ready but **live integration is the next step**.
 
 > 🔒 **Demo credentials notice** — Demo credentials (`admin` / `security` / `monitor`, password `1234`) are **intentionally simple for isolated demo use only**. The demo instance contains **seeded sample data only**; **no production secrets or real customer data are stored.** For any non-demo deployment, **change credentials and RBAC settings immediately** (`.env`: `MORI_ADMIN_PASSWORD`, `MORI_DEMO_MODE=false`).
 

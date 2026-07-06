@@ -28,14 +28,15 @@
 
 ## ⚡ Status — 30초 요약
 
-| ✅ 지금 되는 것 (Works now) | 🧪 부분 통합 (Partially integrated) | 🚧 예정 (Planned) |
+| ✅ 지금 되는 것 (Works now) | 🧪 부분 통합 (Partially integrated) | 🚧 다음 (Next) |
 |---|---|---|
-| 로그인 / RBAC | Zabbix collector | 실시간 폴링 (real-time polling) |
-| 자산 담당자·중요도 편집 | Trivy collector | FleetDM 라이브 연동 |
-| 취약점 조치계획 + **CVE별 위험성 평가** | Source freshness | Wazuh 라이브 연동 |
-| Alert Triage / Incident 워크플로우 | Worker cycle | LDAP/AD 운영 연동 |
-| PostgreSQL 영속 UI 상태 | | |
-| CSV/PDF 증적 export | | |
+| **✅ Zabbix 실시간 폴링 → alert (검증됨)** | Trivy collector (수집 구현, 자동화 진행) | **FleetDM 라이브 연동** |
+| Alert Triage / Incident 워크플로우 | Source freshness / Worker cycle | **Wazuh 라이브 연동** |
+| CVE별 **위험성 평가** + 취약점 조치계획 | | LDAP/AD 운영 연동 |
+| 로그인 / RBAC · 자산 담당자·중요도 편집 | | Slack / Email 알림 |
+| PostgreSQL 영속 UI 상태 · CSV/PDF 증적 export | | 라이브 조회 캐싱(성능) |
+
+> ✅ **Zabbix**는 실제 API로 *problem → 수집 → Triage → Incident → 증적 → 해소* 전 구간이 **검증됨** ([🎬 실전 시나리오](#-실전-시나리오--zabbix-운영-문제--감사-증적-실제-api-연동-검증됨)). **Fleet / Wazuh**는 컬렉터·파서는 준비됐으나 **라이브 연동은 다음 단계**입니다.
 
 > 🔒 **데모 자격증명 안내** — 데모 계정(`admin` / `security` / `monitor`, 비밀번호 `1234`)은 **격리된 데모 전용**으로 의도적으로 단순합니다. 데모 인스턴스는 **시드 샘플 데이터만** 포함하며 **실제 비밀·고객 데이터를 저장하지 않습니다.** 데모가 아닌 배포에서는 **즉시 자격증명과 RBAC를 변경**하세요. (`.env`의 `MORI_ADMIN_PASSWORD` · `MORI_DEMO_MODE=false`)
 
