@@ -2726,6 +2726,17 @@ def render_user_dashboard_html(
 
     <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
     <div class=\"tab-panel active\" id=\"tab_dashboard\">
+      <div style=\"display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;\">
+        <button id=\"panel_edit_toggle\" class=\"secondary\" onclick=\"togglePanelEdit()\" data-i18n=\"dash.panel.edit\">🧩 패널 편집</button>
+      </div>
+      <div id=\"panel_edit_box\" class=\"card hidden\" style=\"margin-bottom:12px;\">
+        <div style=\"font-weight:600;color:#7dd3fc;margin-bottom:4px\" data-i18n=\"dash.panel.edit_title\">표시할 패널 선택</div>
+        <div class=\"subtext\" data-i18n=\"dash.panel.edit_sub\">보고 싶은 항목만 켜세요. 변경은 자동 저장되어 다음 접속에도 유지됩니다.</div>
+        <div style=\"margin-top:10px;font-size:12px;color:#94a3b8\" data-i18n=\"dash.panel.group.cards\">요약 카드</div>
+        <div id=\"panel_edit_cards\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 12px\"></div>
+        <div style=\"font-size:12px;color:#94a3b8\" data-i18n=\"dash.panel.group.sections\">패널</div>
+        <div id=\"panel_edit_sections\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin-top:6px\"></div>
+      </div>
       <section class=\"metrics\" id=\"overview_cards\"><div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.overview_loading\">⏳ 요약 카드를 불러오는 중…</div></section>
       <div class=\"layout\">
         <div class=\"stack\">
@@ -2916,7 +2927,17 @@ def render_user_dashboard_html(
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
             <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.mine\">⭐ 내 담당 서버</h2>
-            <span class=\"asset-search-count\" id=\"mine_search_count\"></span>
+            <div style=\"display:flex;align-items:center;gap:8px\">
+              <label style=\"color:#94a3b8;font-size:13px;white-space:nowrap\" data-i18n=\"dash.assets.mine.groupby\">그룹 기준</label>
+              <select id=\"mine_group_by\" onchange=\"renderMyServers()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:4px 8px;font-size:13px\">
+                <option value=\"category\" data-i18n=\"dash.assets.mine.group.category\">카테고리</option>
+                <option value=\"team\" data-i18n=\"dash.assets.mine.group.team\">팀</option>
+                <option value=\"importance\" data-i18n=\"dash.assets.mine.group.importance\">중요도</option>
+                <option value=\"status\" data-i18n=\"dash.assets.mine.group.status\">상태</option>
+                <option value=\"none\" data-i18n=\"dash.assets.mine.group.flat\">없음(전체)</option>
+              </select>
+              <span class=\"asset-search-count\" id=\"mine_search_count\"></span>
+            </div>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.assets.mine.sub\">프로필의 담당 서버 목록 또는 담당자(이름)가 일치하는 PC·서버 자산을 모아 보여줍니다.</div>
           <div class=\"table-wrap\" id=\"mine_table\"><span class=\"empty\" data-i18n=\"dash.assets.mine.empty\">담당 자산이 없습니다. 계정 메뉴 → 프로필 편집에서 담당 서버를 등록하세요.</span></div>
@@ -3387,6 +3408,9 @@ def render_user_dashboard_html(
 
     let userPreferences = JSON.parse(JSON.stringify(defaultPreferences));
     let dashboardDetails = {};
+    let _lastOverviewData = {};
+    let _panelEditOpen = false;
+    let _panelSaveTimer = null;
     let currentTriageAlertId = null;
     let currentIncidentId = null;
     let triageDataCache = {};
@@ -3601,6 +3625,7 @@ def render_user_dashboard_html(
 
     function renderOverview(overview) {
       if (!overview || typeof overview !== 'object') overview = {};
+      _lastOverviewData = overview;
       const o = {
         total_hosts: overview.total_hosts ?? 0, online_hosts: overview.online_hosts ?? 0,
         offline_hosts: overview.offline_hosts ?? 0, unknown_hosts: overview.unknown_hosts ?? 0,
@@ -3638,6 +3663,70 @@ def render_user_dashboard_html(
           }
         });
       });
+    }
+
+    /* 🧩 패널 편집: 사용자가 직접 표시할 카드/패널을 선택 (개인별 자동 저장) */
+    function togglePanelEdit() {
+      _panelEditOpen = !_panelEditOpen;
+      const box = document.getElementById('panel_edit_box');
+      const btn = document.getElementById('panel_edit_toggle');
+      if (box) box.classList.toggle('hidden', !_panelEditOpen);
+      if (btn) btn.textContent = _panelEditOpen ? tt('dash.panel.done', '✓ 완료') : tt('dash.panel.edit', '🧩 패널 편집');
+      if (_panelEditOpen) renderPanelEditor();
+    }
+    window.togglePanelEdit = togglePanelEdit;
+
+    function renderPanelEditor() {
+      const mk = (key, label, kind, on) => `
+        <label style=\"display:flex;align-items:center;gap:6px;font-size:13px;color:#e2e8f0;cursor:pointer\">
+          <input type=\"checkbox\" data-panel-${kind}=\"${escapeHtml(key)}\" ${on ? 'checked' : ''} onchange=\"onPanelToggle('${kind}', this)\" />
+          ${escapeHtml(label)}
+        </label>`;
+      const cardsEl = document.getElementById('panel_edit_cards');
+      const sectionsEl = document.getElementById('panel_edit_sections');
+      if (cardsEl) {
+        cardsEl.innerHTML = Object.keys(cardLabels)
+          .map((key) => mk(key, cardLabels[key] || key, 'card', (userPreferences.cards || {})[key] !== false))
+          .join('');
+      }
+      if (sectionsEl) {
+        sectionsEl.innerHTML = Object.keys(sectionLabels)
+          .map((key) => mk(key, sectionLabels[key] || key, 'section', (userPreferences.sections || {})[key] !== false))
+          .join('');
+      }
+    }
+
+    function onPanelToggle(kind, input) {
+      const checked = !!input.checked;
+      if (kind === 'card') {
+        userPreferences.cards = userPreferences.cards || {};
+        userPreferences.cards[input.dataset.panelCard] = checked;
+        renderOverview(_lastOverviewData);
+      } else {
+        userPreferences.sections = userPreferences.sections || {};
+        userPreferences.sections[input.dataset.panelSection] = checked;
+        setSectionVisible(input.dataset.panelSection, checked);
+      }
+      savePanelPreferences();
+    }
+    window.onPanelToggle = onPanelToggle;
+
+    function savePanelPreferences() {
+      if (_panelSaveTimer) clearTimeout(_panelSaveTimer);
+      _panelSaveTimer = setTimeout(async () => {
+        try {
+          const response = await fetch('/dashboard/preferences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_dashboard: { cards: userPreferences.cards || {}, sections: userPreferences.sections || {} } }),
+          });
+          dashboardStatusEl.textContent = response.ok
+            ? tt('dash.panel.saved', '✅ 패널 설정 저장됨')
+            : `${tt('dash.panel.save_fail', '❌ 패널 설정 저장 실패')}: HTTP ${response.status}`;
+        } catch (error) {
+          dashboardStatusEl.textContent = `${tt('dash.panel.save_fail', '❌ 패널 설정 저장 실패')}: ${error.message}`;
+        }
+      }, 400);
     }
 
     function renderSourceCoverage(items) {
@@ -4262,6 +4351,36 @@ def render_user_dashboard_html(
         containerEl.innerHTML = `<span class=\"empty\">${tt('dash.assets.mine.empty', '담당 자산이 없습니다. 계정 메뉴 → 프로필 편집에서 담당 서버를 등록하세요.')}</span>`;
         return;
       }
+      const groupBy = document.getElementById('mine_group_by')?.value || 'category';
+      if (groupBy === 'none') {
+        containerEl.innerHTML = _renderMineTables(fleetHosts, zabbixHosts);
+        return;
+      }
+      const undef = tt('dash.assets.mine.group.none', '미지정');
+      const keyOf = (h, kind) => {
+        if (groupBy === 'team') return (h.team || '').trim() || undef;
+        if (groupBy === 'importance') return (h.importance || '').trim() || undef;
+        if (groupBy === 'status') return (h.status || '').trim() || undef;
+        if (kind === 'fleet') return tt('dash.assets.tab.fleet', 'PC 자산 (Fleet)');
+        return (h.category || '').trim() || tt('dash.assets.mine.group.uncategorized', '미분류');
+      };
+      const groups = {};
+      fleetHosts.forEach(h => { const k = keyOf(h, 'fleet'); (groups[k] = groups[k] || { fleet: [], zabbix: [] }).fleet.push(h); });
+      zabbixHosts.forEach(h => { const k = keyOf(h, 'zabbix'); (groups[k] = groups[k] || { fleet: [], zabbix: [] }).zabbix.push(h); });
+      const names = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'ko'));
+      containerEl.innerHTML = names.map(name => {
+        const g = groups[name];
+        const cnt = g.fleet.length + g.zabbix.length;
+        return `<details open style=\"margin:8px 0;border:1px solid #1e293b;border-radius:8px;overflow:hidden\">
+          <summary style=\"cursor:pointer;padding:8px 12px;background:#0f172a;font-weight:600;color:#e2e8f0\">${escapeHtml(name)} <span style=\"color:#64748b;font-weight:400\">(${cnt})</span></summary>
+          <div style=\"padding:8px 12px\">${_renderMineTables(g.fleet, g.zabbix)}</div>
+        </details>`;
+      }).join('');
+    }
+    window.renderMyServers = renderMyServers;
+
+    /* 내 서버 렌더 헬퍼: fleet/zabbix 컬럼이 달라 각각의 테이블 렌더러로 그려 합칩니다. */
+    function _renderMineTables(fleetHosts, zabbixHosts) {
       let html = '';
       if (fleetHosts.length) {
         html += `<div class=\"subtext\" style=\"margin:4px 0\">🖥️ ${tt('dash.assets.tab.fleet','PC 자산 (Fleet)')} (${fleetHosts.length})</div>`;
@@ -4275,9 +4394,8 @@ def render_user_dashboard_html(
         renderZabbixTable(zabbixHosts, wrap);
         html += wrap.innerHTML;
       }
-      containerEl.innerHTML = html;
+      return html;
     }
-    window.renderMyServers = renderMyServers;
 
     const FLEET_URL = '__FLEET_UI_URL__';
     const ZABBIX_URL = '__ZABBIX_UI_URL__';
