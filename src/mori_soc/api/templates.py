@@ -5636,19 +5636,22 @@ def render_user_dashboard_html(
         window.__pdcaPendingSources = ps;
         // Summary cards — 상단은 control_checks만, 하단 2장은 통합(통제+Trivy+Alert)
         if (cardsEl) {
-          // 바쁜 보안 담당자용: 행동 항목(미조치·기한초과) 우선 + Pass Rate 한 장.
-          // 전체점검/Pass/Fail/Warning 개별 카드는 Pass Rate 부제로 압축(상세는 아래 접기).
+          // 바쁜 보안 담당자용: 행동 항목(미조치·기한초과) 우선 + 취약률 한 장(숫자 크게).
+          // 피드백 반영: Pass Rate 대신 '취약률(Fail/Weakness Rate)' — 심사에서 봐야 할 건
+          // '통과율'이 아니라 '얼마나 취약한가'라서 반전 표시. 상세는 아래 접기.
           const totalChecks = data.total_checks || 0;
-          const passRateStr = totalChecks > 0 ? (data.pass_rate + '%') : '—';
+          const weakCount = (sc.fail || 0) + (sc.warning || 0);
+          const weakRateStr = totalChecks > 0 ? (Math.round(weakCount / totalChecks * 100) + '%') : '—';
+          const weakColor = totalChecks > 0 && (weakCount / totalChecks) >= 0.3 ? '#f43f5e' : '#fb923c';
           const totalPending = data.pending_count || 0;
           const pendingSub = `${tt('dash.dyn.pdca.control','통제')} ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}`;
           const breakdownSub = totalChecks > 0
-            ? `✅ ${sc.pass||0} · ❌ ${sc.fail||0} · ⚠️ ${sc.warning||0} / ${totalChecks}`
+            ? `❌ ${sc.fail||0} · ⚠️ ${sc.warning||0} / ${totalChecks} (✅ ${sc.pass||0})`
             : tt('dash.dyn.pdca.no_control_data','통제 점검 데이터 없음');
           cardsEl.innerHTML = [
-            _metricCard(tt('dash.dyn.pdca.pending_total_card','🔧 미조치 합계'), totalPending, '#fb923c', pendingSub),
-            _metricCard(tt('dash.dyn.pdca.overdue_card','🔴 기한초과'), data.overdue_count || 0, '#f43f5e', tt('dash.dyn.pdca.combined_sources','통제+Trivy+Alert')),
-            _metricCard('📊 Pass Rate', passRateStr, '#a78bfa', breakdownSub),
+            _metricCard(tt('dash.dyn.pdca.pending_total_card','🔧 미조치 합계'), totalPending, '#fb923c', pendingSub, true),
+            _metricCard(tt('dash.dyn.pdca.overdue_card','🔴 기한초과'), data.overdue_count || 0, '#f43f5e', tt('dash.dyn.pdca.combined_sources','통제+Trivy+Alert'), true),
+            _metricCard(tt('dash.pdca.weakness_rate','⚠️ 취약률 (Fail/Weakness)'), weakRateStr, weakColor, breakdownSub, true),
           ].join('');
         }
         // Status bars
@@ -5985,10 +5988,11 @@ def render_user_dashboard_html(
       }
     }
 
-    function _metricCard(label, value, color, sub) {
+    function _metricCard(label, value, color, sub, big) {
       const subHtml = sub ? `<div class=\"metric-sub\" style=\"color:#64748b;font-size:11px;margin-top:2px\">${escapeHtml(sub)}</div>` : '';
+      const valStyle = big ? `color:${color};font-size:44px;font-weight:800;line-height:1.1` : `color:${color}`;
       return `<div class=\"metric-card\" style=\"cursor:default\">
-        <div class=\"metric-value\" style=\"color:${color}\">${value}</div>
+        <div class=\"metric-value\" style=\"${valStyle}\">${value}</div>
         <div class=\"metric-label\">${label}</div>
         ${subHtml}
       </div>`;
