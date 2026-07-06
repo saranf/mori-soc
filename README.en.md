@@ -190,7 +190,6 @@ A guidance modal automatically surfaces so that host-level bulk plans don't conf
 |---|---|---|
 | LDAP authentication operational adoption | Code ready, activates when `LDAP_URL` is set | 🟡 Medium |
 | Slack / Email webhook notifications | Not connected (`SLACK_WEBHOOK_URL` slot exists only) | 🟡 Medium |
-| Phase 3 — investigative multi-hop pivot agent | Not started | 🟢 Low |
 
 ---
 
@@ -243,21 +242,6 @@ When demo mode is started, the platform behaves as follows.
 - **Plan** / **Exception** columns: `+ Add plan` / `+ Set exception` buttons or current value display
 - When a host has host-level plan/exception set, "📋 Per-CVE detailed plans" / expiry surfaces immediately, and within the **CVE detail modal (N items ↗ button)** a host-level plan/exception banner + per-CVE row marker ("host-level applied") confirms scope
 - **📋 History** button shows unified per-host change history (asset · plan · exception · CVE-level actions)
-
-### Demo public server (Demo Only)
-
-> ⚠️ **The URLs and accounts below are a portfolio-demo instance.** Seed security data + PostgreSQL-backed operational state; not real operational data. In production you **must redeploy with your own domain, HTTPS, and strong passwords**.
-
-| Item | Demo value | Notes |
-|---|---|---|
-| MORI Web UI (main portal) | `mori.rmstudio.co.kr:37854` | Demo only |
-| MORI API / unified ops UI | `mori.rmstudio.co.kr:18000/ui` | Demo only |
-| Grafana | `mori.rmstudio.co.kr:13000` | Demo only |
-| Zabbix Web | `mori.rmstudio.co.kr:18081` | Demo only |
-| FleetDM | `mori.rmstudio.co.kr:1337` | Demo only |
-| Demo accounts | `admin` / `security` / `monitor` (password `1234`) | **seeded sample data only · demo only. Must change passwords + reconfigure RBAC immediately for production** |
-
-Deployment behavior: `docker compose down && docker compose up -d` (GitHub Actions rsyncs to `/backup/rmstudio/mori` then runs the same).
 
 ### Individual scripts
 

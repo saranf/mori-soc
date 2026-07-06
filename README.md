@@ -190,7 +190,6 @@ flowchart LR
 |---|---|---|
 | LDAP 인증 운영 적용 | 코드 준비됨, `LDAP_URL` 설정 시 활성화 | 🟡 중간 |
 | Slack / Email 알림 webhook | 미연결 (`SLACK_WEBHOOK_URL` 설정점만 존재) | 🟡 중간 |
-| Phase 3 — 조사형 multi-hop pivot 에이전트 | 미착수 | 🟢 낮음 |
 
 ---
 
@@ -243,21 +242,6 @@ flowchart LR
 - **조치 계획** / **조치 예외** 컬럼: `+ 계획 추가` / `+ 예외 설정` 버튼 또는 설정된 값 표시
 - 호스트에 호스트 단위 계획·예외가 설정되면 "📋 CVE별 상세 계획"·만료일이 즉시 노출되며, **CVE 상세 모달(N건 ↗ 버튼)** 안에서도 호스트 단위 계획/예외 배너 + 각 CVE 행에 "호스트 단위 적용" 표시로 확인 가능
 - **📋 이력** 버튼으로 호스트별 변경 이력(자산·계획·예외·CVE별 조치) 통합 조회
-
-### 데모 공개 서버 (Demo Only)
-
-> ⚠️ **아래 URL과 계정은 포트폴리오 데모용 인스턴스입니다.** 시드 보안 데이터 + PostgreSQL 영속 운영 상태 기반이며, 실제 운영 데이터가 아닙니다. 운영 환경에서는 **반드시 자체 도메인·HTTPS·강력한 비밀번호로 재배포**해야 합니다.
-
-| 항목 | 데모 값 | 비고 |
-|---|---|---|
-| MORI Web UI (메인 포털) | `mori.rmstudio.co.kr:37854` | 데모 전용 |
-| MORI API / 통합 운영 UI | `mori.rmstudio.co.kr:18000/ui` | 데모 전용 |
-| Grafana | `mori.rmstudio.co.kr:13000` | 데모 전용 |
-| Zabbix Web | `mori.rmstudio.co.kr:18081` | 데모 전용 |
-| FleetDM | `mori.rmstudio.co.kr:1337` | 데모 전용 |
-| 데모 계정 | `admin` / `security` / `monitor` (비밀번호 `1234`) | **seeded sample data only · 데모 전용. 운영 배포 시 즉시 비밀번호 변경 + RBAC 재설정 필수** |
-
-배포 동작: `docker compose down && docker compose up -d` (GitHub Actions가 `/backup/rmstudio/mori`로 rsync 후 동일 명령을 수행).
 
 ### 개별 스크립트
 
