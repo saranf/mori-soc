@@ -147,7 +147,7 @@ flowchart LR
     STR -- M2-1 write-through persistence --> PG
 ```
 
-> Solid lines = current operating flow. PostgreSQL holds **normalized seed data** (hosts/alerts/vulns/observations) which is loaded into InMemoryRepository at boot for queries. The 6 UI operational stores (triage / incidents / asset owners / vuln actions / asset audit log / user profiles) are persisted to PostgreSQL via **cache-aside + write-through** (M2-1 done) — warm-loaded from the DB into memory at boot and written through to the DB on every mutation. The remaining dashed line = **next milestone (activating real-time pollers)**.
+> Solid lines = current operating flow. With `MORI_QUERY_BACKEND=postgres`, the **API reads a fresh PostgreSQL snapshot on every request** (materialized into an InMemoryQueryStore per request) — i.e. a **live read, not a boot snapshot**. So data ingested by `mori-worker` (e.g. **real Zabbix problems → alerts**) surfaces on the **next request with no API restart**. UI operational state (triage / incidents / asset owners / vuln actions / asset audit log / user profiles + risk register) is persisted to PostgreSQL via **cache-aside + write-through** (M2-1 · R-2). ✅ **Zabbix real-time polling is verified working** (see [🎬 end-to-end scenario](#-end-to-end-scenario--zabbix-operational-problem--audit-evidence-verified-against-the-live-api)); Fleet/Wazuh live integration is the next step.
 >
 > **API structure (Task J done):** `server.py` is now a **thin orchestrator (888 lines)** that assembles in-memory state and helper closures into a `RouteContext`, then registers 16 domain modules. Each endpoint is owned by `register_<domain>(ctx)` in `routes/<domain>.py`, and the 6 in-memory stores are shared across modules via the `RouteContext`.
 

@@ -35,6 +35,17 @@ class ZabbixEventCollectorApiTests(unittest.TestCase):
         self.assertNotIn("Agent timeout", record.host_aliases)
         self.assertEqual(normalized.normalized["host_id"], "mbp-01")
 
+    def test_severity_mapping_zabbix_to_normalized(self) -> None:
+        # Zabbix priority 0~5 → MORI severity 매핑 (0/1=info, 2=low, 3=medium, 4=high, 5=critical)
+        expected = {"0": "info", "1": "info", "2": "low", "3": "medium", "4": "high", "5": "critical"}
+        for zsev, want in expected.items():
+            collector = ZabbixEventCollector(
+                problem_lines=['{"eventid":"1","clock":"1710160500","name":"P","severity":"%s","triggerid":"9"}' % zsev]
+            )
+            record = collector.collect_problem_lines(collector._problem_lines)[0]
+            normalized = list(collector.normalize(record))[0]
+            self.assertEqual(normalized.normalized["severity"], want, f"zabbix severity {zsev}")
+
     def test_active_problem_has_no_resolved_at(self) -> None:
         collector = ZabbixEventCollector(
             problem_lines=['{"eventid":"1","clock":"1710160500","name":"CPU high","severity":"4",'

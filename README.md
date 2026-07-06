@@ -148,7 +148,7 @@ flowchart LR
     STR -- M2-1 write-through 영속화 --> PG
 ```
 
-> 실선은 현재 운영 중인 흐름. PostgreSQL은 **정규화 시드 데이터**(hosts/alerts/vulns/observations)를 보유하며 부팅 시 InMemoryRepository로 로드되어 질의에 사용됩니다. UI 운영 상태(triage / incidents / asset owners / vuln actions / asset audit log / user profiles) 6종은 **cache-aside + write-through**로 PostgreSQL에 영속화됩니다(M2-1 완료) — 부팅 시 DB에서 인메모리로 워밍 로드하고 변경 즉시 DB에 기록합니다. 남은 점선은 **다음 마일스톤(실시간 폴러 활성화)** 입니다.
+> 실선은 현재 운영 중인 흐름. `MORI_QUERY_BACKEND=postgres` 환경에서 **API는 매 요청마다 PostgreSQL의 최신 스냅샷을 읽어(InMemoryQueryStore로 매 요청 materialize)** 질의에 사용합니다 — 즉 **부팅 스냅샷이 아니라 라이브 조회**입니다. 따라서 `mori-worker`가 폴링해 적재한 실데이터(예: **실제 Zabbix problem → alerts**)는 **API 재시작 없이 다음 요청에 바로** 반영됩니다. UI 운영 상태(triage / incidents / asset owners / vuln actions / asset audit log / user profiles + risk register)는 **cache-aside + write-through**로 PostgreSQL에 영속화됩니다(M2-1·R-2). ✅ **Zabbix 실시간 폴링은 동작 검증됨**([🎬 실전 시나리오](#-실전-시나리오--zabbix-운영-문제--감사-증적-실제-api-연동-검증됨)); Fleet/Wazuh 라이브 연동은 다음 단계입니다.
 >
 > **API 구조(Task J 완료):** `server.py`는 인메모리 상태와 헬퍼 클로저를 `RouteContext`로 조립한 뒤 16개 도메인 모듈을 등록하는 **얇은 오케스트레이터(888줄)** 로 슬림화되었습니다. 각 엔드포인트는 `routes/<domain>.py`의 `register_<domain>(ctx)`가 소유하며, 인메모리 6종 store는 `RouteContext`를 통해 모듈 간 공유됩니다.
 
