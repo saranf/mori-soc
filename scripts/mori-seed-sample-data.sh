@@ -151,7 +151,22 @@ INSERT INTO control_check_results (check_id, control_id, entity_type, entity_id,
   ('cc-09','A.8.15','host','h-pc-03','fail',now()-interval '3 days','보안팀','3일간 로그 미수집',now()-interval '1 day'),
   ('cc-10','A.5.23','policy','policy-backup','pass',now()-interval '5 days','인프라팀','백업 정책 준수',NULL),
   ('cc-11','A.8.9','host','h-web-02','not_applicable',now()-interval '1 day','보안팀','해당 없음',NULL),
-  ('cc-12','2.5.1','host','h-fw-01','pass',now()-interval '6 hours','네트워크팀','방화벽 정책 점검 완료',NULL)
+  ('cc-12','2.5.1','host','h-fw-01','pass',now()-interval '6 hours','네트워크팀','방화벽 정책 점검 완료',NULL),
+  -- ── ISMS-P 인증기준(보호대책 2.x) 기반 통제 점검 ──────────────────────────
+  ('isms-2.1.3','2.1.3','host','h-web-01','pass',now()-interval '1 day','보안팀','[2.1.3 정보자산의 식별] 자산 목록·중요도·담당자 등록',NULL),
+  ('isms-2.1.3b','2.1.3','host','h-pc-03','fail',now()-interval '1 day','보안팀','[2.1.3 정보자산의 식별] 미등록/미분류 자산 존재',now()+interval '7 days'),
+  ('isms-2.5.1','2.5.1','account','acct-ext01','fail',now()-interval '2 days','IT팀','[2.5.1 사용자 계정 관리] 외부인력 계정 미비활성',now()-interval '1 day'),
+  ('isms-2.5.3','2.5.3','account','acct-admin','warning',now()-interval '2 days','IT팀','[2.5.3 사용자 인증] 관리자 MFA 미적용',now()+interval '14 days'),
+  ('isms-2.5.4','2.5.4','account','acct-dev01','warning',now()-interval '2 days','IT팀','[2.5.4 비밀번호 관리] 변경주기(90일) 초과',now()+interval '10 days'),
+  ('isms-2.6.1','2.6.1','host','h-fw-01','pass',now()-interval '6 hours','네트워크팀','[2.6.1 네트워크 접근] 접근통제 정책 적용',NULL),
+  ('isms-2.6.7','2.6.7','host','h-vpn-01','pass',now()-interval '6 hours','네트워크팀','[2.6.7 인터넷 접속 통제] VPN 경유 접속',NULL),
+  ('isms-2.7.1','2.7.1','host','h-db-01','warning',now()-interval '1 day','DBA팀','[2.7.1 암호정책 적용] 중요정보 컬럼 암호화 확인 필요',now()+interval '20 days'),
+  ('isms-2.9.4','2.9.4','host','h-db-01','pass',now()-interval '3 days','DBA팀','[2.9.4 로그 및 접속기록 관리] 로그 수집·보존 정상',NULL),
+  ('isms-2.9.4b','2.9.4','host','h-pc-03','fail',now()-interval '3 days','보안팀','[2.9.4 로그 및 접속기록 관리] 3일간 로그 미수집',now()-interval '1 day'),
+  ('isms-2.10.8','2.10.8','host','h-web-01','fail',now()-interval '12 hours','보안팀','[2.10.8 패치관리] critical 취약점 미패치',now()+interval '3 days'),
+  ('isms-2.10.8b','2.10.8','host','h-app-01','warning',now()-interval '12 hours','보안팀','[2.10.8 패치관리] high 취약점 조치 예정',now()+interval '5 days'),
+  ('isms-2.11.3','2.11.3','host','h-web-02','pass',now()-interval '6 hours','보안팀','[2.11.3 이상행위 분석·모니터링] Wazuh 탐지 운영',NULL),
+  ('isms-2.12.1','2.12.1','policy','policy-backup','pass',now()-interval '5 days','인프라팀','[2.12.1 재해·재난 대비] 백업 정책 준수',NULL)
 ON CONFLICT (check_id) DO NOTHING;
 "
 
