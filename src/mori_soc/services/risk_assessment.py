@@ -134,9 +134,33 @@ def assess_risk(
     )
 
 
+def grade_from_axes(impact: int, likelihood: int) -> RiskAssessment:
+    """영향도·발생가능성 축(1~3)을 직접 받아 등급을 산정한다.
+
+    평가자가 자동 제안(``assess_risk``)을 수용하지 않고 두 축을 **수동 조정**할 때
+    사용한다. severity 기반이 아니므로 ``likelihood_base = likelihood``.
+    범위를 벗어난 값은 1~3으로 clamp된다.
+    """
+    impact = _clamp(int(impact))
+    likelihood = _clamp(int(likelihood))
+    score = impact * likelihood
+    level, level_en = _level_for(score)
+    return RiskAssessment(
+        impact=impact,
+        likelihood=likelihood,
+        score=score,
+        level=level,
+        level_en=level_en,
+        impact_label=_LABEL_BY_SCORE[impact],
+        likelihood_label=_LABEL_BY_SCORE[likelihood],
+        likelihood_base=likelihood,
+    )
+
+
 __all__ = [
     "RiskAssessment",
     "assess_risk",
+    "grade_from_axes",
     "IMPACT_SCORE",
     "SEVERITY_LIKELIHOOD",
     "RISK_LEVELS",

@@ -11,6 +11,7 @@ from .risk_assessment import (
     SEVERITY_LIKELIHOOD,
     RiskAssessment,
     assess_risk,
+    grade_from_axes,
 )
 from .risk_score import ALERT_WEIGHTS, MAX_RISK_SCORE, VULN_WEIGHTS, RiskScoreCalculator
 from .views import (
@@ -40,6 +41,7 @@ __all__ = [
     # risk assessment (R-1)
     "RiskAssessment",
     "assess_risk",
+    "grade_from_axes",
     "IMPACT_SCORE",
     "SEVERITY_LIKELIHOOD",
     "RISK_LEVELS",
