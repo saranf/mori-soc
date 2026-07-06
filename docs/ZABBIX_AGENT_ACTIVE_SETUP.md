@@ -14,6 +14,16 @@
 
 권장은 **Active Agent** 방식입니다 — 단말이 서버로 outbound 접속하므로 NAT/사내망에서 구성이 단순하고, 서버가 단말의 10050 포트로 들어올 필요가 없습니다.
 
+> ⚡ **빠른 길 (원커맨드 번들)** — 아래 수동 절차 대신, 대상 서버에서 한 번에 **Zabbix Agent 2 + Trivy**를 설치·설정할 수 있습니다:
+> ```bash
+> MORI_ZABBIX_SERVER=<MORI 서버> MORI_HOSTNAME=my-web-01 sudo -E ./scripts/mori-endpoint-onboard.sh
+> ```
+> 그리고 MORI 표준 트리거 세트(디스크/CPU/메모리/에이전트)를 담은 Zabbix 템플릿은:
+> ```bash
+> ./scripts/mori-zabbix-template.sh    # 'MORI Linux Security Baseline' 템플릿 생성
+> ```
+> 이후 Zabbix Web에서 호스트에 템플릿만 연결하면 됩니다. (아래는 각 단계 수동 절차)
+
 ---
 
 ## 0. 사전 확인 (MORI 측)
