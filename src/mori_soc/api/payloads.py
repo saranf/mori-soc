@@ -804,6 +804,7 @@ def _alert_detail_rows(alerts: list[Any], hostnames: Mapping[str, str],
             "severity": alert.severity,
             "message": alert.message,
             "observed_at": _isoformat(alert.observed_at),
+            "resolved_at": _isoformat(alert.resolved_at) if getattr(alert, "resolved_at", None) else None,
         })
     return rows
 

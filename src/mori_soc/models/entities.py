@@ -48,6 +48,7 @@ class Alert:
     original_severity: str | None = None
     rule_name: str | None = None
     rule_id: str | None = None
+    resolved_at: datetime | None = None
     raw_ref: str | None = None
     raw_payload: dict[str, Any] = field(default_factory=dict)
 

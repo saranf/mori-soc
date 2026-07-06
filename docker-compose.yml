@@ -12,6 +12,7 @@ services:
       - ./schema/002_phase2_compliance_identity.sql:/docker-entrypoint-initdb.d/002_phase2_compliance_identity.sql:ro
       - ./schema/003_phase2_ui_operational_state.sql:/docker-entrypoint-initdb.d/003_phase2_ui_operational_state.sql:ro
       - ./schema/004_risk_register.sql:/docker-entrypoint-initdb.d/004_risk_register.sql:ro
+      - ./schema/005_alert_resolved.sql:/docker-entrypoint-initdb.d/005_alert_resolved.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s

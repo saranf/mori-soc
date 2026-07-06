@@ -134,8 +134,8 @@ class PostgresRepository(BaseRepository):
                     """
                     INSERT INTO alerts (
                         alert_id, source, source_event_id, host_id, severity, original_severity, rule_name, rule_id,
-                        message, observed_at, raw_ref, raw_payload
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        message, observed_at, resolved_at, raw_ref, raw_payload
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (alert_id) DO UPDATE SET
                         source = EXCLUDED.source,
                         source_event_id = EXCLUDED.source_event_id,
@@ -146,6 +146,7 @@ class PostgresRepository(BaseRepository):
                         rule_id = EXCLUDED.rule_id,
                         message = EXCLUDED.message,
                         observed_at = EXCLUDED.observed_at,
+                        resolved_at = EXCLUDED.resolved_at,
                         raw_ref = EXCLUDED.raw_ref,
                         raw_payload = EXCLUDED.raw_payload
                     """,
@@ -160,6 +161,7 @@ class PostgresRepository(BaseRepository):
                         entity.rule_id,
                         entity.message,
                         entity.observed_at,
+                        entity.resolved_at,
                         entity.raw_ref,
                         _jsonb(entity.raw_payload),
                     ),
@@ -332,7 +334,7 @@ class PostgresRepository(BaseRepository):
             cur.execute(
                 """
                 SELECT alert_id, source, observed_at, message, host_id, source_event_id, severity, original_severity,
-                       rule_name, rule_id, raw_ref, raw_payload
+                       rule_name, rule_id, raw_ref, raw_payload, resolved_at
                 FROM alerts ORDER BY observed_at DESC, alert_id
                 """
             )
@@ -350,6 +352,7 @@ class PostgresRepository(BaseRepository):
                     rule_id=row[9],
                     raw_ref=row[10],
                     raw_payload=_as_dict(row[11]),
+                    resolved_at=row[12],
                 )
                 for row in cur.fetchall()
             ]

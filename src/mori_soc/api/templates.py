@@ -4279,7 +4279,7 @@ def render_user_dashboard_html(
             <td><span style=\"background:#1e293b;color:#93c5fd;padding:2px 8px;border-radius:4px;font-size:12px\">${escapeHtml(a.source)}</span></td>
             <td><strong>${escapeHtml(a.hostname || a.host_id || '-')}</strong></td>
             <td style=\"color:#a3e635;font-size:12px\">${escapeHtml(alertOwner)}</td>
-            <td><span style=\"background:#111827;padding:2px 6px;border-radius:4px;font-size:12px\">${escapeHtml(a.severity)}</span></td>
+            <td><span style=\"background:#111827;padding:2px 6px;border-radius:4px;font-size:12px\">${escapeHtml(a.severity)}</span>${a.resolved_at?`<br><span title=\"${escapeHtml(formatTime(a.resolved_at))}\" style=\"background:#052e16;color:#86efac;border:1px solid #14532d;padding:1px 6px;border-radius:4px;font-size:10px\">${tt('dash.triage.source_resolved','✓ 소스 해소')}</span>`:''}</td>
             <td style=\"max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">${escapeHtml(a.message)}</td>
             <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(triageAnalyst || '-')}</td>
             <td style=\"color:#fde68a;font-size:12px\">${escapeHtml(triageChangedBy || '-')}</td>

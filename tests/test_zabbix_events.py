@@ -35,6 +35,31 @@ class ZabbixEventCollectorApiTests(unittest.TestCase):
         self.assertNotIn("Agent timeout", record.host_aliases)
         self.assertEqual(normalized.normalized["host_id"], "mbp-01")
 
+    def test_active_problem_has_no_resolved_at(self) -> None:
+        collector = ZabbixEventCollector(
+            problem_lines=['{"eventid":"1","clock":"1710160500","name":"CPU high","severity":"4",'
+                           '"triggerid":"9","r_eventid":"0"}']
+        )
+        record = collector.collect_problem_lines(collector._problem_lines)[0]
+        normalized = list(collector.normalize(record))[0]
+        self.assertIsNone(normalized.normalized["resolved_at"])
+
+    def test_resolved_problem_sets_resolved_at_from_r_clock(self) -> None:
+        from datetime import datetime, timezone
+        collector = ZabbixEventCollector(
+            problem_lines=['{"eventid":"1","clock":"1710160500","name":"CPU high","severity":"4",'
+                           '"triggerid":"9","r_eventid":"555","r_clock":"1710164100"}']
+        )
+        record = collector.collect_problem_lines(collector._problem_lines)[0]
+        normalized = list(collector.normalize(record))[0]
+        resolved = normalized.normalized["resolved_at"]
+        self.assertEqual(resolved, datetime.fromtimestamp(1710164100, tz=timezone.utc))
+        # 매퍼를 통과하면 Alert.resolved_at 로 전달된다
+        from mori_soc.services.normalization import EnvelopeEntityMapper
+        entities = EnvelopeEntityMapper().map_envelope(normalized)
+        alert = [e for e in entities if e.__class__.__name__ == "Alert"][0]
+        self.assertEqual(alert.resolved_at, resolved)
+
     def test_collect_api_fetches_problem_hosts_via_trigger_get(self) -> None:
         collector = ZabbixEventCollector(api_url="http://zabbix.example/api_jsonrpc.php", token="api-token")
         calls: list[tuple[str, dict[str, object]]] = []

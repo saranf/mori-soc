@@ -220,6 +220,8 @@ class EnvelopeEntityMapper:
                 original_severity=self._string_value(normalized.get("original_severity")),
                 rule_name=self._string_value(normalized.get("rule_name")),
                 rule_id=self._string_value(normalized.get("rule_id")),
+                resolved_at=(normalized.get("resolved_at")
+                             if isinstance(normalized.get("resolved_at"), datetime) else None),
                 message=self._string_value(normalized.get("message")) or "alert",
                 observed_at=envelope.observed_at,
                 raw_ref=envelope.raw_ref,

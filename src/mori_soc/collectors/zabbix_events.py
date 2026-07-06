@@ -71,7 +71,7 @@ class ZabbixEventCollector(BaseCollector):
         problems = self._api_call(
             "problem.get",
             {
-                "output": ["eventid", "clock", "name", "severity", "objectid"],
+                "output": ["eventid", "clock", "name", "severity", "objectid", "r_eventid", "r_clock"],
                 "recent": True,
                 "sortfield": "eventid",
                 "sortorder": "DESC",
@@ -212,6 +212,17 @@ class ZabbixEventCollector(BaseCollector):
         rule_id = str(trigger_id_raw) if trigger_id_raw is not None else None
         name = self._str(payload.get("name")) or "zabbix problem"
 
+        # 해소(resolve) 감지: recent=True 는 최근 해소된 problem 도 반환하며,
+        # 해소된 경우 r_eventid(복구 이벤트) != "0" + r_clock(복구 시각)이 채워진다.
+        resolved_at = None
+        r_eventid = str(payload.get("r_eventid") or "0")
+        if r_eventid not in ("", "0"):
+            r_clock = payload.get("r_clock")
+            try:
+                resolved_at = datetime.fromtimestamp(int(r_clock), tz=timezone.utc)  # type: ignore[arg-type]
+            except (TypeError, ValueError, OSError):
+                resolved_at = datetime.now(tz=timezone.utc)
+
         normalized = {
             "host_id": host_alias,
             "source_aliases": record.host_aliases,
@@ -221,6 +232,7 @@ class ZabbixEventCollector(BaseCollector):
             "original_severity": str(severity_raw) if severity_raw is not None else None,
             "rule_name": name,
             "rule_id": rule_id,
+            "resolved_at": resolved_at,
             "message": name,
         }
         return NormalizedEnvelope(
