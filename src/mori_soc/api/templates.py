@@ -34,6 +34,7 @@ USER_DASHBOARD_CARD_LABELS = {
     "ingested_records": "Ingested Records",
 }
 USER_DASHBOARD_SECTION_LABELS = {
+    "security_hero": "🛡️ Security Overview",
     "infra_status": "Infra Status (24h/12h)",
     "source_coverage": "Source Coverage",
     "latest_status": "Latest Host Status",
@@ -65,11 +66,12 @@ DEFAULT_USER_DASHBOARD_PREFERENCES = {
         "ingested_records": False,
     },
     "sections": {
+        "security_hero": True,
         "infra_status": True,
         "source_coverage": False,
-        "latest_status": True,
+        "latest_status": False,
         "risk_summary": True,
-        "recent_activity": True,
+        "recent_activity": False,
     },
     "asset_columns": {
         "show_importance": True,
@@ -2743,7 +2745,7 @@ def render_user_dashboard_html(
         <div id=\"panel_edit_sections\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin-top:6px\"></div>
       </div>
       <!-- 🛡️ 보안 요약 히어로 (Toss형: 보안 KPI + 위험 TOP 랭킹) — 보안 우선, 인프라는 아래 -->
-      <section class=\"card\" id=\"security_hero\" style=\"background:linear-gradient(135deg,#0b1220,#101a33);border:1px solid #1e3a5f\">
+      <section class=\"card\" id=\"security_hero_section\" style=\"background:linear-gradient(135deg,#0b1220,#101a33);border:1px solid #1e3a5f\">
         <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
           <h2 style=\"margin:0\" data-i18n=\"dash.hero.title\">🛡️ 지금 봐야 할 보안 현황</h2>
           <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" data-i18n=\"dash.hero.goto_risk\">위험 매트릭스 →</button>
@@ -2751,7 +2753,15 @@ def render_user_dashboard_html(
         <div id=\"security_hero_body\" style=\"margin-top:12px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
       </section>
       <section class=\"metrics\" id=\"overview_cards\"><div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.overview_loading\">⏳ 요약 카드를 불러오는 중…</div></section>
-      <div id=\"dash_grid\" style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;align-items:start\">
+      <style>
+        #dash_grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap:16px; align-items:start; }
+        #dash_grid > section { min-width:0; }
+        #dash_grid > section .table-wrap { overflow-x:auto; }
+        #dash_grid > section table { max-width:100%; }
+        /* 표가 있는 패널은 좁은 칼럼에 욱여넣지 않고 한 줄 전체 사용 */
+        #latest_status_section, #risk_summary_section, #recent_activity_section { grid-column: 1 / -1; }
+      </style>
+      <div id=\"dash_grid\">
           <!-- 🖥️ 인프라 현황 (24h/12h 전환 + Zabbix/Wazuh 딥링크) -->
           <section class=\"card\" id=\"infra_status_section\">
             <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
@@ -3382,7 +3392,8 @@ def render_user_dashboard_html(
       </div>
       <div id=\"risk_modal_meta\" style=\"color:#94a3b8;font-size:12px;margin-bottom:12px;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;background:#0b1322\"></div>
       <!-- 현재 등급 배지 + 자동 제안 -->
-      <div id=\"risk_modal_grade\" style=\"margin-bottom:14px\"></div>
+      <div id=\"risk_modal_grade\" style=\"margin-bottom:6px\"></div>
+      <div style=\"font-size:11px;color:#64748b;margin-bottom:12px;line-height:1.5\" data-i18n=\"dash.risk.basis_note\">산정 기준: 영향도(자산 중요도 상/중/하) × 발생가능성(취약점 심각도·Trivy CVSS 기반). ISMS-P 위험관리 / ISO 27001 6.1.2·8.8 방법론. 조직 DoA(수용가능 위험수준)에 맞춰 등급 조정 가능.</div>
       <div style=\"display:flex;flex-direction:column;gap:10px\">
         <div style=\"display:flex;gap:10px;flex-wrap:wrap\">
           <div style=\"flex:1;min-width:180px\"><label style=\"color:#94a3b8;font-size:13px\" data-i18n=\"dash.risk.f.impact\">영향도 (자산 중요도)</label>
