@@ -5627,20 +5627,19 @@ def render_user_dashboard_html(
         window.__pdcaPendingSources = ps;
         // Summary cards — 상단은 control_checks만, 하단 2장은 통합(통제+Trivy+Alert)
         if (cardsEl) {
+          // 바쁜 보안 담당자용: 행동 항목(미조치·기한초과) 우선 + Pass Rate 한 장.
+          // 전체점검/Pass/Fail/Warning 개별 카드는 Pass Rate 부제로 압축(상세는 아래 접기).
           const totalChecks = data.total_checks || 0;
           const passRateStr = totalChecks > 0 ? (data.pass_rate + '%') : '—';
-          const passRateSub = totalChecks > 0 ? tt('dash.dyn.pdca.control_checks','통제 점검') : tt('dash.dyn.pdca.no_control_data','통제 점검 데이터 없음');
           const totalPending = data.pending_count || 0;
           const pendingSub = `${tt('dash.dyn.pdca.control','통제')} ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}`;
-          const ccLbl = tt('dash.dyn.pdca.control_checks','통제 점검');
+          const breakdownSub = totalChecks > 0
+            ? `✅ ${sc.pass||0} · ❌ ${sc.fail||0} · ⚠️ ${sc.warning||0} / ${totalChecks}`
+            : tt('dash.dyn.pdca.no_control_data','통제 점검 데이터 없음');
           cardsEl.innerHTML = [
-            _metricCard(tt('dash.dyn.pdca.total_checks_card','📋 전체 점검'), totalChecks, '#38bdf8', ccLbl),
-            _metricCard('✅ Pass', sc.pass || 0, '#22c55e', ccLbl),
-            _metricCard('❌ Fail', sc.fail || 0, '#ef4444', ccLbl),
-            _metricCard('⚠️ Warning', sc.warning || 0, '#f59e0b', ccLbl),
-            _metricCard('📊 Pass Rate', passRateStr, '#a78bfa', passRateSub),
             _metricCard(tt('dash.dyn.pdca.pending_total_card','🔧 미조치 합계'), totalPending, '#fb923c', pendingSub),
             _metricCard(tt('dash.dyn.pdca.overdue_card','🔴 기한초과'), data.overdue_count || 0, '#f43f5e', tt('dash.dyn.pdca.combined_sources','통제+Trivy+Alert')),
+            _metricCard('📊 Pass Rate', passRateStr, '#a78bfa', breakdownSub),
           ].join('');
         }
         // Status bars
