@@ -2738,6 +2738,14 @@ def render_user_dashboard_html(
         <div style=\"font-size:12px;color:#94a3b8\" data-i18n=\"dash.panel.group.sections\">패널</div>
         <div id=\"panel_edit_sections\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin-top:6px\"></div>
       </div>
+      <!-- 🛡️ 보안 요약 히어로 (Toss형: 보안 KPI + 위험 TOP 랭킹) — 보안 우선, 인프라는 아래 -->
+      <section class=\"card\" id=\"security_hero\" style=\"background:linear-gradient(135deg,#0b1220,#101a33);border:1px solid #1e3a5f\">
+        <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+          <h2 style=\"margin:0\" data-i18n=\"dash.hero.title\">🛡️ 지금 봐야 할 보안 현황</h2>
+          <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" data-i18n=\"dash.hero.goto_risk\">위험 매트릭스 →</button>
+        </div>
+        <div id=\"security_hero_body\" style=\"margin-top:12px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+      </section>
       <section class=\"metrics\" id=\"overview_cards\"><div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.overview_loading\">⏳ 요약 카드를 불러오는 중…</div></section>
       <div class=\"layout\">
         <div class=\"stack\">
@@ -2960,9 +2968,11 @@ def render_user_dashboard_html(
     <div class=\"tab-panel\" id=\"tab_compliance\">
       <section class=\"card\">
         <h2 data-i18n=\"dash.card.compliance\">✅ Compliance PDCA 대시보드</h2>
-        <div class=\"subtext\" data-i18n-html=\"dash.compliance.sub\">ISMS-P / ISO 27001 통제 항목 점검 현황을 PDCA(Plan-Do-Check-Act) 관점으로 요약합니다.<br/>
-          <span style=\"color:#64748b;font-size:12px\">※ 상단 카드의 <strong>📋 전체 점검 / Pass / Fail / Warning / Pass Rate</strong>는 <strong>통제 점검(control_checks)</strong> 결과만 집계합니다. <strong>🔧 미조치 합계</strong>와 <strong>🔴 기한초과</strong>는 통제 점검 + Trivy 취약점(critical/high) + Alert(critical/high, 7일) 미조치 항목을 통합 집계합니다.</span>
-        </div>
+        <div class=\"subtext\" data-i18n=\"dash.compliance.sub_short\">ISMS-P / ISO 27001 통제 점검을 PDCA 관점으로 요약합니다. 지금 할 일(미조치·기한초과)부터 처리하세요.</div>
+        <details style=\"margin-top:8px\">
+          <summary style=\"cursor:pointer;color:#7dd3fc;font-size:12px\" data-i18n=\"dash.pdca.criteria\">ⓘ 집계 기준 자세히</summary>
+          <div class=\"subtext\" style=\"margin-top:6px\" data-i18n-html=\"dash.compliance.sub\">※ 상단 카드의 <strong>📋 전체 점검 / Pass / Fail / Warning / Pass Rate</strong>는 <strong>통제 점검(control_checks)</strong> 결과만 집계합니다. <strong>🔧 미조치 합계</strong>와 <strong>🔴 기한초과</strong>는 통제 점검 + Trivy 취약점(critical/high) + Alert(critical/high, 7일) 미조치 항목을 통합 집계합니다.</div>
+        </details>
       </section>
 
       <!-- PDCA Summary Cards -->
@@ -2970,33 +2980,38 @@ def render_user_dashboard_html(
         <div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.pdca_loading\">⏳ PDCA 데이터를 불러오는 중…</div>
       </section>
 
-      <!-- Status Donut + Pass Rate -->
-      <div class=\"layout\">
-        <div class=\"stack\">
-          <section class=\"card\">
-            <h2 data-i18n=\"dash.pdca.status_title\">📊 통제 항목 상태</h2>
-            <div id=\"pdca_status_chart\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin-top:12px\"></div>
-          </section>
-          <section class=\"card\">
-            <h2 data-i18n=\"dash.pdca.category_title\">📈 카테고리별 현황</h2>
-            <div id=\"pdca_category_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
-          </section>
+      <!-- 지금 할 일: 미조치 / 기한초과 (항상 표시, 최우선) -->
+      <section class=\"card\">
+        <div style=\"display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap\">
+          <h2 style=\"margin:0\" data-i18n=\"dash.pdca.pending_title\">⚠️ 미조치 / 기한 초과 항목</h2>
+          <a id=\"pdca_pending_csv_btn\" href=\"/compliance/pdca/pending.csv\" download style=\"background:#0c2a4a;border:1px solid #1e3a5f;color:#7dd3fc;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer\">📥 CSV</a>
         </div>
-        <div class=\"stack\">
-          <section class=\"card\">
-            <h2>🔄 PDCA Cycle</h2>
-            <div id=\"pdca_cycle_chart\" style=\"margin-top:12px\"></div>
-          </section>
-          <section class=\"card\">
-            <div style=\"display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap\">
-              <h2 style=\"margin:0\" data-i18n=\"dash.pdca.pending_title\">⚠️ 미조치 / 기한 초과 항목</h2>
-              <a id=\"pdca_pending_csv_btn\" href=\"/compliance/pdca/pending.csv\" download style=\"background:#0c2a4a;border:1px solid #1e3a5f;color:#7dd3fc;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer\">📥 CSV</a>
-            </div>
-            <div class=\"subtext\" data-i18n=\"dash.pdca.pending_sub\">fail 또는 warning 상태인 통제 항목입니다. 기한 초과는 🔴로 표시됩니다.</div>
-            <div id=\"pdca_pending_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
-          </section>
+        <div class=\"subtext\" data-i18n=\"dash.pdca.pending_sub\">fail 또는 warning 상태인 통제 항목입니다. 기한 초과는 🔴로 표시됩니다.</div>
+        <div id=\"pdca_pending_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
+      </section>
+
+      <!-- 상세 분석 (기본 접힘 — 처음 보는 담당자에겐 과부하라 뒤로) -->
+      <details class=\"card\" style=\"padding:0\">
+        <summary style=\"cursor:pointer;padding:16px 18px;font-weight:700;color:#e2e8f0;font-size:15px\" data-i18n=\"dash.pdca.detail_toggle\">📊 상세 분석 — 통제 상태 · 카테고리 · PDCA Cycle (펼치기)</summary>
+        <div class=\"layout\" style=\"padding:0 16px 16px\">
+          <div class=\"stack\">
+            <section class=\"card\">
+              <h2 data-i18n=\"dash.pdca.status_title\">📊 통제 항목 상태</h2>
+              <div id=\"pdca_status_chart\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin-top:12px\"></div>
+            </section>
+            <section class=\"card\">
+              <h2 data-i18n=\"dash.pdca.category_title\">📈 카테고리별 현황</h2>
+              <div id=\"pdca_category_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
+            </section>
+          </div>
+          <div class=\"stack\">
+            <section class=\"card\">
+              <h2>🔄 PDCA Cycle</h2>
+              <div id=\"pdca_cycle_chart\" style=\"margin-top:12px\"></div>
+            </section>
+          </div>
         </div>
-      </div>
+      </details>
 
       <!-- ── 증적 리포트 다운로드 ────────────────────────────────────── -->
       <section class=\"card\" style=\"margin-top:20px\">
@@ -3687,9 +3702,45 @@ def render_user_dashboard_html(
       openOverviewModal(cardLabels[key] || key, description, renderer(items));
     }
 
+    /* 🛡️ 보안 요약 히어로 — 보안 KPI + 위험 TOP 랭킹 (Toss 홈 랭킹 리스트형) */
+    async function renderSecurityHero() {
+      const el = document.getElementById('security_hero_body');
+      if (!el) return;
+      const o = _lastOverviewData || {};
+      let risk = { by_level: {}, items: [], total: 0 };
+      try { const r = await fetch('/vulnerabilities/risk-summary?source=trivy'); if (r.ok) risk = await r.json(); } catch (e) {}
+      const bl = risk.by_level || {};
+      const kpi = (label, val, color, onclick) => `<div onclick=\"${onclick||''}\" style=\"flex:1;min-width:130px;background:#0b1322;border:1px solid #1e293b;border-radius:10px;padding:12px 14px;${onclick?'cursor:pointer':''}\">
+        <div style=\"font-size:12px;color:#94a3b8\">${label}</div>
+        <div style=\"font-size:26px;font-weight:800;color:${color};margin-top:2px\">${val}</div></div>`;
+      const kpis = `<div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px\">
+        ${kpi(tt('dash.hero.critical_risk','🔴 매우높음 위험'), (bl['매우높음']||0), '#f87171', \"switchTab('assets');switchAssetTab('trivy')\")}
+        ${kpi(tt('dash.hero.high_risk','🟠 높음 위험'), (bl['높음']||0), '#fb923c', \"switchTab('assets');switchAssetTab('trivy')\")}
+        ${kpi(tt('dash.hero.alerts','🚨 24h 경보'), (o.alerts_24h??0), '#fca5a5', \"switchTab('triage')\")}
+        ${kpi(tt('dash.hero.crit_vulns','🐞 Critical 취약점'), (o.critical_vulns??0), '#fca5a5', \"switchTab('assets');switchAssetTab('trivy')\")}
+      </div>`;
+      const top = (risk.items || []).slice(0, 5);
+      let list;
+      if (!top.length) {
+        list = `<div class=\"empty\" style=\"color:#64748b\">${tt('dash.hero.no_risk','평가 대상 취약점이 없습니다.')}</div>`;
+      } else {
+        list = `<div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\">${tt('dash.hero.top_title','위험 TOP')}</div>` + top.map((it, i) => `
+          <div onclick=\"switchTab('assets');switchAssetTab('trivy')\" style=\"display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #1e293b;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#0b1322\">
+            <span style=\"color:#64748b;font-weight:700;width:16px\">${i+1}</span>
+            ${_riskBadge(it.level, true)}
+            <strong style=\"color:#7dd3fc;font-size:13px\">${escapeHtml(it.cve)}</strong>
+            <span style=\"color:#64748b;font-size:12px\">${escapeHtml(it.hostname)}</span>
+            <span style=\"margin-left:auto;color:${it.severity==='critical'?'#fca5a5':'#fdba74'};font-size:11px;text-transform:uppercase\">${escapeHtml(it.severity)}</span>
+          </div>`).join('');
+      }
+      el.innerHTML = kpis + list;
+    }
+    window.renderSecurityHero = renderSecurityHero;
+
     function renderOverview(overview) {
       if (!overview || typeof overview !== 'object') overview = {};
       _lastOverviewData = overview;
+      renderSecurityHero();
       const o = {
         total_hosts: overview.total_hosts ?? 0, online_hosts: overview.online_hosts ?? 0,
         offline_hosts: overview.offline_hosts ?? 0, unknown_hosts: overview.unknown_hosts ?? 0,
