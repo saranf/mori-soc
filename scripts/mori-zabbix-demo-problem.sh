@@ -77,8 +77,13 @@ if not key:
     raise SystemExit("숫자형 아이템을 찾지 못함")
 
 host, item_key = key
-res = rpc("trigger.create", {"description": DESC, "priority": "4",
-                             "expression": "last(/%s/%s)>=0" % (host, item_key)})
+# Zabbix→MORI 역방향 링크: 트리거 url 을 MORI Alert Triage 로 설정하면
+# Zabbix problem 컨텍스트 메뉴에서 MORI 로 이동할 수 있다(양방향 URL 연결).
+mori_url = os.getenv("MORI_PUBLIC_URL", "http://localhost:18000/ui")
+trigger_params = {"description": DESC, "priority": "4",
+                  "expression": "last(/%s/%s)>=0" % (host, item_key),
+                  "url": mori_url, "url_name": "MORI Alert Triage"}
+res = rpc("trigger.create", trigger_params)
 print("✅ 데모 트리거 생성:", res.get("result", res.get("error")))
 print("   → mori-worker 가 30초 내 수집하여 Alert Triage 에 노출합니다.")
 print("   → 확인: /ui → 🚨 Alert Triage 탭 (source=zabbix, 'MORI DEMO ...')")

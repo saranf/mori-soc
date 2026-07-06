@@ -805,6 +805,8 @@ def _alert_detail_rows(alerts: list[Any], hostnames: Mapping[str, str],
             "message": alert.message,
             "observed_at": _isoformat(alert.observed_at),
             "resolved_at": _isoformat(alert.resolved_at) if getattr(alert, "resolved_at", None) else None,
+            "source_event_id": getattr(alert, "source_event_id", None),  # Zabbix eventid 등
+            "rule_id": getattr(alert, "rule_id", None),                  # Zabbix triggerid 등
         })
     return rows
 

@@ -14,15 +14,30 @@ jobs:
       DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
     steps:
+      # 배포 시크릿이 설정되지 않은 저장소(포크/데모)에서는 전체 스킵 → job 초록.
+      # 시크릿은 job-level if 에서 참조 불가하므로 첫 스텝에서 게이트를 만든다.
+      - name: Check deploy secret configured
+        id: guard
+        run: |
+          if [ -z "${{ secrets.DEPLOY_SSH_KEY }}" ]; then
+            echo "::notice::DEPLOY_SSH_KEY is not configured — skipping deploy (expected on unconfigured repos)."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
+        if: steps.guard.outputs.run == 'true'
         uses: actions/checkout@v4
 
       - name: Start SSH agent
+        if: steps.guard.outputs.run == 'true'
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
 
       - name: Add SSH known hosts
+        if: steps.guard.outputs.run == 'true'
         run: |
           mkdir -p ~/.ssh
           if [ -n "${{ secrets.DEPLOY_KNOWN_HOSTS }}" ]; then
@@ -32,9 +47,11 @@ jobs:
           fi
 
       - name: Ensure remote path exists
+        if: steps.guard.outputs.run == 'true'
         run: ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH'"
 
       - name: Sync repository
+        if: steps.guard.outputs.run == 'true'
         run: |
           rsync -az --delete \
             --exclude '.git/' \
@@ -45,6 +62,7 @@ jobs:
             ./ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
 
       - name: Upload deployment env
+        if: steps.guard.outputs.run == 'true'
         env:
           DEPLOY_ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
         run: |
@@ -52,6 +70,7 @@ jobs:
             ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "cat > '$DEPLOY_PATH/.env'"
 
       - name: Run remote deploy
+        if: steps.guard.outputs.run == 'true'
         run: |
           ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" <<EOF
           set -e
