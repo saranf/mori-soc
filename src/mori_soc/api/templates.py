@@ -2751,7 +2751,7 @@ def render_user_dashboard_html(
       <!-- 🛡️ 보안 요약 히어로 (Toss형: 보안 KPI + 위험 TOP 랭킹) — 보안 우선, 인프라는 아래 -->
       <section class=\"card\" id=\"security_hero_section\" style=\"background:linear-gradient(135deg,#0b1220,#101a33);border:1px solid #1e3a5f\">
         <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-          <h2 style=\"margin:0\" data-i18n=\"dash.hero.title\">🛡️ 지금 봐야 할 보안 현황</h2>
+          <h2 style=\"margin:0\" data-i18n=\"dash.hero.section\">🛡️ 지금 봐야 할 보안 현황</h2>
           <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" data-i18n=\"dash.hero.goto_risk\">위험 매트릭스 →</button>
         </div>
         <div id=\"security_hero_body\" style=\"margin-top:12px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>

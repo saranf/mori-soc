@@ -26,6 +26,19 @@
 
 > ⚠️ **Alpha / Work in Progress** — 일상 보안 운영 + 감사 증적 누적 시나리오가 동작하며, **UI 운영 상태 6종은 PostgreSQL에 영속화(M2-1 완료)** 되어 재시작 후에도 유지됩니다. 실시간 폴링은 다음 마일스톤이며, 대시보드 자산·경보 데이터는 아직 **시드(sample data)** 기반입니다.
 
+## ⚡ Status — 30초 요약
+
+| ✅ 지금 되는 것 (Works now) | 🧪 부분 통합 (Partially integrated) | 🚧 예정 (Planned) |
+|---|---|---|
+| 로그인 / RBAC | Zabbix collector | 실시간 폴링 (real-time polling) |
+| 자산 담당자·중요도 편집 | Trivy collector | FleetDM 라이브 연동 |
+| 취약점 조치계획 + **CVE별 위험성 평가** | Source freshness | Wazuh 라이브 연동 |
+| Alert Triage / Incident 워크플로우 | Worker cycle | LDAP/AD 운영 연동 |
+| PostgreSQL 영속 UI 상태 | | |
+| CSV/PDF 증적 export | | |
+
+> 🔒 **데모 자격증명 안내** — 데모 계정(`admin` / `security` / `monitor`, 비밀번호 `1234`)은 **격리된 데모 전용**으로 의도적으로 단순합니다. 데모 인스턴스는 **시드 샘플 데이터만** 포함하며 **실제 비밀·고객 데이터를 저장하지 않습니다.** 데모가 아닌 배포에서는 **즉시 자격증명과 RBAC를 변경**하세요. (`.env`의 `MORI_ADMIN_PASSWORD` · `MORI_DEMO_MODE=false`)
+
 오픈소스 보안 도구를 통합하여 **ISMS-P / ISO 27001 인증 심사에 필요한 증적·통제 점검·조치 이력**을 한 곳에서 수집·관리·내보내기 할 수 있도록 만든 경량 SOC 플랫폼입니다.
 
 > **목표:** 중소형 조직에서 IT 헬프데스크 + 담당자 1명이 `docker compose` 한 줄로 배포하여 ISMS-P / ISO 27001 준비와 일상 보안 운영을 같이 할 수 있는 **"Compliance-Evidence Platform"**

@@ -26,6 +26,19 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 
 > ⚠️ **Alpha / Work in Progress** — Day-to-day security operations + audit-evidence accumulation scenarios work, and the **6 UI operational state stores are persisted to PostgreSQL (M2-1 done)** so they survive restarts. Real-time polling is the next milestone; dashboard asset/alert data is still **seed (sample data)** based.
 
+## ⚡ Status — 30-second overview
+
+| ✅ Works now | 🧪 Partially integrated | 🚧 Planned |
+|---|---|---|
+| Login / RBAC | Zabbix collector | Real-time polling |
+| Asset owner / importance editing | Trivy collector | FleetDM live integration |
+| Vulnerability action plan + **per-CVE risk assessment** | Source freshness | Wazuh live integration |
+| Alert triage / Incident workflow | Worker cycle | LDAP/AD production integration |
+| PostgreSQL-backed UI state persistence | | |
+| CSV/PDF evidence export | | |
+
+> 🔒 **Demo credentials notice** — Demo credentials (`admin` / `security` / `monitor`, password `1234`) are **intentionally simple for isolated demo use only**. The demo instance contains **seeded sample data only**; **no production secrets or real customer data are stored.** For any non-demo deployment, **change credentials and RBAC settings immediately** (`.env`: `MORI_ADMIN_PASSWORD`, `MORI_DEMO_MODE=false`).
+
 A lightweight SOC platform built by integrating open-source security tools so that **evidence, control checks, and remediation history required for ISMS-P / ISO 27001 audits** can be collected, managed, and exported in one place.
 
 > **Goal:** A "Compliance-Evidence Platform" that lets IT helpdesk + 1 designated owner at a small/mid-sized organization deploy with a single `docker compose` command, running ISMS-P / ISO 27001 preparation alongside daily security operations.
