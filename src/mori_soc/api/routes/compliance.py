@@ -13,7 +13,13 @@ from typing import Any
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
-from mori_soc.services.reports import REPORT_TYPES, generate_report, report_to_csv, report_to_pdf
+from mori_soc.services.reports import (
+    REPORT_TYPES,
+    build_risk_register_report,
+    generate_report,
+    report_to_csv,
+    report_to_pdf,
+)
 from mori_soc.api.payloads import build_crosscheck_payload, build_pdca_payload
 from mori_soc.api.routes.context import RouteContext
 
@@ -92,6 +98,7 @@ def register_compliance(ctx: RouteContext) -> None:
             "account_privilege": "계정/권한 점검 리포트",
             "log_collection_status": "로그 수집 상태 리포트",
             "vulnerability_assessment": "취약점 점검 리포트",
+            "risk_register": "위험성 평가 대장",
             "monthly_operations": "월간 운영 리포트",
         }
         return {
@@ -113,7 +120,13 @@ def register_compliance(ctx: RouteContext) -> None:
         if report_type not in REPORT_TYPES:
             raise HTTPException(status_code=400, detail=f"Unknown report type: {report_type}. Valid: {', '.join(REPORT_TYPES)}")
         try:
-            report = generate_report(report_type, get_query_service())
+            if report_type == "risk_register":
+                # 위험 대장은 store 밖 risk_register + asset_owners 를 함께 사용
+                report = build_risk_register_report(
+                    get_query_service(), ctx.risk_register, ctx.asset_owners,
+                )
+            else:
+                report = generate_report(report_type, get_query_service())
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"report generation failed: {exc}") from exc
         if format == "csv":

@@ -24,8 +24,19 @@ REPORT_TYPES = [
     "account_privilege",
     "log_collection_status",
     "vulnerability_assessment",
+    "risk_register",
     "monthly_operations",
 ]
+
+# 위험처리 결정 한글 라벨 (증적 가독성)
+_TREATMENT_KR = {
+    "": "미정", "mitigate": "조치(경감)", "accept": "수용",
+    "transfer": "이관", "avoid": "회피",
+}
+
+
+def _treatment_kr(value: Any) -> str:
+    return _TREATMENT_KR.get(str(value or ""), str(value or ""))
 
 
 def _isoformat(dt: datetime | None) -> str | None:
@@ -268,7 +279,84 @@ def build_vulnerability_report(service: QueryService) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# 5. 월간 운영 리포트
+# 5. 위험성 평가 대장 (Risk Register) — R-5
+# ---------------------------------------------------------------------------
+
+def build_risk_register_report(
+    service: QueryService,
+    risk_register: dict[str, dict[str, Any]] | None = None,
+    asset_owners: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """CVE별 위험성 평가 대장 — 저장된 평가는 그 값, 미평가는 자동 제안값으로 집계.
+
+    ISMS-P 위험관리 / ISO 27001 6.1.2 위험평가 증적. 영향도(자산 중요도) ×
+    발생가능성(심각도) → 위험등급 + 위험처리 결정.
+    """
+    from mori_soc.services.asset_classifier import classify_server_as_dict
+    from mori_soc.services.risk_assessment import assess_risk
+
+    store = service.store
+    _register = risk_register or {}
+    _owners = asset_owners or {}
+    hostnames = {h.host_id: h.hostname for h in store.hosts}
+    now = _now()
+
+    def _importance(hostname: str) -> str:
+        oi = _owners.get(hostname, {})
+        return (oi.get("importance") or "").strip() or classify_server_as_dict(hostname).get("importance", "중")
+
+    rows: list[dict[str, Any]] = []
+    level_counts: Counter = Counter()
+    assessed = 0
+    for v in store.vulnerabilities:
+        if getattr(v, "source", "") != "trivy":
+            continue
+        hostname = hostnames.get(v.host_id, v.host_id)
+        stored = _register.get(v.vuln_id)
+        if stored and stored.get("score"):
+            impact, likelihood = stored["impact"], stored["likelihood"]
+            score, level = stored["score"], stored["level"]
+            treatment = stored.get("treatment", "")
+            approver, residual = stored.get("accept_approver", ""), stored.get("residual_level", "")
+            review_due, assessed_by = stored.get("review_due", ""), stored.get("assessed_by", "")
+            assessed_at = stored.get("assessed_at", "") or ""
+            status = "평가완료"
+            assessed += 1
+            importance = _importance(hostname)
+        else:
+            importance = _importance(hostname)
+            a = assess_risk(importance, getattr(v, "severity", "info"),
+                            fixed_available=bool(getattr(v, "fixed_version", None)))
+            impact, likelihood, score, level = a.impact, a.likelihood, a.score, a.level
+            treatment = approver = residual = review_due = assessed_by = assessed_at = ""
+            status = "자동제안(미평가)"
+        level_counts[level] += 1
+        rows.append({
+            "cve": getattr(v, "cve", None) or v.vuln_id, "hostname": hostname,
+            "importance": importance, "severity": getattr(v, "severity", "info"),
+            "impact": impact, "likelihood": likelihood, "score": score, "level": level,
+            "treatment": treatment, "accept_approver": approver, "residual_level": residual,
+            "review_due": review_due, "assessed_by": assessed_by, "assessed_at": assessed_at,
+            "status": status,
+        })
+    rows.sort(key=lambda r: (-r["score"], r["cve"]))
+
+    return {
+        "report_type": "risk_register",
+        "generated_at": _isoformat(now),
+        "title": "위험성 평가 대장",
+        "summary": {
+            "total": len(rows),
+            "assessed": assessed,
+            "unassessed": len(rows) - assessed,
+            "level_distribution": dict(level_counts),
+        },
+        "rows": rows,
+    }
+
+
+# ---------------------------------------------------------------------------
+# 6. 월간 운영 리포트
 # ---------------------------------------------------------------------------
 
 def build_monthly_operations_report(service: QueryService) -> dict[str, Any]:
@@ -364,6 +452,8 @@ def report_to_csv(report: dict[str, Any]) -> str:
         _write_log_collection_csv(buf, report)
     elif rtype == "vulnerability_assessment":
         _write_vulnerability_csv(buf, report)
+    elif rtype == "risk_register":
+        _write_risk_register_csv(buf, report)
     elif rtype == "monthly_operations":
         _write_monthly_csv(buf, report)
     else:
@@ -441,6 +531,22 @@ _MONTHLY_METRIC_KR = {
 }
 
 
+def _write_risk_register_csv(buf: io.StringIO, report: dict) -> None:
+    fieldnames = ["cve", "hostname", "importance", "severity", "impact", "likelihood",
+                  "score", "level", "treatment", "accept_approver", "residual_level",
+                  "review_due", "assessed_by", "assessed_at", "status"]
+    header_map = ["CVE", "자산(호스트)", "자산중요도", "심각도", "영향도", "발생가능성",
+                  "위험점수", "위험등급", "위험처리", "승인자", "잔여위험",
+                  "재평가예정일", "평가자", "평가일시", "상태"]
+    writer = csv.writer(buf)
+    writer.writerow(header_map)
+    for r in report.get("rows", []):
+        writer.writerow([
+            _treatment_kr(r.get(f, "")) if f == "treatment" else r.get(f, "")
+            for f in fieldnames
+        ])
+
+
 def _write_monthly_csv(buf: io.StringIO, report: dict) -> None:
     """월간 운영 리포트를 섹션별 key-value CSV로 출력."""
     writer = csv.writer(buf)
@@ -466,6 +572,7 @@ _REPORT_LABELS = {
     "account_privilege": "계정/권한 점검 리포트",
     "log_collection_status": "로그 수집 상태 리포트",
     "vulnerability_assessment": "취약점 점검 리포트",
+    "risk_register": "위험성 평가 대장",
     "monthly_operations": "월간 운영 리포트",
 }
 
@@ -638,6 +745,15 @@ def _render_report_pdf_sections(report: dict, add_section) -> None:
                  ",".join(r.get("cves", []))]
                 for r in report.get("by_host", [])]
         add_section("취약점 호스트별 집계", headers, rows)
+    elif rtype == "risk_register":
+        headers = ["CVE", "자산", "중요도", "심각도", "영향도", "발생가능성", "점수",
+                   "등급", "위험처리", "승인자", "재평가일", "상태"]
+        rows = [[r.get("cve"), r.get("hostname"), r.get("importance"), r.get("severity"),
+                 r.get("impact"), r.get("likelihood"), r.get("score"), r.get("level"),
+                 _treatment_kr(r.get("treatment", "")), r.get("accept_approver"),
+                 r.get("review_due"), r.get("status")]
+                for r in report.get("rows", [])]
+        add_section("위험성 평가 대장", headers, rows)
     elif rtype == "monthly_operations":
         rows: list[list[Any]] = []
         for section_key in ("assets", "alerts", "vulnerabilities", "collection", "compliance", "identity"):
