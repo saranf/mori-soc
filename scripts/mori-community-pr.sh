@@ -26,8 +26,9 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_YAML="$REPO_ROOT/config/zabbix/templates/mori_linux_security_baseline.yaml"
-TPL_LEAF="MORI Linux Security Baseline"
-CATEGORY="${MORI_PR_CATEGORY:-Operating Systems}"
+# 커뮤니티 레포 컨벤션: 카테고리/폴더는 언더스코어 (예: Operating_Systems/Linux)
+TPL_LEAF="${MORI_PR_LEAF:-MORI_Linux_Security_Baseline}"
+CATEGORY="${MORI_PR_CATEGORY:-Operating_Systems}"
 BRANCH="add-mori-linux-security-baseline"
 AUTHOR="${MORI_PR_AUTHOR:-$(git config user.name 2>/dev/null || echo 'your-name')}"
 
@@ -142,9 +143,9 @@ A vendor-neutral security/audit baseline for Linux endpoints (Zabbix agent 2).
 - Tags: class=security, source=mori, component=…
 - Validated: `configuration.import` round-trip returns `true` on Zabbix 7.4
 
-**Files**
-- `Operating Systems/MORI Linux Security Baseline/mori_linux_security_baseline.yaml`
-- `Operating Systems/MORI Linux Security Baseline/README.md`
+**Files** (see PR diff)
+- `<category>/MORI_Linux_Security_Baseline/mori_linux_security_baseline.yaml`
+- `<category>/MORI_Linux_Security_Baseline/README.md`
 BODY
 
 echo ""
