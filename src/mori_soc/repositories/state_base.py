@@ -72,5 +72,14 @@ class StateRepository(ABC):
     def save_incident(self, incident_id: str, record: dict[str, Any]) -> None:
         raise NotImplementedError
 
+    # ── risk_register: vuln_id -> record (R-2) ─────────────────────────────────
+    @abstractmethod
+    def load_risk_register(self) -> dict[str, dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_risk_assessment(self, vuln_id: str, record: dict[str, Any]) -> None:
+        raise NotImplementedError
+
 
 __all__ = ["StateRepository"]

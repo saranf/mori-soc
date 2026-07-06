@@ -213,5 +213,44 @@ class PostgresStateRepository(StateRepository):
                  record.get("created_at"), record.get("updated_at")),
             )
 
+    # ── risk_register (R-2) ────────────────────────────────────────────────────
+    def load_risk_register(self) -> dict[str, dict[str, Any]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT vuln_id, impact, likelihood, score, level, treatment, accept_reason, "
+                "accept_approver, residual_level, review_due, assessed_by, assessed_at, updated_at "
+                "FROM ui_risk_register"
+            )
+            return {
+                r[0]: {"vuln_id": r[0], "impact": r[1], "likelihood": r[2], "score": r[3],
+                       "level": r[4], "treatment": r[5], "accept_reason": r[6],
+                       "accept_approver": r[7], "residual_level": r[8], "review_due": r[9],
+                       "assessed_by": r[10], "assessed_at": r[11], "updated_at": r[12]}
+                for r in cur.fetchall()
+            }
+
+    def save_risk_assessment(self, vuln_id: str, record: dict[str, Any]) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO ui_risk_register (vuln_id, impact, likelihood, score, level, treatment,
+                                              accept_reason, accept_approver, residual_level, review_due,
+                                              assessed_by, assessed_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (vuln_id) DO UPDATE SET
+                    impact = EXCLUDED.impact, likelihood = EXCLUDED.likelihood, score = EXCLUDED.score,
+                    level = EXCLUDED.level, treatment = EXCLUDED.treatment,
+                    accept_reason = EXCLUDED.accept_reason, accept_approver = EXCLUDED.accept_approver,
+                    residual_level = EXCLUDED.residual_level, review_due = EXCLUDED.review_due,
+                    assessed_by = EXCLUDED.assessed_by, assessed_at = EXCLUDED.assessed_at,
+                    updated_at = EXCLUDED.updated_at
+                """,
+                (vuln_id, int(record.get("impact", 0) or 0), int(record.get("likelihood", 0) or 0),
+                 int(record.get("score", 0) or 0), record.get("level", ""), record.get("treatment", ""),
+                 record.get("accept_reason", ""), record.get("accept_approver", ""),
+                 record.get("residual_level", ""), record.get("review_due", ""),
+                 record.get("assessed_by", ""), record.get("assessed_at"), record.get("updated_at")),
+            )
+
 
 __all__ = ["PostgresStateRepository", "PSYCOPG_AVAILABLE"]

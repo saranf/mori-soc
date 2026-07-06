@@ -54,6 +54,8 @@ class RouteContext:
     asset_audit_log: list[dict[str, Any]] = field(default_factory=list)
     action_plans: dict[str, dict[str, Any]] = field(default_factory=dict)
     vuln_actions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # risk_register: vuln_id -> 위험성 평가 레코드 (R-2)
+    risk_register: dict[str, dict[str, Any]] = field(default_factory=dict)
     user_profiles: dict[str, dict[str, Any]] = field(default_factory=dict)
     guides: dict[str, dict[str, Any]] = field(default_factory=dict)
     user_dashboard_prefs: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -85,6 +87,7 @@ class RouteContext:
     persist_vuln_action: Optional[Callable[[str], None]] = None
     persist_triage: Optional[Callable[[str], None]] = None
     persist_incident: Optional[Callable[[str], None]] = None
+    persist_risk_assessment: Optional[Callable[[str], None]] = None
 
 
 __all__ = ["RouteContext"]

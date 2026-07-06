@@ -23,6 +23,7 @@ class InMemoryStateRepository(StateRepository):
         self._vuln_actions: dict[str, dict[str, Any]] = {}
         self._triage: dict[str, dict[str, Any]] = {}
         self._incidents: dict[str, dict[str, Any]] = {}
+        self._risk_register: dict[str, dict[str, Any]] = {}
 
     # ── user_profiles ──────────────────────────────────────────────────────────
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:
@@ -68,6 +69,13 @@ class InMemoryStateRepository(StateRepository):
 
     def save_incident(self, incident_id: str, record: dict[str, Any]) -> None:
         self._incidents[incident_id] = copy.deepcopy(record)
+
+    # ── risk_register ──────────────────────────────────────────────────────────
+    def load_risk_register(self) -> dict[str, dict[str, Any]]:
+        return copy.deepcopy(self._risk_register)
+
+    def save_risk_assessment(self, vuln_id: str, record: dict[str, Any]) -> None:
+        self._risk_register[vuln_id] = copy.deepcopy(record)
 
 
 __all__ = ["InMemoryStateRepository"]

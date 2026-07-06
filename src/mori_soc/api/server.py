@@ -204,6 +204,10 @@ def create_app(
     # Per-vulnerability actions: vuln_id -> {plan_text, plan_target_date, plan_updated_by,
     #                                        exception_until, exception_reason, exception_updated_by, updated_at}
     vuln_actions: dict[str, dict[str, Any]] = {}
+    # Risk register (R-2): vuln_id -> {impact, likelihood, score, level, treatment,
+    #   accept_reason, accept_approver, residual_level, review_due, assessed_by,
+    #   assessed_at, updated_at}
+    risk_register: dict[str, dict[str, Any]] = {}
     # User profiles: username -> {display_name, department, assigned_servers: [hostname...], updated_at}
     user_profiles: dict[str, dict[str, Any]] = {}
 
@@ -217,6 +221,7 @@ def create_app(
     asset_owners.update(state_repo.load_asset_owners())
     asset_audit_log.extend(state_repo.load_asset_audit_log())
     vuln_actions.update(state_repo.load_vuln_actions())
+    risk_register.update(state_repo.load_risk_register())
     user_profiles.update(state_repo.load_user_profiles())
 
     # ── Demo seed (in-memory) ────────────────────────────────────────────────
@@ -823,6 +828,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
         asset_audit_log=asset_audit_log,
         action_plans=action_plans,
         vuln_actions=vuln_actions,
+        risk_register=risk_register,
         user_profiles=user_profiles,
         guides=guides,
         user_dashboard_prefs=user_dashboard_prefs,
@@ -850,6 +856,9 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     def _persist_vuln_action(vuln_id: str) -> None:
         state_repo.save_vuln_action(vuln_id, vuln_actions[vuln_id])
 
+    def _persist_risk_assessment(vuln_id: str) -> None:
+        state_repo.save_risk_assessment(vuln_id, risk_register[vuln_id])
+
     def _persist_triage(alert_id: str) -> None:
         state_repo.save_triage(alert_id, triage_store[alert_id])
 
@@ -861,6 +870,7 @@ MORI SOC 플랫폼을 활용한 보안 운영 정책을 안내합니다.
     ctx.delete_asset_owner = _delete_asset_owner
     ctx.persist_asset_audit = _persist_asset_audit
     ctx.persist_vuln_action = _persist_vuln_action
+    ctx.persist_risk_assessment = _persist_risk_assessment
     ctx.persist_triage = _persist_triage
     ctx.persist_incident = _persist_incident
 

@@ -44,6 +44,9 @@ fi
 if [ -f "$PROJECT_ROOT/schema/003_phase2_ui_operational_state.sql" ]; then
   run_sql_file "$PROJECT_ROOT/schema/003_phase2_ui_operational_state.sql" >/dev/null 2>&1 || true
 fi
+if [ -f "$PROJECT_ROOT/schema/004_risk_register.sql" ]; then
+  run_sql_file "$PROJECT_ROOT/schema/004_risk_register.sql" >/dev/null 2>&1 || true
+fi
 
 # Fix legacy CHECK constraints (older DBs missing 'trivy' in source whitelists)
 run_sql_lenient "
