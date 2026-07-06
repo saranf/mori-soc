@@ -588,6 +588,8 @@ docker compose up -d mori-api
 | **`docs/COMMUNITY_TEMPLATE_PR.md`** | MORI Zabbix 템플릿을 zabbix/community-templates 에 PR 제출하는 절차 |
 | **`config/zabbix/templates/`** | Zabbix 공식 포맷 템플릿(YAML, LLD·매크로·태그) + 사용법 |
 | `docs/TRIVY_USAGE.md` | Trivy 파일시스템/이미지 스캔 가이드 |
+| **`docs/FLEET_SETUP_AND_OPERATIONS.md`** | FleetDM 설치·운영·단말 등록·라이브쿼리·정책 (상세) |
+| **`docs/WAZUH_SETUP_AND_OPERATIONS.md`** | Wazuh 이해(3컴포넌트)·에이전트 등록·경보 운영 |
 | `docs/FLEET_MACBOOK_ENROLLMENT_AND_TEST.md` | Fleet macOS 등록·검증 |
 | `docs/FLEET_RESET_AND_REINSTALL_GUIDE.md` | Fleet 초기화·재설치 |
 | `docs/collection-standards.md` | 수집 표준 |
