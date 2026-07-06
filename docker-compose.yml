@@ -62,6 +62,7 @@ services:
       MORI_GRAFANA_URL: ${GRAFANA_URL:-http://mori.rmstudio.co.kr:13000}
       MORI_ZABBIX_UI_URL: ${MORI_ZABBIX_UI_URL:-http://mori.rmstudio.co.kr:18081}
       MORI_FLEET_UI_URL: ${MORI_FLEET_UI_URL:-http://mori.rmstudio.co.kr:1337}
+      MORI_WAZUH_UI_URL: ${MORI_WAZUH_UI_URL:-}
       # LDAP 인증 (활성화하려면 MORI_LDAP_ENABLED=true 설정)
       MORI_LDAP_ENABLED: ${MORI_LDAP_ENABLED:-false}
       MORI_LDAP_URL: ${MORI_LDAP_URL:-ldap://openldap:389}

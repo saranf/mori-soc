@@ -23,6 +23,7 @@ from mori_soc.services.intent_parser import QUERY_GUIDE_EXAMPLES
 DOCS_PORTAL_URL = os.getenv("MORI_DOCS_PORTAL_URL", "http://mori.rmstudio.co.kr:37854/")
 FLEET_UI_URL = os.getenv("MORI_FLEET_UI_URL", "")
 ZABBIX_UI_URL = os.getenv("MORI_ZABBIX_UI_URL", "")
+WAZUH_UI_URL = os.getenv("MORI_WAZUH_UI_URL", "")
 USER_DASHBOARD_CARD_LABELS = {
     "total_hosts": "Total Hosts",
     "offline_hosts": "Offline Hosts",
@@ -33,6 +34,7 @@ USER_DASHBOARD_CARD_LABELS = {
     "ingested_records": "Ingested Records",
 }
 USER_DASHBOARD_SECTION_LABELS = {
+    "infra_status": "Infra Status (24h/12h)",
     "source_coverage": "Source Coverage",
     "latest_status": "Latest Host Status",
     "risk_summary": "Risk Summary",
@@ -63,6 +65,7 @@ DEFAULT_USER_DASHBOARD_PREFERENCES = {
         "ingested_records": False,
     },
     "sections": {
+        "infra_status": True,
         "source_coverage": False,
         "latest_status": True,
         "risk_summary": True,
@@ -2515,6 +2518,7 @@ def render_user_dashboard_html(
     docs_url: str = DOCS_PORTAL_URL,
     fleet_ui_url: str = FLEET_UI_URL,
     zabbix_ui_url: str = ZABBIX_UI_URL,
+    wazuh_ui_url: str = WAZUH_UI_URL,
 ) -> str:
     default_preferences_json = json.dumps(DEFAULT_USER_DASHBOARD_PREFERENCES, ensure_ascii=False)
     card_labels_json = json.dumps(USER_DASHBOARD_CARD_LABELS, ensure_ascii=False)
@@ -2747,8 +2751,18 @@ def render_user_dashboard_html(
         <div id=\"security_hero_body\" style=\"margin-top:12px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
       </section>
       <section class=\"metrics\" id=\"overview_cards\"><div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.overview_loading\">⏳ 요약 카드를 불러오는 중…</div></section>
-      <div class=\"layout\">
-        <div class=\"stack\">
+      <div id=\"dash_grid\" style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;align-items:start\">
+          <!-- 🖥️ 인프라 현황 (24h/12h 전환 + Zabbix/Wazuh 딥링크) -->
+          <section class=\"card\" id=\"infra_status_section\">
+            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+              <h2 style=\"margin:0\" data-i18n=\"dash.infra.title\">🖥️ 인프라 현황</h2>
+              <div style=\"display:flex;gap:4px;background:#0b1322;border:1px solid #1e293b;border-radius:8px;padding:2px\">
+                <button id=\"infra_win_24\" onclick=\"setInfraWindow('24h')\" style=\"padding:3px 10px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:#1e3a5f;color:#e2e8f0\">24h</button>
+                <button id=\"infra_win_12\" onclick=\"setInfraWindow('12h')\" style=\"padding:3px 10px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:transparent;color:#94a3b8\">12h</button>
+              </div>
+            </div>
+            <div id=\"infra_status_body\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.status.loading\">⏳ 로딩 중…</span></div>
+          </section>
           <section class=\"card\" id=\"source_coverage_section\">
             <h2 data-i18n=\"dash.card.source_coverage\">Source Coverage</h2>
             <div class=\"subtext\" data-i18n=\"dash.card.source_coverage.sub\">운영자가 노출을 허용한 경우에만 source 상태를 표시합니다.</div>
@@ -2774,7 +2788,6 @@ def render_user_dashboard_html(
           </section>
 
           <!-- NLQ section moved to floating button -->
-        </div>
       </div>
       <div class=\"status-line\" id=\"dashboard_status\" data-i18n=\"dash.status.initializing\">⏳ 초기화 중…</div>
     </div>
@@ -3805,10 +3818,42 @@ def render_user_dashboard_html(
     }
     window.renderSecurityHero = renderSecurityHero;
 
+    /* 🖥️ 인프라 현황 위젯 — 24h/12h 전환 + Zabbix/Wazuh 딥링크 (대시보드=인프라 뷰) */
+    let _infraWindow = '24h';
+    function setInfraWindow(w) {
+      _infraWindow = w;
+      const b24 = document.getElementById('infra_win_24'), b12 = document.getElementById('infra_win_12');
+      if (b24) { b24.style.background = w==='24h'?'#1e3a5f':'transparent'; b24.style.color = w==='24h'?'#e2e8f0':'#94a3b8'; }
+      if (b12) { b12.style.background = w==='12h'?'#1e3a5f':'transparent'; b12.style.color = w==='12h'?'#e2e8f0':'#94a3b8'; }
+      renderInfraStatus();
+    }
+    window.setInfraWindow = setInfraWindow;
+    function renderInfraStatus() {
+      const el = document.getElementById('infra_status_body');
+      if (!el) return;
+      const o = _lastOverviewData || {};
+      const alertsWin = _infraWindow==='12h' ? (o.alerts_12h??0) : (o.alerts_24h??0);
+      const zbx = ZABBIX_URL ? `<a href=\"${escapeHtml(ZABBIX_URL)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#7dd3fc;font-size:11px;text-decoration:none\">Zabbix ↗</a>` : '';
+      const wzh = WAZUH_URL ? `<a href=\"${escapeHtml(WAZUH_URL)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#a78bfa;font-size:11px;text-decoration:none\">Wazuh ↗</a>` : '';
+      const tile = (label, val, color, extra) => `<div style=\"flex:1;min-width:110px;background:#0b1322;border:1px solid #1e293b;border-radius:10px;padding:12px\">
+        <div style=\"font-size:12px;color:#94a3b8\">${label}</div>
+        <div style=\"font-size:24px;font-weight:800;color:${color};margin-top:2px\">${val}</div>
+        <div style=\"margin-top:4px\">${extra||''}</div></div>`;
+      el.innerHTML = `<div style=\"display:flex;gap:10px;flex-wrap:wrap\">
+        ${tile(tt('dash.infra.online','🟢 온라인'), (o.online_hosts??0), '#86efac', zbx)}
+        ${tile(tt('dash.infra.offline','🔴 오프라인'), (o.offline_hosts??0), '#fca5a5', zbx)}
+        ${tile(tt('dash.infra.unknown','⚪ 미상'), (o.unknown_hosts??0), '#cbd5e1', '')}
+        ${tile(_infraWindow==='12h'?tt('dash.infra.alerts_12','🚨 경보 12h'):tt('dash.infra.alerts_24','🚨 경보 24h'), alertsWin, '#fca5a5', wzh)}
+      </div>
+      <div style=\"margin-top:8px;font-size:11px;color:#64748b\">${tt('dash.infra.hint','타일의 Zabbix / Wazuh 링크로 원본 도구에서 상세를 확인하세요.')}</div>`;
+    }
+    window.renderInfraStatus = renderInfraStatus;
+
     function renderOverview(overview) {
       if (!overview || typeof overview !== 'object') overview = {};
       _lastOverviewData = overview;
       renderSecurityHero();
+      renderInfraStatus();
       const o = {
         total_hosts: overview.total_hosts ?? 0, online_hosts: overview.online_hosts ?? 0,
         offline_hosts: overview.offline_hosts ?? 0, unknown_hosts: overview.unknown_hosts ?? 0,
@@ -4584,6 +4629,7 @@ def render_user_dashboard_html(
 
     const FLEET_URL = '__FLEET_UI_URL__';
     const ZABBIX_URL = '__ZABBIX_UI_URL__';
+    const WAZUH_URL = '__WAZUH_UI_URL__';
 
     /* hostname → 담당자 조회 (Fleet + Zabbix 캐시에서) */
     function _ownerForHost(hostname) {
@@ -6161,6 +6207,7 @@ def render_user_dashboard_html(
         .replace("__NLQ_GUIDE_EXAMPLES__", nlq_guide_examples_json)
         .replace("__FLEET_UI_URL__", fleet_ui_url)
         .replace("__ZABBIX_UI_URL__", zabbix_ui_url)
+        .replace("__WAZUH_UI_URL__", wazuh_ui_url)
         .replace("__GUIDE_LABELS_JSON__", guide_labels_json)
         .replace("__I18N_TOGGLE__", _i18n_toggle_html(fixed=False))
         .replace("__I18N_SCRIPT__", _i18n_script(_DASHBOARD_I18N))

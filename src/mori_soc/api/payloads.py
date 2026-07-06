@@ -67,6 +67,7 @@ def build_dashboard_payload(
     _vuln_actions: Mapping[str, Mapping[str, Any]] = vuln_actions or {}
     now = datetime.now(tz=timezone.utc)
     since_24h = now - timedelta(hours=24)
+    since_12h = now - timedelta(hours=12)
     status_rows = sorted(latest_host_status_view(store), key=_latest_status_sort_key)
     risk_rows = host_risk_summary_view(store)
     source_coverage = _source_coverage(store)
@@ -75,12 +76,14 @@ def build_dashboard_payload(
     alerts_24h = [
         alert for alert in store.alerts if alert.observed_at >= since_24h and alert.severity in {"high", "critical"}
     ]
+    alerts_12h = [alert for alert in alerts_24h if alert.observed_at >= since_12h]
     overview = {
         "total_hosts": len(status_rows),
         "online_hosts": sum(1 for row in status_rows if row.status == "online"),
         "offline_hosts": sum(1 for row in status_rows if row.status == "offline"),
         "unknown_hosts": sum(1 for row in status_rows if row.status not in {"online", "offline"}),
         "alerts_24h": len(alerts_24h),
+        "alerts_12h": len(alerts_12h),
         "critical_vulns": sum(1 for vuln in store.vulnerabilities if vuln.severity == "critical"),
         "high_vulns": sum(1 for vuln in store.vulnerabilities if vuln.severity == "high"),
         "sources_reporting": sum(1 for item in source_coverage if item["host_count"] > 0),

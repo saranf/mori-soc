@@ -21,6 +21,7 @@ from mori_soc.api.templates import (
     render_query_console_html,
     FLEET_UI_URL,
     ZABBIX_UI_URL,
+    WAZUH_UI_URL,
 )
 from mori_soc.api.payloads import _source_coverage
 from mori_soc.api.routes.context import RouteContext
@@ -41,6 +42,7 @@ def register_pages(ctx: RouteContext) -> None:
             docs_url=ctx.admin_dashboard_preferences["docs_url"],
             fleet_ui_url=FLEET_UI_URL,
             zabbix_ui_url=ZABBIX_UI_URL,
+            wazuh_ui_url=WAZUH_UI_URL,
         )
 
     @app.get("/admin", include_in_schema=False, response_class=HTMLResponse)
