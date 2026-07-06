@@ -2916,7 +2916,10 @@ def render_user_dashboard_html(
         <section class=\"card\" id=\"risk_matrix_card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
             <h2 style=\"margin:0\" data-i18n=\"dash.risk.matrix_title\">🎯 위험성 평가 매트릭스</h2>
-            <span id=\"risk_matrix_assessed\" style=\"font-size:12px;color:#94a3b8\"></span>
+            <div style=\"display:flex;align-items:center;gap:10px\">
+              <span id=\"risk_matrix_assessed\" style=\"font-size:12px;color:#94a3b8\"></span>
+              <button id=\"risk_matrix_toggle\" onclick=\"toggleRiskMatrix()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" data-i18n=\"dash.risk.collapse_hide\">▲ 접기</button>
+            </div>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.risk.matrix_sub\">위험도 = 영향도(자산 중요도) × 발생가능성(심각도+보정). 미평가 항목은 자동 제안 등급으로 집계됩니다.</div>
           <div id=\"risk_matrix_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
@@ -3411,6 +3414,17 @@ def render_user_dashboard_html(
     </div>
   </div>
 
+  <!-- 🎯 위험 버킷 드릴다운 모달 (매트릭스 셀/칩 클릭) -->
+  <div id=\"risk_bucket_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
+    <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px 28px;width:660px;max-width:95vw;max-height:82vh;overflow-y:auto\">
+      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px\">
+        <h3 id=\"risk_bucket_modal_title\" style=\"color:#c4b5fd;margin:0\">🎯 위험 상세</h3>
+        <button onclick=\"closeRiskBucketModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+      </div>
+      <div id=\"risk_bucket_modal_body\"></div>
+    </div>
+  </div>
+
   <!-- 감사 이력 모달 -->
   <div id=\"audit_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:28px 32px;width:600px;max-width:95vw;max-height:80vh;overflow-y:auto\">
@@ -3702,38 +3716,92 @@ def render_user_dashboard_html(
       openOverviewModal(cardLabels[key] || key, description, renderer(items));
     }
 
-    /* 🛡️ 보안 요약 히어로 — 보안 KPI + 위험 TOP 랭킹 (Toss 홈 랭킹 리스트형) */
+    /* 🛡️ 보안 요약 히어로 — 역할별로 다르게.
+       보안/어드민: 위험 KPI(클릭→드릴다운) + 위험 TOP.
+       인프라/헬프데스크: 내 담당 서버 취약점 + 조치율(읽기 전용). */
+    const _heroKpi = (label, val, color, onclick) => `<div onclick=\"${onclick||''}\" style=\"flex:1;min-width:130px;background:#0b1322;border:1px solid #1e293b;border-radius:10px;padding:12px 14px;${onclick?'cursor:pointer':''}\">
+        <div style=\"font-size:12px;color:#94a3b8\">${label}</div>
+        <div style=\"font-size:26px;font-weight:800;color:${color};margin-top:2px\">${val}</div></div>`;
+
+    function _computeMyVulnSummary(rows) {
+      const assigned = new Set((_currentProfile.assigned_servers || []).map(s => String(s).toLowerCase()));
+      const myName = (_currentProfile.display_name || '').trim().toLowerCase();
+      const mine = (rows || []).filter(r =>
+        assigned.has(String(r.hostname || '').toLowerCase()) ||
+        (myName && String(r.owner || '').trim().toLowerCase() === myName));
+      let total = 0, done = 0;
+      const hosts = mine.map(r => {
+        const t = r.total || 0;
+        const d = Math.min((r.vuln_plans_count || 0) + (r.vuln_exceptions_count || 0), t);
+        total += t; done += d;
+        return { hostname: r.hostname, host_id: r.host_id, total: t, done: d, critical: r.critical || 0, high: r.high || 0 };
+      }).filter(h => h.total > 0).sort((a, b) => b.critical - a.critical || b.total - a.total);
+      return { hosts, total, done, pct: total ? Math.round(done / total * 100) : 100 };
+    }
+
+    /* 내 서버 취약점·조치율 배너 (인프라·헬프데스크도 열람) */
+    function _myServersVulnBanner() {
+      const s = _computeMyVulnSummary(_assetCache.trivy);
+      if (!s.total) return '';
+      const barColor = s.pct >= 80 ? '#22c55e' : (s.pct >= 50 ? '#f59e0b' : '#ef4444');
+      return `<div style=\"background:#0f2035;border:1px solid #1e3a5f;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap\">
+        <span style=\"color:#e2e8f0;font-weight:600\">${tt('dash.mine.remediation_summary','🐞 내 서버 취약점 {n}건 · 조치 {m}건 ({p}%)').replace('{n}', s.total).replace('{m}', s.done).replace('{p}', s.pct)}</span>
+        <span style=\"flex:1;min-width:120px;max-width:280px;height:8px;background:#1e293b;border-radius:4px;overflow:hidden\"><span style=\"display:block;height:100%;width:${s.pct}%;background:${barColor}\"></span></span>
+      </div>`;
+    }
+
     async function renderSecurityHero() {
       const el = document.getElementById('security_hero_body');
       if (!el) return;
       const o = _lastOverviewData || {};
-      let risk = { by_level: {}, items: [], total: 0 };
-      try { const r = await fetch('/vulnerabilities/risk-summary?source=trivy'); if (r.ok) risk = await r.json(); } catch (e) {}
-      const bl = risk.by_level || {};
-      const kpi = (label, val, color, onclick) => `<div onclick=\"${onclick||''}\" style=\"flex:1;min-width:130px;background:#0b1322;border:1px solid #1e293b;border-radius:10px;padding:12px 14px;${onclick?'cursor:pointer':''}\">
-        <div style=\"font-size:12px;color:#94a3b8\">${label}</div>
-        <div style=\"font-size:26px;font-weight:800;color:${color};margin-top:2px\">${val}</div></div>`;
-      const kpis = `<div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px\">
-        ${kpi(tt('dash.hero.critical_risk','🔴 매우높음 위험'), (bl['매우높음']||0), '#f87171', \"switchTab('assets');switchAssetTab('trivy')\")}
-        ${kpi(tt('dash.hero.high_risk','🟠 높음 위험'), (bl['높음']||0), '#fb923c', \"switchTab('assets');switchAssetTab('trivy')\")}
-        ${kpi(tt('dash.hero.alerts','🚨 24h 경보'), (o.alerts_24h??0), '#fca5a5', \"switchTab('triage')\")}
-        ${kpi(tt('dash.hero.crit_vulns','🐞 Critical 취약점'), (o.critical_vulns??0), '#fca5a5', \"switchTab('assets');switchAssetTab('trivy')\")}
-      </div>`;
-      const top = (risk.items || []).slice(0, 5);
-      let list;
-      if (!top.length) {
-        list = `<div class=\"empty\" style=\"color:#64748b\">${tt('dash.hero.no_risk','평가 대상 취약점이 없습니다.')}</div>`;
+      if (_canAssessRisk()) {
+        let risk = { by_level: {}, items: [], total: 0, assessed: 0 };
+        try { const r = await fetch('/vulnerabilities/risk-summary?source=trivy'); if (r.ok) risk = await r.json(); } catch (e) {}
+        _riskSummary = risk; _riskSummary.map = {};
+        (risk.items || []).forEach(it => { _riskSummary.map[it.vuln_id] = it; });
+        const bl = risk.by_level || {};
+        const kpis = `<div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px\">
+          ${_heroKpi(tt('dash.hero.critical_risk','🔴 매우높음 위험'), (bl['매우높음']||0), '#f87171', \"openRiskLevelModal('매우높음')\")}
+          ${_heroKpi(tt('dash.hero.high_risk','🟠 높음 위험'), (bl['높음']||0), '#fb923c', \"openRiskLevelModal('높음')\")}
+          ${_heroKpi(tt('dash.hero.alerts','🚨 24h 경보'), (o.alerts_24h??0), '#fca5a5', \"switchTab('triage')\")}
+          ${_heroKpi(tt('dash.hero.crit_vulns','🐞 Critical 취약점'), (o.critical_vulns??0), '#fca5a5', \"switchTab('assets');switchAssetTab('trivy')\")}
+        </div>`;
+        const top = (risk.items || []).slice(0, 5);
+        const list = !top.length
+          ? `<div class=\"empty\" style=\"color:#64748b\">${tt('dash.hero.no_risk','평가 대상 취약점이 없습니다.')}</div>`
+          : `<div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\">${tt('dash.hero.top_title','위험 TOP')}</div>` + top.map((it, i) => `
+              <div onclick=\"openRiskModal('${escapeHtml(it.vuln_id)}')\" style=\"display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #1e293b;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#0b1322\">
+                <span style=\"color:#64748b;font-weight:700;width:16px\">${i+1}</span>
+                ${_riskBadge(it.level, true)}
+                <strong style=\"color:#7dd3fc;font-size:13px\">${escapeHtml(it.cve)}</strong>
+                <span style=\"color:#64748b;font-size:12px\">${escapeHtml(it.hostname)}</span>
+                <span style=\"margin-left:auto;color:${it.severity==='critical'?'#fca5a5':'#fdba74'};font-size:11px;text-transform:uppercase\">${escapeHtml(it.severity)}</span>
+              </div>`).join('');
+        el.innerHTML = kpis + list;
       } else {
-        list = `<div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\">${tt('dash.hero.top_title','위험 TOP')}</div>` + top.map((it, i) => `
-          <div onclick=\"switchTab('assets');switchAssetTab('trivy')\" style=\"display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #1e293b;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#0b1322\">
-            <span style=\"color:#64748b;font-weight:700;width:16px\">${i+1}</span>
-            ${_riskBadge(it.level, true)}
-            <strong style=\"color:#7dd3fc;font-size:13px\">${escapeHtml(it.cve)}</strong>
-            <span style=\"color:#64748b;font-size:12px\">${escapeHtml(it.hostname)}</span>
-            <span style=\"margin-left:auto;color:${it.severity==='critical'?'#fca5a5':'#fdba74'};font-size:11px;text-transform:uppercase\">${escapeHtml(it.severity)}</span>
-          </div>`).join('');
+        // 인프라/헬프데스크: 내 담당 서버 취약점 + 조치율(위험등급 없이)
+        let rows = _assetCache.trivy;
+        if (!rows || !rows.length) { try { const r = await fetch('/assets'); if (r.ok) { rows = (await r.json()).trivy?.rows || []; _assetCache.trivy = rows; } } catch (e) { rows = []; } }
+        const s = _computeMyVulnSummary(rows);
+        const kpis = `<div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px\">
+          ${_heroKpi(tt('dash.hero.my_vulns','🐞 내 서버 취약점'), s.total, s.total?'#fca5a5':'#86efac', \"shortcutMyServers()\")}
+          ${_heroKpi(tt('dash.hero.my_remediation','🛠️ 내 서버 조치율'), s.pct + '%', s.pct>=80?'#86efac':(s.pct>=50?'#fdba74':'#fca5a5'), \"shortcutMyServers()\")}
+          ${_heroKpi(tt('dash.hero.alerts','🚨 24h 경보'), (o.alerts_24h??0), '#fca5a5', \"switchTab('triage')\")}
+        </div>`;
+        const list = !s.hosts.length
+          ? `<div class=\"empty\" style=\"color:#64748b\">${tt('dash.mine.no_vulns','취약점 없음')}</div>`
+          : `<div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\">${tt('dash.hero.my_servers_title','내 담당 서버 조치 현황')}</div>` + s.hosts.slice(0,6).map(h => {
+              const pct = h.total ? Math.round(h.done/h.total*100) : 100;
+              return `<div onclick=\"openVulnListModal('${escapeHtml(h.host_id)}')\" style=\"display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #1e293b;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#0b1322\">
+                <strong style=\"color:#e2e8f0;font-size:13px;min-width:120px\">${escapeHtml(h.hostname)}</strong>
+                <span style=\"color:#fca5a5;font-size:11px\">C ${h.critical}</span><span style=\"color:#fdba74;font-size:11px\">H ${h.high}</span>
+                <span style=\"margin-left:auto;display:flex;align-items:center;gap:6px\">
+                  <span style=\"width:90px;height:7px;background:#1e293b;border-radius:4px;overflow:hidden\"><span style=\"display:block;height:100%;width:${pct}%;background:${pct>=80?'#22c55e':(pct>=50?'#f59e0b':'#ef4444')}\"></span></span>
+                  <span style=\"font-size:11px;color:#94a3b8;width:60px;text-align:right\">${h.done}/${h.total} (${pct}%)</span></span>
+              </div>`;
+            }).join('');
+        el.innerHTML = kpis + list;
       }
-      el.innerHTML = kpis + list;
     }
     window.renderSecurityHero = renderSecurityHero;
 
@@ -4467,9 +4535,10 @@ def render_user_dashboard_html(
         containerEl.innerHTML = `<span class=\"empty\">${tt('dash.assets.mine.empty', '담당 자산이 없습니다. 계정 메뉴 → 프로필 편집에서 담당 서버를 등록하세요.')}</span>`;
         return;
       }
+      const vulnBanner = _myServersVulnBanner();
       const groupBy = document.getElementById('mine_group_by')?.value || 'category';
       if (groupBy === 'none') {
-        containerEl.innerHTML = _renderMineTables(fleetHosts, zabbixHosts);
+        containerEl.innerHTML = vulnBanner + _renderMineTables(fleetHosts, zabbixHosts);
         return;
       }
       const undef = tt('dash.assets.mine.group.none', '미지정');
@@ -4484,7 +4553,7 @@ def render_user_dashboard_html(
       fleetHosts.forEach(h => { const k = keyOf(h, 'fleet'); (groups[k] = groups[k] || { fleet: [], zabbix: [] }).fleet.push(h); });
       zabbixHosts.forEach(h => { const k = keyOf(h, 'zabbix'); (groups[k] = groups[k] || { fleet: [], zabbix: [] }).zabbix.push(h); });
       const names = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'ko'));
-      containerEl.innerHTML = names.map(name => {
+      containerEl.innerHTML = vulnBanner + names.map(name => {
         const g = groups[name];
         const cnt = g.fleet.length + g.zabbix.length;
         return `<details open style=\"margin:8px 0;border:1px solid #1e293b;border-radius:8px;overflow:hidden\">
@@ -4701,6 +4770,7 @@ def render_user_dashboard_html(
     /* ── 호스트별 취약점 리스트 모달 ──────────────────────────────────────── */
     function _renderVulnListBody(hostRow) {
       const sevColor = { critical:'#fca5a5', high:'#fdba74', medium:'#fde68a', low:'#86efac', info:'#94a3b8' };
+      const showRisk = _canAssessRisk();  // 위험등급 열은 어드민/보안만
       const vulns = hostRow.vulns || [];
       // 호스트 단위 계획/예외 (CVE별 vuln_actions와 별개)
       const hostPlan = (hostRow.action_plan || '').trim();
@@ -4751,10 +4821,13 @@ def render_user_dashboard_html(
         const riskCell = rk
           ? `${_riskBadge(rk.level, true)}${rk.assessed?'':`<div style=\"color:#64748b;font-size:9px;margin-top:2px\">${tt('dash.risk.badge_unassessed','미평가')}</div>`}`
           : `<span style=\"color:#64748b;font-size:11px\">-</span>`;
+        const riskTd = showRisk
+          ? `<td style=\"padding:6px 8px;text-align:center;white-space:nowrap\">${riskCell}<br><button onclick=\"openRiskModal('${escapeHtml(v.vuln_id)}')\" style=\"font-size:10px;padding:1px 6px;background:#2a1852;border:1px solid #4c1d95;border-radius:3px;color:#c4b5fd;cursor:pointer;margin-top:3px\">${tt('dash.risk.btn','🎯 평가')}</button></td>`
+          : '';
         return `<tr>
           <td style=\"padding:6px 8px\"><strong style=\"color:#7dd3fc\">${escapeHtml(v.cve||'-')}</strong></td>
           <td style=\"padding:6px 8px;text-align:center\"><span style=\"color:${sevColor[v.severity]||'#94a3b8'};font-weight:700;text-transform:uppercase;font-size:11px\">${escapeHtml(v.severity)}</span></td>
-          <td style=\"padding:6px 8px;text-align:center;white-space:nowrap\">${riskCell}<br><button onclick=\"openRiskModal('${escapeHtml(v.vuln_id)}')\" style=\"font-size:10px;padding:1px 6px;background:#2a1852;border:1px solid #4c1d95;border-radius:3px;color:#c4b5fd;cursor:pointer;margin-top:3px\">${tt('dash.risk.btn','🎯 평가')}</button></td>
+          ${riskTd}
           <td style=\"padding:6px 8px;font-size:12px\">${escapeHtml(v.package_name||'-')}</td>
           <td style=\"padding:6px 8px;font-size:12px;color:#94a3b8\">${versionStr}</td>
           <td style=\"padding:6px 8px;font-size:11px;color:#64748b\">${escapeHtml(formatTime(v.detected_at))}</td>
@@ -4766,7 +4839,7 @@ def render_user_dashboard_html(
         <thead><tr style=\"background:#0f2035\">
           <th style=\"padding:8px;color:#7dd3fc;text-align:left\">CVE</th>
           <th style=\"padding:8px;color:#fdba74\">${tt('dash.dyn.lbl.severity','심각도')}</th>
-          <th style=\"padding:8px;color:#c4b5fd\">${tt('dash.risk.col','위험등급')}</th>
+          ${showRisk?`<th style=\"padding:8px;color:#c4b5fd\">${tt('dash.risk.col','위험등급')}</th>`:''}
           <th style=\"padding:8px;color:#94a3b8;text-align:left\">${tt('dash.dyn.lbl.package','패키지')}</th>
           <th style=\"padding:8px;color:#94a3b8;text-align:left\">${tt('dash.dyn.lbl.install_recommend','설치 → 권장')}</th>
           <th style=\"padding:8px;color:#64748b\">${tt('dash.dyn.lbl.detected_date','탐지일')}</th>
@@ -4936,6 +5009,45 @@ def render_user_dashboard_html(
     }
     window.loadRiskMatrix = loadRiskMatrix;
 
+    let _riskMatrixOpen = true;
+    function toggleRiskMatrix() {
+      _riskMatrixOpen = !_riskMatrixOpen;
+      const box = document.getElementById('risk_matrix_box');
+      const btn = document.getElementById('risk_matrix_toggle');
+      if (box) box.style.display = _riskMatrixOpen ? '' : 'none';
+      if (btn) btn.textContent = _riskMatrixOpen ? tt('dash.risk.collapse_hide','▲ 접기') : tt('dash.risk.collapse_show','▼ 펼치기');
+    }
+    window.toggleRiskMatrix = toggleRiskMatrix;
+
+    /* 🎯 매트릭스 셀/칩 클릭 → 해당 버킷의 실제 취약점·호스트 목록 모달 */
+    function _riskBucketRows(items) {
+      if (!items.length) return `<div class=\"empty\" style=\"color:#64748b;padding:16px\">${tt('dash.dyn.empty.vulns','취약점이 없습니다.')}</div>`;
+      const rows = items.map(it => `<tr>
+        <td style=\"padding:6px 8px\">${_riskBadge(it.level, true)}</td>
+        <td style=\"padding:6px 8px\"><strong style=\"color:#7dd3fc\">${escapeHtml(it.cve)}</strong></td>
+        <td style=\"padding:6px 8px;color:#94a3b8;font-size:12px\">${escapeHtml(it.hostname)}</td>
+        <td style=\"padding:6px 8px;text-align:center\"><span style=\"color:${it.severity==='critical'?'#fca5a5':'#fdba74'};text-transform:uppercase;font-size:11px\">${escapeHtml(it.severity)}</span></td>
+        <td style=\"padding:6px 8px;text-align:center;font-size:11px;color:#64748b\">${it.assessed?tt('dash.risk.assessed','평가됨'):tt('dash.risk.badge_unassessed','미평가')}</td>
+        <td style=\"padding:6px 8px;text-align:center\">${_canAssessRisk()?`<button onclick=\"closeRiskBucketModal();openRiskModal('${escapeHtml(it.vuln_id)}')\" style=\"font-size:10px;padding:2px 8px;background:#2a1852;border:1px solid #4c1d95;border-radius:4px;color:#c4b5fd;cursor:pointer\">${tt('dash.risk.btn','🎯 평가')}</button>`:''}</td>
+      </tr>`).join('');
+      return `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"background:#0f2035\">
+        <th style=\"padding:8px;color:#c4b5fd\">${tt('dash.risk.col','위험등급')}</th><th style=\"padding:8px;color:#7dd3fc;text-align:left\">CVE</th>
+        <th style=\"padding:8px;color:#94a3b8;text-align:left\">${tt('dash.risk.prov.host','자산')}</th><th style=\"padding:8px;color:#fdba74\">${tt('dash.dyn.lbl.severity','심각도')}</th>
+        <th style=\"padding:8px;color:#94a3b8\">${tt('dash.risk.status','상태')}</th><th style=\"padding:8px\"></th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+    function _openRiskBucket(pred, title) {
+      const items = (_riskSummary.items || []).filter(pred);
+      document.getElementById('risk_bucket_modal_title').textContent = `${title} (${items.length})`;
+      document.getElementById('risk_bucket_modal_body').innerHTML = _riskBucketRows(items);
+      document.getElementById('risk_bucket_modal').style.display = 'flex';
+    }
+    function openRiskLevelModal(level) { _openRiskBucket(it => it.level === level, `${tt('dash.risk.bucket_title','🎯 위험 상세')} · ${level}`); }
+    function openRiskCellModal(impact, likelihood) { _openRiskBucket(it => it.impact === impact && it.likelihood === likelihood, `${tt('dash.risk.bucket_title','🎯 위험 상세')} · ${_levelForScore(impact*likelihood)}`); }
+    function closeRiskBucketModal() { const m=document.getElementById('risk_bucket_modal'); if(m) m.style.display='none'; }
+    window.openRiskLevelModal = openRiskLevelModal;
+    window.openRiskCellModal = openRiskCellModal;
+    window.closeRiskBucketModal = closeRiskBucketModal;
+
     function _levelForScore(s) { return s>=9?'매우높음':s>=5?'높음':s>=3?'중간':'낮음'; }
 
     function renderRiskMatrix(data) {
@@ -4950,17 +5062,19 @@ def render_user_dashboard_html(
       for (let r=0;r<3;r++){
         let rowCells = `<td style=\"padding:6px 8px;color:#94a3b8;font-size:12px;text-align:right;white-space:nowrap\">${impLabel[impactByRow[r]]}</td>`;
         for (let c=0;c<3;c++){
-          const lvl = _levelForScore(impactByRow[r]*likeByCol[c]);
+          const imp = impactByRow[r], lk = likeByCol[c];
+          const lvl = _levelForScore(imp*lk);
           const col = RISK_LEVEL_COLORS[lvl];
           const n = (m[r] && m[r][c]) || 0;
-          rowCells += `<td style=\"padding:0\"><div style=\"margin:3px;border-radius:6px;background:${col}${n?'33':'12'};border:1px solid ${col}${n?'':'44'};width:58px;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center\">
+          const click = n ? `onclick=\"openRiskCellModal(${imp},${lk})\"` : '';
+          rowCells += `<td style=\"padding:0\"><div ${click} style=\"margin:3px;border-radius:6px;background:${col}${n?'33':'12'};border:1px solid ${col}${n?'':'44'};width:58px;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;${n?'cursor:pointer':''}\">
             <div style=\"font-size:18px;font-weight:800;color:${n?col:'#334155'}\">${n}</div>
             <div style=\"font-size:9px;color:${col}aa\">${lvl}</div></div></td>`;
         }
         cells += `<tr>${rowCells}</tr>`;
       }
       const order = ['매우높음','높음','중간','낮음'];
-      const chips = order.map(lv => `<span style=\"display:inline-flex;align-items:center;gap:5px;margin:0 12px 8px 0;font-size:12px\"><span style=\"width:10px;height:10px;border-radius:2px;background:${RISK_LEVEL_COLORS[lv]};display:inline-block\"></span>${lv} <strong style=\"color:${RISK_LEVEL_COLORS[lv]}\">${(data.by_level&&data.by_level[lv])||0}</strong></span>`).join('');
+      const chips = order.map(lv => { const n=(data.by_level&&data.by_level[lv])||0; return `<span onclick=\"${n?`openRiskLevelModal('${lv}')`:''}\" style=\"display:inline-flex;align-items:center;gap:5px;margin:0 8px 8px 0;font-size:12px;padding:4px 10px;border:1px solid ${RISK_LEVEL_COLORS[lv]}44;border-radius:8px;background:${RISK_LEVEL_COLORS[lv]}12;${n?'cursor:pointer':'opacity:.5'}\"><span style=\"width:10px;height:10px;border-radius:2px;background:${RISK_LEVEL_COLORS[lv]};display:inline-block\"></span>${lv} <strong style=\"color:${RISK_LEVEL_COLORS[lv]}\">${n}</strong></span>`; }).join('');
       box.innerHTML = `<div style=\"display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start\">
         <div>
           <table style=\"border-collapse:collapse\">${header}${cells}</table>
@@ -5849,6 +5963,15 @@ def render_user_dashboard_html(
     function _canViewGrafanaFull() { return _GRAFANA_FULL_ROLES.includes(_currentUserRole); }
     function _canViewGrafanaLimited() { return _GRAFANA_LIMITED_ROLES.includes(_currentUserRole); }
     function _canViewGrafana() { return _canViewGrafanaFull() || _canViewGrafanaLimited(); }
+    /* 위험성 평가는 보안 판단이라 어드민/보안 담당자만. 인프라·헬프데스크는 취약점/조치 현황만 열람. */
+    const _RISK_ROLES = ['admin', 'security'];
+    function _canAssessRisk() { return _RISK_ROLES.includes(_currentUserRole); }
+    window._canAssessRisk = _canAssessRisk;
+    function _applyRiskGating() {
+      const rc = document.getElementById('risk_matrix_card');
+      if (rc) rc.style.display = _canAssessRisk() ? '' : 'none';
+    }
+    window._applyRiskGating = _applyRiskGating;
     async function applyRoleBasedTabs() {
       try {
         const res = await fetch('/auth/me');
@@ -5881,6 +6004,8 @@ def render_user_dashboard_html(
         }
         const badge = document.getElementById('ui_user_badge');
         if (badge && me.username) { badge.removeAttribute('data-i18n'); badge.textContent = me.username; }
+        _applyRiskGating();
+        if (document.getElementById('security_hero_body')) renderSecurityHero();
       } catch(e) { /* 비로그인 상태에서도 대시보드는 동작 */ }
     }
 
