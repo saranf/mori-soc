@@ -665,48 +665,6 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 
 ---
 
-## 🔁 이어서 작업할 때 사용할 프롬프트
-
-다른 환경에서 작업을 이어갈 때 가장 빠른 컨텍스트 복원 프롬프트:
-
-```
-이 저장소는 MORI SOC-lite (Audit-Ready Compliance-Evidence Platform).
-Phase 1(데이터 수집/정규화 코어) 완료, Phase 2(관제 질의 엔진 + 운영 UI) Alpha 운영 중.
-Task J(server.py 모듈 분리) 완료 — API는 src/mori_soc/api/server.py(오케스트레이터)
-+ src/mori_soc/api/routes/ (16 도메인 모듈, RouteContext) 구조.
-README의 "현재 상태 한눈에 보기", routes/context.py,
-docs/SECURITY_DATA_QUERY_PLATFORM.md, schema/*.sql을 확인하고
-다음 우선순위(영속화 + 실시간 폴링)를 이어서 진행해줘.
-```
-
-### 짧은 버전
-
-```
-이 저장소 MORI SOC-lite에서 Phase 2 영속화/실시간 폴링 이어서 해줘.
-README의 "🗺️ 현재 상태", src/mori_soc, schema/*.sql 읽고 바로 이어서.
-```
-
 ---
 
-## 📌 현재 상태 요약
-
-| 구분 | 상태 |
-|---|---|
-| 인증·RBAC·자산·취약점·Triage·인시던트·PDCA·증적 리포트 | ✅ 운영 가능 (운영 상태 6종 PostgreSQL 영속화, 재시작 후 유지) |
-| 어드민 콘솔 8탭 (Phase 2 정렬) + 역할별 탭 자동 제한 | ✅ 동작 |
-| KO/EN 다국어 토글 (계정 메뉴로 이동) + 사용자 프로필 + ⭐ 내 서버 뷰 | ✅ 동작 |
-| 자산/취약점/Triage/인시던트 **변경 감사 로그** | ✅ 누적 (CVE별 라벨 포함) |
-| PDCA Do 카드 클릭 → 미조치 모달 + CSV 다운로드 | ✅ 동작 |
-| 감사 증적 리포트 미리보기 모달 + **PDF 다운로드** (NanumGothic) | ✅ 동작 (5종 CSV+PDF) |
-| Source Freshness · Collector Lag · SLA 카드 | ✅ 동작 (Admin Overview + 사용자 대시보드) |
-| pg_dump 기반 백업/복원 스크립트 | ✅ 동작 (`scripts/mori-backup.sh` / `mori-restore.sh`) |
-| 인시던트 CSV "변경 내역 미포함" 안내 모달 | ✅ 동작 |
-| 대시보드 자산·경보 데이터 | ⚠️ 시드 + 인메모리 기반 (실시간 폴링 미연결) |
-| PostgreSQL — 정규화 보안 데이터 (Phase 1 스키마) | ✅ 시드 적재 + 부팅 시 로드 |
-| PostgreSQL — UI 운영 상태 6종 영속화 (M2-1) | ✅ 완료 (StateRepository + `schema/003`, write-through, 통합 테스트 검증) |
-| Zabbix API polling | 🟡 In progress (Collector 구현 완료, 통합 검증 중) |
-| Fleet / Wazuh API polling | 🔲 미완 (Parser·Collector 준비됨, REST poller 미연결) |
-| Trivy JSON ingestion | 🟡 In progress (Collector 구현 완료, 자동화 패키징 중) |
-
-`./scripts/mori-start-demo.sh` 한 줄로 전체 기능을 체험할 수 있습니다.
-운영 환경에서는 `docker compose down && docker compose up -d` 로 적용합니다.
+`./scripts/mori-start-demo.sh` 한 줄로 전체 기능(위험성 평가 · Zabbix 실전 시나리오 포함)을 체험할 수 있습니다. 운영 환경에서는 `docker compose down && docker compose up -d` 로 적용합니다. 요약은 상단 [⚡ Status](#-status--30초-요약) 표를 참고하세요.

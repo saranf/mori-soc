@@ -670,48 +670,6 @@ MORI SOC combines open-source security tools to provide a single ops screen, wit
 
 ---
 
-## 🔁 Prompt to resume work elsewhere
-
-Fastest context-restoration prompt when continuing work in a different environment:
-
-```
-This repo is MORI SOC-lite (Audit-Ready Compliance-Evidence Platform).
-Phase 1 (data collection/normalization core) is complete; Phase 2 (ops query
-engine + ops UI) is in Alpha. Read the "Current Status at a Glance" section of
-Task J (server.py modularization) is done — the API is now src/mori_soc/api/server.py
-(orchestrator) + src/mori_soc/api/routes/ (16 domain modules, RouteContext).
-Read the README, routes/context.py, docs/SECURITY_DATA_QUERY_PLATFORM.md,
-and schema/*.sql, then continue with the next priorities (persistence + real-time polling).
-```
-
-### Short version
-
-```
-Continue Phase 2 persistence / real-time polling work for this MORI SOC-lite repo.
-Read the README's "🗺️ Current Status", src/mori_soc, and schema/*.sql, then proceed.
-```
-
 ---
 
-## 📌 Current status summary
-
-| Area | Status |
-|---|---|
-| Auth · RBAC · Assets · Vulns · Triage · Incidents · PDCA · Evidence reports | ✅ Operational (6 operational stores persisted to PostgreSQL; survive restarts) |
-| Admin console 8 tabs (Phase 2 layout) + per-role tab auto-restriction | ✅ Operational |
-| KO/EN language toggle (moved to account menu) + user profile + ⭐ My Servers view | ✅ Operational |
-| Asset / Vuln / Triage / Incident **change audit log** | ✅ Accumulates (with per-CVE label) |
-| Click PDCA Do card → pending modal + CSV download | ✅ Operational |
-| Audit-evidence report preview modal + **PDF download** (NanumGothic) | ✅ Operational (5 types CSV + PDF) |
-| Source Freshness · Collector Lag · SLA card | ✅ Operational (Admin Overview + user dashboard) |
-| pg_dump-based backup/restore scripts | ✅ Operational (`scripts/mori-backup.sh` / `mori-restore.sh`) |
-| Incident CSV "history not included" guidance modal | ✅ Operational |
-| Dashboard asset / alert data | ⚠️ Seed + in-memory based (real-time polling not connected) |
-| PostgreSQL — normalized security data (Phase 1 schema) | ✅ Seeded + loaded at boot |
-| PostgreSQL — UI operational state 6-store persistence (M2-1) | ✅ Done (StateRepository + `schema/003`, write-through, integration-test verified) |
-| Zabbix API polling | 🟡 In progress (collector complete, integration verification) |
-| Fleet / Wazuh API polling | 🔲 Incomplete (Parser·Collector ready, REST poller not connected) |
-| Trivy JSON ingestion | 🟡 In progress (collector complete, automation packaging) |
-
-Try the full feature set with `./scripts/mori-start-demo.sh`.
-For production deployments, apply changes with `docker compose down && docker compose up -d`.
+Try the full feature set (risk assessment · Zabbix end-to-end scenario included) with `./scripts/mori-start-demo.sh`. For production, apply changes with `docker compose down && docker compose up -d`. See the [⚡ Status](#-status--30-second-overview) table at the top for a summary.
