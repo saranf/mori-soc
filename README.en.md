@@ -22,9 +22,10 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 - 🌐 **Multi-language UI** — Korean / English toggle on every page (login, dashboard, admin console); moved from a fixed top-right widget into the **account menu (👤)**, persisted in a cookie + localStorage and switches instantly without a reload
 - 👤 **User profile + My Servers** — Save name · department · assigned servers to your account, and view only your assets in a dedicated **⭐ My Servers** view (profile-menu shortcut)
 - 🧾 **Automatic evidence** — Asset owner/importance, host/CVE-level remediation plans & exceptions, **per-CVE risk assessment**, Triage & Incident state changes
-- ✅ **Persistence (M2-1 + R-2 done)** — UI operational state stores (asset owners · audit log · vuln actions · Triage · Incidents · profiles + the **risk register `ui_risk_register`**) are **write-through persisted** to PostgreSQL and survive restarts. Real-time pollers are the next milestone (see [Integrations & Roadmap](#-integrations--roadmap))
+- ✅ **Persistence (M2-1 + R-2 done)** — UI operational state stores (asset owners · audit log · vuln actions · Triage · Incidents · profiles + the **risk register `ui_risk_register`**) are **write-through persisted** to PostgreSQL and survive restarts.
+- 🔌 **Live data integration** — **Zabbix real-time polling is verified against the real API** (problem→Triage→Incident→evidence→resolve). **Fleet / Wazuh live integration is Next**; Trivy is partially integrated.
 
-> ⚠️ **Alpha / Work in Progress** — Day-to-day security operations + audit-evidence accumulation scenarios work, and the **6 UI operational state stores are persisted to PostgreSQL (M2-1 done)** so they survive restarts. Real-time polling is the next milestone; dashboard asset/alert data is still **seed (sample data)** based.
+> ⚠️ **Alpha / Work in Progress** — Day-to-day security operations + audit-evidence accumulation work, and **UI operational state is persisted to PostgreSQL (M2-1 · R-2)** across restarts. **Zabbix real-time polling is verified against the real API**, so problem→alert→Triage flows live with no restart (other seed data is for demo). **Fleet / Wazuh live integration is the next step.**
 
 ## ⚡ Status — 30-second overview
 
@@ -661,7 +662,7 @@ MORI SOC combines open-source security tools to provide a single ops screen, wit
 | **P4-2** | Zabbix-only Adoption Pack — Zabbix template + export script + `docs/zabbix-only.md` (Trivy/CVE Lite results → zabbix_sender without a full MORI install) |
 | **P4-3** | ISMS-P / ISO 27001 Evidence Pack — per-control sample reports (`docs/evidence-pack/`): vulnerability management, logging/monitoring, monthly report, exception register, action plan |
 | **P4-4** | Integration Marketplace structure — organize `integrations/{zabbix,trivy,cvelite,wazuh,fleet,ldap}` connector structure/docs (real plugin system later) |
-| **P4-5** | Operational hardening — HTTPS/reverse proxy, LDAP/AD production rollout, backup/restore verification, upgrade guide, `SECURITY.md`·`CONTRIBUTING.md`·`CHANGELOG.md`, release checklist |
+| **P4-5** | Operational hardening — `SECURITY.md`·`CONTRIBUTING.md`·`CHANGELOG.md` ✅, CI (tests) ✅ / HTTPS·reverse proxy, LDAP/AD rollout, upgrade guide, release checklist 🔲 |
 | **P4-6** | Demo scenario / video — compose up → Trivy import → Zabbix alert → CVE plan → exception → Incident → audit PDF → check via Zabbix template (5–8 min) |
 
 ### Other backlog

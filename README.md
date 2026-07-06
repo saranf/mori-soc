@@ -22,9 +22,10 @@
 - 🌐 **다국어 UI** — 로그인·대시보드·어드민 콘솔 전 페이지 한국어/영어 토글 (우상단 고정 위젯 → **계정 메뉴(👤)**로 이동, 쿠키·localStorage 저장, 새로고침 없이 즉시 전환)
 - 👤 **사용자 프로필 + 내 서버** — 이름·부서·담당 서버를 계정에 저장하고, 담당 자산만 모아 보는 **⭐ 내 서버** 뷰(프로필 메뉴 바로가기) 제공
 - 🧾 **자동 증적** — 자산 담당자·중요도, 호스트/CVE 단위 조치 계획·예외, **CVE별 위험성 평가**, Triage·인시던트 상태 변경
-- ✅ **영속화 (M2-1 + R-2 완료)** — UI 운영 상태 store(자산 담당자·감사로그·취약점 조치·Triage·인시던트·프로필 + **위험성 평가 대장 `ui_risk_register`**)는 PostgreSQL에 **write-through 영속화**되어 재시작 후에도 유지. 실시간 폴러는 다음 마일스톤 ([Integrations & 확장 방향](#-integrations--확장-방향) 참조)
+- ✅ **영속화 (M2-1 + R-2 완료)** — UI 운영 상태 store(자산 담당자·감사로그·취약점 조치·Triage·인시던트·프로필 + **위험성 평가 대장 `ui_risk_register`**)는 PostgreSQL에 **write-through 영속화**되어 재시작 후에도 유지.
+- 🔌 **실데이터 연동** — **Zabbix 실시간 폴링은 실 API로 검증됨**(problem→Triage→Incident→증적→해소). **Fleet / Wazuh 라이브 연동은 다음 단계(Next)**, Trivy는 부분 통합.
 
-> ⚠️ **Alpha / Work in Progress** — 일상 보안 운영 + 감사 증적 누적 시나리오가 동작하며, **UI 운영 상태 6종은 PostgreSQL에 영속화(M2-1 완료)** 되어 재시작 후에도 유지됩니다. 실시간 폴링은 다음 마일스톤이며, 대시보드 자산·경보 데이터는 아직 **시드(sample data)** 기반입니다.
+> ⚠️ **Alpha / Work in Progress** — 일상 보안 운영 + 감사 증적 누적 시나리오가 동작하고, **UI 운영 상태는 PostgreSQL에 영속화(M2-1·R-2)** 되어 재시작 후에도 유지됩니다. **Zabbix 는 실시간 폴링이 실 API로 검증**되어 problem→alert→Triage 가 재시작 없이 흐릅니다(다른 시드 데이터는 데모용). **Fleet / Wazuh 라이브 연동은 다음 단계**입니다.
 
 ## ⚡ Status — 30초 요약
 
@@ -661,7 +662,7 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 | **P4-2** | Zabbix-only Adoption Pack — Zabbix 템플릿 + export 스크립트 + `docs/zabbix-only.md` (MORI 전체 설치 없이 Trivy/CVE Lite 결과 → zabbix_sender) |
 | **P4-3** | ISMS-P / ISO 27001 Evidence Pack — 통제별 샘플 리포트(`docs/evidence-pack/`): 취약점 관리, 로깅/모니터링, 월간 리포트, 예외 등록부, 조치계획 |
 | **P4-4** | Integration Marketplace 구조 — `integrations/{zabbix,trivy,cvelite,wazuh,fleet,ldap}` connector 구조/문서 정리(실제 플러그인 시스템은 추후) |
-| **P4-5** | 운영 안정화 — HTTPS/리버스 프록시, LDAP/AD 운영 적용, backup/restore 검증, upgrade guide, `SECURITY.md`·`CONTRIBUTING.md`·`CHANGELOG.md`, release checklist |
+| **P4-5** | 운영 안정화 — `SECURITY.md`·`CONTRIBUTING.md`·`CHANGELOG.md` ✅, CI(tests) ✅ / HTTPS·리버스 프록시, LDAP/AD 운영 적용, upgrade guide, release checklist 🔲 |
 | **P4-6** | 데모 시나리오 / 영상 — compose up → Trivy import → Zabbix alert → CVE 조치계획 → 예외 → Incident → 감사 PDF → Zabbix template 확인 (5~8분) |
 
 ### 그 외 백로그

@@ -81,6 +81,26 @@ fleetctl package --type=rpm   --fleet-url=http://<서버>:1337 --enroll-secret=<
 
 Fleet UI → **Hosts** 에 단말이 **online** 으로 뜨면 성공. 수 분 내 OS·하드웨어·소프트웨어 정보가 수집됩니다.
 
+### 4-3. 클라이언트에 "쉽게" 설치하는 방법들 (상황별 추천)
+
+| 방법 | 언제 | 방법 |
+|---|---|---|
+| **① Fleet UI 복붙 (가장 쉬움)** | 단말 1~수십 대, 손으로 설치 | Fleet UI → **Hosts → Add hosts** → OS 선택 → **생성된 설치 명령/패키지를 그대로 복사** 해 단말에서 실행. fleet-url·enroll secret 이 이미 박혀 나옴 |
+| **② `fleetctl package` (대량/오프라인)** | 이미지·배포도구로 뿌릴 때 | 위 4-1 처럼 msi/pkg/deb/rpm 생성 → **MDM / Intune / Ansible / GPO / SCCM** 으로 푸시 |
+| **③ macOS 대량** | 회사 맥 다수 | 생성한 `.pkg` 를 **MDM(Jamf 등)** 에 업로드해 무인 배포. 상세: [FLEET_MACBOOK_ENROLLMENT_AND_TEST.md](./FLEET_MACBOOK_ENROLLMENT_AND_TEST.md) |
+| **④ 스크립트 자동화** | 프로비저닝 자동화 | `fleetctl package ...` 산출물을 프로비저닝 스크립트/cloud-init 에 넣어 부팅 시 설치 |
+
+**가장 빠른 길(단건):** Fleet UI → **Add hosts** 에서 나오는 명령을 그대로 붙여넣기.
+예시(Linux, Fleet 가 생성해주는 형태):
+
+```bash
+# Fleet UI 가 만들어주는 실제 명령을 사용하세요(아래는 형태 예시)
+sudo fleetctl package --type=deb --fleet-url=http://<서버>:1337 --enroll-secret=<SECRET>
+sudo dpkg -i fleet-osquery_*.deb        # 설치 즉시 자동 등록
+```
+
+> ⚠️ enroll secret 은 비밀입니다. 스크립트/이미지에 하드코딩하지 말고 배포도구의 시크릿으로 주입하세요.
+
 ---
 
 ## 5. 운영 — 자주 쓰는 것
