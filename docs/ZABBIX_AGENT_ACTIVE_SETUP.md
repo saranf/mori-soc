@@ -24,9 +24,14 @@
 > 클론 없이 **바로 설치**(GitHub raw 호스팅). 파이프 대신 **다운로드→확인→실행**을 권장:
 > ```bash
 > curl -fsSL https://raw.githubusercontent.com/saranf/mori-soc/main/scripts/mori-endpoint-onboard.sh -o mori-onboard.sh
-> less mori-onboard.sh   # 내용 확인 (curl | sudo bash 는 지양)
-> sudo -E MORI_ZABBIX_SERVER=<MORI 서버> MORI_HOSTNAME=my-web-01 bash mori-onboard.sh
+> less mori-onboard.sh                      # 내용 확인 (curl | sudo bash 는 지양)
+> sudo -E MORI_ZABBIX_SERVER=<MORI 서버> MORI_HOSTNAME=my-web-01 \
+>      bash mori-onboard.sh --check          # 먼저 사전 점검(설치 안 함)
+> sudo -E MORI_ZABBIX_SERVER=<MORI 서버> MORI_HOSTNAME=my-web-01 \
+>      MORI_INGEST_URL=http://<MORI>:18000 MORI_INGEST_TOKEN=<토큰> \
+>      bash mori-onboard.sh                   # 설치 + Trivy 스캔 결과 MORI 자동 전송
 > ```
+> `MORI_INGEST_URL`(+`MORI_INGEST_TOKEN`)을 주면 **Trivy 스캔 결과가 `POST /ingest/trivy` 로 MORI에 바로 적재**됩니다(원격→MORI 자동 배송). 안 주면 로컬 `reports/trivy` 에만 저장.
 >
 > **MORI 표준 Zabbix 템플릿**(디스크/CPU/메모리/에이전트 + 매크로 임계):
 > ```bash

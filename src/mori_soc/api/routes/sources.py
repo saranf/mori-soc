@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from mori_soc.api.payloads import build_assets_payload
@@ -109,6 +109,58 @@ def register_sources(ctx: RouteContext) -> None:
                 headers={"Content-Disposition": f'attachment; filename="mori-trivy-vulns-{timestamp}.csv"'},
             )
         return {"source": "trivy", "severity_filter": severity, "count": len(rows), "by_host": rows}
+
+    # ── Trivy 리포트 HTTP 인제스트 (원격 엔드포인트 → MORI 자동 배송) ──────────
+    @app.post("/ingest/trivy", tags=["Sources"])
+    def ingest_trivy(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """원격 호스트가 Trivy JSON 리포트를 push → 정규화 → PostgreSQL 적재.
+
+        인증: MORI_INGEST_TOKEN 이 설정돼 있으면 Authorization: Bearer / X-MORI-Token
+        헤더 필요. 없으면 로그인 세션 필요. 적재는 postgres 백엔드에서만(라이브 조회).
+        """
+        import os as _os
+
+        token_required = _os.getenv("MORI_INGEST_TOKEN", "").strip()
+        if token_required:
+            auth = request.headers.get("authorization", "")
+            provided = auth[7:].strip() if auth.lower().startswith("bearer ") else request.headers.get("x-mori-token", "").strip()
+            if provided != token_required:
+                raise HTTPException(status_code=401, detail="invalid ingest token")
+        else:
+            get_user = ctx.get_session_username
+            if not (get_user and get_user(request)):
+                raise HTTPException(status_code=401, detail="auth required (login or set MORI_INGEST_TOKEN)")
+
+        db = _os.getenv("MORI_DATABASE_URL", "").strip()
+        if not db:
+            raise HTTPException(status_code=503, detail="ingest requires MORI_DATABASE_URL (postgres backend)")
+        if not isinstance(payload, dict) or "Results" not in payload:
+            raise HTTPException(status_code=400, detail="body must be a Trivy JSON report (with 'Results')")
+
+        from mori_soc.collectors import TrivyCollector
+        from mori_soc.models import SourceSync
+        from mori_soc.repositories import PostgresRepository
+        from mori_soc.services import CollectorIngestionService, EnvelopeEntityMapper
+
+        repo = PostgresRepository(db)
+        try:
+            report = CollectorIngestionService(EnvelopeEntityMapper(), repo).ingest_collector(
+                TrivyCollector(reports=[payload])
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Trivy ingest failed: {exc}") from exc
+
+        now = datetime.now(tz=timezone.utc)
+        try:
+            repo.save(SourceSync(source="trivy", status="success", last_sync_at=now, last_success_at=now,
+                                 message=f"http ingest: {report.records_collected} records",
+                                 records_collected=report.records_collected,
+                                 envelopes_normalized=report.envelopes_normalized,
+                                 entities_saved=report.entities_saved))
+        except Exception:
+            pass
+        return {"ok": True, "records_collected": report.records_collected,
+                "entities_saved": report.entities_saved, "artifact": payload.get("ArtifactName")}
 
 
 __all__ = ["register_sources"]

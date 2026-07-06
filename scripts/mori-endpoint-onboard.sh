@@ -25,6 +25,9 @@
 #   MORI_HOSTNAME       (권장) 이 서버의 Zabbix Host name (기본: `hostname`)
 #   MORI_ZABBIX_PORT    (선택) Zabbix Server 포트 (기본 10051)
 #   MORI_TRIVY_OUTDIR   (선택) Trivy JSON 출력 폴더 (기본: ./reports/trivy)
+#   MORI_INGEST_URL     (선택) 설정 시 Trivy 리포트를 MORI 로 HTTP push
+#                              (예: http://mori.example.com:18000). POST /ingest/trivy
+#   MORI_INGEST_TOKEN   (선택) 인제스트 토큰(서버의 MORI_INGEST_TOKEN 과 동일)
 # ============================================================================
 set -euo pipefail
 
@@ -39,7 +42,7 @@ CHECK_ONLY=0
 # ── 인자 파싱 ────────────────────────────────────────────────────────────────
 while [ $# -gt 0 ]; do
   case "$1" in
-    -h|--help) sed -n '2,34p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '3,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     --check) CHECK_ONLY=1 ;;
     --skip-zabbix) SKIP_ZABBIX=1 ;;
     --skip-trivy) SKIP_TRIVY=1 ;;
@@ -171,6 +174,15 @@ if [ "$SKIP_TRIVY" != "1" ]; then
     if [ -f "$OUT" ]; then
       N=$(grep -o '"VulnerabilityID"' "$OUT" 2>/dev/null | wc -l | tr -d ' ')
       ok "Trivy 리포트 생성: $OUT (취약점 항목 ~${N}건)"
+      # 자동 배송: MORI_INGEST_URL 지정 시 HTTP 로 MORI 에 push (원격→MORI)
+      if [ -n "${MORI_INGEST_URL:-}" ]; then
+        log "MORI 로 Trivy 리포트 전송 → ${MORI_INGEST_URL%/}/ingest/trivy"
+        AUTH=(); [ -n "${MORI_INGEST_TOKEN:-}" ] && AUTH=(-H "Authorization: Bearer ${MORI_INGEST_TOKEN}")
+        code=$(curl -s -o /tmp/mori_ingest_resp -w "%{http_code}" -X POST "${MORI_INGEST_URL%/}/ingest/trivy" \
+          -H "Content-Type: application/json" "${AUTH[@]}" --data-binary "@$OUT" 2>/dev/null || echo 000)
+        if [ "$code" = "200" ]; then ok "MORI 인제스트 성공: $(cat /tmp/mori_ingest_resp 2>/dev/null)"
+        else warn "MORI 인제스트 실패(HTTP $code) — MORI_INGEST_URL/토큰 확인 또는 수동 scp"; fi
+      fi
     fi
   fi
 fi
