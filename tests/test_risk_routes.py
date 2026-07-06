@@ -50,6 +50,13 @@ class RiskRouteTests(unittest.TestCase):
         self.assertEqual(body["level"], "매우높음")
         self.assertTrue(body["suggestion"]["inputs"]["fixed_available"])
         self.assertEqual(body["suggestion"]["inputs"]["importance"], "상")
+        # 근거(provenance): 어떤 데이터/소스 기반인지 — 어드민 추적용
+        prov = body["suggestion"]["provenance"]
+        self.assertEqual(prov["data_source"], "trivy")
+        self.assertEqual(prov["hostname"], "db-prod-01")
+        self.assertEqual(prov["package_name"], "openssl")
+        self.assertEqual(prov["fixed_version"], "1.0.1")
+        self.assertEqual(prov["importance_source"], "auto")
 
     def test_get_404_for_unknown_vuln(self) -> None:
         self.assertEqual(self.client.get("/vulnerabilities/nope/risk").status_code, 404)
