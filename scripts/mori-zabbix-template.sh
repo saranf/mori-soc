@@ -90,8 +90,8 @@ print("✅ 템플릿 생성:", TPL, "(id", tid + ") + 매크로", len(macros))
 
 TAGS = lambda extra: [{"tag": "class", "value": "security"},
                       {"tag": "source", "value": "mori"}] + extra
+# 정적 아이템 (CPU/메모리/에이전트). 디스크는 아래 LLD 로 마운트별 자동 발견.
 items = [
-    ("Root FS: space used, in %", "vfs.fs.size[/,pused]", 0, "%", [{"tag": "component", "value": "storage"}]),
     ("CPU: load average (1m)", "system.cpu.load[all,avg1]", 0, "", [{"tag": "component", "value": "cpu"}]),
     ("Memory: available, in %", "vm.memory.size[pavailable]", 0, "%", [{"tag": "component", "value": "memory"}]),
     ("Zabbix agent availability", "agent.ping", 3, "", [{"tag": "component", "value": "agent"}]),
@@ -99,12 +99,29 @@ items = [
 for name, key, vt, unit, tg in items:
     rpc("item.create", {"name": name, "key_": key, "hostid": tid, "type": 0,
                         "value_type": vt, "units": unit, "delay": "60s", "tags": TAGS(tg)})
-print("✅ 아이템", len(items), "개 (태그 포함)")
+print("✅ 정적 아이템", len(items), "개 (태그 포함)")
 
 MORI_URL = "{$MORI.URL}"  # 매크로 — 호스트/템플릿 레벨에서 MORI Triage URL 지정(비우면 링크 없음)
+
+# ── LLD: 마운트된 파일시스템 자동 발견 → 마운트별 사용률 item/trigger ──────────
+rule = rpc("discoveryrule.create", {
+    "name": "Mounted filesystem discovery", "key_": "vfs.fs.discovery",
+    "hostid": tid, "type": 0, "delay": "1h",
+})["result"]["itemids"][0]
+rpc("itemprototype.create", {
+    "name": "FS {#FSNAME}: space used, in %", "key_": "vfs.fs.size[{#FSNAME},pused]",
+    "hostid": tid, "ruleid": rule, "type": 0, "value_type": 0, "units": "%", "delay": "60s",
+    "tags": TAGS([{"tag": "component", "value": "storage"}, {"tag": "filesystem", "value": "{#FSNAME}"}]),
+})
+rpc("triggerprototype.create", {
+    "description": "FS {#FSNAME}: space usage is high (>{$MORI.DISK.PUSED.MAX:\"{#FSNAME}\"}%)",
+    "expression": "last(/%s/vfs.fs.size[{#FSNAME},pused])>{$MORI.DISK.PUSED.MAX:\"{#FSNAME}\"}" % TPL,
+    "priority": "4", "url": MORI_URL, "url_name": "MORI Alert Triage",
+    "tags": TAGS([{"tag": "component", "value": "storage"}, {"tag": "filesystem", "value": "{#FSNAME}"}]),
+})
+print("✅ LLD: 파일시스템 자동 발견 + 마운트별 사용률 트리거")
+
 triggers = [
-    ("Root FS space usage is high (>{$MORI.DISK.PUSED.MAX}%)",
-     "last(/%s/vfs.fs.size[/,pused])>{$MORI.DISK.PUSED.MAX}" % TPL, "4", "storage"),
     ("CPU load is too high (avg 5m >{$MORI.CPU.LOAD.MAX})",
      "avg(/%s/system.cpu.load[all,avg1],5m)>{$MORI.CPU.LOAD.MAX}" % TPL, "3", "cpu"),
     ("Available memory is low (<{$MORI.MEM.PAVAIL.MIN}%)",

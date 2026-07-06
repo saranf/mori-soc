@@ -1,32 +1,60 @@
 #!/usr/bin/env bash
 # ============================================================================
-# MORI SOC — 엔드포인트 온보딩 번들 (Zabbix Agent 2 + Trivy 동시 설치)
+# MORI SOC — 엔드포인트 온보딩 번들 (Zabbix Agent 2 + Trivy)
 #
-# 대상 Linux 서버 1대를 MORI 관측 대상으로 만드는 원커맨드 스크립트:
+# 대상 Linux 서버 1대를 MORI 관측 대상으로 만드는 원커맨드 스크립트.
 #   1) Zabbix Agent 2 설치 + MORI Zabbix Server 로 Active 연결 설정
-#   2) Trivy 설치 + 파일시스템 취약점 스캔 → JSON 리포트 생성
+#   2) Trivy 설치 + 파일시스템 취약점 스캔 → JSON 리포트
 #
-# 사용 (대상 서버에서 sudo 로):
-#   MORI_ZABBIX_SERVER=mori.example.com \
-#   MORI_HOSTNAME=my-web-01 \
-#   sudo -E ./scripts/mori-endpoint-onboard.sh
+# 사용 (대상 서버, root/sudo):
+#   sudo -E MORI_ZABBIX_SERVER=mori.example.com MORI_HOSTNAME=my-web-01 \
+#        bash mori-endpoint-onboard.sh
 #
-# 옵션 env:
-#   MORI_ZABBIX_SERVER   (필수) MORI Zabbix Server 호스트/IP (Agent 가 접속, :10051)
-#   MORI_HOSTNAME        (필수) 이 서버의 Zabbix Host name (Web 등록 시 동일값)
-#   MORI_TRIVY_OUTDIR    (선택) Trivy JSON 출력 폴더 (기본: ./reports/trivy)
-#   MORI_SKIP_TRIVY=1    (선택) Trivy 설치/스캔 건너뛰기
-#   MORI_SKIP_ZABBIX=1   (선택) Zabbix Agent 설치 건너뛰기
+# curl 로 바로 (다운로드→확인→실행 권장):
+#   curl -fsSL https://raw.githubusercontent.com/saranf/mori-soc/main/scripts/mori-endpoint-onboard.sh -o mori-onboard.sh
+#   sudo -E MORI_ZABBIX_SERVER=... MORI_HOSTNAME=... bash mori-onboard.sh
+#
+# 옵션:
+#   -h, --help     도움말
+#   --check        사전 점검만(설치 안 함): OS/패키지매니저, root, Zabbix 연결
+#   --skip-zabbix  Zabbix Agent 건너뛰기        (env: MORI_SKIP_ZABBIX=1)
+#   --skip-trivy   Trivy 건너뛰기               (env: MORI_SKIP_TRIVY=1)
+#
+# env:
+#   MORI_ZABBIX_SERVER  (필수) MORI Zabbix Server 호스트/IP (Agent 접속, :10051)
+#   MORI_HOSTNAME       (권장) 이 서버의 Zabbix Host name (기본: `hostname`)
+#   MORI_ZABBIX_PORT    (선택) Zabbix Server 포트 (기본 10051)
+#   MORI_TRIVY_OUTDIR   (선택) Trivy JSON 출력 폴더 (기본: ./reports/trivy)
 # ============================================================================
 set -euo pipefail
 
 ZBX_SERVER="${MORI_ZABBIX_SERVER:-}"
+ZBX_PORT="${MORI_ZABBIX_PORT:-10051}"
 HOSTNAME_VAL="${MORI_HOSTNAME:-$(hostname)}"
 TRIVY_OUTDIR="${MORI_TRIVY_OUTDIR:-./reports/trivy}"
+SKIP_ZABBIX="${MORI_SKIP_ZABBIX:-0}"
+SKIP_TRIVY="${MORI_SKIP_TRIVY:-0}"
+CHECK_ONLY=0
 
-log() { printf '\033[36m▶\033[0m %s\n' "$*"; }
-ok()  { printf '\033[32m✅\033[0m %s\n' "$*"; }
-warn(){ printf '\033[33m⚠️ \033[0m %s\n' "$*"; }
+# ── 인자 파싱 ────────────────────────────────────────────────────────────────
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help) sed -n '2,34p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --check) CHECK_ONLY=1 ;;
+    --skip-zabbix) SKIP_ZABBIX=1 ;;
+    --skip-trivy) SKIP_TRIVY=1 ;;
+    *) echo "알 수 없는 옵션: $1 (--help 참고)"; exit 2 ;;
+  esac
+  shift
+done
+
+c_cyan="\033[36m"; c_grn="\033[32m"; c_yel="\033[33m"; c_red="\033[31m"; c_rst="\033[0m"
+log()  { printf "${c_cyan}▶${c_rst} %s\n" "$*"; }
+ok()   { printf "${c_grn}✅${c_rst} %s\n" "$*"; }
+warn() { printf "${c_yel}⚠️ ${c_rst} %s\n" "$*"; }
+err()  { printf "${c_red}✖${c_rst} %s\n" "$*"; }
+
+SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo"
 
 # ── OS/패키지 매니저 감지 ────────────────────────────────────────────────────
 PKG=""
@@ -34,75 +62,102 @@ if command -v apt-get >/dev/null 2>&1;   then PKG="apt"
 elif command -v dnf >/dev/null 2>&1;      then PKG="dnf"
 elif command -v yum >/dev/null 2>&1;      then PKG="yum"
 elif command -v brew >/dev/null 2>&1;     then PKG="brew"
-else warn "지원되는 패키지 매니저(apt/dnf/yum/brew)를 못 찾음"; fi
+fi
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🚀 MORI Endpoint Onboard  (pkg=${PKG:-unknown}, host=${HOSTNAME_VAL})"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🚀 MORI Endpoint Onboard"
+echo "   host=${HOSTNAME_VAL}  pkg=${PKG:-unknown}  zabbix=${ZBX_SERVER:-<unset>}:${ZBX_PORT}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# ── 사전 점검 ────────────────────────────────────────────────────────────────
+PRECHECK_OK=1
+log "사전 점검..."
+[ -n "$PKG" ] && ok "패키지 매니저: $PKG" || { err "지원 패키지 매니저 없음(apt/dnf/yum/brew)"; PRECHECK_OK=0; }
+if [ "$(id -u)" -ne 0 ] && ! command -v sudo >/dev/null 2>&1; then
+  err "root 아님 + sudo 없음 — 설치 불가"; PRECHECK_OK=0
+else ok "권한: $([ "$(id -u)" -eq 0 ] && echo root || echo 'sudo 사용')"; fi
+
+# Zabbix Server 연결 확인 (bash /dev/tcp 우선, 없으면 nc)
+if [ -n "$ZBX_SERVER" ]; then
+  if (exec 3<>"/dev/tcp/${ZBX_SERVER}/${ZBX_PORT}") 2>/dev/null; then
+    ok "Zabbix Server 연결 가능: ${ZBX_SERVER}:${ZBX_PORT}"; exec 3>&- 2>/dev/null || true
+  elif command -v nc >/dev/null 2>&1 && nc -z -w3 "$ZBX_SERVER" "$ZBX_PORT" 2>/dev/null; then
+    ok "Zabbix Server 연결 가능(nc): ${ZBX_SERVER}:${ZBX_PORT}"
+  else
+    warn "Zabbix Server(${ZBX_SERVER}:${ZBX_PORT}) 연결 실패 — 방화벽/주소 확인. (설치는 계속)"
+  fi
+else
+  warn "MORI_ZABBIX_SERVER 미지정 — Agent 설정 스킵(설치만). 나중에 conf ServerActive 수정 필요."
+fi
+
+if [ "$CHECK_ONLY" -eq 1 ]; then
+  [ "$PRECHECK_OK" -eq 1 ] && ok "사전 점검 통과 (--check)" || err "사전 점검 실패 (--check)"
+  exit $((1 - PRECHECK_OK))
+fi
+[ "$PRECHECK_OK" -eq 1 ] || { err "사전 점검 실패 — 중단"; exit 1; }
 
 # ── 1) Zabbix Agent 2 ───────────────────────────────────────────────────────
-if [ "${MORI_SKIP_ZABBIX:-0}" != "1" ]; then
-  if [ -z "$ZBX_SERVER" ]; then
-    warn "MORI_ZABBIX_SERVER 미지정 → Zabbix Agent 설정 스킵 (설치만). 나중에 conf 의 ServerActive 수정 필요."
+if [ "$SKIP_ZABBIX" != "1" ]; then
+  if command -v zabbix_agent2 >/dev/null 2>&1; then
+    ok "Zabbix Agent 2 이미 설치됨 — 설정만 갱신"
+  else
+    log "Zabbix Agent 2 설치..."
+    case "$PKG" in
+      apt)
+        . /etc/os-release 2>/dev/null || true
+        DIST="${ID:-ubuntu}"; REL="${VERSION_ID:-24.04}"
+        curl -fsSL "https://repo.zabbix.com/zabbix/7.4/release/${DIST}/pool/main/z/zabbix-release/zabbix-release_latest_7.4+${DIST}${REL}_all.deb" -o /tmp/zabbix-release.deb \
+          && $SUDO dpkg -i /tmp/zabbix-release.deb && $SUDO apt-get update -y && $SUDO apt-get install -y zabbix-agent2 \
+          || warn "Zabbix repo/agent 설치 실패 — 배포판 버전 확인 후 수동 설치"
+        ;;
+      dnf|yum)
+        $SUDO rpm -Uvh "https://repo.zabbix.com/zabbix/7.4/release/rhel/9/noarch/zabbix-release-latest-7.4.el9.noarch.rpm" || true
+        $SUDO "$PKG" install -y zabbix-agent2 || warn "zabbix-agent2 설치 실패"
+        ;;
+      brew) brew install zabbix || warn "brew zabbix 설치 실패" ;;
+    esac
   fi
-  log "Zabbix Agent 2 설치..."
-  case "$PKG" in
-    apt)
-      . /etc/os-release 2>/dev/null || true
-      REL="${VERSION_ID:-24.04}"; DIST="${ID:-ubuntu}"
-      TMPDEB="/tmp/zabbix-release.deb"
-      curl -fsSL "https://repo.zabbix.com/zabbix/7.4/release/${DIST}/pool/main/z/zabbix-release/zabbix-release_latest_7.4+${DIST}${REL}_all.deb" -o "$TMPDEB" \
-        && dpkg -i "$TMPDEB" && apt-get update -y && apt-get install -y zabbix-agent2 \
-        || warn "Zabbix repo 설치 실패 — 배포판 버전 확인 후 수동 설치 필요"
-      ;;
-    dnf|yum)
-      rpm -Uvh "https://repo.zabbix.com/zabbix/7.4/release/rhel/9/noarch/zabbix-release-latest-7.4.el9.noarch.rpm" || true
-      "$PKG" install -y zabbix-agent2 || warn "zabbix-agent2 설치 실패"
-      ;;
-    brew) brew install zabbix || warn "brew zabbix 설치 실패" ;;
-    *) warn "Zabbix Agent 자동 설치 불가 — 수동 설치 필요" ;;
-  esac
 
   CONF="/etc/zabbix/zabbix_agent2.conf"
   [ -f "$CONF" ] || CONF="$(brew --prefix 2>/dev/null)/etc/zabbix/zabbix_agent2.conf"
   if [ -f "$CONF" ] && [ -n "$ZBX_SERVER" ]; then
-    log "에이전트 설정 ($CONF)"
-    sed -i.bak -E "s|^#?[[:space:]]*Server=.*|Server=${ZBX_SERVER}|" "$CONF" || true
-    sed -i -E "s|^#?[[:space:]]*ServerActive=.*|ServerActive=${ZBX_SERVER}:10051|" "$CONF" || true
-    sed -i -E "s|^#?[[:space:]]*Hostname=.*|Hostname=${HOSTNAME_VAL}|" "$CONF" || true
-    grep -q "^ServerActive=" "$CONF" || echo "ServerActive=${ZBX_SERVER}:10051" >> "$CONF"
-    grep -q "^Hostname=" "$CONF" || echo "Hostname=${HOSTNAME_VAL}" >> "$CONF"
-    systemctl enable --now zabbix-agent2 2>/dev/null || true
-    systemctl restart zabbix-agent2 2>/dev/null || true
-    ok "Zabbix Agent 2 설정 완료 → ServerActive=${ZBX_SERVER}:10051, Hostname=${HOSTNAME_VAL}"
+    log "에이전트 설정: $CONF"
+    $SUDO sed -i.bak -E "s|^#?[[:space:]]*Server=.*|Server=${ZBX_SERVER}|" "$CONF" || true
+    $SUDO sed -i -E "s|^#?[[:space:]]*ServerActive=.*|ServerActive=${ZBX_SERVER}:${ZBX_PORT}|" "$CONF" || true
+    $SUDO sed -i -E "s|^#?[[:space:]]*Hostname=.*|Hostname=${HOSTNAME_VAL}|" "$CONF" || true
+    grep -q "^ServerActive=" "$CONF" || echo "ServerActive=${ZBX_SERVER}:${ZBX_PORT}" | $SUDO tee -a "$CONF" >/dev/null
+    grep -q "^Hostname=" "$CONF"     || echo "Hostname=${HOSTNAME_VAL}" | $SUDO tee -a "$CONF" >/dev/null
+    $SUDO systemctl enable --now zabbix-agent2 2>/dev/null || true
+    $SUDO systemctl restart zabbix-agent2 2>/dev/null || true
+    # 검증
+    if systemctl is-active --quiet zabbix-agent2 2>/dev/null; then
+      ok "Zabbix Agent 2 실행 중 → ServerActive=${ZBX_SERVER}:${ZBX_PORT}, Hostname=${HOSTNAME_VAL}"
+    else
+      warn "zabbix-agent2 서비스 미기동 — 'systemctl status zabbix-agent2' 및 /var/log/zabbix/zabbix_agent2.log 확인"
+    fi
+    command -v zabbix_agent2 >/dev/null 2>&1 && zabbix_agent2 -V 2>/dev/null | head -1 || true
   fi
 fi
 
 # ── 2) Trivy ────────────────────────────────────────────────────────────────
-if [ "${MORI_SKIP_TRIVY:-0}" != "1" ]; then
-  log "Trivy 설치..."
-  if ! command -v trivy >/dev/null 2>&1; then
+OUT=""
+if [ "$SKIP_TRIVY" != "1" ]; then
+  if command -v trivy >/dev/null 2>&1; then
+    ok "Trivy 이미 설치됨 ($(trivy --version 2>/dev/null | head -1))"
+  else
+    log "Trivy 설치..."
     case "$PKG" in
       apt)
-        curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy.gpg 2>/dev/null || true
-        echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" > /etc/apt/sources.list.d/trivy.list
-        apt-get update -y && apt-get install -y trivy || warn "trivy apt 설치 실패"
+        curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | $SUDO gpg --dearmor -o /usr/share/keyrings/trivy.gpg 2>/dev/null || true
+        echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | $SUDO tee /etc/apt/sources.list.d/trivy.list >/dev/null
+        $SUDO apt-get update -y && $SUDO apt-get install -y trivy || warn "trivy 설치 실패"
         ;;
       dnf|yum)
-        cat > /etc/yum.repos.d/trivy.repo <<'REPO'
-[trivy]
-name=Trivy repository
-baseurl=https://aquasecurity.github.io/trivy-repo/rpm/releases/$basearch/
-gpgcheck=0
-enabled=1
-REPO
-        "$PKG" install -y trivy || warn "trivy 설치 실패"
+        printf '[trivy]\nname=Trivy\nbaseurl=https://aquasecurity.github.io/trivy-repo/rpm/releases/$basearch/\ngpgcheck=0\nenabled=1\n' | $SUDO tee /etc/yum.repos.d/trivy.repo >/dev/null
+        $SUDO "$PKG" install -y trivy || warn "trivy 설치 실패"
         ;;
       brew) brew install trivy || warn "brew trivy 설치 실패" ;;
-      *)
-        # 폴백: 공식 설치 스크립트
-        curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin || warn "trivy 설치 스크립트 실패"
-        ;;
+      *) curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | $SUDO sh -s -- -b /usr/local/bin || warn "trivy 설치 스크립트 실패" ;;
     esac
   fi
 
@@ -113,20 +168,27 @@ REPO
     trivy filesystem --scanners vuln --format json --output "$OUT" / 2>/dev/null \
       || trivy rootfs --format json --output "$OUT" / 2>/dev/null \
       || warn "Trivy 스캔 실패"
-    [ -f "$OUT" ] && ok "Trivy 리포트 생성: $OUT"
+    if [ -f "$OUT" ]; then
+      N=$(grep -o '"VulnerabilityID"' "$OUT" 2>/dev/null | wc -l | tr -d ' ')
+      ok "Trivy 리포트 생성: $OUT (취약점 항목 ~${N}건)"
+    fi
   fi
 fi
 
 # ── 안내 ────────────────────────────────────────────────────────────────────
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ok "온보딩 완료 — 다음 단계"
 echo "  1) Zabbix Web(:18081) → Data collection → Hosts → Create host"
-echo "     - Host name: ${HOSTNAME_VAL}  (에이전트 Hostname 과 동일)"
-echo "     - Templates: 'MORI Linux Security Baseline' 연결 (./scripts/mori-zabbix-template.sh 로 생성)"
-echo "  2) 임계 초과 시 problem 발생 → mori-worker 30초 폴링 → MORI 🚨 Alert Triage"
-echo "  3) Trivy 리포트를 MORI 로 전달:"
-echo "     - MORI 호스트에서 실행했다면 이미 ${TRIVY_OUTDIR} 에 있음 (MORI_TRIVY_REPORT_GLOB=reports/trivy/*.json)"
-echo "     - 원격이면 scp: scp ${OUT:-<report>} <mori>:<MORI_repo>/reports/trivy/"
-echo "  자세히: docs/ZABBIX_AGENT_ACTIVE_SETUP.md · docs/TRIVY_USAGE.md"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "     - Host name: ${HOSTNAME_VAL}   (에이전트 Hostname 과 동일)"
+echo "     - Templates: 'MORI Linux Security Baseline' 연결"
+echo "       (생성: ./scripts/mori-zabbix-template.sh  또는 YAML import:"
+echo "        config/zabbix/templates/mori_linux_security_baseline.yaml)"
+echo "  2) 임계 초과 → problem → mori-worker 30초 폴링 → MORI 🚨 Alert Triage"
+if [ -n "$OUT" ]; then
+echo "  3) Trivy 리포트 → MORI:"
+echo "     - MORI 호스트에서 실행: 이미 ${TRIVY_OUTDIR} 에 있음 (MORI_TRIVY_REPORT_GLOB=reports/trivy/*.json)"
+echo "     - 원격: scp ${OUT} <mori>:<repo>/reports/trivy/"
+fi
+echo "  docs: ZABBIX_AGENT_ACTIVE_SETUP.md · TRIVY_USAGE.md"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

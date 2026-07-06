@@ -9,12 +9,14 @@ Zabbix 공식 export 포맷(YAML)으로 저장한 MORI 표준 템플릿입니다
 Zabbix Agent 2가 붙은 Linux 엔드포인트에서 감사/보안 관점 problem을 만들어
 MORI Alert Triage로 흘려보내는 베이스라인 템플릿.
 
-| 아이템 | 키 | 트리거 (기본 임계, 매크로) | 심각도 |
+| 항목 | 키 | 트리거 (기본 임계, 매크로) | 심각도 |
 |---|---|---|---|
-| Root FS used % | `vfs.fs.size[/,pused]` | `> {$MORI.DISK.PUSED.MAX}` (85) | High |
+| **FS 자동 발견 (LLD)** | `vfs.fs.discovery` → `vfs.fs.size[{#FSNAME},pused]` | 마운트별 `> {$MORI.DISK.PUSED.MAX:"{#FSNAME}"}` (85) | High |
 | CPU load (1m) | `system.cpu.load[all,avg1]` | `avg(5m) > {$MORI.CPU.LOAD.MAX}` (4) | Average |
 | Memory available % | `vm.memory.size[pavailable]` | `< {$MORI.MEM.PAVAIL.MIN}` (10) | High |
 | Agent availability | `agent.ping` | `nodata({$MORI.AGENT.NODATA})` (5m) | High |
+
+> 디스크는 **LLD(Low-Level Discovery)** 로 마운트된 모든 파일시스템을 자동 발견해 마운트별 트리거를 생성합니다. 컨텍스트 매크로 `{$MORI.DISK.PUSED.MAX:"{#FSNAME}"}` 로 특정 마운트만 임계값을 다르게 줄 수 있습니다.
 
 - **매크로**로 임계값 파라미터화 → 호스트/템플릿 레벨에서 재정의.
 - **`{$MORI.URL}`** (기본 빈값): 값을 넣으면 각 트리거에 MORI Alert Triage 딥링크가 붙습니다.

@@ -584,7 +584,9 @@ docker compose up -d mori-api
 | `docs/PHASE1_LOGICAL_SCHEMA.md` | Phase 1 논리 스키마·테이블 관계 |
 | `docs/DEPLOYMENT.md` | 서버 배포·운영·트러블슈팅 가이드 |
 | **`docs/DEPLOY_SSH_SETUP.md`** | 배포용 SSH 키 생성 + GitHub Actions 시크릿 설정 (단계별) |
-| **`docs/ZABBIX_AGENT_ACTIVE_SETUP.md`** | 실제 Zabbix Agent 2 설치 → MORI Triage 연동 (Zabbix 7.4) |
+| **`docs/ZABBIX_AGENT_ACTIVE_SETUP.md`** | 실제 Zabbix Agent 2 설치 + Trivy 온보딩(원커맨드/curl) → MORI Triage 연동 (Zabbix 7.4) |
+| **`docs/COMMUNITY_TEMPLATE_PR.md`** | MORI Zabbix 템플릿을 zabbix/community-templates 에 PR 제출하는 절차 |
+| **`config/zabbix/templates/`** | Zabbix 공식 포맷 템플릿(YAML, LLD·매크로·태그) + 사용법 |
 | `docs/TRIVY_USAGE.md` | Trivy 파일시스템/이미지 스캔 가이드 |
 | `docs/FLEET_MACBOOK_ENROLLMENT_AND_TEST.md` | Fleet macOS 등록·검증 |
 | `docs/FLEET_RESET_AND_REINSTALL_GUIDE.md` | Fleet 초기화·재설치 |
