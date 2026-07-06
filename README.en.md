@@ -208,7 +208,7 @@ A guidance modal automatically surfaces so that host-level bulk plans don't conf
 | Item | Status | Priority |
 |---|---|---|
 | **UI operational state → PostgreSQL persistence (M2-1)** | ✅ Done — `schema/003_*` + `repositories/state_*.py` (StateRepository) cache-aside + write-through. The 6 stores survive restarts, verified by an integration test (`tests/test_state_persistence.py`) | ✅ Done |
-| **Zabbix API polling** | Collector implementation complete (`collectors/zabbix_events.py`), integration verification ongoing | 🔴 High |
+| **Zabbix API polling** | ✅ **Verified** — real Zabbix API, problem→collect→Triage→Incident→evidence→resolve end-to-end (`collectors/zabbix_events.py`, `tests/test_zabbix_events.py`) | ✅ Done |
 | **Fleet / Wazuh API polling** | Parser·Collector ready, REST poller (`pollers/fleet.py`, `pollers/wazuh.py`) not yet connected | 🔴 High |
 | **Trivy JSON ingestion** | Collector implementation complete, scheduled-run packaging in progress | 🔴 High |
 
@@ -606,7 +606,7 @@ MORI SOC combines open-source security tools to provide a single ops screen, wit
 
 | Tool | Integration | Status |
 |---|---|---|
-| **Zabbix** | trigger / item collector (`collectors/zabbix_events.py`) → ingestion. Accumulates asset availability + CPU/Disk/Memory observations | 🟡 Integration verification in progress |
+| **Zabbix** | problem/trigger collector (`collectors/zabbix_events.py`) → ingestion → alert. problem→Triage→Incident→evidence→resolve | ✅ **Verified end-to-end against the real API** |
 | **FleetDM** | osquery results + host registration normalization. Asset identification + unmapped (orphan) detection | 🟡 Parser/collector ready, REST poller not yet connected |
 | **Wazuh** | alert ingestion → triage pipeline. SSH brute force / rootkit and other security event evidence | 🟡 Parser/collector ready, REST poller not yet connected |
 | **Trivy** | JSON result ingest → per-CVE remediation plan / exception + host-level bulk apply | 🟡 Auto-ingestion packaging in progress |
@@ -631,7 +631,7 @@ MORI SOC combines open-source security tools to provide a single ops screen, wit
 | **N-1** (config onboarding) | Config-based source onboarding — `config/sources.yaml` schema + loader (per-source `enabled`/`url`/`username`/`token_env`/`input_dir`). Secrets referenced only by `*_env` env-var names (never stored in the repo/DB) | 🔲 New |
 | **N-2** (connection metadata) | Source connection metadata store — persist per-source enabled flag, last sync time, last failure reason (extends `source_syncs`) | 🔲 New |
 | **N-3** (guardrails) | Read-only onboarding guardrails — no agent install, no change to existing tool config, isolated source failure, freshness surfacing (healthy/warning/stale) | 🔲 New |
-| **M2-2** | Zabbix API polling integration verification — trigger/item → ingestion → alert/observation → triage → incident | 🟡 Collector done, verifying |
+| **M2-2** | Zabbix API polling integration — problem → ingestion → alert → triage → incident → evidence → resolve | ✅ **Done (verified against real API)** |
 | **M2-3** | Fleet / Wazuh REST poller connection — host/osquery·alert → asset/triage, reflect `source_syncs` freshness | 🔲 Parser·Collector ready |
 | **M2-4** | Trivy JSON ingestion automation — `trivy-*-scan.sh` output → vulnerabilities → vuln_actions → reports | 🟡 Automation packaging |
 | **M2-5** | Add CVE Lite collector — JS/TS lockfile dependency vulnerability source (`source=cve_lite`, direct/transitive, fix_command) | 🔲 New |

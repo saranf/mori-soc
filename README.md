@@ -208,8 +208,8 @@ flowchart LR
 | 항목 | 현황 | 우선순위 |
 |---|---|---|
 | **UI 운영 상태 → PostgreSQL 영속화 (M2-1)** | ✅ 완료 — `schema/003_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through. 6종 store 재시작 후 유지, 통합 테스트(`tests/test_state_persistence.py`)로 검증 | ✅ 완료 |
-| **Zabbix API polling** | Collector 구현 완료(`collectors/zabbix_events.py`), 통합 검증 진행 중 | 🔴 높음 |
-| **Fleet / Wazuh API polling** | Parser·Collector 준비됨, REST poller(`pollers/fleet.py`, `pollers/wazuh.py`) 미연결 | 🔴 높음 |
+| **Zabbix API polling** | ✅ **검증 완료** — 실 Zabbix API로 problem→수집→Triage→Incident→증적→해소 end-to-end 동작 (`collectors/zabbix_events.py`, `tests/test_zabbix_events.py`) | ✅ 완료 |
+| **Fleet / Wazuh API polling** | Parser·Collector 준비됨, REST poller(`pollers/fleet.py`, `pollers/wazuh.py`) 미연결 — **다음 단계** | 🔴 높음 |
 | **Trivy JSON ingestion** | Collector 구현 완료, 정기 실행 패키징/자동화 진행 중 | 🔴 높음 |
 
 ### 🔲 Planned / 추후 작업
@@ -602,7 +602,7 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 
 | 도구 | 통합 방식 | 상태 |
 |---|---|---|
-| **Zabbix** | trigger / item collector(`collectors/zabbix_events.py`) → ingestion. 자산 가용성 + CPU·Disk·Memory 관측치 누적 | 🟡 통합 검증 중 |
+| **Zabbix** | problem/trigger collector(`collectors/zabbix_events.py`) → ingestion → alert. problem→Triage→Incident→증적→해소 | ✅ **실 API end-to-end 검증됨** |
 | **FleetDM** | osquery 결과 + 호스트 등록 정보 normalization. 자산 식별 + 미매핑(orphan) 검출 | 🟡 parser/collector 준비됨, REST poller 미연결 |
 | **Wazuh** | alert ingestion → 트리아지 파이프라인. SSH brute force / rootkit 등 보안 이벤트 증적 | 🟡 parser/collector 준비됨, REST poller 미연결 |
 | **Trivy** | JSON 결과 ingest → CVE별 조치 계획·예외 + 호스트 단위 일괄 적용 | 🟡 자동 적재 패키징 중 |
@@ -627,7 +627,7 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 | **N-1** (config 온보딩) | Config 기반 소스 온보딩 — `config/sources.yaml` 스키마 + 로더(소스별 `enabled`/`url`/`username`/`token_env`/`input_dir`). 시크릿은 `*_env` 환경변수 이름으로만 참조(리포지토리·DB에 비저장) | 🔲 신규 |
 | **N-2** (연결 메타) | 소스 연결 메타데이터 저장 — 소스별 enabled·마지막 sync 시각·마지막 실패 사유 영속화(`source_syncs` 확장) | 🔲 신규 |
 | **N-3** (가드레일) | Read-only 온보딩 가드레일 — 에이전트 미설치·기존 도구 설정 무변경·소스 장애 격리·freshness 노출(healthy/warning/stale) | 🔲 신규 |
-| **M2-2** | Zabbix API polling 통합 검증 — trigger/item → ingestion → alert/observation → triage → incident | 🟡 Collector 완료, 검증 중 |
+| **M2-2** | Zabbix API polling 통합 검증 — problem → ingestion → alert → triage → incident → 증적 → 해소 | ✅ **완료 (실 API 검증)** |
 | **M2-3** | Fleet / Wazuh REST poller 연결 — host/osquery·alert → asset/triage, `source_syncs` freshness 반영 | 🔲 Parser·Collector 준비됨 |
 | **M2-4** | Trivy JSON ingestion 자동화 — `trivy-*-scan.sh` 결과 → vulnerabilities → vuln_actions → 리포트 | 🟡 자동화 패키징 중 |
 | **M2-5** | CVE Lite collector 추가 — JS/TS lockfile 의존성 취약점 source(`source=cve_lite`, direct/transitive, fix_command) | 🔲 신규 |
