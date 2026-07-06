@@ -15,11 +15,13 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 
 - 🎯 **Target audience** — Small to mid-sized organizations with 1–2 security staff + IT helpdesk preparing for ISMS-P / ISO 27001
 - 🚀 **One-line start** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, demo only)
-- 📊 **Screens** — Unified dashboard · Alert Triage · Incidents · Assets / Vulnerabilities · Compliance PDCA · 5 audit-evidence CSV/PDF reports
+- 📊 **Screens** — Unified dashboard · Alert Triage · Incidents · Assets / Vulnerabilities · **Risk Assessment Matrix** · Compliance PDCA · 5 audit-evidence CSV/PDF reports
+- 🎯 **Risk Assessment (R-series)** — Per-CVE **Risk = Impact (asset importance H/M/L) × Likelihood (severity)** scored on a 3×3 matrix, with treatment decision (mitigate/accept/transfer/avoid) · residual risk · review date. **Admin-only assessment-basis (provenance)** panel. Based on ISMS-P risk management / ISO 27001 6.1.2·8.8
+- 🔐 **Role-aware screens** — Risk assessment is **admin·security only**; infra/helpdesk see only **their servers' vulnerabilities & remediation rate**. The dashboard is a **role-aware security hero + 24h/12h infra status (Zabbix/Wazuh deep links)**, with **panel editing** for per-user widget selection (persisted)
 - 🌐 **Multi-language UI** — Korean / English toggle on every page (login, dashboard, admin console); moved from a fixed top-right widget into the **account menu (👤)**, persisted in a cookie + localStorage and switches instantly without a reload
-- 👤 **User profile + My Servers** — Save name · department · assigned servers to your account, and view only your assets in a dedicated **⭐ My Servers** view
-- 🧾 **Automatic evidence** — Asset owner/importance, host/CVE-level remediation plans & exceptions, Triage & Incident state changes
-- ✅ **Persistence (M2-1 done)** — The 6 UI operational state stores are **write-through persisted** to PostgreSQL and survive restarts. Real-time pollers are the next milestone (see [Integrations & Roadmap](#-integrations--roadmap))
+- 👤 **User profile + My Servers** — Save name · department · assigned servers to your account, and view only your assets in a dedicated **⭐ My Servers** view (profile-menu shortcut)
+- 🧾 **Automatic evidence** — Asset owner/importance, host/CVE-level remediation plans & exceptions, **per-CVE risk assessment**, Triage & Incident state changes
+- ✅ **Persistence (M2-1 + R-2 done)** — UI operational state stores (asset owners · audit log · vuln actions · Triage · Incidents · profiles + the **risk register `ui_risk_register`**) are **write-through persisted** to PostgreSQL and survive restarts. Real-time pollers are the next milestone (see [Integrations & Roadmap](#-integrations--roadmap))
 
 > ⚠️ **Alpha / Work in Progress** — Day-to-day security operations + audit-evidence accumulation scenarios work, and the **6 UI operational state stores are persisted to PostgreSQL (M2-1 done)** so they survive restarts. Real-time polling is the next milestone; dashboard asset/alert data is still **seed (sample data)** based.
 
@@ -156,6 +158,8 @@ A guidance modal automatically surfaces so that host-level bulk plans don't conf
 | **Overview** | Asset/alert/vuln summary cards + Critical vulnerability detail modal exposing **plan / exception** columns | Per-host progress visible right on the dashboard |
 | **Assets (Server / PC / Trivy)** | Per-host owner/team/category edits + **manual override of server asset importance** | Takes priority over auto-classification (asset_classifier). Audit log records every change |
 | **Vulnerability management (Trivy)** | Host-level remediation plan / exception + **per-CVE detailed plan / exception** | Author / target date / expiry / reason recorded. Conflict guidance modal |
+| **🎯 Risk Assessment (R-series)** | Per-CVE **3×3 risk matrix** (impact × likelihood) + treatment decision (mitigate/accept/transfer/avoid) · approver · residual risk · review date. Click a matrix cell/level → drill-down. **Admin-only assessment basis** | ISMS-P risk mgmt / ISO 27001 6.1.2·8.8. **admin·security only**. Persisted in `ui_risk_register` |
+| **🔐 Role-aware dashboard** | Role-aware security hero (risk KPIs/TOP ↔ my-servers remediation) + **24h/12h infra status** (Zabbix/Wazuh deep links) + **panel editing** (per-user widget on/off, persisted) | Responsive grid. Infra/helpdesk see remediation rate, not risk grades |
 | **🚨 Alert Triage** | 3-tier state (🔴🟡🟢) change, analyst·**actor** separation, history display | If actor is omitted on UI, falls back to session user → "unknown" |
 | **📋 Incident management** | Create / state change / note / date filter / text search / CSV download + change history | CSV download triggers "history not included" guidance modal |
 | **✅ Compliance PDCA** | Plan/Do/Check/Act 4-stage cards, per-category Pass/Fail/Warning table | **Click Do card → unified pending items modal** (controls + Trivy + Alerts) |
@@ -169,7 +173,7 @@ A guidance modal automatically surfaces so that host-level bulk plans don't conf
 | **👤 User profile / ⭐ My Servers** | Account menu → profile edit (name · department · assigned servers) + **My Servers** sub-tab in Assets | Filters Fleet+Zabbix hosts where `assigned_servers` matches or `owner == display_name` |
 | **API docs** | Swagger `/docs` | Auto-generated by FastAPI |
 
-> ✅ **Storage persistence notice (M2-1 done)** — PostgreSQL holds **normalized seed security data** (hosts/alerts/vulnerabilities/observations etc.), loaded into InMemoryRepository at boot for queries. The **6 UI operational state stores** (triage / incidents / asset owners / vuln actions / asset audit log / user profiles) are now persisted via the new `schema/003_phase2_ui_operational_state.sql` + `repositories/state_*.py` (the StateRepository layer) using **cache-aside + write-through**, so they **survive restarts**. (Falls back to in-memory when `MORI_QUERY_BACKEND=memory` or `MORI_DATABASE_URL` is unset.)
+> ✅ **Storage persistence notice (M2-1 + R-2 done)** — PostgreSQL holds **normalized seed security data** (hosts/alerts/vulnerabilities/observations etc.), loaded into InMemoryRepository at boot for queries. The **UI operational state stores** (triage / incidents / asset owners / vuln actions / asset audit log / user profiles + the **risk register**) are persisted via `schema/003_*` · `schema/004_risk_register.sql` + `repositories/state_*.py` (the StateRepository layer) using **cache-aside + write-through**, so they **survive restarts**. (Falls back to in-memory when `MORI_QUERY_BACKEND=memory` or `MORI_DATABASE_URL` is unset.)
 
 ### 🟡 In progress / Next steps (next milestone)
 
@@ -372,6 +376,7 @@ src/mori_soc/
 | Assets | `GET /assets`, `POST /assets/owners` | Asset list / owner·importance change (audit log) |
 | Alert Triage | `PATCH /alerts/{id}/triage` | State/analyst/note change + actor recording |
 | Vulnerability Actions | `PUT/DELETE /vulnerabilities/{id}/plan`, `/exception` | Per-CVE plan·exception + audit log |
+| **Risk Assessment (R-series)** | `GET/PUT /vulnerabilities/{id}/risk`, `GET /vulnerabilities/risk-summary` | Per-CVE risk assessment (impact × likelihood) read/write (auto-suggestion + provenance) / full 3×3 matrix aggregation |
 | Incidents | `GET /incidents`, `POST /incidents`, `PATCH /incidents/{id}`, `GET /incidents/{id}/history`, `GET /incidents?format=csv` | Incident CRUD + history + CSV |
 | Compliance | `GET /compliance/pdca`, `GET /compliance/crosscheck` | PDCA aggregation / cross-validation |
 | **Compliance CSV** | `GET /compliance/pdca/pending.csv` | Pending/overdue CSV (source/control_id/target/state/owner/due_date/overdue/note) |

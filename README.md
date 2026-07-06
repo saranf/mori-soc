@@ -15,11 +15,13 @@
 
 - 🎯 **대상** — 보안 담당자 1~2명 + IT 헬프데스크로 ISMS-P / ISO 27001을 준비해야 하는 중소형 조직
 - 🚀 **한 줄 시작** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, 데모 전용)
-- 📊 **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · Compliance PDCA · 5종 감사 증적 CSV/PDF
+- 📊 **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · **위험성 평가 매트릭스** · Compliance PDCA · 5종 감사 증적 CSV/PDF
+- 🎯 **위험성 평가 (R-series)** — 취약점(CVE)별 **위험도 = 영향도(자산 중요도 상/중/하) × 발생가능성(심각도)** 를 3×3 매트릭스로 산정, 위험처리 결정(조치/수용/이관/회피)·잔여위험·재평가일 기록. **어드민 전용 산정 근거(provenance)** 패널. ISMS-P 위험관리 / ISO 27001 6.1.2·8.8 기반
+- 🔐 **역할별 화면** — 위험성 평가는 **admin·security 전용**, 인프라·헬프데스크는 **내 담당 서버 취약점·조치율**만 열람. 대시보드는 **역할별 보안 히어로 + 24h/12h 인프라 현황(Zabbix/Wazuh 딥링크)** 로 구성, **패널 편집**으로 개인별 위젯 선택·영속화
 - 🌐 **다국어 UI** — 로그인·대시보드·어드민 콘솔 전 페이지 한국어/영어 토글 (우상단 고정 위젯 → **계정 메뉴(👤)**로 이동, 쿠키·localStorage 저장, 새로고침 없이 즉시 전환)
-- 👤 **사용자 프로필 + 내 서버** — 이름·부서·담당 서버를 계정에 저장하고, 담당 자산만 모아 보는 **⭐ 내 서버** 뷰 제공
-- 🧾 **자동 증적** — 자산 담당자·중요도, 호스트/CVE 단위 조치 계획·예외, Triage·인시던트 상태 변경
-- ✅ **영속화 (M2-1 완료)** — UI 운영 상태 6종 store는 PostgreSQL에 **write-through 영속화**되어 재시작 후에도 유지. 실시간 폴러는 다음 마일스톤 ([Integrations & 확장 방향](#-integrations--확장-방향) 참조)
+- 👤 **사용자 프로필 + 내 서버** — 이름·부서·담당 서버를 계정에 저장하고, 담당 자산만 모아 보는 **⭐ 내 서버** 뷰(프로필 메뉴 바로가기) 제공
+- 🧾 **자동 증적** — 자산 담당자·중요도, 호스트/CVE 단위 조치 계획·예외, **CVE별 위험성 평가**, Triage·인시던트 상태 변경
+- ✅ **영속화 (M2-1 + R-2 완료)** — UI 운영 상태 store(자산 담당자·감사로그·취약점 조치·Triage·인시던트·프로필 + **위험성 평가 대장 `ui_risk_register`**)는 PostgreSQL에 **write-through 영속화**되어 재시작 후에도 유지. 실시간 폴러는 다음 마일스톤 ([Integrations & 확장 방향](#-integrations--확장-방향) 참조)
 
 > ⚠️ **Alpha / Work in Progress** — 일상 보안 운영 + 감사 증적 누적 시나리오가 동작하며, **UI 운영 상태 6종은 PostgreSQL에 영속화(M2-1 완료)** 되어 재시작 후에도 유지됩니다. 실시간 폴링은 다음 마일스톤이며, 대시보드 자산·경보 데이터는 아직 **시드(sample data)** 기반입니다.
 
@@ -156,6 +158,8 @@ flowchart LR
 | **개요 (Overview)** | 자산·경보·취약점 요약 카드 + Critical 취약점 상세 모달에 **조치 계획 / 조치 예외** 컬럼 노출 | 호스트별 진행 상태를 대시보드에서 즉시 확인 |
 | **자산 (서버 / PC / Trivy)** | 호스트별 담당자·팀·카테고리 편집 + **서버 자산 중요도 수동 재정의** | 자동 분류(asset_classifier)보다 우선 적용. 변경분 감사 로그 |
 | **취약점 관리 (Trivy)** | 호스트 단위 조치 계획 / 조치 예외 + **CVE별 상세 조치 계획 / 조치 예외** | 작성자·목표일·만료일·사유 기록. 충돌 안내 모달 |
+| **🎯 위험성 평가 (R-series)** | CVE별 **3×3 위험 매트릭스**(영향도×발생가능성) + 위험처리 결정(조치/수용/이관/회피)·승인자·잔여위험·재평가일. 매트릭스 셀/등급 클릭 → 해당 버킷 드릴다운. **어드민 전용 산정 근거** | ISMS-P 위험관리 / ISO 27001 6.1.2·8.8. **admin·security 전용**. `ui_risk_register` 영속화 |
+| **🔐 역할별 대시보드** | 역할별 보안 히어로(위험 KPI/TOP ↔ 내 서버 조치율) + **24h/12h 인프라 현황**(Zabbix/Wazuh 딥링크) + **패널 편집**(위젯 on/off 개인 영속화) | 반응형 그리드. 인프라/헬프데스크는 위험등급 대신 조치율만 |
 | **🚨 Alert Triage** | 3단계 상태(🔴🟡🟢) 변경, 분석관·**변경자(actor)** 분리 기록, 이력 표시 | UI에서 actor 미입력 시 세션 사용자 → "unknown" fallback |
 | **📋 인시던트 관리** | 생성·상태변경·노트·날짜필터·텍스트검색·CSV 다운로드 + 변경 이력 | CSV 다운로드 시 "변경 내역 미포함" 안내 모달 표시 |
 | **✅ Compliance PDCA** | Plan/Do/Check/Act 4단계 카드, 카테고리별 Pass/Fail/Warning 표 | **Do 카드 클릭 → 미조치 항목 모달** (통제 + Trivy + Alert 통합) |
@@ -169,7 +173,7 @@ flowchart LR
 | **👤 사용자 프로필 / ⭐ 내 서버** | 계정 메뉴 → 프로필 편집(이름·부서·담당 서버) + 자산 탭 **내 서버** 서브탭 | `assigned_servers` 또는 `owner == display_name` 인 Fleet+Zabbix 호스트만 필터링 |
 | **API 문서** | Swagger `/docs` | FastAPI 자동 생성 |
 
-> ✅ **저장소 영속화 안내 (M2-1 완료)** — PostgreSQL은 **정규화된 시드 보안 데이터**(hosts/alerts/vulnerabilities/observations 등)를 부팅 시 InMemoryRepository로 로드해 질의에 사용합니다. 또한 **UI 운영 상태 6종**(triage / incidents / asset owners / vuln actions / asset audit log / user profiles)은 신규 `schema/003_phase2_ui_operational_state.sql` + `repositories/state_*.py`(StateRepository 계층)를 통해 **cache-aside + write-through**로 영속화되어 **재시작 후에도 유지**됩니다. (`MORI_QUERY_BACKEND=memory` 또는 `MORI_DATABASE_URL` 미설정 시 인메모리로 폴백.)
+> ✅ **저장소 영속화 안내 (M2-1 + R-2 완료)** — PostgreSQL은 **정규화된 시드 보안 데이터**(hosts/alerts/vulnerabilities/observations 등)를 부팅 시 InMemoryRepository로 로드해 질의에 사용합니다. 또한 **UI 운영 상태 store**(triage / incidents / asset owners / vuln actions / asset audit log / user profiles + **위험성 평가 대장 risk register**)는 `schema/003_*` · `schema/004_risk_register.sql` + `repositories/state_*.py`(StateRepository 계층)를 통해 **cache-aside + write-through**로 영속화되어 **재시작 후에도 유지**됩니다. (`MORI_QUERY_BACKEND=memory` 또는 `MORI_DATABASE_URL` 미설정 시 인메모리로 폴백.)
 
 ### 🟡 In progress / 다음 단계 (다음 마일스톤)
 
@@ -371,6 +375,7 @@ src/mori_soc/
 | Assets | `GET /assets`, `POST /assets/owners` | 자산 목록 / 담당자·중요도 변경(감사 로그) |
 | Alert Triage | `PATCH /alerts/{id}/triage` | 상태/분석관/노트 변경 + actor 기록 |
 | Vulnerability Actions | `PUT/DELETE /vulnerabilities/{id}/plan`, `/exception` | CVE별 조치 계획·예외 + 감사 로그 |
+| **Risk Assessment (R-series)** | `GET/PUT /vulnerabilities/{id}/risk`, `GET /vulnerabilities/risk-summary` | CVE별 위험성 평가(영향도×발생가능성) 조회·저장(자동 제안 + 근거 provenance) / 전체 3×3 매트릭스 집계 |
 | Incidents | `GET /incidents`, `POST /incidents`, `PATCH /incidents/{id}`, `GET /incidents/{id}/history`, `GET /incidents?format=csv` | 인시던트 CRUD + 이력 + CSV |
 | Compliance | `GET /compliance/pdca`, `GET /compliance/crosscheck` | PDCA 집계 / 교차 검증 |
 | **Compliance CSV** | `GET /compliance/pdca/pending.csv` | 미조치/기한초과 항목 CSV (출처/통제ID/대상/상태/담당자/조치기한/기한초과/비고) |
