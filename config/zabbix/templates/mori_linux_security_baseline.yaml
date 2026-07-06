@@ -1,0 +1,133 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: 65585c7322a8422e965dccf49ce59293
+      name: Templates/MORI
+  templates:
+    - uuid: 2091cfab0b17442298179bd60c91501a
+      template: 'MORI Linux Security Baseline'
+      name: 'MORI Linux Security Baseline'
+      description: 'MORI SOC baseline for Linux endpoints. Surfaces disk/CPU/memory/agent problems into MORI Alert Triage (ISMS-P / ISO 27001 audit evidence).'
+      groups:
+        - name: Templates/MORI
+      items:
+        - uuid: 4c3fef0aec004326ab01bd1a3cea8205
+          name: 'Zabbix agent availability'
+          key: agent.ping
+          delay: 60s
+          tags:
+            - tag: class
+              value: security
+            - tag: component
+              value: agent
+            - tag: source
+              value: mori
+          triggers:
+            - uuid: bdb1cf1af4c747868b07c2eb5eb5436a
+              expression: 'nodata(/MORI Linux Security Baseline/agent.ping,{$MORI.AGENT.NODATA})=1'
+              name: 'Zabbix agent is not responding ({$MORI.AGENT.NODATA})'
+              url_name: 'MORI Alert Triage'
+              url: '{$MORI.URL}'
+              priority: HIGH
+              tags:
+                - tag: class
+                  value: security
+                - tag: component
+                  value: agent
+                - tag: source
+                  value: mori
+        - uuid: a52a490186d34c76913e1f9358b757ba
+          name: 'CPU: load average (1m)'
+          key: 'system.cpu.load[all,avg1]'
+          delay: 60s
+          value_type: FLOAT
+          tags:
+            - tag: class
+              value: security
+            - tag: component
+              value: cpu
+            - tag: source
+              value: mori
+          triggers:
+            - uuid: a995d3b77cd54b10a4907a9e2433b587
+              expression: 'avg(/MORI Linux Security Baseline/system.cpu.load[all,avg1],5m)>{$MORI.CPU.LOAD.MAX}'
+              name: 'CPU load is too high (avg 5m >{$MORI.CPU.LOAD.MAX})'
+              url_name: 'MORI Alert Triage'
+              url: '{$MORI.URL}'
+              priority: AVERAGE
+              tags:
+                - tag: class
+                  value: security
+                - tag: component
+                  value: cpu
+                - tag: source
+                  value: mori
+        - uuid: 69ea641e3bca4d128ab6977acf6c5b3b
+          name: 'Root FS: space used, in %'
+          key: 'vfs.fs.size[/,pused]'
+          delay: 60s
+          value_type: FLOAT
+          units: '%'
+          tags:
+            - tag: class
+              value: security
+            - tag: component
+              value: storage
+            - tag: source
+              value: mori
+          triggers:
+            - uuid: ff91b4ac54534961a952e2892dd38ccc
+              expression: 'last(/MORI Linux Security Baseline/vfs.fs.size[/,pused])>{$MORI.DISK.PUSED.MAX}'
+              name: 'Root FS space usage is high (>{$MORI.DISK.PUSED.MAX}%)'
+              url_name: 'MORI Alert Triage'
+              url: '{$MORI.URL}'
+              priority: HIGH
+              tags:
+                - tag: class
+                  value: security
+                - tag: component
+                  value: storage
+                - tag: source
+                  value: mori
+        - uuid: d8bb94b758bc4ffbba920517c7c10dd2
+          name: 'Memory: available, in %'
+          key: 'vm.memory.size[pavailable]'
+          delay: 60s
+          value_type: FLOAT
+          units: '%'
+          tags:
+            - tag: class
+              value: security
+            - tag: component
+              value: memory
+            - tag: source
+              value: mori
+          triggers:
+            - uuid: d9f1a27e81074408a9be937d0a430f09
+              expression: 'last(/MORI Linux Security Baseline/vm.memory.size[pavailable])<{$MORI.MEM.PAVAIL.MIN}'
+              name: 'Available memory is low (<{$MORI.MEM.PAVAIL.MIN}%)'
+              url_name: 'MORI Alert Triage'
+              url: '{$MORI.URL}'
+              priority: HIGH
+              tags:
+                - tag: class
+                  value: security
+                - tag: component
+                  value: memory
+                - tag: source
+                  value: mori
+      macros:
+        - macro: '{$MORI.AGENT.NODATA}'
+          value: 5m
+          description: 'agent 무응답 판정 시간'
+        - macro: '{$MORI.CPU.LOAD.MAX}'
+          value: '4'
+          description: 'CPU load(1m avg) 임계'
+        - macro: '{$MORI.DISK.PUSED.MAX}'
+          value: '85'
+          description: '루트 FS 사용률 임계(%)'
+        - macro: '{$MORI.MEM.PAVAIL.MIN}'
+          value: '10'
+          description: '가용 메모리 최소(%)'
+        - macro: '{$MORI.URL}'
+          description: '트리거 링크 대상(MORI Alert Triage URL). 비우면 링크 없음'
