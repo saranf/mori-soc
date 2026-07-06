@@ -5,6 +5,24 @@
 에 PR로 제출하는 절차입니다. 이 템플릿은 `configuration.import` round-trip 검증(`true`)을
 통과한 **Zabbix 7.4 공식 포맷**이라 그대로 제출 가능합니다.
 
+## ⚡ 자동화 (권장)
+
+포크만 준비되면 폴더 배치·README 생성·브랜치·커밋을 스크립트가 처리합니다:
+
+```bash
+# (A) github 에서 zabbix/community-templates 를 Fork
+# (B) 아래 한 줄 — 포크 URL 로 클론까지:
+MORI_PR_AUTHOR="이름 <github.com/아이디>" \
+  ./scripts/mori-community-pr.sh --clone git@github.com:<나>/community-templates.git
+
+# 또는 이미 클론해 뒀다면:
+./scripts/mori-community-pr.sh /path/to/community-templates
+```
+
+스크립트가 끝나면 안내대로 `git push` 후 GitHub 에서 PR 을 열면 됩니다(PR 본문은
+자동 생성된 `PR_BODY.md` 사용). 카테고리 폴더명은 `MORI_PR_CATEGORY` 로 조정.
+아래는 수동 절차 상세입니다.
+
 ## 0. 제출 전 체크리스트 (커뮤니티 요건)
 
 - [x] **버전 명시**: `zabbix_export.version: '7.4'`
