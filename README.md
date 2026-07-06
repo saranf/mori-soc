@@ -583,7 +583,8 @@ docker compose up -d mori-api
 | `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md` | Phase 1 입력 소스·스키마·질의 명세 |
 | `docs/PHASE1_LOGICAL_SCHEMA.md` | Phase 1 논리 스키마·테이블 관계 |
 | `docs/DEPLOYMENT.md` | 서버 배포·운영·트러블슈팅 가이드 |
-| `docs/ZABBIX_AGENT_ACTIVE_SETUP.md` | Zabbix Agent 온보딩 |
+| **`docs/DEPLOY_SSH_SETUP.md`** | 배포용 SSH 키 생성 + GitHub Actions 시크릿 설정 (단계별) |
+| **`docs/ZABBIX_AGENT_ACTIVE_SETUP.md`** | 실제 Zabbix Agent 2 설치 → MORI Triage 연동 (Zabbix 7.4) |
 | `docs/TRIVY_USAGE.md` | Trivy 파일시스템/이미지 스캔 가이드 |
 | `docs/FLEET_MACBOOK_ENROLLMENT_AND_TEST.md` | Fleet macOS 등록·검증 |
 | `docs/FLEET_RESET_AND_REINSTALL_GUIDE.md` | Fleet 초기화·재설치 |

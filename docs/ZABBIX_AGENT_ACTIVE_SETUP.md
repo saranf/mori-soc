@@ -1,135 +1,151 @@
-# Zabbix Agent Active 등록 가이드
+# 실제 Zabbix Agent 설치 & MORI 연동 가이드 (Zabbix 7.4)
 
-## 1. 목적
+실제 서버/PC에 **Zabbix Agent 2**를 설치해 MORI 스택의 Zabbix Server에 연결하고,
+문제(problem)가 발생하면 **MORI Alert Triage로 흘러 들어오는 것까지** 확인하는 전체 절차입니다.
 
-이 문서는 개인 PC 또는 테스트 단말을 **Zabbix Agent Active 방식**으로
-MORI SOC-lite의 Zabbix Server에 연결하는 절차를 정리합니다.
-
-## 2. 권장 방식
-
-권장 방식은 **Active Agent**입니다.
-
-- 단말이 Zabbix Server로 직접 연결
-- NAT/사내망 환경에서 상대적으로 구성 단순
-- 서버가 단말의 `10050` 포트로 직접 들어올 필요 없음
-
-현재 서버 공개 포트 기준:
-
-- Zabbix Web: `http://mori.rmstudio.co.kr:18081`
-- Zabbix Server: `mori.rmstudio.co.kr:10051`
-
-## 3. 사전 조건
-
-- 내 PC에서 `mori.rmstudio.co.kr:10051`로 outbound 연결 가능
-- Zabbix Web 로그인 가능
-- Host 이름을 직접 지정할 수 있음
-
-초기 Zabbix Web 계정(초기 설치 기준):
-
-- ID: `Admin`
-- PW: `zabbix`
-
-## 4. 서버 측 Host 생성
-
-Zabbix Web에서 아래 순서로 등록합니다.
-
-1. `Data collection` → `Hosts`
-2. `Create host`
-3. 아래 값 입력
-
-- Host name: Agent 설정의 `Hostname`과 동일값
-- Templates:
-  - Windows: `Windows by Zabbix agent active`
-  - Linux: `Linux by Zabbix agent active`
-  - macOS: 운영 환경에 맞는 active 템플릿 또는 범용 agent 템플릿
-- Host groups: 예) `Endpoints`
-- Interfaces: Active 전용만 사용할 경우 필수는 아니지만 관리 편의상 추가 가능
-
-## 5. Agent 설정 예시
-
-저장소 예시 파일:
-
-- `config/zabbix_agent/zabbix_agent2.active.example.conf`
-
-핵심 설정은 아래 4개입니다.
-
-- `Server=mori.rmstudio.co.kr`
-- `ServerActive=mori.rmstudio.co.kr:10051`
-- `Hostname=PC별_고유이름`
-- `HostMetadata=windows|linux|macos`
-
-예시:
-
-```conf
-Server=mori.rmstudio.co.kr
-ServerActive=mori.rmstudio.co.kr:10051
-Hostname=SRANG-LAPTOP
-HostMetadata=windows
+```
+[대상 서버] Zabbix Agent 2  ──(Active)──▶  [MORI] Zabbix Server(10051)
+                                                    │
+                                        트리거 발생 → problem
+                                                    │  (mori-worker 30초 폴링)
+                                                    ▼
+                                          MORI Alert Triage → Incident → 증적
 ```
 
-## 6. OS별 적용 포인트
+권장은 **Active Agent** 방식입니다 — 단말이 서버로 outbound 접속하므로 NAT/사내망에서 구성이 단순하고, 서버가 단말의 10050 포트로 들어올 필요가 없습니다.
 
-### Windows
+---
 
-- Zabbix Agent 2 설치
-- 예시 설정 파일 내용을 `zabbix_agent2.conf`에 반영
-- 서비스 재시작
+## 0. 사전 확인 (MORI 측)
 
-권장 메타데이터:
+MORI 스택이 떠 있으면 Zabbix Server/Web은 이미 실행 중입니다.
 
-- `HostMetadata=windows`
+```bash
+docker compose ps zabbix-server zabbix-web
+```
 
-### Linux
+- **Zabbix Web**: `http://<서버>:18081` (`.env`의 `MORI_ZABBIX_UI_URL`, 기본 `Admin` / `zabbix`)
+- **Zabbix Server(agent 접속 대상)**: `<서버>:10051` (compose에서 `10051:10051` 노출)
 
-- 패키지로 Zabbix Agent 2 설치
-- `/etc/zabbix/zabbix_agent2.conf` 수정
-- 서비스 재시작
+대상 서버에서 `<서버>:10051` 로 outbound 연결이 가능해야 합니다.
 
-권장 메타데이터:
+```bash
+nc -vz <서버> 10051    # succeeded 나오면 OK
+```
 
-- `HostMetadata=linux`
+---
 
-### macOS
+## 1. 대상 서버에 Zabbix Agent 2 설치
 
-- Zabbix Agent 2 설치
-- 설정 파일에 Active 항목 반영
-- LaunchAgent/서비스 재시작
+### Ubuntu / Debian
 
-권장 메타데이터:
+```bash
+# Zabbix 7.4 리포지토리 (배포판 버전에 맞게: ubuntu24.04, debian12 등)
+wget https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.4+ubuntu24.04_all.deb
+sudo dpkg -i zabbix-release_latest_7.4+ubuntu24.04_all.deb
+sudo apt update
+sudo apt install -y zabbix-agent2
+```
 
-- `HostMetadata=macos`
+### RHEL / Rocky / AlmaLinux
 
-## 7. 연결 확인 방법
+```bash
+sudo rpm -Uvh https://repo.zabbix.com/zabbix/7.4/release/rhel/9/noarch/zabbix-release-latest-7.4.el9.noarch.rpm
+sudo dnf clean all
+sudo dnf install -y zabbix-agent2
+```
 
-Zabbix Web에서 아래를 확인합니다.
+### macOS (Homebrew — 테스트용)
 
-- `Monitoring` → `Hosts`
-- Host 상태가 활성으로 보이는지 확인
-- `Latest data`에서 CPU/Memory/Disk 항목 수집 확인
+```bash
+brew install zabbix
+# 설정 파일: $(brew --prefix)/etc/zabbix/zabbix_agent2.conf
+```
 
-처음 데이터 반영까지는 수 분 정도 걸릴 수 있습니다.
+---
 
-## 8. 추천 PoC 항목
+## 2. 에이전트 설정
 
-처음에는 아래 항목만 확인해도 충분합니다.
+설정 파일: `/etc/zabbix/zabbix_agent2.conf` (macOS는 brew 경로). 아래 3개만 맞추면 됩니다.
 
-- CPU utilization
-- Memory utilization
-- Disk usage
-- Network interface status
-- Agent availability
+```ini
+# 수동 체크(Passive)용 — 서버 IP 허용
+Server=<MORI 서버 IP>
 
-## 9. 트러블슈팅
+# Active 체크용 — 에이전트가 접속할 서버:포트
+ServerActive=<MORI 서버 IP>:10051
 
-### 데이터가 안 들어올 때
+# 이 호스트의 고유 이름 — Zabbix Web에서 등록할 Host name 과 반드시 동일하게
+Hostname=my-web-01
+```
 
-- `Hostname`이 Zabbix Host 이름과 정확히 같은지 확인
-- `ServerActive=mori.rmstudio.co.kr:10051`로 설정했는지 확인
-- 단말 방화벽/사내망에서 outbound `10051/tcp` 차단이 없는지 확인
-- Active 템플릿을 연결했는지 확인
+적용:
 
-### 로그인은 되는데 Host가 회색일 때
+```bash
+sudo systemctl enable --now zabbix-agent2
+sudo systemctl restart zabbix-agent2
+sudo systemctl status zabbix-agent2      # active(running) 확인
+# 로그: /var/log/zabbix/zabbix_agent2.log
+```
 
-- Host 템플릿이 맞지 않거나
-- Agent 서비스가 아직 재시작되지 않았거나
-- Active check 대상 호스트명이 일치하지 않는 경우가 많습니다.
+---
+
+## 3. Zabbix Web에서 Host 등록
+
+Zabbix Web(`:18081`, Admin/zabbix) 접속 후:
+
+1. **Data collection → Hosts → Create host**
+2. 값 입력:
+   - **Host name**: 에이전트의 `Hostname`과 **동일값** (예: `my-web-01`)
+   - **Templates**: `Linux by Zabbix agent` (또는 `Linux by Zabbix agent active`) 추가
+   - **Host groups**: `Linux servers` 등 아무 그룹
+   - **Interfaces → Add → Agent**: 대상 서버 IP / 포트 `10050`
+     - (Active만 쓸 경우 인터페이스 IP는 형식상 넣어두면 됩니다)
+3. **Add** 저장
+
+수 분 뒤 **Monitoring → Latest data**에서 CPU/메모리/디스크 값이 들어오면 성공입니다.
+
+> 💡 **CLI로 등록**하고 싶으면 `host.create` + `templateid` API를 쓸 수 있습니다. 데모용 문제 발생은 `./scripts/mori-zabbix-demo-problem.sh` 참고.
+
+---
+
+## 4. 문제(problem) 발생 → MORI로 흐르는지 확인
+
+실제 트리거가 걸리는 상황(디스크 사용률 초과, 서비스 다운 등)을 만들거나,
+`Linux by Zabbix agent` 템플릿의 기본 트리거가 발화하면 **Monitoring → Problems**에 문제가 뜹니다.
+
+- **mori-worker**가 30초 주기로 `problem.get`을 폴링해 정규화 → PostgreSQL `alerts` 적재.
+- MORI `/ui` → **🚨 Alert Triage** 탭에 `source=zabbix`로 표시됩니다(각 알림에 `Zabbix ↗` 딥링크).
+- 확인용:
+
+```bash
+# MORI가 방금 폴링했는지 (source freshness)
+docker exec -it mori-soc-soc-postgres-1 psql -U mori -d mori_soc \
+  -c "SELECT source,status,last_success_at FROM source_syncs WHERE source='zabbix';"
+
+# 적재된 zabbix alert
+docker exec -it mori-soc-soc-postgres-1 psql -U mori -d mori_soc \
+  -c "SELECT alert_id,severity,rule_name,resolved_at FROM alerts WHERE source='zabbix' ORDER BY observed_at DESC LIMIT 5;"
+```
+
+Zabbix에서 문제가 **해소(resolve)** 되면(복구 이벤트 발생) MORI alert의 `resolved_at`이 채워지고
+Triage에 "✓ 소스 해소" 뱃지가 표시됩니다.
+
+---
+
+## 5. 자주 겪는 문제
+
+| 증상 | 원인 / 해결 |
+|---|---|
+| Latest data에 값이 안 옴 | `Hostname`(에이전트) ≠ Host name(Web) 불일치 / 방화벽에서 10051 outbound 막힘 |
+| Web에서 host가 빨간 ZBX | Passive 인터페이스 IP 오류 — Active만 쓰면 무시 가능, 또는 IP 교정 |
+| MORI Triage에 안 뜸 | Problems에 실제 problem이 있는지 확인 → `source_syncs` last_success 갱신 확인 → `mori-worker` 로그 확인 |
+| `mori-worker` 로그에 Zabbix 인증 오류 | `.env`의 `MORI_ZABBIX_USER/PASSWORD` 확인 (기본 Admin/zabbix). 7.x는 반복 로그인 일시 차단 있음 |
+
+---
+
+## 6. 참고
+
+- MORI는 Zabbix를 **read-only**로 폴링만 합니다(에이전트 설치·Zabbix 설정 변경은 이 문서대로 사용자가 수행). MORI가 Zabbix 구성을 바꾸지 않습니다.
+- 데모 시나리오(실제 서버 없이 problem 발생)는 `./scripts/mori-zabbix-demo-problem.sh` 로 재현할 수 있습니다.
+- 배포 자동화(GitHub Actions)용 SSH 설정은 [DEPLOY_SSH_SETUP.md](./DEPLOY_SSH_SETUP.md) 참고.
