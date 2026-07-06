@@ -3800,16 +3800,25 @@ def render_user_dashboard_html(
           ${_heroKpi(tt('dash.hero.alerts','🚨 24h 경보'), (o.alerts_24h??0), '#fca5a5', \"switchTab('triage')\")}
           ${_heroKpi(tt('dash.hero.crit_vulns','🐞 Critical 취약점'), (o.critical_vulns??0), '#fca5a5', \"switchTab('assets');switchAssetTab('trivy')\")}
         </div>`;
-        const top = (risk.items || []).slice(0, 5);
+        const top = (risk.items || []).slice(0, 6);
+        const rankColor = (i) => i===0?'#f87171':i===1?'#fb923c':i===2?'#fbbf24':'#64748b';
         const list = !top.length
           ? `<div class=\"empty\" style=\"color:#64748b\">${tt('dash.hero.no_risk','평가 대상 취약점이 없습니다.')}</div>`
-          : `<div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\">${tt('dash.hero.top_title','위험 TOP')}</div>` + top.map((it, i) => `
-              <div onclick=\"openRiskModal('${escapeHtml(it.vuln_id)}')\" style=\"display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #1e293b;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#0b1322\">
-                <span style=\"color:#64748b;font-weight:700;width:16px\">${i+1}</span>
-                ${_riskBadge(it.level, true)}
-                <strong style=\"color:#7dd3fc;font-size:13px\">${escapeHtml(it.cve)}</strong>
-                <span style=\"color:#64748b;font-size:12px\">${escapeHtml(it.hostname)}</span>
-                <span style=\"margin-left:auto;color:${it.severity==='critical'?'#fca5a5':'#fdba74'};font-size:11px;text-transform:uppercase\">${escapeHtml(it.severity)}</span>
+          : `<style>.hero-rank-row{border-bottom:1px solid #16233b}.hero-rank-row:last-child{border-bottom:none}.hero-rank-row:hover{background:#0f2035}</style>
+             <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:4px\">
+               <span style=\"font-size:13px;font-weight:700;color:#e2e8f0\">${tt('dash.hero.top_title','위험 TOP')} <span style=\"color:#64748b;font-weight:400;font-size:11px\">· ${tt('dash.hero.by_score','위험점수순')}</span></span>
+               <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" style=\"background:none;border:none;color:#7dd3fc;font-size:12px;cursor:pointer\">${tt('dash.hero.view_all','전체 보기 →')}</button>
+             </div>` + top.map((it, i) => `
+              <div class=\"hero-rank-row\" onclick=\"openRiskModal('${escapeHtml(it.vuln_id)}')\" style=\"display:flex;align-items:center;gap:12px;padding:9px 6px;cursor:pointer\">
+                <span style=\"width:20px;text-align:center;font-weight:800;font-size:15px;color:${rankColor(i)}\">${i+1}</span>
+                <div style=\"min-width:0;flex:1\">
+                  <div style=\"display:flex;align-items:center;gap:8px\">${_riskBadge(it.level, true)}<strong style=\"color:#e2e8f0;font-size:13px\">${escapeHtml(it.cve)}</strong></div>
+                  <div style=\"color:#64748b;font-size:11px;margin-top:2px\">${escapeHtml(it.hostname)} · <span style=\"text-transform:uppercase;color:${it.severity==='critical'?'#fca5a5':'#fdba74'}\">${escapeHtml(it.severity)}</span></div>
+                </div>
+                <div style=\"text-align:right;white-space:nowrap\">
+                  <div style=\"font-weight:800;font-size:15px;color:${RISK_LEVEL_COLORS[it.level]||'#e2e8f0'}\">${it.score}</div>
+                  <div style=\"font-size:10px;color:#64748b\">${tt('dash.hero.score','위험점수')}</div>
+                </div>
               </div>`).join('');
         el.innerHTML = kpis + list;
       } else {
