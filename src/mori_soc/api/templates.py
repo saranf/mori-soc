@@ -54,6 +54,7 @@ USER_DASHBOARD_GUIDE_LABELS = {
     "ldap_setup": "🔐 LDAP 통합 설정",
     "incident_response": "🚨 인시던트 대응 절차",
     "security_policy": "📜 보안 정책 가이드",
+    "risk_methodology": "🎯 위험성 평가 기준",
 }
 DEFAULT_USER_DASHBOARD_PREFERENCES = {
     "cards": {
@@ -86,6 +87,7 @@ DEFAULT_USER_DASHBOARD_PREFERENCES = {
         "ldap_setup": True,
         "incident_response": True,
         "security_policy": True,
+        "risk_methodology": True,
     },
 }
 
@@ -2734,6 +2736,8 @@ def render_user_dashboard_html(
     <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
     <div class=\"tab-panel active\" id=\"tab_dashboard\">
       <div style=\"display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;\">
+        <span style=\"font-size:11px;color:#64748b;margin-right:auto\" data-i18n=\"dash.panel.resize_hint\">↔ 패널 오른쪽-아래 모서리를 드래그해 크기를 조절할 수 있어요 (브라우저에 저장)</span>
+        <button id=\"panel_layout_reset\" class=\"secondary\" onclick=\"resetPanelLayout()\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"dash.panel.reset_layout\">↔️ 크기 초기화</button>
         <button id=\"panel_edit_toggle\" class=\"secondary\" onclick=\"togglePanelEdit()\" data-i18n=\"dash.panel.edit\">🧩 패널 편집</button>
       </div>
       <div id=\"panel_edit_box\" class=\"card hidden\" style=\"margin-bottom:12px;\">
@@ -2754,12 +2758,18 @@ def render_user_dashboard_html(
       </section>
       <section class=\"metrics\" id=\"overview_cards\"><div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.overview_loading\">⏳ 요약 카드를 불러오는 중…</div></section>
       <style>
-        #dash_grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap:16px; align-items:start; }
-        #dash_grid > section { min-width:0; }
+        /* 패널 자유조절: flex-wrap + 네이티브 드래그 리사이즈. 반응형(좁으면 100%로 접힘). */
+        #dash_grid { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
+        #dash_grid > section {
+          flex:0 1 auto; width:460px; max-width:100%; min-width:300px;
+          box-sizing:border-box; resize:horizontal; overflow:auto;
+        }
+        #dash_grid > section > * { min-width:0; }
         #dash_grid > section .table-wrap { overflow-x:auto; }
         #dash_grid > section table { max-width:100%; }
-        /* 표가 있는 패널은 좁은 칼럼에 욱여넣지 않고 한 줄 전체 사용 */
-        #latest_status_section, #risk_summary_section, #recent_activity_section { grid-column: 1 / -1; }
+        /* 표가 있는 패널은 기본을 넓게 (드래그로 자유 조절 가능) */
+        #latest_status_section, #risk_summary_section, #recent_activity_section { width:620px; }
+        @media (max-width:640px){ #dash_grid > section { width:100%!important; resize:none; } }
       </style>
       <div id=\"dash_grid\">
           <!-- 🖥️ 인프라 현황 (24h/12h 전환 + Zabbix/Wazuh 딥링크) -->
@@ -3914,6 +3924,39 @@ def render_user_dashboard_html(
       if (_panelEditOpen) renderPanelEditor();
     }
     window.togglePanelEdit = togglePanelEdit;
+
+    /* ↔ 패널 사이즈 자유조절 — 네이티브 드래그 리사이즈 + localStorage 영속(브라우저별) */
+    const _DASH_W_KEY = 'mori_panel_widths';
+    let _panelWTimer = null;
+    function _applyPanelWidths() {
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem(_DASH_W_KEY) || '{}'); } catch (e) {}
+      document.querySelectorAll('#dash_grid > section').forEach((sec) => {
+        if (saved[sec.id]) sec.style.width = saved[sec.id] + 'px';
+      });
+    }
+    function _savePanelWidths() {
+      const w = {};
+      // 사용자가 드래그해 inline width 가 잡힌 패널만 저장(리플로우 폭은 저장하지 않음)
+      document.querySelectorAll('#dash_grid > section').forEach((sec) => {
+        if (sec.style.width) w[sec.id] = parseInt(sec.style.width, 10);
+      });
+      try { localStorage.setItem(_DASH_W_KEY, JSON.stringify(w)); } catch (e) {}
+    }
+    function resetPanelLayout() {
+      try { localStorage.removeItem(_DASH_W_KEY); } catch (e) {}
+      document.querySelectorAll('#dash_grid > section').forEach((sec) => { sec.style.width = ''; });
+      if (typeof dashboardStatusEl !== 'undefined' && dashboardStatusEl) {
+        dashboardStatusEl.textContent = tt('dash.panel.layout_reset', '↔️ 패널 크기 초기화됨');
+      }
+    }
+    window.resetPanelLayout = resetPanelLayout;
+    // 드래그(마우스 업) 후 잠시 뒤 저장
+    document.addEventListener('mouseup', () => {
+      if (_panelWTimer) clearTimeout(_panelWTimer);
+      _panelWTimer = setTimeout(_savePanelWidths, 300);
+    });
+    _applyPanelWidths();
 
     function renderPanelEditor() {
       const mk = (key, label, kind, on) => `
