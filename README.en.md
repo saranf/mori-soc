@@ -39,6 +39,19 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 
 > 🔒 **Demo credentials notice** — Demo credentials (`admin` / `security` / `monitor`, password `1234`) are **intentionally simple for isolated demo use only**. The demo instance contains **seeded sample data only**; **no production secrets or real customer data are stored.** For any non-demo deployment, **change credentials and RBAC settings immediately** (`.env`: `MORI_ADMIN_PASSWORD`, `MORI_DEMO_MODE=false`).
 
+## 🎬 End-to-end scenario — Zabbix operational problem → audit evidence (verified against the live API)
+
+MORI's core value: **turn the operational data Zabbix already produces into ISMS-P / ISO 27001 audit evidence.** The pipeline below works **end-to-end against the real Zabbix API** (no API restart — the API reads PostgreSQL live on every request).
+
+1. **A Zabbix problem occurs** — demo: `./scripts/mori-zabbix-demo-problem.sh` (fires a trigger on the Zabbix server → a real problem event)
+2. **MORI worker collects** — `mori-worker` polls `problem.get` every 30s → normalizes (severity/host/timestamp) → upserts into PostgreSQL `alerts` + records source freshness
+3. **Surfaces in Alert Triage** — `/ui` → 🚨 Alert Triage shows it **immediately** with `source=zabbix`
+4. **Triage** — 3-tier state (🔴🟡🟢) + analyst · actor · change history
+5. **Incident** — promote the alert into an incident with owner / status / notes
+6. **Evidence export** — incidents / monthly / **risk register** as CSV·PDF
+
+> In other words, MORI is not "another security tool" — it is a **read-only layer that turns Zabbix operational data into ISMS-P / ISO 27001 audit evidence (who · when · what · on what basis).**
+
 A lightweight SOC platform built by integrating open-source security tools so that **evidence, control checks, and remediation history required for ISMS-P / ISO 27001 audits** can be collected, managed, and exported in one place.
 
 > **Goal:** A "Compliance-Evidence Platform" that lets IT helpdesk + 1 designated owner at a small/mid-sized organization deploy with a single `docker compose` command, running ISMS-P / ISO 27001 preparation alongside daily security operations.

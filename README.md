@@ -39,6 +39,19 @@
 
 > 🔒 **데모 자격증명 안내** — 데모 계정(`admin` / `security` / `monitor`, 비밀번호 `1234`)은 **격리된 데모 전용**으로 의도적으로 단순합니다. 데모 인스턴스는 **시드 샘플 데이터만** 포함하며 **실제 비밀·고객 데이터를 저장하지 않습니다.** 데모가 아닌 배포에서는 **즉시 자격증명과 RBAC를 변경**하세요. (`.env`의 `MORI_ADMIN_PASSWORD` · `MORI_DEMO_MODE=false`)
 
+## 🎬 실전 시나리오 — Zabbix 운영 문제 → 감사 증적 (실제 API 연동 검증됨)
+
+MORI의 핵심 가치: **기존 Zabbix가 이미 만들어내는 운영 데이터를 ISMS-P / ISO 27001 감사 증적으로 전환.** 아래 파이프라인이 **실제 Zabbix API 연동으로 end-to-end 동작**합니다(API 재시작 불필요 — 매 요청 PostgreSQL 라이브 조회).
+
+1. **Zabbix problem 발생** — 데모: `./scripts/mori-zabbix-demo-problem.sh` (Zabbix 서버에 트리거 발화 → 실제 problem 이벤트)
+2. **MORI worker 수집** — `mori-worker` 가 30초 주기로 `problem.get` 폴링 → 정규화(severity/host/timestamp 매핑) → PostgreSQL `alerts` 적재 + source freshness 기록
+3. **Alert Triage 노출** — `/ui` → 🚨 Alert Triage 에 `source=zabbix` 로 **즉시** 표시
+4. **상태 처리** — 3단계 상태(🔴🟡🟢) + 분석관·변경자(actor)·변경이력 기록
+5. **Incident 생성** — alert 를 인시던트로 승격, 담당자·상태·노트 관리
+6. **증적 export** — 인시던트 / 월간 / **위험성 평가 대장** CSV·PDF 내보내기
+
+> 즉, MORI 는 "새 보안 도구"가 아니라 **Zabbix 운영 데이터를 *누가·언제·무엇을·어떤 근거로* 형태의 ISMS-P / ISO 27001 감사 증적으로 바꾸는 read-only 레이어**입니다.
+
 오픈소스 보안 도구를 통합하여 **ISMS-P / ISO 27001 인증 심사에 필요한 증적·통제 점검·조치 이력**을 한 곳에서 수집·관리·내보내기 할 수 있도록 만든 경량 SOC 플랫폼입니다.
 
 > **목표:** 중소형 조직에서 IT 헬프데스크 + 담당자 1명이 `docker compose` 한 줄로 배포하여 ISMS-P / ISO 27001 준비와 일상 보안 운영을 같이 할 수 있는 **"Compliance-Evidence Platform"**
