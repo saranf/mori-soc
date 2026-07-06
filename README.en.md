@@ -15,7 +15,7 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 
 - 🎯 **Target audience** — Small to mid-sized organizations with 1–2 security staff + IT helpdesk preparing for ISMS-P / ISO 27001
 - 🚀 **One-line start** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, demo only)
-- 📊 **Screens** — Unified dashboard · Alert Triage · Incidents · Assets / Vulnerabilities · **Risk Assessment Matrix** · Compliance PDCA · 5 audit-evidence CSV/PDF reports
+- 📊 **Screens** — Unified dashboard · Alert Triage · Incidents · Assets / Vulnerabilities · **Risk Assessment Matrix** · Compliance PDCA · 6 audit-evidence CSV/PDF reports
 - 🎯 **Risk Assessment (R-series)** — Per-CVE **Risk = Impact (asset importance H/M/L) × Likelihood (severity)** scored on a 3×3 matrix, with treatment decision (mitigate/accept/transfer/avoid) · residual risk · review date. **Admin-only assessment-basis (provenance)** panel. Based on ISMS-P risk management / ISO 27001 6.1.2·8.8
 - 🔐 **Role-aware screens** — Risk assessment is **admin·security only**; infra/helpdesk see only **their servers' vulnerabilities & remediation rate**. The dashboard is a **role-aware security hero + 24h/12h infra status (Zabbix/Wazuh deep links)**, with **panel editing** for per-user widget selection (persisted)
 - 🌐 **Multi-language UI** — Korean / English toggle on every page (login, dashboard, admin console); moved from a fixed top-right widget into the **account menu (👤)**, persisted in a cookie + localStorage and switches instantly without a reload
@@ -164,7 +164,7 @@ A guidance modal automatically surfaces so that host-level bulk plans don't conf
 | **📋 Incident management** | Create / state change / note / date filter / text search / CSV download + change history | CSV download triggers "history not included" guidance modal |
 | **✅ Compliance PDCA** | Plan/Do/Check/Act 4-stage cards, per-category Pass/Fail/Warning table | **Click Do card → unified pending items modal** (controls + Trivy + Alerts) |
 | **Pending / overdue** | Control checks (fail/warning) + Trivy critical/high + Alerts critical/high (7-day) unified view | **📥 CSV download** (`/compliance/pdca/pending.csv`) |
-| **📥 Audit-evidence reports** | 5 types (asset/account/log/vuln/monthly) CSV + **PDF** (NanumGothic embedded) | **🔍 Preview modal** (top 50 rows + CSV/PDF download buttons) |
+| **📥 Audit-evidence reports** | 6 types (asset/account/log/vuln/risk_register/monthly) CSV + **PDF** (NanumGothic embedded) | **🔍 Preview modal** (top 50 rows + CSV/PDF download buttons) |
 | **📡 Source Freshness · Collector Lag** | Per-collector last-success timestamp · lag · SLA threshold visualization (`/dashboard` `source_coverage`) | Card/table shown on Admin Overview + user dashboard |
 | **🔀 Cross-validation** | Zabbix × Fleet × Trivy host mapping diff / unmapped asset detection | source_coverage / orphan check |
 | **💬 Natural language queries (FAB)** | 12-intent dispatch (alert_summary, offline_hosts, top_vulnerable_hosts, host_timeline, …) | `/interpret` + `/query` |
@@ -287,7 +287,7 @@ src/mori_soc/
 │   ├── query_catalog.py   ← 12 intent definitions (TemplateQuery)
 │   ├── query_service.py   ← Intent dispatch (_INTENT_HANDLERS registry)
 │   ├── views.py           ← Logical view aggregation (latest_host_status / risk_summary / timeline)
-│   ├── reports.py         ← 5-type audit-evidence report builder + report_to_csv
+│   ├── reports.py         ← 6-type audit-evidence report builder (+ risk register) + report_to_csv
 │   └── asset_classifier.py← Asset auto-classification + importance scoring (manual override supported)
 ├── repositories/
 │   ├── memory.py          ← InMemoryRepository / InMemoryQueryStore (loaded from seed, used for queries)
@@ -364,7 +364,7 @@ src/mori_soc/
 | Incidents | `GET /incidents`, `POST /incidents`, `PATCH /incidents/{id}`, `GET /incidents/{id}/history`, `GET /incidents?format=csv` | Incident CRUD + history + CSV |
 | Compliance | `GET /compliance/pdca`, `GET /compliance/crosscheck` | PDCA aggregation / cross-validation |
 | **Compliance CSV** | `GET /compliance/pdca/pending.csv` | Pending/overdue CSV (source/control_id/target/state/owner/due_date/overdue/note) |
-| Reports | `GET /compliance/reports`, `GET /compliance/reports/{type}?format=csv\|pdf` | 5-type audit-evidence reports (asset/account/log/vuln/monthly). PDF embeds NanumGothic |
+| Reports | `GET /compliance/reports`, `GET /compliance/reports/{type}?format=csv\|pdf` | 6-type audit-evidence reports (asset/account/log/vuln/**risk_register**/monthly). PDF embeds NanumGothic |
 
 Full spec at Swagger `/docs`.
 

@@ -15,7 +15,7 @@
 
 - 🎯 **대상** — 보안 담당자 1~2명 + IT 헬프데스크로 ISMS-P / ISO 27001을 준비해야 하는 중소형 조직
 - 🚀 **한 줄 시작** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, 데모 전용)
-- 📊 **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · **위험성 평가 매트릭스** · Compliance PDCA · 5종 감사 증적 CSV/PDF
+- 📊 **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · **위험성 평가 매트릭스** · Compliance PDCA · 6종 감사 증적 CSV/PDF
 - 🎯 **위험성 평가 (R-series)** — 취약점(CVE)별 **위험도 = 영향도(자산 중요도 상/중/하) × 발생가능성(심각도)** 를 3×3 매트릭스로 산정, 위험처리 결정(조치/수용/이관/회피)·잔여위험·재평가일 기록. **어드민 전용 산정 근거(provenance)** 패널. ISMS-P 위험관리 / ISO 27001 6.1.2·8.8 기반
 - 🔐 **역할별 화면** — 위험성 평가는 **admin·security 전용**, 인프라·헬프데스크는 **내 담당 서버 취약점·조치율**만 열람. 대시보드는 **역할별 보안 히어로 + 24h/12h 인프라 현황(Zabbix/Wazuh 딥링크)** 로 구성, **패널 편집**으로 개인별 위젯 선택·영속화
 - 🌐 **다국어 UI** — 로그인·대시보드·어드민 콘솔 전 페이지 한국어/영어 토글 (우상단 고정 위젯 → **계정 메뉴(👤)**로 이동, 쿠키·localStorage 저장, 새로고침 없이 즉시 전환)
@@ -286,7 +286,7 @@ src/mori_soc/
 │   ├── query_catalog.py   ← 12 intent 정의 (TemplateQuery)
 │   ├── query_service.py   ← intent 디스패치 (_INTENT_HANDLERS 레지스트리)
 │   ├── views.py           ← 논리 뷰 집계 (latest_host_status / risk_summary / timeline)
-│   ├── reports.py         ← 5종 감사 증적 리포트 빌더 + report_to_csv
+│   ├── reports.py         ← 6종 감사 증적 리포트 빌더(+ 위험성 평가 대장) + report_to_csv
 │   └── asset_classifier.py← 자산 자동 분류 + 중요도 산출 (manual override 가능)
 ├── repositories/
 │   ├── memory.py          ← InMemoryRepository / InMemoryQueryStore (시드 로드 후 질의용)
@@ -363,7 +363,7 @@ src/mori_soc/
 | Incidents | `GET /incidents`, `POST /incidents`, `PATCH /incidents/{id}`, `GET /incidents/{id}/history`, `GET /incidents?format=csv` | 인시던트 CRUD + 이력 + CSV |
 | Compliance | `GET /compliance/pdca`, `GET /compliance/crosscheck` | PDCA 집계 / 교차 검증 |
 | **Compliance CSV** | `GET /compliance/pdca/pending.csv` | 미조치/기한초과 항목 CSV (출처/통제ID/대상/상태/담당자/조치기한/기한초과/비고) |
-| Reports | `GET /compliance/reports`, `GET /compliance/reports/{type}?format=csv\|pdf` | 5종 감사 증적 리포트 (asset/account/log/vuln/monthly). PDF는 NanumGothic 임베드 |
+| Reports | `GET /compliance/reports`, `GET /compliance/reports/{type}?format=csv\|pdf` | 6종 감사 증적 리포트 (asset/account/log/vuln/**risk_register**/monthly). PDF는 NanumGothic 임베드 |
 
 전체 스펙은 Swagger `/docs` 참조.
 
