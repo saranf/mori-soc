@@ -5,6 +5,13 @@ from .intent_parser import InterpretationResult, NaturalLanguageQueryParser
 from .normalization import EnvelopeEntityMapper
 from .query_catalog import PHASE1_QUERY_CATALOG, TemplateQuery, get_template_query
 from .query_service import InMemoryQueryStore, QueryService
+from .risk_assessment import (
+    IMPACT_SCORE,
+    RISK_LEVELS,
+    SEVERITY_LIKELIHOOD,
+    RiskAssessment,
+    assess_risk,
+)
 from .risk_score import ALERT_WEIGHTS, MAX_RISK_SCORE, VULN_WEIGHTS, RiskScoreCalculator
 from .views import (
     HostRiskSummaryRow,
@@ -30,6 +37,12 @@ __all__ = [
     "ALERT_WEIGHTS",
     "VULN_WEIGHTS",
     "MAX_RISK_SCORE",
+    # risk assessment (R-1)
+    "RiskAssessment",
+    "assess_risk",
+    "IMPACT_SCORE",
+    "SEVERITY_LIKELIHOOD",
+    "RISK_LEVELS",
     # views
     "LatestHostStatusRow",
     "HostRiskSummaryRow",
