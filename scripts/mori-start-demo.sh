@@ -86,6 +86,18 @@ echo ""
 echo "🔄 Starting worker (if available)..."
 docker compose up -d mori-worker 2>/dev/null || echo "   ⚠️  Worker skipped (dependency not ready — OK for demo mode)"
 
+# 5.5) Zabbix 실전 시나리오 데모 problem 생성 (best-effort)
+#      Zabbix problem → mori-worker 수집 → Alert Triage → Incident → 증적 export 를
+#      열자마자 확인할 수 있도록 Zabbix 서버에 데모 트리거를 걸어 실제 problem 을 발생시킨다.
+echo ""
+echo "🎬 Seeding Zabbix live scenario (best-effort)..."
+if [ -x "$PROJECT_ROOT/scripts/mori-zabbix-demo-problem.sh" ] && \
+   "$PROJECT_ROOT/scripts/mori-zabbix-demo-problem.sh" >/dev/null 2>&1; then
+  echo "   ✅ Zabbix demo problem armed → 30초 내 Alert Triage 에 source=zabbix 로 표시됩니다."
+else
+  echo "   ⚠️  Zabbix 시나리오 스킵 (zabbix-web 미준비 — 잠시 후 ./scripts/mori-zabbix-demo-problem.sh 재실행)"
+fi
+
 # 6) Summary
 MORI_PORT="${MORI_API_PORT:-18000}"
 echo ""
@@ -97,6 +109,9 @@ echo "   🔑 API:        http://localhost:${MORI_PORT}/docs"
 echo "   📊 Health:     http://localhost:${MORI_PORT}/health"
 echo ""
 echo "   Default login: admin / 1234"
+echo ""
+echo "   🎬 Zabbix 실전 시나리오: 🚨 Alert Triage 탭에서 source=zabbix 'MORI DEMO...' 알림 확인"
+echo "      → 알림 클릭 → Triage 처리 → Incident 생성 → 증적 CSV/PDF export"
 echo ""
 echo "   Stop demo (preserve real data):  ./scripts/mori-stop-demo.sh"
 echo "   Stop containers only:            ./scripts/mori-stop-demo.sh --keep"
