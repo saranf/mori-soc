@@ -23,7 +23,8 @@
 - 👤 **사용자 프로필 + 내 서버** — 이름·부서·담당 서버를 계정에 저장하고, 담당 자산만 모아 보는 **⭐ 내 서버** 뷰(프로필 메뉴 바로가기) 제공
 - 🧾 **자동 증적** — 자산 담당자·중요도, 호스트/CVE 단위 조치 계획·예외, **CVE별 위험성 평가**, Triage·인시던트 상태 변경
 - ✅ **영속화 (M2-1 + R-2 완료)** — UI 운영 상태 store(자산 담당자·감사로그·취약점 조치·Triage·인시던트·프로필 + **위험성 평가 대장 `ui_risk_register`**)는 PostgreSQL에 **write-through 영속화**되어 재시작 후에도 유지.
-- 🔌 **실데이터 연동** — **Zabbix 실시간 폴링은 실 API로 검증됨**(problem→Triage→Incident→증적→해소). **Fleet / Wazuh 라이브 연동은 다음 단계(Next)**, Trivy는 부분 통합.
+- 🔌 **실데이터 연동** — **Zabbix 실시간 폴링은 실 API로 검증됨**(problem→Triage→Incident→증적→해소). **Trivy/CSOP는 원격 토큰 push**(`/ingest/trivy`·`/ingest/evidence`)로 연동. **Fleet / Wazuh 라이브 연동은 다음 단계(Next)**.
+- 🧩 **브라운필드** — 기존 Zabbix/Wazuh/Fleet 환경이면 **MORI 코어만 띄우고 `.env` 설정만으로** 연결(번들 소스 불필요). `docker compose up` = 코어만, `--profile bundled` = 번들 데모 포함. → [가이드](docs/BROWNFIELD_CONNECT.md)
 
 > ⚠️ **Alpha / Work in Progress** — 일상 보안 운영 + 감사 증적 누적 시나리오가 동작하고, **UI 운영 상태는 PostgreSQL에 영속화(M2-1·R-2)** 되어 재시작 후에도 유지됩니다. **Zabbix 는 실시간 폴링이 실 API로 검증**되어 problem→alert→Triage 가 재시작 없이 흐릅니다(다른 시드 데이터는 데모용). **Fleet / Wazuh 라이브 연동은 다음 단계**입니다.
 
@@ -31,11 +32,11 @@
 
 | ✅ 지금 되는 것 (Works now) | 🧪 부분 통합 (Partially integrated) | 🚧 다음 (Next) |
 |---|---|---|
-| **✅ Zabbix 실시간 폴링 → alert (검증됨)** | Trivy collector (수집 구현, 자동화 진행) | **FleetDM 라이브 연동** |
-| Alert Triage / Incident 워크플로우 | Source freshness / Worker cycle | **Wazuh 라이브 연동** |
-| CVE별 **위험성 평가** + 취약점 조치계획 | | LDAP/AD 운영 연동 |
-| 로그인 / RBAC · 자산 담당자·중요도 편집 | | Slack / Email 알림 |
-| PostgreSQL 영속 UI 상태 · CSV/PDF 증적 export | | 라이브 조회 캐싱(성능) |
+| **✅ Zabbix 실시간 폴링 → alert (검증됨)** | Trivy collector 로컬 폴링(수집 구현) | **FleetDM 라이브 API 폴러** |
+| **✅ Trivy/CSOP 원격 push + 증적 인제스트** (`/ingest/trivy`·`/ingest/evidence`, 토큰) | Source freshness / Worker cycle | **Wazuh 라이브 API 폴러** |
+| **✅ 브라운필드 연결** — 기존 Zabbix/Trivy에 `.env` config만으로 (번들 소스 불필요) | | LDAP/AD 운영 연동 |
+| Alert Triage / Incident 워크플로우 · CVE별 **위험성 평가** | | Slack / Email 알림 |
+| 로그인 / RBAC · PostgreSQL 영속 UI 상태 · CSV/PDF 증적 export | | 라이브 조회 캐싱(성능) |
 
 > ✅ **Zabbix**는 실제 API로 *problem → 수집 → Triage → Incident → 증적 → 해소* 전 구간이 **검증됨** ([🎬 실전 시나리오](#-실전-시나리오--zabbix-운영-문제--감사-증적-실제-api-연동-검증됨)). **Fleet / Wazuh**는 컬렉터·파서는 준비됐으나 **라이브 연동은 다음 단계**입니다.
 
@@ -44,6 +45,8 @@
 ## 🎬 실전 시나리오 — Zabbix 운영 문제 → 감사 증적 (실제 API 연동 검증됨)
 
 MORI의 핵심 가치: **기존 Zabbix가 이미 만들어내는 운영 데이터를 ISMS-P / ISO 27001 감사 증적으로 전환.** 아래 파이프라인이 **실제 Zabbix API 연동으로 end-to-end 동작**합니다(API 재시작 불필요 — 매 요청 PostgreSQL 라이브 조회).
+
+> 💡 이 시나리오는 번들 Zabbix가 필요합니다. 브라운필드 기본(`docker compose up`)은 코어만 띄우므로, 데모 Zabbix를 함께 올리려면 `docker compose --profile zabbix up -d`(또는 `--profile bundled`). 기존 Zabbix를 쓰면 `.env`의 `MORI_ZABBIX_API_URL`만 바꾸면 됩니다 → [브라운필드 가이드](docs/BROWNFIELD_CONNECT.md).
 
 1. **Zabbix problem 발생** — 데모: `./scripts/mori-zabbix-demo-problem.sh` (Zabbix 서버에 트리거 발화 → 실제 problem 이벤트)
 2. **MORI worker 수집** — `mori-worker` 가 30초 주기로 `problem.get` 폴링 → 정규화(severity/host/timestamp 매핑) → PostgreSQL `alerts` 적재 + source freshness 기록
@@ -232,6 +235,32 @@ flowchart LR
 ```
 
 → `http://localhost:18000/ui` 에서 `admin / 1234` 로 로그인.
+
+### 브라운필드 모드 — 기존 Zabbix/Wazuh/Fleet 위에 얹기
+
+이미 운영 중인 Zabbix·Wazuh·FleetDM·Trivy가 있으면 **MORI 코어만 띄우고 `.env`로 연결**합니다(번들 소스 불필요). 자세한 절차는 [docs/BROWNFIELD_CONNECT.md](docs/BROWNFIELD_CONNECT.md).
+
+```bash
+# 1) MORI 코어만 기동 (api + worker + postgres, 번들 Zabbix/Fleet/Wazuh 제외)
+docker compose up -d
+
+# 2) .env 에서 기존 인프라로 연결 (예: Zabbix)
+#    MORI_ZABBIX_API_URL=https://zabbix.your-corp.com/api_jsonrpc.php
+#    MORI_ZABBIX_API_TOKEN=<토큰>   (또는 MORI_ZABBIX_USER/PASSWORD)
+docker compose up -d mori-worker      # 재적용
+
+# 3) Trivy/CSOP 는 토큰 push 로 연결 (MORI_INGEST_TOKEN 설정 후)
+#    POST /ingest/trivy  ·  POST /ingest/evidence
+```
+
+> 연결 현황: **Zabbix**(라이브 REST) · **Trivy/CSOP**(토큰 push) 는 설정만으로 즉시 동작. **Fleet/Wazuh** 라이브 API 폴러는 Phase 3 예정(현재 `.env` 자리만 마련).
+
+번들 데모 스택까지 함께 띄우려면:
+
+```bash
+docker compose --profile bundled up -d          # 전체(Zabbix+Fleet+Wazuh 데모)
+# 개별: --profile zabbix / --profile fleet / --profile wazuh
+```
 
 ### 데모 종료
 

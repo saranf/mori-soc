@@ -23,7 +23,8 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 - 👤 **User profile + My Servers** — Save name · department · assigned servers to your account, and view only your assets in a dedicated **⭐ My Servers** view (profile-menu shortcut)
 - 🧾 **Automatic evidence** — Asset owner/importance, host/CVE-level remediation plans & exceptions, **per-CVE risk assessment**, Triage & Incident state changes
 - ✅ **Persistence (M2-1 + R-2 done)** — UI operational state stores (asset owners · audit log · vuln actions · Triage · Incidents · profiles + the **risk register `ui_risk_register`**) are **write-through persisted** to PostgreSQL and survive restarts.
-- 🔌 **Live data integration** — **Zabbix real-time polling is verified against the real API** (problem→Triage→Incident→evidence→resolve). **Fleet / Wazuh live integration is Next**; Trivy is partially integrated.
+- 🔌 **Live data integration** — **Zabbix real-time polling is verified against the real API** (problem→Triage→Incident→evidence→resolve). **Trivy/CSOP integrate via remote token push** (`/ingest/trivy`·`/ingest/evidence`). **Fleet / Wazuh live integration is Next**.
+- 🧩 **Brownfield** — for existing Zabbix/Wazuh/Fleet, run **MORI core only and connect via `.env`** (no bundled sources). `docker compose up` = core only, `--profile bundled` = bundled demo. → [guide](docs/BROWNFIELD_CONNECT.md)
 
 > ⚠️ **Alpha / Work in Progress** — Day-to-day security operations + audit-evidence accumulation work, and **UI operational state is persisted to PostgreSQL (M2-1 · R-2)** across restarts. **Zabbix real-time polling is verified against the real API**, so problem→alert→Triage flows live with no restart (other seed data is for demo). **Fleet / Wazuh live integration is the next step.**
 
@@ -31,11 +32,11 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 
 | ✅ Works now | 🧪 Partially integrated | 🚧 Next |
 |---|---|---|
-| **✅ Zabbix real-time polling → alerts (verified)** | Trivy collector (ingest done, automation WIP) | **FleetDM live integration** |
-| Alert triage / Incident workflow | Source freshness / Worker cycle | **Wazuh live integration** |
-| Per-CVE **risk assessment** + vuln action plans | | LDAP/AD production integration |
-| Login / RBAC · asset owner / importance editing | | Slack / Email notifications |
-| PostgreSQL-backed UI state · CSV/PDF evidence export | | Live-read caching (perf) |
+| **✅ Zabbix real-time polling → alerts (verified)** | Trivy collector local polling (ingest done) | **FleetDM live API poller** |
+| **✅ Trivy/CSOP remote push + evidence ingest** (`/ingest/trivy`·`/ingest/evidence`, token) | Source freshness / Worker cycle | **Wazuh live API poller** |
+| **✅ Brownfield connect** — existing Zabbix/Trivy via `.env` config only (no bundled sources) | | LDAP/AD production integration |
+| Alert triage / Incident workflow · per-CVE **risk assessment** | | Slack / Email notifications |
+| Login / RBAC · PostgreSQL-backed UI state · CSV/PDF evidence export | | Live-read caching (perf) |
 
 > ✅ **Zabbix** is **verified end-to-end** against the real API (*problem → collect → Triage → Incident → evidence → resolve*, see [🎬 scenario](#-end-to-end-scenario--zabbix-operational-problem--audit-evidence-verified-against-the-live-api)). **Fleet / Wazuh** collectors/parsers are ready but **live integration is the next step**.
 
@@ -44,6 +45,8 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 ## 🎬 End-to-end scenario — Zabbix operational problem → audit evidence (verified against the live API)
 
 MORI's core value: **turn the operational data Zabbix already produces into ISMS-P / ISO 27001 audit evidence.** The pipeline below works **end-to-end against the real Zabbix API** (no API restart — the API reads PostgreSQL live on every request).
+
+> 💡 This scenario needs the bundled Zabbix. The brownfield default (`docker compose up`) starts core only, so bring up the demo Zabbix with `docker compose --profile zabbix up -d` (or `--profile bundled`). With an existing Zabbix, just repoint `MORI_ZABBIX_API_URL` in `.env` → [brownfield guide](docs/BROWNFIELD_CONNECT.md).
 
 1. **A Zabbix problem occurs** — demo: `./scripts/mori-zabbix-demo-problem.sh` (fires a trigger on the Zabbix server → a real problem event)
 2. **MORI worker collects** — `mori-worker` polls `problem.get` every 30s → normalizes (severity/host/timestamp) → upserts into PostgreSQL `alerts` + records source freshness
@@ -232,6 +235,32 @@ A guidance modal automatically surfaces so that host-level bulk plans don't conf
 ```
 
 → Log in at `http://localhost:18000/ui` with `admin / 1234`.
+
+### Brownfield mode — sit on top of existing Zabbix/Wazuh/Fleet
+
+If you already run Zabbix·Wazuh·FleetDM·Trivy, start **MORI core only and connect via `.env`** (no bundled sources needed). Full guide: [docs/BROWNFIELD_CONNECT.md](docs/BROWNFIELD_CONNECT.md).
+
+```bash
+# 1) Start MORI core only (api + worker + postgres; bundled sources excluded)
+docker compose up -d
+
+# 2) Point .env at your existing infra (e.g. Zabbix)
+#    MORI_ZABBIX_API_URL=https://zabbix.your-corp.com/api_jsonrpc.php
+#    MORI_ZABBIX_API_TOKEN=<token>   (or MORI_ZABBIX_USER/PASSWORD)
+docker compose up -d mori-worker      # re-apply
+
+# 3) Trivy/CSOP connect via token push (set MORI_INGEST_TOKEN)
+#    POST /ingest/trivy  ·  POST /ingest/evidence
+```
+
+> Connectivity today: **Zabbix** (live REST) and **Trivy/CSOP** (token push) work by config alone. **Fleet/Wazuh** live API pollers are Phase 3 (`.env` slots reserved for now).
+
+To also bring up the bundled demo sources:
+
+```bash
+docker compose --profile bundled up -d          # full stack (Zabbix+Fleet+Wazuh demo)
+# individual: --profile zabbix / --profile fleet / --profile wazuh
+```
 
 ### Stop demo
 

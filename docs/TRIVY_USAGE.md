@@ -84,6 +84,43 @@ PoC 단계에서는 아래 순서를 권장합니다.
 3. `CRITICAL`, `HIGH` 우선 정리
 4. 이후 CI 또는 cron에 연결
 
+## 7.5 MORI 원격 인제스트 (push)
+
+원격 호스트/CI/CSOP 에이전트가 스캔 결과를 MORI로 직접 push할 수 있습니다. 인증은
+`MORI_INGEST_TOKEN`(mori-api env) 이며 `Authorization: Bearer <토큰>` 또는
+`X-MORI-Token` 헤더를 사용합니다. 토큰 미설정 시 로그인 세션이 필요합니다(자동화 불가).
+
+### 원본 Trivy 리포트 → `POST /ingest/trivy`
+
+```bash
+# 호스트 매핑: ?hostname= / X-MORI-Hostname / 본문 hostname 중 하나로 실제 호스트에 연결.
+# (미지정 시 ArtifactName 에서 파생 → 이미지 스캔이 Zabbix/Fleet 호스트와 안 묶임)
+curl -X POST "https://mori.example.com/ingest/trivy?hostname=server-db01" \
+  -H "Authorization: Bearer $MORI_INGEST_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data @trivy-report.json
+# → {"ok":true,"records_collected":N,"entities_saved":M,"host_id":"server-db01"}
+```
+
+MORI가 리포트를 자체 정규화·적재합니다(라이브 조회는 postgres 백엔드 필요).
+
+### 조치 전/후 증적 → `POST /ingest/evidence`
+
+`/ingest/trivy` 는 원본 리포트만 받아 정규화하므로 `delta_type`(new/fixed/reopened) 이나
+조치 전/후 증적은 담지 못합니다. CSOP diff envelope 은 이 엔드포인트로 push합니다.
+
+```bash
+# 단건 또는 {"events":[…]} 배열. payload 원형은 JSONB 로 보존, 조회용 키만 추출.
+curl -X POST "https://mori.example.com/ingest/evidence" \
+  -H "X-MORI-Token: $MORI_INGEST_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"hostname":"server-db01","delta_type":"fixed","cve":"CVE-2024-9","summary":"openssl 패치"}'
+# → {"ok":true,"saved":1,"ids":["evi-…"]}
+```
+
+적재된 증적은 `ui_evidence_events` 테이블(`schema/006`)에 보관되며, **admin·security** 롤만
+`GET /evidence?host=…&delta=…&limit=…` 로 최신순 조회할 수 있습니다(위험성 평가와 동일 가시성).
+
 ## 8. 해석 기준
 
 - `CRITICAL`: 우선 조치 대상

@@ -4,6 +4,38 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.7.0-alpha.1] — 2026-07-07 — CSOP Evidence Ingest + Brownfield Mode
+
+### Added
+- **CSOP evidence ingest** (`POST /ingest/evidence`): remote scanners/agents push a
+  "before/after" diff envelope (`delta_type` new/fixed/reopened) — persisted verbatim as
+  JSONB in `ui_evidence_events` (`schema/006`) with extracted `host_id`/`artifact_name`/
+  `delta_type`/`cve`/`summary` for filtering. Accepts a single envelope or `{"events":[…]}`.
+- **Evidence read API** (`GET /evidence`): newest-first list with `host`/`delta` filters,
+  gated to **admin·security** roles (same visibility policy as the risk register).
+- **Trivy ingest host↔image mapping**: `POST /ingest/trivy` now accepts a hostname via
+  `?hostname=` / `X-MORI-Hostname` header / body `hostname`, so image scans
+  (`ArtifactName=alpine:3.19`) bind to the real Zabbix/Fleet host instead of the artifact
+  name. Backward-compatible (omit → previous ArtifactName derivation).
+- **Brownfield mode**: bundled Zabbix/Fleet/Wazuh stacks moved behind compose profiles
+  (`bundled`, and per-source `zabbix`/`fleet`/`wazuh`). `docker compose up` now starts
+  **MORI core only** (api + worker + postgres + dashboards) and connects to existing
+  infrastructure via `.env`. `docs/BROWNFIELD_CONNECT.md` guide added; `.env.example`
+  gains a brownfield source-connection block + Fleet/Wazuh API scaffolding vars.
+
+### Changed
+- `MORI_INGEST_TOKEN` and `MORI_ADMIN_PASSWORD` are now passed through to the `mori-api`
+  container (were defined but never wired) — token-based ingest works without a login
+  session, and the admin password is configurable from `.env`.
+- Session-auth middleware bypasses `/ingest/*` so the endpoints' own token-or-session auth
+  governs remote pushes (previously the middleware blocked token pushes when auth was on).
+- `mori-worker` / `mori-poller-zabbix` no longer hard-depend on the bundled `zabbix-web`
+  (they retry the source each cycle) — required for pointing at an external Zabbix.
+
+### Security
+- Default `MORI_ADMIN_PASSWORD` replaced in `.env` with a strong value; `/health`
+  `insecure_defaults` no longer flags it.
+
 ## [v0.6.0-alpha.1] — 2026-07-07 — Zabbix Evidence Flow + Risk Register
 
 ### Added
