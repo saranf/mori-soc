@@ -1,0 +1,8 @@
+id: "A.8.32"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "변경 관리"
+title_en: "Change management"
+evidence_sources: []
+status: "draft"

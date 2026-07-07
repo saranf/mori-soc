@@ -1,0 +1,8 @@
+id: "A.5.23"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "클라우드 서비스 이용의 정보보안"
+title_en: "Information security for use of cloud services"
+evidence_sources: []
+status: "draft"

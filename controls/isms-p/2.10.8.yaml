@@ -5,11 +5,11 @@ domain: "2. 보호대책 요구사항"
 section: "2.10 시스템 및 서비스 보안관리"
 title_ko: "패치관리"
 title_en: "Patch management"
-intent_ko: >-
-  운영체제·소프트웨어의 보안 패치를 적시에 적용하고, 미적용 시 사유·보완대책·적용
-  계획을 관리한다.
+status: reviewed
+intent_ko: "운영체제·소프트웨어의 보안 패치를 적시에 적용하고, 미적용 시 사유·보완대책·적용 계획을 관리한다."
+intent_en: "Apply OS/software security patches in a timely manner; where not applied, manage the reason, compensating controls, and remediation plan."
 evidence_sources: [trivy]
-evidence_hint_ko: >-
-  Trivy 스캔 이력(패치 필요 CVE) + CVE별 조치계획·목표일 + 예외 승인 대장.
+evidence_hint_ko: "Trivy 스캔 이력(패치 필요 CVE) + CVE별 조치계획·목표일 + 예외 승인 대장."
+evidence_hint_en: "Trivy scan history (CVEs needing patches) + per-CVE remediation plan/target date + exception-approval register."
 mori_intents: [top_vulnerable_hosts]
 tags: [patch, vulnerability]

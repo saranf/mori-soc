@@ -1,0 +1,8 @@
+id: "A.5.6"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "전문가 그룹과의 연락"
+title_en: "Contact with special interest groups"
+evidence_sources: []
+status: "draft"

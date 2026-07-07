@@ -1,0 +1,8 @@
+id: "A.5.8"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "프로젝트 관리에서의 정보보안"
+title_en: "Information security in project management"
+evidence_sources: []
+status: "draft"

@@ -1,9 +1,9 @@
 BEGIN;
 
--- ── Phase 2: 통제 카탈로그 (ISMS-P × ISO 27001) ─────────────────────────────────
--- controls/ 의 YAML(정본)을 기동 시 여기로 싱크한다(YAML→DB, evidence mapper).
+-- ── Phase 2: 통제 카탈로그 (ISMS-P × ISO 27001) — 양언어(KO/EN) ────────────────────
+-- 정본은 controls/*.yaml, 런타임 아티팩트는 src/mori_soc/data/controls_catalog.json.
+-- 기동 시 services/control_catalog.sync_catalog_to_db() 가 이 테이블로 upsert(투영).
 -- 값 원칙(schema/003~006 과 동일): 배열/구조는 jsonb, 나머지는 text.
--- 정본은 리포지토리의 controls/*.yaml 이며, 이 테이블은 조회·매핑용 투영(projection)이다.
 
 CREATE TABLE IF NOT EXISTS controls (
     framework text NOT NULL,             -- 'isms-p' | 'iso27001'
@@ -14,10 +14,13 @@ CREATE TABLE IF NOT EXISTS controls (
     title_ko text NOT NULL DEFAULT '',
     title_en text NOT NULL DEFAULT '',
     intent_ko text NOT NULL DEFAULT '',
+    intent_en text NOT NULL DEFAULT '',
     evidence_hint_ko text NOT NULL DEFAULT '',
+    evidence_hint_en text NOT NULL DEFAULT '',
     evidence_sources jsonb NOT NULL DEFAULT '[]'::jsonb,  -- ["trivy","zabbix",...]
     mori_intents jsonb NOT NULL DEFAULT '[]'::jsonb,
     tags jsonb NOT NULL DEFAULT '[]'::jsonb,
+    status text NOT NULL DEFAULT 'draft',                 -- draft | reviewed
     updated_at text,
     PRIMARY KEY (framework, id)
 );
@@ -28,6 +31,7 @@ CREATE TABLE IF NOT EXISTS control_mappings (
     iso27001_id text NOT NULL,
     relation text NOT NULL DEFAULT 'related',   -- equivalent|subset|superset|related
     note_ko text NOT NULL DEFAULT '',
+    note_en text NOT NULL DEFAULT '',
     PRIMARY KEY (isms_p_id, iso27001_id)
 );
 
@@ -36,10 +40,14 @@ CREATE TABLE IF NOT EXISTS control_defects (
     id text PRIMARY KEY,
     controls jsonb NOT NULL DEFAULT '[]'::jsonb,  -- ["2.11.2","A.8.8"]
     title_ko text NOT NULL DEFAULT '',
+    title_en text NOT NULL DEFAULT '',
     symptom_ko text NOT NULL DEFAULT '',
+    symptom_en text NOT NULL DEFAULT '',
     evidence_gap_ko text NOT NULL DEFAULT '',
+    evidence_gap_en text NOT NULL DEFAULT '',
     mori_signal text NOT NULL DEFAULT '',
     fix_ko text NOT NULL DEFAULT '',
+    fix_en text NOT NULL DEFAULT '',
     severity text NOT NULL DEFAULT '',
     updated_at text
 );

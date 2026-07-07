@@ -1,0 +1,8 @@
+id: "A.8.23"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "웹 필터링"
+title_en: "Web filtering"
+evidence_sources: []
+status: "draft"

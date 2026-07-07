@@ -1,0 +1,8 @@
+id: "A.7.8"
+framework: "iso27001"
+version: "2022"
+domain: "A.7 Physical controls"
+title_ko: "장비 배치 및 보호"
+title_en: "Equipment siting and protection"
+evidence_sources: []
+status: "draft"

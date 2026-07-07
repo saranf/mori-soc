@@ -1,0 +1,8 @@
+id: "A.8.18"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "특권 유틸리티 프로그램 사용"
+title_en: "Use of privileged utility programs"
+evidence_sources: []
+status: "draft"

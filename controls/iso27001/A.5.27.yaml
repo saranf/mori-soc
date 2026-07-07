@@ -1,0 +1,8 @@
+id: "A.5.27"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "정보보안 사고로부터의 학습"
+title_en: "Learning from information security incidents"
+evidence_sources: []
+status: "draft"

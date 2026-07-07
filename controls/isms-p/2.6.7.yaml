@@ -1,0 +1,9 @@
+id: "2.6.7"
+framework: "isms-p"
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.6 접근통제"
+title_ko: "인터넷 접속 통제"
+title_en: "Internet-access control"
+evidence_sources: []
+status: "draft"

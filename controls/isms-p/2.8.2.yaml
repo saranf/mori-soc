@@ -1,0 +1,9 @@
+id: "2.8.2"
+framework: "isms-p"
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.8 정보시스템 도입 및 개발 보안"
+title_ko: "보안 요구사항 검토 및 시험"
+title_en: "Security-requirements review and testing"
+evidence_sources: []
+status: "draft"

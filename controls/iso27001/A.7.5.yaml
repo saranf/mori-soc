@@ -1,0 +1,8 @@
+id: "A.7.5"
+framework: "iso27001"
+version: "2022"
+domain: "A.7 Physical controls"
+title_ko: "물리적·환경적 위협에 대한 보호"
+title_en: "Protecting against physical and environmental threats"
+evidence_sources: []
+status: "draft"

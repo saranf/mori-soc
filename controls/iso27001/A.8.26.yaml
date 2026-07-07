@@ -1,0 +1,8 @@
+id: "A.8.26"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "애플리케이션 보안 요구사항"
+title_en: "Application security requirements"
+evidence_sources: []
+status: "draft"

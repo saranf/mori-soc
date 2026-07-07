@@ -1,0 +1,8 @@
+id: "A.8.24"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "암호화 사용"
+title_en: "Use of cryptography"
+evidence_sources: []
+status: "draft"

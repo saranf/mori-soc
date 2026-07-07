@@ -1,0 +1,9 @@
+id: "2.9.5"
+framework: "isms-p"
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.9 시스템 및 서비스 운영관리"
+title_ko: "로그 및 접속기록 점검"
+title_en: "Log and access-record review"
+evidence_sources: []
+status: "draft"

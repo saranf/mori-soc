@@ -354,6 +354,16 @@
     ]
   },
   {
+    "path": "/controls/tree",
+    "methods": [
+      "GET"
+    ],
+    "name": "controls_tree",
+    "tags": [
+      "Compliance"
+    ]
+  },
+  {
     "path": "/dashboard/evidence-gaps",
     "methods": [
       "GET"

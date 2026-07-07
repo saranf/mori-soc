@@ -1,0 +1,8 @@
+id: "A.5.19"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "공급자 관계에서의 정보보안"
+title_en: "Information security in supplier relationships"
+evidence_sources: []
+status: "draft"

@@ -1,0 +1,8 @@
+id: "A.5.17"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "인증 정보"
+title_en: "Authentication information"
+evidence_sources: []
+status: "draft"

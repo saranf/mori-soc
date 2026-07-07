@@ -1,0 +1,9 @@
+id: "2.9.3"
+framework: "isms-p"
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.9 시스템 및 서비스 운영관리"
+title_ko: "백업 및 복구관리"
+title_en: "Backup and recovery management"
+evidence_sources: []
+status: "draft"

@@ -1,0 +1,9 @@
+id: "2.10.5"
+framework: "isms-p"
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.10 시스템 및 서비스 보안관리"
+title_ko: "정보전송 보안"
+title_en: "Information-transfer security"
+evidence_sources: []
+status: "draft"

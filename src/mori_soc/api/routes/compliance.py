@@ -103,6 +103,21 @@ def register_compliance(ctx: RouteContext) -> None:
         return {"generated_at": pdca.get("generated_at"), "gaps": gaps,
                 "total": gaps["vuln_pending"] + gaps["untriaged_alerts"] + gaps["control_pending"] + unmapped}
 
+    @app.get("/controls/tree", tags=["Compliance"])
+    def controls_tree(request: Request) -> dict[str, Any]:
+        """통제 카탈로그(ISMS-P × ISO) 트리 + lite/full 커버리지. admin·security 전용.
+
+        정본 controls/*.yaml → 패키지 JSON 아티팩트를 읽어 framework→domain→section→
+        controls 트리와 증적 소스 커버리지(lite/full)를 반환한다(한/영 병기).
+        """
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="control catalog requires admin or security role")
+        from mori_soc.services.control_catalog import build_tree
+        try:
+            return build_tree()
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"control catalog unavailable: {exc}") from exc
+
     @app.get("/compliance/pdca/pending.csv", tags=["Compliance"])
     def compliance_pdca_pending_csv() -> Any:
         """미조치 / 기한 초과 항목(PDCA Do 단계)을 CSV로 다운로드."""

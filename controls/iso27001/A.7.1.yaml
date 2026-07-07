@@ -1,0 +1,8 @@
+id: "A.7.1"
+framework: "iso27001"
+version: "2022"
+domain: "A.7 Physical controls"
+title_ko: "물리적 보안 경계"
+title_en: "Physical security perimeters"
+evidence_sources: []
+status: "draft"

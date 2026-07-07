@@ -1,0 +1,8 @@
+id: "A.5.10"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "정보 및 관련 자산의 허용 가능한 사용"
+title_en: "Acceptable use of information and other associated assets"
+evidence_sources: []
+status: "draft"

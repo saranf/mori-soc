@@ -1,0 +1,8 @@
+id: "A.6.1"
+framework: "iso27001"
+version: "2022"
+domain: "A.6 People controls"
+title_ko: "채용 심사"
+title_en: "Screening"
+evidence_sources: []
+status: "draft"

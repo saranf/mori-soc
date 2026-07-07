@@ -5,11 +5,11 @@ domain: "2. 보호대책 요구사항"
 section: "2.9 시스템 및 서비스 운영관리"
 title_ko: "로그 및 접속기록 관리"
 title_en: "Log and access-record management"
-intent_ko: >-
-  정보시스템의 로그·접속기록을 생성·보관하고 법정 보존기간(접속기록 기본 1년,
-  고유식별정보 처리 시 2년) 동안 위·변조 없이 유지하며 정기적으로 점검한다.
+status: reviewed
+intent_ko: "정보시스템의 로그·접속기록을 생성·보관하고 법정 보존기간(접속기록 기본 1년, 고유식별정보 처리 시 2년) 동안 위·변조 없이 유지한다."
+intent_en: "Generate and retain system logs/access records, preserving them tamper-free for the statutory period (access records 1 year by default, 2 years when unique identifiers are processed)."
 evidence_sources: [loki, wazuh]
-evidence_hint_ko: >-
-  Loki 로그 보존 정책·retention 설정값 + 보관 증빙. Wazuh 로그 점검 이력.
+evidence_hint_ko: "Loki 로그 보존 정책·retention 설정값 + 보관 증빙. Wazuh 로그 점검 이력."
+evidence_hint_en: "Loki retention policy/settings + storage proof. Wazuh log-review history."
 mori_intents: []
 tags: [logging, retention]

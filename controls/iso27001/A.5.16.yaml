@@ -1,0 +1,8 @@
+id: "A.5.16"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "식별자 관리"
+title_en: "Identity management"
+evidence_sources: []
+status: "draft"

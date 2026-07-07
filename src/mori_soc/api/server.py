@@ -143,6 +143,16 @@ def create_app(
 
     app = FastAPI(title="MORI SOC — Audit-Ready Security Operations API", version="0.2.0")
     insecure_defaults = _warn_insecure_defaults()
+
+    # ── 통제 카탈로그(Phase 2) → DB 싱크 (기동 시 최선노력; 실패해도 앱 기동 계속) ──
+    _catalog_dsn = os.getenv("MORI_DATABASE_URL", "").strip()
+    if _catalog_dsn:
+        try:
+            from mori_soc.services.control_catalog import sync_catalog_to_db
+            _synced = sync_catalog_to_db(_catalog_dsn)
+            logger.info("[controls] catalog synced to DB: %s", _synced)
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning("[controls] catalog DB sync skipped: %s", exc)
     admin_dashboard_preferences = _default_dashboard_preferences()
     # Per-user dashboard preferences: username -> preferences dict
     user_dashboard_prefs: dict[str, dict[str, Any]] = {}

@@ -1,0 +1,8 @@
+id: "A.8.5"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "안전한 인증"
+title_en: "Secure authentication"
+evidence_sources: []
+status: "draft"

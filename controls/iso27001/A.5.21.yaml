@@ -1,0 +1,8 @@
+id: "A.5.21"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "ICT 공급망의 정보보안 관리"
+title_en: "Managing information security in the ICT supply chain"
+evidence_sources: []
+status: "draft"

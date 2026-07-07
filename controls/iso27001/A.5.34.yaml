@@ -1,0 +1,8 @@
+id: "A.5.34"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "프라이버시 및 개인식별정보(PII) 보호"
+title_en: "Privacy and protection of PII"
+evidence_sources: []
+status: "draft"

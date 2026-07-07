@@ -1,0 +1,8 @@
+id: "A.8.11"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "데이터 마스킹"
+title_en: "Data masking"
+evidence_sources: []
+status: "draft"

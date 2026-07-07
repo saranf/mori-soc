@@ -1,0 +1,9 @@
+id: "3.2.3"
+framework: "isms-p"
+version: "2023"
+domain: "3. 개인정보 처리단계별 요구사항"
+section: "3.2 개인정보 보유 및 이용 시 보호조치"
+title_ko: "이용자 단말기 접근 보호"
+title_en: "Protection of access to user devices"
+evidence_sources: []
+status: "draft"

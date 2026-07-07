@@ -1,0 +1,9 @@
+id: "2.5.4"
+framework: "isms-p"
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.5 인증 및 권한관리"
+title_ko: "비밀번호 관리"
+title_en: "Password management"
+evidence_sources: []
+status: "draft"

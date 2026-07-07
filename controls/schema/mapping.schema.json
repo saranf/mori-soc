@@ -16,7 +16,8 @@
           "isms_p": { "type": "string", "description": "ISMS-P 인증기준 id" },
           "iso27001": { "type": "array", "items": { "type": "string" }, "description": "대응하는 ISO 통제 id(복수 가능)" },
           "relation": { "enum": ["equivalent", "subset", "superset", "related"] },
-          "note_ko": { "type": "string" }
+          "note_ko": { "type": "string" },
+          "note_en": { "type": "string" }
         }
       }
     }

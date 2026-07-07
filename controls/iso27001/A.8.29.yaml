@@ -1,0 +1,8 @@
+id: "A.8.29"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "개발 및 인수 단계의 보안 테스트"
+title_en: "Security testing in development and acceptance"
+evidence_sources: []
+status: "draft"

@@ -1,0 +1,8 @@
+id: "A.7.9"
+framework: "iso27001"
+version: "2022"
+domain: "A.7 Physical controls"
+title_ko: "사외 자산의 보안"
+title_en: "Security of assets off-premises"
+evidence_sources: []
+status: "draft"

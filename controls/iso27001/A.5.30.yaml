@@ -1,0 +1,8 @@
+id: "A.5.30"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "사업연속성을 위한 ICT 준비"
+title_en: "ICT readiness for business continuity"
+evidence_sources: []
+status: "draft"

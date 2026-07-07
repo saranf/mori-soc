@@ -1,0 +1,8 @@
+id: "A.5.22"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "공급자 서비스의 모니터링·검토·변경관리"
+title_en: "Monitoring, review and change management of supplier services"
+evidence_sources: []
+status: "draft"

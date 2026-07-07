@@ -1,0 +1,8 @@
+id: "A.8.27"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "안전한 시스템 아키텍처 및 엔지니어링 원칙"
+title_en: "Secure system architecture and engineering principles"
+evidence_sources: []
+status: "draft"

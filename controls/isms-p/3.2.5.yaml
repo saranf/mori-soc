@@ -1,0 +1,9 @@
+id: "3.2.5"
+framework: "isms-p"
+version: "2023"
+domain: "3. 개인정보 처리단계별 요구사항"
+section: "3.2 개인정보 보유 및 이용 시 보호조치"
+title_ko: "가명정보 처리"
+title_en: "Pseudonymized-data processing"
+evidence_sources: []
+status: "draft"

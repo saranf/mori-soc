@@ -5,27 +5,34 @@ mappings:
     iso27001: ["A.5.9"]
     relation: equivalent
     note_ko: "정보자산 식별 ≡ 자산 목록"
+    note_en: "Asset identification ≡ asset inventory"
   - isms_p: "2.9.4"
     iso27001: ["A.8.15"]
     relation: equivalent
     note_ko: "로그·접속기록 관리 ≡ 로깅"
+    note_en: "Log/access-record management ≡ logging"
   - isms_p: "2.10.6"
     iso27001: ["A.8.9"]
     relation: related
     note_ko: "단말 보안은 형상관리와 밀접(단말 구성 상태 점검)"
+    note_en: "Endpoint security is closely related to configuration management"
   - isms_p: "2.10.8"
     iso27001: ["A.8.8"]
     relation: subset
     note_ko: "패치관리 ⊂ 기술적 취약점 관리"
+    note_en: "Patch management ⊂ technical vulnerability management"
   - isms_p: "2.10.9"
     iso27001: ["A.8.7"]
     relation: equivalent
     note_ko: "악성코드 통제 ≡ 멀웨어 보호"
+    note_en: "Malware control ≡ protection against malware"
   - isms_p: "2.11.2"
     iso27001: ["A.8.8"]
     relation: equivalent
     note_ko: "취약점 점검·조치 ≡ 기술적 취약점 관리"
+    note_en: "Vulnerability assessment/remediation ≡ technical vulnerability management"
   - isms_p: "2.11.3"
     iso27001: ["A.8.16", "A.8.15"]
     relation: related
     note_ko: "이상행위 분석·모니터링 ~ 모니터링 활동(+로깅 기반)"
+    note_en: "Anomaly analysis/monitoring ~ monitoring activities (built on logging)"

@@ -1,0 +1,2371 @@
+{
+  "meta": {
+    "controls": 194,
+    "isms_p": 101,
+    "iso27001": 93,
+    "reviewed": 14,
+    "mappings": 7,
+    "defects": 5
+  },
+  "controls": [
+    {
+      "id": "1.1.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.1 관리체계 기반 마련",
+      "title_ko": "경영진의 참여",
+      "title_en": "Management commitment",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.1.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.1 관리체계 기반 마련",
+      "title_ko": "최고책임자의 지정",
+      "title_en": "Designation of the CISO/CPO",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.1.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.1 관리체계 기반 마련",
+      "title_ko": "조직 구성",
+      "title_en": "Organizational structure",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.1.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.1 관리체계 기반 마련",
+      "title_ko": "범위 설정",
+      "title_en": "Scope definition",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.1.5",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.1 관리체계 기반 마련",
+      "title_ko": "정책 수립",
+      "title_en": "Policy establishment",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.1.6",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.1 관리체계 기반 마련",
+      "title_ko": "자원 할당",
+      "title_en": "Resource allocation",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.2.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.2 위험 관리",
+      "title_ko": "정보자산 식별",
+      "title_en": "Information asset identification",
+      "status": "reviewed",
+      "intent_ko": "조직의 정보자산을 누락 없이 식별·목록화하고 중요도를 산정하여 최신 상태로 유지한다. 자산 식별이 부실하면 이후 모든 보호대책의 적용 범위가 불명확해진다.",
+      "intent_en": "Identify and inventory all information assets without omission, assess their importance, and keep the list current. Weak asset identification makes the scope of every downstream control unclear.",
+      "evidence_sources": [
+        "fleet",
+        "zabbix"
+      ],
+      "evidence_hint_ko": "Fleet(osquery) 자동 발견 호스트 + Zabbix 서버 자산의 대사(reconciliation) 결과. 수기 목록이 아닌 자동 수집·현행화된 자산 인벤토리.",
+      "evidence_hint_en": "Auto-discovered hosts from Fleet (osquery) + reconciliation against Zabbix server assets — an auto-collected, current asset inventory rather than a manual list.",
+      "mori_intents": [
+        "unmapped_assets",
+        "host_fleet_queries"
+      ],
+      "tags": [
+        "asset",
+        "foundation"
+      ]
+    },
+    {
+      "id": "1.2.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.2 위험 관리",
+      "title_ko": "현황 및 흐름분석",
+      "title_en": "Current-state and flow analysis",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.2.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.2 위험 관리",
+      "title_ko": "위험 평가",
+      "title_en": "Risk assessment",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.2.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.2 위험 관리",
+      "title_ko": "보호대책 선정",
+      "title_en": "Selection of protective measures",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.3.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.3 관리체계 운영",
+      "title_ko": "보호대책 구현",
+      "title_en": "Implementation of protective measures",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.3.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.3 관리체계 운영",
+      "title_ko": "보호대책 공유",
+      "title_en": "Sharing of protective measures",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.3.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.3 관리체계 운영",
+      "title_ko": "운영현황 관리",
+      "title_en": "Operational status management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.4.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.4 관리체계 점검 및 개선",
+      "title_ko": "법적 요구사항 준수 검토",
+      "title_en": "Legal-requirement compliance review",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.4.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.4 관리체계 점검 및 개선",
+      "title_ko": "관리체계 점검",
+      "title_en": "Management-system review",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "1.4.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "1. 관리체계 수립 및 운영",
+      "section": "1.4 관리체계 점검 및 개선",
+      "title_ko": "관리체계 개선",
+      "title_en": "Management-system improvement",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.1.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.1 정책, 조직, 자산 관리",
+      "title_ko": "정책의 유지관리",
+      "title_en": "Policy maintenance",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.1.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.1 정책, 조직, 자산 관리",
+      "title_ko": "조직의 유지관리",
+      "title_en": "Organization maintenance",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.1.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.1 정책, 조직, 자산 관리",
+      "title_ko": "정보자산 관리",
+      "title_en": "Information asset management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.10.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.10 시스템 및 서비스 보안관리",
+      "title_ko": "보안시스템 운영",
+      "title_en": "Security-system operation",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.10.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.10 시스템 및 서비스 보안관리",
+      "title_ko": "클라우드 보안",
+      "title_en": "Cloud security",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.10.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.10 시스템 및 서비스 보안관리",
+      "title_ko": "공개서버 보안",
+      "title_en": "Public-server security",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.10.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.10 시스템 및 서비스 보안관리",
+      "title_ko": "전자거래 및 핀테크 보안",
+      "title_en": "E-commerce and fintech security",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.10.5",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.10 시스템 및 서비스 보안관리",
+      "title_ko": "정보전송 보안",
+      "title_en": "Information-transfer security",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.10.6",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.10 시스템 및 서비스 보안관리",
+      "title_ko": "업무용 단말기기 보안",
+      "title_en": "Business device (endpoint) security",
+      "status": "reviewed",
+      "intent_ko": "PC·노트북 등 업무용 단말의 보안 설정(디스크 암호화, 화면잠금, 설치 소프트웨어 등)을 기준에 따라 적용·점검하고 이탈 단말을 관리한다.",
+      "intent_en": "Apply and verify baseline security settings on business devices (disk encryption, screen lock, installed software, etc.) and manage non-compliant endpoints.",
+      "evidence_sources": [
+        "fleet"
+      ],
+      "evidence_hint_ko": "Fleet osquery 구성 점검 — 디스크 암호화 적용률, 설치 앱/시작 프로그램 인벤토리, 기준 이탈 단말 목록.",
+      "evidence_hint_en": "Fleet osquery config checks — disk-encryption coverage, installed-app/startup inventory, list of endpoints that deviate from baseline.",
+      "mori_intents": [
+        "host_fleet_queries"
+      ],
+      "tags": [
+        "endpoint",
+        "configuration"
+      ]
+    },
+    {
+      "id": "2.10.7",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.10 시스템 및 서비스 보안관리",
+      "title_ko": "보조저장매체 관리",
+      "title_en": "Removable-media management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.10.8",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.10 시스템 및 서비스 보안관리",
+      "title_ko": "패치관리",
+      "title_en": "Patch management",
+      "status": "reviewed",
+      "intent_ko": "운영체제·소프트웨어의 보안 패치를 적시에 적용하고, 미적용 시 사유·보완대책·적용 계획을 관리한다.",
+      "intent_en": "Apply OS/software security patches in a timely manner; where not applied, manage the reason, compensating controls, and remediation plan.",
+      "evidence_sources": [
+        "trivy"
+      ],
+      "evidence_hint_ko": "Trivy 스캔 이력(패치 필요 CVE) + CVE별 조치계획·목표일 + 예외 승인 대장.",
+      "evidence_hint_en": "Trivy scan history (CVEs needing patches) + per-CVE remediation plan/target date + exception-approval register.",
+      "mori_intents": [
+        "top_vulnerable_hosts"
+      ],
+      "tags": [
+        "patch",
+        "vulnerability"
+      ]
+    },
+    {
+      "id": "2.10.9",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.10 시스템 및 서비스 보안관리",
+      "title_ko": "악성코드 통제",
+      "title_en": "Malware control",
+      "status": "reviewed",
+      "intent_ko": "악성코드 감염을 예방·탐지하고, 탐지 시 정해진 절차에 따라 대응·기록한다.",
+      "intent_en": "Prevent and detect malware infection, and when detected, respond and record according to defined procedures.",
+      "evidence_sources": [
+        "wazuh"
+      ],
+      "evidence_hint_ko": "Wazuh 악성코드/룰 탐지 이벤트 + 트리아지·대응 처리 이력.",
+      "evidence_hint_en": "Wazuh malware/rule detection events + triage and response history.",
+      "mori_intents": [
+        "alert_summary"
+      ],
+      "tags": [
+        "malware",
+        "detection"
+      ]
+    },
+    {
+      "id": "2.11.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.11 사고 예방 및 대응",
+      "title_ko": "사고 예방 및 대응체계 구축",
+      "title_en": "Incident prevention and response framework",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.11.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.11 사고 예방 및 대응",
+      "title_ko": "취약점 점검 및 조치",
+      "title_en": "Vulnerability assessment and remediation",
+      "status": "reviewed",
+      "intent_ko": "정보시스템의 기술적 취약점을 정기적으로 점검하고, 발견된 취약점에 대해 조치계획을 수립·이행하며 조치 결과를 확인·기록한다.",
+      "intent_en": "Regularly assess technical vulnerabilities, establish and execute remediation plans for findings, and verify and record the results.",
+      "evidence_sources": [
+        "trivy"
+      ],
+      "evidence_hint_ko": "Trivy 정기 스캔 이력 + CVE별 조치계획/목표일/완료 확인 + 위험 수용(예외) 승인 대장.",
+      "evidence_hint_en": "Trivy periodic-scan history + per-CVE plan/target-date/completion + risk-acceptance (exception) approval register.",
+      "mori_intents": [
+        "top_vulnerable_hosts"
+      ],
+      "tags": [
+        "vulnerability",
+        "remediation"
+      ]
+    },
+    {
+      "id": "2.11.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.11 사고 예방 및 대응",
+      "title_ko": "이상행위 분석 및 모니터링",
+      "title_en": "Anomaly analysis and monitoring",
+      "status": "reviewed",
+      "intent_ko": "침해 시도·이상행위를 탐지하기 위해 로그·이벤트를 지속 모니터링하고, 탐지 기준에 따라 분석·대응한다.",
+      "intent_en": "Continuously monitor logs/events to detect intrusion attempts and anomalies, and analyze and respond per detection criteria.",
+      "evidence_sources": [
+        "wazuh",
+        "zabbix"
+      ],
+      "evidence_hint_ko": "Wazuh 탐지 룰 매칭 이벤트 + Zabbix 임계치 알림 → MORI Alert Triage 처리 이력.",
+      "evidence_hint_en": "Wazuh rule-match events + Zabbix threshold alerts → MORI Alert Triage handling history.",
+      "mori_intents": [
+        "alert_summary",
+        "host_timeline"
+      ],
+      "tags": [
+        "monitoring",
+        "detection"
+      ]
+    },
+    {
+      "id": "2.11.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.11 사고 예방 및 대응",
+      "title_ko": "사고 대응 훈련 및 개선",
+      "title_en": "Incident-response drills and improvement",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.11.5",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.11 사고 예방 및 대응",
+      "title_ko": "사고 대응 및 복구",
+      "title_en": "Incident response and recovery",
+      "status": "reviewed",
+      "intent_ko": "침해사고 발생 시 신고·분석·대응·복구 절차를 이행하고, 처리 경과와 결과를 기록하여 재발 방지에 활용한다.",
+      "intent_en": "On a breach, execute the report/analyze/respond/recover procedures, and record the progress and outcome to prevent recurrence.",
+      "evidence_sources": [
+        "mori"
+      ],
+      "evidence_hint_ko": "MORI 인시던트 티켓(상태·담당자·노트·변경이력) + 감사 로그 + 월간 리포트.",
+      "evidence_hint_en": "MORI incident tickets (status/owner/notes/history) + audit log + monthly report.",
+      "mori_intents": [],
+      "tags": [
+        "incident",
+        "response"
+      ]
+    },
+    {
+      "id": "2.12.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.12 재해복구",
+      "title_ko": "재해·재난 대비 안전조치",
+      "title_en": "Disaster/emergency safeguards",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.12.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.12 재해복구",
+      "title_ko": "재해 복구 시험 및 개선",
+      "title_en": "Disaster-recovery testing and improvement",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.2.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.2 인적 보안",
+      "title_ko": "주요 직무자 지정 및 관리",
+      "title_en": "Designation and management of key personnel",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.2.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.2 인적 보안",
+      "title_ko": "직무 분리",
+      "title_en": "Segregation of duties",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.2.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.2 인적 보안",
+      "title_ko": "보안 서약",
+      "title_en": "Security pledge",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.2.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.2 인적 보안",
+      "title_ko": "인식제고 및 교육훈련",
+      "title_en": "Awareness and training",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.2.5",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.2 인적 보안",
+      "title_ko": "퇴직 및 직무변경 관리",
+      "title_en": "Termination and job-change management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.2.6",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.2 인적 보안",
+      "title_ko": "보안 위반 시 조치",
+      "title_en": "Actions on security violations",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.3.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.3 외부자 보안",
+      "title_ko": "외부자 현황 관리",
+      "title_en": "Third-party status management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.3.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.3 외부자 보안",
+      "title_ko": "외부자 계약 시 보안",
+      "title_en": "Security in third-party contracts",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.3.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.3 외부자 보안",
+      "title_ko": "외부자 보안 이행 관리",
+      "title_en": "Third-party security compliance management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.3.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.3 외부자 보안",
+      "title_ko": "외부자 계약 변경 및 만료 시 보안",
+      "title_en": "Security on third-party contract change/expiry",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.4.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.4 물리 보안",
+      "title_ko": "보호구역 지정",
+      "title_en": "Designation of protected areas",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.4.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.4 물리 보안",
+      "title_ko": "출입통제",
+      "title_en": "Physical access control",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.4.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.4 물리 보안",
+      "title_ko": "정보시스템 보호",
+      "title_en": "Information-system protection",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.4.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.4 물리 보안",
+      "title_ko": "보호설비 운영",
+      "title_en": "Operation of protective facilities",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.4.5",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.4 물리 보안",
+      "title_ko": "보호구역 내 작업",
+      "title_en": "Work in protected areas",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.4.6",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.4 물리 보안",
+      "title_ko": "반출입 기기 통제",
+      "title_en": "Control of devices brought in/out",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.4.7",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.4 물리 보안",
+      "title_ko": "업무환경 보안",
+      "title_en": "Work-environment security",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.5.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.5 인증 및 권한관리",
+      "title_ko": "사용자 계정 관리",
+      "title_en": "User account management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.5.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.5 인증 및 권한관리",
+      "title_ko": "사용자 식별",
+      "title_en": "User identification",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.5.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.5 인증 및 권한관리",
+      "title_ko": "사용자 인증",
+      "title_en": "User authentication",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.5.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.5 인증 및 권한관리",
+      "title_ko": "비밀번호 관리",
+      "title_en": "Password management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.5.5",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.5 인증 및 권한관리",
+      "title_ko": "특수 계정 및 권한 관리",
+      "title_en": "Privileged account and rights management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.5.6",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.5 인증 및 권한관리",
+      "title_ko": "접근권한 검토",
+      "title_en": "Access-rights review",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.6.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.6 접근통제",
+      "title_ko": "네트워크 접근",
+      "title_en": "Network access",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.6.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.6 접근통제",
+      "title_ko": "정보시스템 접근",
+      "title_en": "Information-system access",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.6.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.6 접근통제",
+      "title_ko": "응용프로그램 접근",
+      "title_en": "Application access",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.6.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.6 접근통제",
+      "title_ko": "데이터베이스 접근",
+      "title_en": "Database access",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.6.5",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.6 접근통제",
+      "title_ko": "무선 네트워크 접근",
+      "title_en": "Wireless-network access",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.6.6",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.6 접근통제",
+      "title_ko": "원격접근 통제",
+      "title_en": "Remote-access control",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.6.7",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.6 접근통제",
+      "title_ko": "인터넷 접속 통제",
+      "title_en": "Internet-access control",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.7.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.7 암호화 적용",
+      "title_ko": "암호정책 적용",
+      "title_en": "Cryptography policy application",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.7.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.7 암호화 적용",
+      "title_ko": "암호키 관리",
+      "title_en": "Cryptographic key management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.8.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.8 정보시스템 도입 및 개발 보안",
+      "title_ko": "보안 요구사항 정의",
+      "title_en": "Security-requirements definition",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.8.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.8 정보시스템 도입 및 개발 보안",
+      "title_ko": "보안 요구사항 검토 및 시험",
+      "title_en": "Security-requirements review and testing",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.8.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.8 정보시스템 도입 및 개발 보안",
+      "title_ko": "시험과 운영 환경 분리",
+      "title_en": "Separation of test and production environments",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.8.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.8 정보시스템 도입 및 개발 보안",
+      "title_ko": "시험 데이터 보안",
+      "title_en": "Test-data security",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.8.5",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.8 정보시스템 도입 및 개발 보안",
+      "title_ko": "소스 프로그램 관리",
+      "title_en": "Source-code management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.8.6",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.8 정보시스템 도입 및 개발 보안",
+      "title_ko": "운영환경 이관",
+      "title_en": "Migration to production",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.9.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.9 시스템 및 서비스 운영관리",
+      "title_ko": "변경관리",
+      "title_en": "Change management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.9.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.9 시스템 및 서비스 운영관리",
+      "title_ko": "성능 및 장애관리",
+      "title_en": "Performance and fault management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.9.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.9 시스템 및 서비스 운영관리",
+      "title_ko": "백업 및 복구관리",
+      "title_en": "Backup and recovery management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.9.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.9 시스템 및 서비스 운영관리",
+      "title_ko": "로그 및 접속기록 관리",
+      "title_en": "Log and access-record management",
+      "status": "reviewed",
+      "intent_ko": "정보시스템의 로그·접속기록을 생성·보관하고 법정 보존기간(접속기록 기본 1년, 고유식별정보 처리 시 2년) 동안 위·변조 없이 유지한다.",
+      "intent_en": "Generate and retain system logs/access records, preserving them tamper-free for the statutory period (access records 1 year by default, 2 years when unique identifiers are processed).",
+      "evidence_sources": [
+        "loki",
+        "wazuh"
+      ],
+      "evidence_hint_ko": "Loki 로그 보존 정책·retention 설정값 + 보관 증빙. Wazuh 로그 점검 이력.",
+      "evidence_hint_en": "Loki retention policy/settings + storage proof. Wazuh log-review history.",
+      "mori_intents": [],
+      "tags": [
+        "logging",
+        "retention"
+      ]
+    },
+    {
+      "id": "2.9.5",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.9 시스템 및 서비스 운영관리",
+      "title_ko": "로그 및 접속기록 점검",
+      "title_en": "Log and access-record review",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.9.6",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.9 시스템 및 서비스 운영관리",
+      "title_ko": "시간 동기화",
+      "title_en": "Time synchronization",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "2.9.7",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "2. 보호대책 요구사항",
+      "section": "2.9 시스템 및 서비스 운영관리",
+      "title_ko": "정보자산의 재사용 및 폐기",
+      "title_en": "Asset reuse and disposal",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.1.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.1 개인정보 수집 시 보호조치",
+      "title_ko": "개인정보 수집·이용",
+      "title_en": "Collection and use of personal data",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.1.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.1 개인정보 수집 시 보호조치",
+      "title_ko": "개인정보 수집 제한",
+      "title_en": "Limitation on personal-data collection",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.1.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.1 개인정보 수집 시 보호조치",
+      "title_ko": "주민등록번호 처리 제한",
+      "title_en": "Restriction on resident-registration-number processing",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.1.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.1 개인정보 수집 시 보호조치",
+      "title_ko": "민감정보 및 고유식별정보의 처리 제한",
+      "title_en": "Restriction on sensitive/unique-identifier processing",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.1.5",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.1 개인정보 수집 시 보호조치",
+      "title_ko": "개인정보 간접수집",
+      "title_en": "Indirect collection of personal data",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.1.6",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.1 개인정보 수집 시 보호조치",
+      "title_ko": "영상정보처리기기 설치·운영",
+      "title_en": "CCTV installation and operation",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.1.7",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.1 개인정보 수집 시 보호조치",
+      "title_ko": "홍보 및 마케팅 목적 활용 시 조치",
+      "title_en": "Measures for marketing use",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.2.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.2 개인정보 보유 및 이용 시 보호조치",
+      "title_ko": "개인정보 현황관리",
+      "title_en": "Personal-data inventory management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.2.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.2 개인정보 보유 및 이용 시 보호조치",
+      "title_ko": "개인정보 품질보장",
+      "title_en": "Personal-data quality assurance",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.2.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.2 개인정보 보유 및 이용 시 보호조치",
+      "title_ko": "이용자 단말기 접근 보호",
+      "title_en": "Protection of access to user devices",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.2.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.2 개인정보 보유 및 이용 시 보호조치",
+      "title_ko": "개인정보 목적 외 이용 및 제공",
+      "title_en": "Use/provision beyond the stated purpose",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.2.5",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.2 개인정보 보유 및 이용 시 보호조치",
+      "title_ko": "가명정보 처리",
+      "title_en": "Pseudonymized-data processing",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.3.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.3 개인정보 제공 시 보호조치",
+      "title_ko": "개인정보 제3자 제공",
+      "title_en": "Provision of personal data to third parties",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.3.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.3 개인정보 제공 시 보호조치",
+      "title_ko": "업무 위탁에 따른 정보주체 통지",
+      "title_en": "Notice to data subjects on outsourcing",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.3.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.3 개인정보 제공 시 보호조치",
+      "title_ko": "영업의 양수 등에 따른 개인정보 이전",
+      "title_en": "Personal-data transfer on business transfer",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.3.4",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.3 개인정보 제공 시 보호조치",
+      "title_ko": "개인정보 국외이전",
+      "title_en": "Cross-border transfer of personal data",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.4.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.4 개인정보 파기 시 보호조치",
+      "title_ko": "개인정보 파기",
+      "title_en": "Destruction of personal data",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.4.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.4 개인정보 파기 시 보호조치",
+      "title_ko": "처리목적 달성 후 보유 시 조치",
+      "title_en": "Measures when retained after purpose fulfilment",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.5.1",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.5 정보주체 권리보호",
+      "title_ko": "개인정보처리방침 공개",
+      "title_en": "Disclosure of the privacy policy",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.5.2",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.5 정보주체 권리보호",
+      "title_ko": "정보주체 권리보장",
+      "title_en": "Guaranteeing data-subject rights",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "3.5.3",
+      "framework": "isms-p",
+      "version": "2023",
+      "domain": "3. 개인정보 처리단계별 요구사항",
+      "section": "3.5 정보주체 권리보호",
+      "title_ko": "정보주체에 대한 통지",
+      "title_en": "Notice to data subjects",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.1",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보보안 정책",
+      "title_en": "Policies for information security",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.10",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보 및 관련 자산의 허용 가능한 사용",
+      "title_en": "Acceptable use of information and other associated assets",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.11",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "자산의 반납",
+      "title_en": "Return of assets",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.12",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보의 분류",
+      "title_en": "Classification of information",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.13",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보의 레이블링",
+      "title_en": "Labelling of information",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.14",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보 전송",
+      "title_en": "Information transfer",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.15",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "접근통제",
+      "title_en": "Access control",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.16",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "식별자 관리",
+      "title_en": "Identity management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.17",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "인증 정보",
+      "title_en": "Authentication information",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.18",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "접근 권한",
+      "title_en": "Access rights",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.19",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "공급자 관계에서의 정보보안",
+      "title_en": "Information security in supplier relationships",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.2",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보보안 역할 및 책임",
+      "title_en": "Information security roles and responsibilities",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.20",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "공급자 계약 내 정보보안",
+      "title_en": "Addressing information security within supplier agreements",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.21",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "ICT 공급망의 정보보안 관리",
+      "title_en": "Managing information security in the ICT supply chain",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.22",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "공급자 서비스의 모니터링·검토·변경관리",
+      "title_en": "Monitoring, review and change management of supplier services",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.23",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "클라우드 서비스 이용의 정보보안",
+      "title_en": "Information security for use of cloud services",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.24",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보보안 사고 관리 계획 및 준비",
+      "title_en": "Information security incident management planning and preparation",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.25",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보보안 이벤트의 평가 및 결정",
+      "title_en": "Assessment and decision on information security events",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.26",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보보안 사고 대응",
+      "title_en": "Response to information security incidents",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.27",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보보안 사고로부터의 학습",
+      "title_en": "Learning from information security incidents",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.28",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "증거 수집",
+      "title_en": "Collection of evidence",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.29",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "중단 중 정보보안",
+      "title_en": "Information security during disruption",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.3",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "직무 분리",
+      "title_en": "Segregation of duties",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.30",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "사업연속성을 위한 ICT 준비",
+      "title_en": "ICT readiness for business continuity",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.31",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "법적·규제적·계약적 요구사항",
+      "title_en": "Legal, statutory, regulatory and contractual requirements",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.32",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "지식재산권",
+      "title_en": "Intellectual property rights",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.33",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "기록의 보호",
+      "title_en": "Protection of records",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.34",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "프라이버시 및 개인식별정보(PII) 보호",
+      "title_en": "Privacy and protection of PII",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.35",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보보안의 독립적 검토",
+      "title_en": "Independent review of information security",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.36",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보보안 정책·규칙·표준 준수",
+      "title_en": "Compliance with policies, rules and standards for information security",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.37",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "문서화된 운영 절차",
+      "title_en": "Documented operating procedures",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.4",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "경영진의 책임",
+      "title_en": "Management responsibilities",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.5",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "관계 당국과의 연락",
+      "title_en": "Contact with authorities",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.6",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "전문가 그룹과의 연락",
+      "title_en": "Contact with special interest groups",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.7",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "위협 인텔리전스",
+      "title_en": "Threat intelligence",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.8",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "프로젝트 관리에서의 정보보안",
+      "title_en": "Information security in project management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.5.9",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.5 Organizational controls",
+      "title_ko": "정보 및 기타 관련 자산의 목록",
+      "title_en": "Inventory of information and other associated assets",
+      "status": "reviewed",
+      "intent_ko": "정보 및 관련 자산의 목록을 작성·유지하고 소유자를 지정한다.",
+      "intent_en": "Develop and maintain an inventory of information and associated assets, including ownership.",
+      "evidence_sources": [
+        "fleet",
+        "zabbix"
+      ],
+      "evidence_hint_ko": "Fleet+Zabbix 자동 자산 인벤토리 + 소유자(담당자) 지정 현황.",
+      "evidence_hint_en": "Auto asset inventory from Fleet+Zabbix + owner (assignee) assignment status.",
+      "tags": [
+        "asset"
+      ]
+    },
+    {
+      "id": "A.6.1",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.6 People controls",
+      "title_ko": "채용 심사",
+      "title_en": "Screening",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.6.2",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.6 People controls",
+      "title_ko": "고용 조건",
+      "title_en": "Terms and conditions of employment",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.6.3",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.6 People controls",
+      "title_ko": "정보보안 인식제고·교육·훈련",
+      "title_en": "Information security awareness, education and training",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.6.4",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.6 People controls",
+      "title_ko": "징계 절차",
+      "title_en": "Disciplinary process",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.6.5",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.6 People controls",
+      "title_ko": "고용 종료 또는 변경 후 책임",
+      "title_en": "Responsibilities after termination or change of employment",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.6.6",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.6 People controls",
+      "title_ko": "기밀유지 또는 비밀유지 협약",
+      "title_en": "Confidentiality or non-disclosure agreements",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.6.7",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.6 People controls",
+      "title_ko": "원격 근무",
+      "title_en": "Remote working",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.6.8",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.6 People controls",
+      "title_ko": "정보보안 이벤트 보고",
+      "title_en": "Information security event reporting",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.1",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "물리적 보안 경계",
+      "title_en": "Physical security perimeters",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.10",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "저장 매체",
+      "title_en": "Storage media",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.11",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "지원 유틸리티",
+      "title_en": "Supporting utilities",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.12",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "케이블 보안",
+      "title_en": "Cabling security",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.13",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "장비 유지보수",
+      "title_en": "Equipment maintenance",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.14",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "장비의 안전한 폐기 또는 재사용",
+      "title_en": "Secure disposal or re-use of equipment",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.2",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "물리적 출입",
+      "title_en": "Physical entry",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.3",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "사무실·공간·시설의 보안",
+      "title_en": "Securing offices, rooms and facilities",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.4",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "물리적 보안 모니터링",
+      "title_en": "Physical security monitoring",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.5",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "물리적·환경적 위협에 대한 보호",
+      "title_en": "Protecting against physical and environmental threats",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.6",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "보안 구역에서의 작업",
+      "title_en": "Working in secure areas",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.7",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "클리어 데스크·클리어 스크린",
+      "title_en": "Clear desk and clear screen",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.8",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "장비 배치 및 보호",
+      "title_en": "Equipment siting and protection",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.7.9",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.7 Physical controls",
+      "title_ko": "사외 자산의 보안",
+      "title_en": "Security of assets off-premises",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.1",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "사용자 엔드포인트 장치",
+      "title_en": "User endpoint devices",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.10",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "정보 삭제",
+      "title_en": "Information deletion",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.11",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "데이터 마스킹",
+      "title_en": "Data masking",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.12",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "데이터 유출 방지",
+      "title_en": "Data leakage prevention",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.13",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "정보 백업",
+      "title_en": "Information backup",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.14",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "정보처리시설의 이중화",
+      "title_en": "Redundancy of information processing facilities",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.15",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "로깅",
+      "title_en": "Logging",
+      "status": "reviewed",
+      "intent_ko": "활동·예외·결함·기타 관련 이벤트를 기록하는 로그를 생성·보관·보호·분석한다.",
+      "intent_en": "Produce, store, protect and analyze logs that record activities, exceptions, faults and other relevant events.",
+      "evidence_sources": [
+        "loki",
+        "wazuh"
+      ],
+      "evidence_hint_ko": "Loki 로그 수집·보존 정책 + Wazuh 이벤트 로그.",
+      "evidence_hint_en": "Loki log-collection/retention policy + Wazuh event logs.",
+      "tags": [
+        "logging",
+        "retention"
+      ]
+    },
+    {
+      "id": "A.8.16",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "모니터링 활동",
+      "title_en": "Monitoring activities",
+      "status": "reviewed",
+      "intent_ko": "네트워크·시스템·응용의 이상행위를 탐지하고 잠재적 보안사고를 평가하기 위해 지속적으로 모니터링한다.",
+      "intent_en": "Continuously monitor networks, systems and applications to detect anomalies and assess potential security incidents.",
+      "evidence_sources": [
+        "zabbix",
+        "wazuh"
+      ],
+      "evidence_hint_ko": "Zabbix 임계치 모니터링 + Wazuh 이상행위 탐지 → MORI Triage 처리.",
+      "evidence_hint_en": "Zabbix threshold monitoring + Wazuh anomaly detection → MORI Triage handling.",
+      "tags": [
+        "monitoring",
+        "detection"
+      ]
+    },
+    {
+      "id": "A.8.17",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "시각 동기화",
+      "title_en": "Clock synchronization",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.18",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "특권 유틸리티 프로그램 사용",
+      "title_en": "Use of privileged utility programs",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.19",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "운영 시스템의 소프트웨어 설치",
+      "title_en": "Installation of software on operational systems",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.2",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "특권 접근 권한",
+      "title_en": "Privileged access rights",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.20",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "네트워크 보안",
+      "title_en": "Networks security",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.21",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "네트워크 서비스의 보안",
+      "title_en": "Security of network services",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.22",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "네트워크 분리",
+      "title_en": "Segregation of networks",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.23",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "웹 필터링",
+      "title_en": "Web filtering",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.24",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "암호화 사용",
+      "title_en": "Use of cryptography",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.25",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "안전한 개발 수명주기",
+      "title_en": "Secure development life cycle",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.26",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "애플리케이션 보안 요구사항",
+      "title_en": "Application security requirements",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.27",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "안전한 시스템 아키텍처 및 엔지니어링 원칙",
+      "title_en": "Secure system architecture and engineering principles",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.28",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "시큐어 코딩",
+      "title_en": "Secure coding",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.29",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "개발 및 인수 단계의 보안 테스트",
+      "title_en": "Security testing in development and acceptance",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.3",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "정보 접근 제한",
+      "title_en": "Information access restriction",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.30",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "외주 개발",
+      "title_en": "Outsourced development",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.31",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "개발·테스트·운영 환경 분리",
+      "title_en": "Separation of development, test and production environments",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.32",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "변경 관리",
+      "title_en": "Change management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.33",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "테스트 정보",
+      "title_en": "Test information",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.34",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "감사 테스트 중 정보시스템 보호",
+      "title_en": "Protection of information systems during audit testing",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.4",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "소스코드 접근",
+      "title_en": "Access to source code",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.5",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "안전한 인증",
+      "title_en": "Secure authentication",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.6",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "용량 관리",
+      "title_en": "Capacity management",
+      "evidence_sources": [],
+      "status": "draft"
+    },
+    {
+      "id": "A.8.7",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "멀웨어에 대한 보호",
+      "title_en": "Protection against malware",
+      "status": "reviewed",
+      "intent_ko": "멀웨어로부터 보호하기 위한 탐지·예방·복구 통제를 구현하고 사용자 인식을 병행한다.",
+      "intent_en": "Implement detection/prevention/recovery controls against malware, supported by user awareness.",
+      "evidence_sources": [
+        "wazuh"
+      ],
+      "evidence_hint_ko": "Wazuh 멀웨어 탐지 이벤트 + 대응 처리 이력.",
+      "evidence_hint_en": "Wazuh malware-detection events + response history.",
+      "tags": [
+        "malware"
+      ]
+    },
+    {
+      "id": "A.8.8",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "기술적 취약점 관리",
+      "title_en": "Management of technical vulnerabilities",
+      "status": "reviewed",
+      "intent_ko": "사용 중인 정보시스템의 기술적 취약점 정보를 입수하고 노출을 평가하여 적절한 조치를 취한다.",
+      "intent_en": "Obtain information about technical vulnerabilities of systems in use, evaluate exposure, and take appropriate measures.",
+      "evidence_sources": [
+        "trivy"
+      ],
+      "evidence_hint_ko": "Trivy 스캔 이력 + 조치계획/예외 승인 대장.",
+      "evidence_hint_en": "Trivy scan history + remediation-plan/exception-approval register.",
+      "tags": [
+        "vulnerability",
+        "patch"
+      ]
+    },
+    {
+      "id": "A.8.9",
+      "framework": "iso27001",
+      "version": "2022",
+      "domain": "A.8 Technological controls",
+      "title_ko": "형상 관리",
+      "title_en": "Configuration management",
+      "status": "reviewed",
+      "intent_ko": "하드웨어·소프트웨어·서비스·네트워크의 보안 형상을 수립·문서화·구현·모니터링·검토한다.",
+      "intent_en": "Establish, document, implement, monitor and review secure configurations of hardware, software, services and networks.",
+      "evidence_sources": [
+        "fleet"
+      ],
+      "evidence_hint_ko": "Fleet osquery 구성 상태(설정·설치 소프트웨어) 스냅샷과 기준 이탈 점검.",
+      "evidence_hint_en": "Fleet osquery configuration snapshot (settings/installed software) and baseline-deviation checks.",
+      "tags": [
+        "configuration",
+        "endpoint"
+      ]
+    }
+  ],
+  "mappings": [
+    {
+      "isms_p": "1.2.1",
+      "iso27001": [
+        "A.5.9"
+      ],
+      "relation": "equivalent",
+      "note_ko": "정보자산 식별 ≡ 자산 목록",
+      "note_en": "Asset identification ≡ asset inventory"
+    },
+    {
+      "isms_p": "2.9.4",
+      "iso27001": [
+        "A.8.15"
+      ],
+      "relation": "equivalent",
+      "note_ko": "로그·접속기록 관리 ≡ 로깅",
+      "note_en": "Log/access-record management ≡ logging"
+    },
+    {
+      "isms_p": "2.10.6",
+      "iso27001": [
+        "A.8.9"
+      ],
+      "relation": "related",
+      "note_ko": "단말 보안은 형상관리와 밀접(단말 구성 상태 점검)",
+      "note_en": "Endpoint security is closely related to configuration management"
+    },
+    {
+      "isms_p": "2.10.8",
+      "iso27001": [
+        "A.8.8"
+      ],
+      "relation": "subset",
+      "note_ko": "패치관리 ⊂ 기술적 취약점 관리",
+      "note_en": "Patch management ⊂ technical vulnerability management"
+    },
+    {
+      "isms_p": "2.10.9",
+      "iso27001": [
+        "A.8.7"
+      ],
+      "relation": "equivalent",
+      "note_ko": "악성코드 통제 ≡ 멀웨어 보호",
+      "note_en": "Malware control ≡ protection against malware"
+    },
+    {
+      "isms_p": "2.11.2",
+      "iso27001": [
+        "A.8.8"
+      ],
+      "relation": "equivalent",
+      "note_ko": "취약점 점검·조치 ≡ 기술적 취약점 관리",
+      "note_en": "Vulnerability assessment/remediation ≡ technical vulnerability management"
+    },
+    {
+      "isms_p": "2.11.3",
+      "iso27001": [
+        "A.8.16",
+        "A.8.15"
+      ],
+      "relation": "related",
+      "note_ko": "이상행위 분석·모니터링 ~ 모니터링 활동(+로깅 기반)",
+      "note_en": "Anomaly analysis/monitoring ~ monitoring activities (built on logging)"
+    }
+  ],
+  "defects": [
+    {
+      "id": "DEF-ASSET-001",
+      "controls": [
+        "1.2.1",
+        "A.5.9"
+      ],
+      "title_ko": "자산목록이 수기 관리라 관리 이탈(미매핑) 자산이 존재",
+      "title_en": "Manual asset list leaves unmanaged (unmapped) assets",
+      "symptom_ko": "자산목록이 엑셀로 수기 관리되어 실제 운영 자산과 불일치하고, 어떤 수집 소스에도 잡히지 않는 호스트가 존재한다.",
+      "symptom_en": "The asset list is maintained by hand (spreadsheet), drifts from reality, and some hosts appear in no collection source.",
+      "evidence_gap_ko": "자동 발견·현행화된 자산 인벤토리와 소스 간 대사(reconciliation) 증적이 없다.",
+      "evidence_gap_en": "No auto-discovered, current inventory and no cross-source reconciliation evidence.",
+      "mori_signal": "unmapped_assets",
+      "fix_ko": "Fleet 자동 발견 + Zabbix×Fleet×Trivy 자산 대사로 미매핑 자산을 작업 큐에 노출하고 담당자를 지정한다.",
+      "fix_en": "Use Fleet auto-discovery + Zabbix×Fleet×Trivy reconciliation to surface unmapped assets in the work queue and assign owners.",
+      "severity": "high"
+    },
+    {
+      "id": "DEF-MON-001",
+      "controls": [
+        "2.11.3",
+        "A.8.16"
+      ],
+      "title_ko": "경보는 발생하나 트리아지·처리 기록이 없음",
+      "title_en": "Alerts fire but there is no triage or handling record",
+      "symptom_ko": "Zabbix/Wazuh 경보가 발생하지만 누가 언제 확인·판단·처리했는지 기록이 없다.",
+      "symptom_en": "Zabbix/Wazuh alerts fire, but there is no record of who reviewed, judged, or handled them, and when.",
+      "evidence_gap_ko": "\"탐지했다\"는 있으나 \"정해진 절차로 처리했다\"의 증적(트리아지 상태·담당자·이력)이 없다.",
+      "evidence_gap_en": "There is 'detected' but not 'handled per procedure' (triage status/owner/history).",
+      "mori_signal": "untriaged_alerts",
+      "fix_ko": "경보를 MORI Alert Triage로 물려 상태(🔴🟡🟢)·담당자·변경이력을 기록하고, 미트리아지 건을 작업 큐에 노출한다.",
+      "fix_en": "Wire alerts into MORI Alert Triage to record status/owner/history, and surface untriaged items in the work queue.",
+      "severity": "medium"
+    },
+    {
+      "id": "DEF-PATCH-001",
+      "controls": [
+        "2.10.8",
+        "A.8.8"
+      ],
+      "title_ko": "조치계획 목표일(SLA) 초과 방치",
+      "title_en": "Remediation target date (SLA) overrun and left unaddressed",
+      "symptom_ko": "조치계획은 있으나 목표일을 지나도록 조치·연장·재승인 없이 초과 상태로 방치된다.",
+      "symptom_en": "A plan exists, but the target date passes with no action, extension, or re-approval — left in overrun.",
+      "evidence_gap_ko": "SLA 준수/초과에 대한 관리 증적이 없어 조치 이행의 실효성을 증명하지 못한다.",
+      "evidence_gap_en": "No SLA compliance/overrun management evidence, so the effectiveness of remediation can't be proven.",
+      "mori_signal": "overdue",
+      "fix_ko": "목표일 초과 항목을 작업 큐 상단에 노출하고, 연장 시 사유·재승인을 기록한다.",
+      "fix_en": "Surface overdue items at the top of the work queue and record reason/re-approval on any extension.",
+      "severity": "high"
+    },
+    {
+      "id": "DEF-VULN-001",
+      "controls": [
+        "2.11.2",
+        "A.8.8"
+      ],
+      "title_ko": "취약점 점검은 수행하나 조치계획·기한이 없음",
+      "title_en": "Vulnerabilities are scanned but have no remediation plan or deadline",
+      "symptom_ko": "Trivy 등으로 취약점은 발견하지만 Critical/High에 대한 조치계획·목표일·담당자가 없다.",
+      "symptom_en": "Vulnerabilities are found (e.g. via Trivy) but Critical/High items lack a plan, target date, or owner.",
+      "evidence_gap_ko": "\"점검했다\"는 증적은 있으나 \"조치했다/조치 중이다\"의 증적(조치계획 대장)이 비어 있다.",
+      "evidence_gap_en": "There is evidence of 'assessed' but not of 'remediated / in progress' (the remediation-plan register is empty).",
+      "mori_signal": "vuln_pending",
+      "fix_ko": "CVE별 조치계획(목표일·담당자) 수립을 강제하고, 미조치 Critical/High를 작업 큐에 노출한다.",
+      "fix_en": "Require a per-CVE plan (target date, owner) and surface unremediated Critical/High in the work queue.",
+      "severity": "high"
+    },
+    {
+      "id": "DEF-VULN-002",
+      "controls": [
+        "2.11.2"
+      ],
+      "title_ko": "위험수용(예외) 승인은 있으나 재평가 없이 만료 방치",
+      "title_en": "Risk-acceptance (exception) approved but left to expire without re-review",
+      "symptom_ko": "취약점 조치 예외(위험수용)를 승인해두고 만료일 이후에도 재평가·갱신 없이 방치한다.",
+      "symptom_en": "A remediation exception (risk acceptance) is approved and then left past its expiry without re-review or renewal.",
+      "evidence_gap_ko": "예외의 유효기간·재평가 증적이 없어 \"무기한 예외\"가 되어버린다.",
+      "evidence_gap_en": "No validity period or re-review evidence, so the exception becomes effectively indefinite.",
+      "mori_signal": "exceptions_expiring",
+      "fix_ko": "예외에 만료일을 필수화하고 D-7 임박 항목을 작업 큐에 노출해 재평가를 유도한다.",
+      "fix_en": "Make an expiry date mandatory and surface items within D-7 in the work queue to prompt re-review.",
+      "severity": "medium"
+    }
+  ]
+}

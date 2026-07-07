@@ -5,11 +5,11 @@ domain: "2. 보호대책 요구사항"
 section: "2.11 사고 예방 및 대응"
 title_ko: "사고 대응 및 복구"
 title_en: "Incident response and recovery"
-intent_ko: >-
-  침해사고 발생 시 신고·분석·대응·복구 절차를 이행하고, 처리 경과와 결과를 기록하여
-  재발 방지에 활용한다.
+status: reviewed
+intent_ko: "침해사고 발생 시 신고·분석·대응·복구 절차를 이행하고, 처리 경과와 결과를 기록하여 재발 방지에 활용한다."
+intent_en: "On a breach, execute the report/analyze/respond/recover procedures, and record the progress and outcome to prevent recurrence."
 evidence_sources: [mori]
-evidence_hint_ko: >-
-  MORI 인시던트 티켓(상태·담당자·노트·변경이력) + 감사 로그 + 월간 리포트.
+evidence_hint_ko: "MORI 인시던트 티켓(상태·담당자·노트·변경이력) + 감사 로그 + 월간 리포트."
+evidence_hint_en: "MORI incident tickets (status/owner/notes/history) + audit log + monthly report."
 mori_intents: []
 tags: [incident, response]

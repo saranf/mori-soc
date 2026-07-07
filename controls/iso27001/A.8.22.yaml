@@ -1,0 +1,8 @@
+id: "A.8.22"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "네트워크 분리"
+title_en: "Segregation of networks"
+evidence_sources: []
+status: "draft"

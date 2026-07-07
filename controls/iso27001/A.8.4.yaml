@@ -1,0 +1,8 @@
+id: "A.8.4"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "소스코드 접근"
+title_en: "Access to source code"
+evidence_sources: []
+status: "draft"

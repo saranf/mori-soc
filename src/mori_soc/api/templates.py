@@ -2954,6 +2954,15 @@ def render_user_dashboard_html(
           <div class=\"subtext\" data-i18n=\"dash.gap.sub\">증적으로 이어지지 않은 미조치 항목입니다. 타일을 클릭하면 해당 탭으로 이동합니다.</div>
           <div id=\"evidence_gap_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
+        <!-- 📚 통제 카탈로그 트리 (ISMS-P × ISO, admin·security 전용) -->
+        <section class=\"card\" id=\"control_tree_card\">
+          <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+            <h2 style=\"margin:0\" data-i18n=\"dash.ctl.title\">📚 통제 카탈로그 (ISMS-P × ISO 27001)</h2>
+            <span id=\"control_tree_coverage\" style=\"font-size:12px;color:#94a3b8\"></span>
+          </div>
+          <div class=\"subtext\" data-i18n=\"dash.ctl.sub\">인증기준별 증적 소스 매핑·커버리지. 회색 항목은 아직 증적 소스가 연결되지 않은 골격입니다.</div>
+          <div id=\"control_tree_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+        </section>
         <!-- 🎯 위험성 평가 매트릭스 (R-4) -->
         <section class=\"card\" id=\"risk_matrix_card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
@@ -6098,10 +6107,53 @@ def render_user_dashboard_html(
     function _canViewEvidence() { return _EVIDENCE_ROLES.includes(_currentUserRole); }
     function _applyEvidenceGating() {
       const show = _canViewEvidence();
-      const el = document.getElementById('evidence_gap_card');
-      if (el) el.style.display = show ? '' : 'none';
-      if (show) loadEvidenceGaps();
+      ['evidence_gap_card', 'control_tree_card'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = show ? '' : 'none';
+      });
+      if (show) { loadEvidenceGaps(); loadControlTree(); }
     }
+    const _CTL_SOURCE_COLOR = { zabbix:'#38bdf8', trivy:'#f59e0b', wazuh:'#a78bfa', fleet:'#34d399', loki:'#f472b6', mori:'#94a3b8' };
+    async function loadControlTree() {
+      const box = document.getElementById('control_tree_box');
+      if (!box) return;
+      try {
+        const res = await fetch('/controls/tree');
+        if (!res.ok) { box.innerHTML = `<div class=\"empty\">${tt('dash.ctl.err','통제 카탈로그를 불러오지 못했습니다.')}</div>`; return; }
+        const data = await res.json();
+        const lang = (window.lang === 'en') ? 'en' : 'ko';
+        const cov = data.coverage || {};
+        const covEl = document.getElementById('control_tree_coverage');
+        if (covEl && cov.lite && cov.full) {
+          covEl.textContent = `lite ${cov.lite.pct}% (${cov.lite.covered}/${cov.lite.total}) · full ${cov.full.pct}% (${cov.full.covered}/${cov.full.total})`;
+        }
+        const fwLabel = { 'isms-p': 'ISMS-P', 'iso27001': 'ISO 27001:2022' };
+        const badge = (s) => { const c=_CTL_SOURCE_COLOR[s]||'#64748b'; return `<span style=\"background:${c}22;color:${c};border:1px solid ${c}55;padding:0 6px;border-radius:5px;font-size:10px;margin-left:3px\">${escapeHtml(s)}</span>`; };
+        const ctrlRow = (c) => {
+          const title = (lang==='en' ? c.title_en : c.title_ko) || c.title_ko || c.title_en || '';
+          const dim = c.mapped ? '' : 'opacity:0.5;';
+          const srcs = (c.evidence_sources||[]).map(badge).join('');
+          return `<div style=\"padding:3px 0;${dim}\"><span style=\"color:#64748b;font-size:11px\">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${srcs}</div>`;
+        };
+        let html = '';
+        (data.tree || []).forEach(fw => {
+          let covered = 0, total = 0;
+          fw.domains.forEach(d => d.sections.forEach(s => s.controls.forEach(c => { total++; if (c.mapped) covered++; })));
+          html += `<div style=\"margin-top:10px;font-weight:700;color:#e2e8f0\">${escapeHtml(fwLabel[fw.framework]||fw.framework)} <span style=\"color:#94a3b8;font-weight:400;font-size:12px\">(${covered}/${total})</span></div>`;
+          fw.domains.forEach(d => {
+            let dc=0, dt=0; d.sections.forEach(s => s.controls.forEach(c => { dt++; if (c.mapped) dc++; }));
+            html += `<details style=\"margin:4px 0 0 4px\"><summary style=\"cursor:pointer;color:#cbd5e1;font-size:13px\">${escapeHtml(d.domain)} <span style=\"color:#64748b;font-size:11px\">(${dc}/${dt})</span></summary>`;
+            d.sections.forEach(s => {
+              html += `<div style=\"margin:4px 0 4px 10px\"><div style=\"color:#94a3b8;font-size:12px;margin:4px 0\">${escapeHtml(s.section||'')}</div>`;
+              html += s.controls.map(ctrlRow).join('') + `</div>`;
+            });
+            html += `</details>`;
+          });
+        });
+        box.innerHTML = html || `<div class=\"empty\">${tt('dash.ctl.none','카탈로그가 비어 있습니다.')}</div>`;
+      } catch(e) { box.innerHTML = `<div class=\"empty\">${tt('dash.ctl.err','통제 카탈로그를 불러오지 못했습니다.')}</div>`; }
+    }
+    window.loadControlTree = loadControlTree;
     window._applyEvidenceGating = _applyEvidenceGating;
     async function loadEvidenceGaps() {
       const box = document.getElementById('evidence_gap_box');

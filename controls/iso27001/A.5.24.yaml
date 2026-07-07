@@ -1,0 +1,8 @@
+id: "A.5.24"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "정보보안 사고 관리 계획 및 준비"
+title_en: "Information security incident management planning and preparation"
+evidence_sources: []
+status: "draft"

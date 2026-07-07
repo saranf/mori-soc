@@ -1,0 +1,8 @@
+id: "A.6.5"
+framework: "iso27001"
+version: "2022"
+domain: "A.6 People controls"
+title_ko: "고용 종료 또는 변경 후 책임"
+title_en: "Responsibilities after termination or change of employment"
+evidence_sources: []
+status: "draft"

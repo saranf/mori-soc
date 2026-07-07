@@ -1,0 +1,8 @@
+id: "A.8.3"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "정보 접근 제한"
+title_en: "Information access restriction"
+evidence_sources: []
+status: "draft"

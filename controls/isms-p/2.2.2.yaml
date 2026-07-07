@@ -1,0 +1,9 @@
+id: "2.2.2"
+framework: "isms-p"
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.2 인적 보안"
+title_ko: "직무 분리"
+title_en: "Segregation of duties"
+evidence_sources: []
+status: "draft"

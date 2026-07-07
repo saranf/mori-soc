@@ -1,0 +1,8 @@
+id: "A.5.33"
+framework: "iso27001"
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "기록의 보호"
+title_en: "Protection of records"
+evidence_sources: []
+status: "draft"

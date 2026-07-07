@@ -1,0 +1,8 @@
+id: "A.8.34"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "감사 테스트 중 정보시스템 보호"
+title_en: "Protection of information systems during audit testing"
+evidence_sources: []
+status: "draft"

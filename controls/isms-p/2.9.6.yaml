@@ -1,0 +1,9 @@
+id: "2.9.6"
+framework: "isms-p"
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.9 시스템 및 서비스 운영관리"
+title_ko: "시간 동기화"
+title_en: "Time synchronization"
+evidence_sources: []
+status: "draft"

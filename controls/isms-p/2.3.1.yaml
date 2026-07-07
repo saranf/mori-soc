@@ -1,0 +1,9 @@
+id: "2.3.1"
+framework: "isms-p"
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.3 외부자 보안"
+title_ko: "외부자 현황 관리"
+title_en: "Third-party status management"
+evidence_sources: []
+status: "draft"

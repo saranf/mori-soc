@@ -1,13 +1,12 @@
 id: "DEF-ASSET-001"
 controls: ["1.2.1", "A.5.9"]
 title_ko: "자산목록이 수기 관리라 관리 이탈(미매핑) 자산이 존재"
-symptom_ko: >-
-  자산목록이 엑셀로 수기 관리되어 실제 운영 자산과 불일치하고, 어떤 수집 소스에도
-  잡히지 않는 호스트가 존재한다.
-evidence_gap_ko: >-
-  자동 발견·현행화된 자산 인벤토리와 소스 간 대사(reconciliation) 증적이 없다.
+title_en: "Manual asset list leaves unmanaged (unmapped) assets"
+symptom_ko: "자산목록이 엑셀로 수기 관리되어 실제 운영 자산과 불일치하고, 어떤 수집 소스에도 잡히지 않는 호스트가 존재한다."
+symptom_en: "The asset list is maintained by hand (spreadsheet), drifts from reality, and some hosts appear in no collection source."
+evidence_gap_ko: "자동 발견·현행화된 자산 인벤토리와 소스 간 대사(reconciliation) 증적이 없다."
+evidence_gap_en: "No auto-discovered, current inventory and no cross-source reconciliation evidence."
 mori_signal: unmapped_assets
-fix_ko: >-
-  Fleet 자동 발견 + Zabbix×Fleet×Trivy 자산 대사로 미매핑 자산을 작업 큐에 노출하고
-  담당자를 지정한다.
+fix_ko: "Fleet 자동 발견 + Zabbix×Fleet×Trivy 자산 대사로 미매핑 자산을 작업 큐에 노출하고 담당자를 지정한다."
+fix_en: "Use Fleet auto-discovery + Zabbix×Fleet×Trivy reconciliation to surface unmapped assets in the work queue and assign owners."
 severity: high

@@ -5,11 +5,11 @@ domain: "2. 보호대책 요구사항"
 section: "2.11 사고 예방 및 대응"
 title_ko: "취약점 점검 및 조치"
 title_en: "Vulnerability assessment and remediation"
-intent_ko: >-
-  정보시스템의 기술적 취약점을 정기적으로 점검하고, 발견된 취약점에 대해 조치계획을
-  수립·이행하며 조치 결과를 확인·기록한다.
+status: reviewed
+intent_ko: "정보시스템의 기술적 취약점을 정기적으로 점검하고, 발견된 취약점에 대해 조치계획을 수립·이행하며 조치 결과를 확인·기록한다."
+intent_en: "Regularly assess technical vulnerabilities, establish and execute remediation plans for findings, and verify and record the results."
 evidence_sources: [trivy]
-evidence_hint_ko: >-
-  Trivy 정기 스캔 이력 + CVE별 조치계획/목표일/완료 확인 + 위험 수용(예외) 승인 대장.
+evidence_hint_ko: "Trivy 정기 스캔 이력 + CVE별 조치계획/목표일/완료 확인 + 위험 수용(예외) 승인 대장."
+evidence_hint_en: "Trivy periodic-scan history + per-CVE plan/target-date/completion + risk-acceptance (exception) approval register."
 mori_intents: [top_vulnerable_hosts]
 tags: [vulnerability, remediation]

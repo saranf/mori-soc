@@ -1,0 +1,8 @@
+id: "A.8.31"
+framework: "iso27001"
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "개발·테스트·운영 환경 분리"
+title_en: "Separation of development, test and production environments"
+evidence_sources: []
+status: "draft"

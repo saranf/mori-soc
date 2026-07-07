@@ -1,0 +1,8 @@
+id: "A.6.6"
+framework: "iso27001"
+version: "2022"
+domain: "A.6 People controls"
+title_ko: "기밀유지 또는 비밀유지 협약"
+title_en: "Confidentiality or non-disclosure agreements"
+evidence_sources: []
+status: "draft"

@@ -1,0 +1,8 @@
+id: "A.7.12"
+framework: "iso27001"
+version: "2022"
+domain: "A.7 Physical controls"
+title_ko: "케이블 보안"
+title_en: "Cabling security"
+evidence_sources: []
+status: "draft"

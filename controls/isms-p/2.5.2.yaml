@@ -1,0 +1,9 @@
+id: "2.5.2"
+framework: "isms-p"
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.5 인증 및 권한관리"
+title_ko: "사용자 식별"
+title_en: "User identification"
+evidence_sources: []
+status: "draft"
