@@ -79,6 +79,18 @@ def register_compliance(ctx: RouteContext) -> None:
             if now <= dt <= soon:
                 expiring += 1
 
+        # 자산 대사(reconciliation): 어떤 소스에서도 관측 안 된 자산 = 관리 이탈/미매핑.
+        # Fleet 자산 식별(1.2.1)·자산 현행화(2.1.3) 증적의 핵심 공백 신호.
+        unmapped = 0
+        try:
+            cross = build_crosscheck_payload(get_query_service())
+            for chk in cross.get("checks", []) or []:
+                if chk.get("id") == "source_coverage":
+                    unmapped = int(chk.get("uncovered_hosts", 0) or 0)
+                    break
+        except Exception:
+            unmapped = 0
+
         src = pdca.get("pending_sources", {}) or {}
         gaps = {
             "vuln_pending": int(src.get("trivy", 0) or 0),
@@ -86,9 +98,10 @@ def register_compliance(ctx: RouteContext) -> None:
             "untriaged_alerts": int(src.get("alert", 0) or 0),
             "overdue": int(pdca.get("overdue_count", 0) or 0),
             "control_pending": int(src.get("control_check", 0) or 0),
+            "unmapped_assets": unmapped,
         }
         return {"generated_at": pdca.get("generated_at"), "gaps": gaps,
-                "total": gaps["vuln_pending"] + gaps["untriaged_alerts"] + gaps["control_pending"]}
+                "total": gaps["vuln_pending"] + gaps["untriaged_alerts"] + gaps["control_pending"] + unmapped}
 
     @app.get("/compliance/pdca/pending.csv", tags=["Compliance"])
     def compliance_pdca_pending_csv() -> Any:

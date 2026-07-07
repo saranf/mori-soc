@@ -87,6 +87,8 @@ Each source owns a **non-overlapping set of certification controls.** This mappi
 | **Loki** | 2.9.4 log retention (statutory access-log retention) | A.8.15 | Retention policy + storage proof | 🟡 Collect |
 | **MORI itself** | 1.x management system · 2.11.4~5 incident response | A.5.24~27 | Incident tickets · audit log · PDCA | ✅ Core |
 
+> 🧭 **Fleet = foundation work**: an ISMS-P audit **starts with asset identification.** A weak asset list cascades into "unclear scope" defects across vulnerability management, access control, and logging. The Zabbix×Fleet×Trivy **reconciliation** is the strongest asset evidence there is — and something most orgs can't do.
+>
 > 💡 Once the control catalog (Phase 2) lands, this mapping auto-derives **"lite = N% control coverage / full = M%"**.
 
 ---
@@ -682,18 +684,19 @@ MORI SOC combines open-source security tools to provide a single ops screen, wit
 - ✅ **M2-1 + R-2**: 6 UI operational stores + risk register → PostgreSQL cache-aside + write-through (`schema/003·004`)
 - ✅ **Done when**: triage/incident/owner/plan survive a restart (round-trip test passes)
 
-### Phase 2 — Control catalog (identity pivot) · 🔲 *next, the core*
-- `controls/` open data — ISMS-P 101 + ISO 93 + N:M mapping + `common_defects` (v1: full skeleton + 60~70 mappings + 10~15 deep defect cases)
-- `schema/007` control tables + YAML→DB sync on boot + evidence mapper
-- PDCA screen → **control-tree screen** (evidence-source status / last update / owner / evidence PDF button)
-- dashboard **GRC preset** (today's work queue / evidence gaps / audit D-day), catalog community release
+### Phase 2 — Control catalog (identity pivot) · 🟡 *started (skeleton) — the core next*
+> **A parallel, independent track from the pollers (Phase 3).** The catalog is domain-knowledge work with no code dependency, so you can fill it on days when poller coding is blocked, and it's an independent asset publishable to the community the moment it's done. **It is a prerequisite for P3-5 (Control Mapping) and P4-3 (Evidence Pack)** — you need control data before you can map to it.
+- 🟡 `controls/` open data — ISMS-P 101 + ISO 27001:2022 Annex A 93 as YAML + N:M crossmapping + `common_defects`. **Skeleton · JSON Schema · samples started** ([`controls/`](controls/)); v1 target: full skeleton + 60~70 mappings + 10~15 deep defect cases (no bulk mapping — solo dev drift)
+- 🔲 JSON Schema validation CI (YAML validity) + `schema/007` control tables + YAML→DB sync on boot + evidence mapper
+- 🔲 PDCA screen → **control-tree screen** (evidence-source status / last update / owner / evidence PDF button)
+- 🟡 dashboard **GRC preset** — today's work queue (evidence gaps) card started (admin·security); audit D-day after catalog wiring
 - ✅ **Done when**: NLQ "show me evidence for 2.11.2" → real-data answer · PDF in one click from the control screen
 
 ### Phase 3 — Complete collection, realize "see it all in one place" · 🟡 *partial*
 - ✅ **M2-2** Zabbix poller verified against real API · ✅ Trivy/CSOP remote push (`/ingest/trivy`·`/ingest/evidence`)
 - 🔲 Trivy auto-scan by default (`MORI_ENABLE_TRIVY` on + schedule)
 - 🔲 **Wazuh poller (new)** — detection events → MORI alert queue → handling history as 2.11.3 evidence (compose service def first)
-- 🔲 **Fleet poller (new)** — asset inventory → MORI asset sync (manual → auto-discovery, 1.2.1 evidence)
+- 🔲 **Fleet poller (new) — asset ID = foundation work** — if the asset list is weak, every downstream control cascades into an "unclear scope" defect. **Done = the cycle closes as evidence, not data arriving**: new Fleet host → MORI asset auto-created → **surfaced in the work queue as unassigned** (discover→assign→manage). The existing intents (`fleet_checkin_gap`·`host_fleet_queries`·`unmapped_assets`) are the asset-management evidence generators. 1.2.1 asset ID · 2.1.3 currency · 2.10.6 endpoint
 - 🔲 tie Loki retention to controls — statutory access-log retention (1yr default, 2yr for unique-ID data) surfaced as 2.9.4 evidence
 - 🔲 ship 5 Grafana dashboard JSONs (1/source + 1 unified) — control screen → Grafana panel deep link
 - ✅ **Done when**: in the full profile, all 5 sources map onto control screens
