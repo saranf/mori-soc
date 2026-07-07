@@ -81,5 +81,16 @@ class StateRepository(ABC):
     def save_risk_assessment(self, vuln_id: str, record: dict[str, Any]) -> None:
         raise NotImplementedError
 
+    # ── evidence_events: append-only CSOP diff envelopes (keyed by id) ─────────
+    @abstractmethod
+    def load_evidence_events(self, limit: int = 500) -> list[dict[str, Any]]:
+        """Most-recent-first evidence events, capped at ``limit``."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_evidence_event(self, event_id: str, record: dict[str, Any]) -> None:
+        """Upsert one evidence event (idempotent on ``event_id``)."""
+        raise NotImplementedError
+
 
 __all__ = ["StateRepository"]

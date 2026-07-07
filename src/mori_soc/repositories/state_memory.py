@@ -24,6 +24,7 @@ class InMemoryStateRepository(StateRepository):
         self._triage: dict[str, dict[str, Any]] = {}
         self._incidents: dict[str, dict[str, Any]] = {}
         self._risk_register: dict[str, dict[str, Any]] = {}
+        self._evidence_events: dict[str, dict[str, Any]] = {}
 
     # ── user_profiles ──────────────────────────────────────────────────────────
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:
@@ -76,6 +77,18 @@ class InMemoryStateRepository(StateRepository):
 
     def save_risk_assessment(self, vuln_id: str, record: dict[str, Any]) -> None:
         self._risk_register[vuln_id] = copy.deepcopy(record)
+
+    # ── evidence_events ────────────────────────────────────────────────────────
+    def load_evidence_events(self, limit: int = 500) -> list[dict[str, Any]]:
+        events = sorted(
+            self._evidence_events.values(),
+            key=lambda r: r.get("received_at") or "",
+            reverse=True,
+        )
+        return copy.deepcopy(events[: max(0, limit)])
+
+    def save_evidence_event(self, event_id: str, record: dict[str, Any]) -> None:
+        self._evidence_events[event_id] = copy.deepcopy(record)
 
 
 __all__ = ["InMemoryStateRepository"]

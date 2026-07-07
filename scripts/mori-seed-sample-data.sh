@@ -50,6 +50,9 @@ fi
 if [ -f "$PROJECT_ROOT/schema/005_alert_resolved.sql" ]; then
   run_sql_file "$PROJECT_ROOT/schema/005_alert_resolved.sql" >/dev/null 2>&1 || true
 fi
+if [ -f "$PROJECT_ROOT/schema/006_evidence_events.sql" ]; then
+  run_sql_file "$PROJECT_ROOT/schema/006_evidence_events.sql" >/dev/null 2>&1 || true
+fi
 
 # Fix legacy CHECK constraints (older DBs missing 'trivy' in source whitelists)
 run_sql_lenient "

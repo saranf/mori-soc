@@ -13,6 +13,7 @@ services:
       - ./schema/003_phase2_ui_operational_state.sql:/docker-entrypoint-initdb.d/003_phase2_ui_operational_state.sql:ro
       - ./schema/004_risk_register.sql:/docker-entrypoint-initdb.d/004_risk_register.sql:ro
       - ./schema/005_alert_resolved.sql:/docker-entrypoint-initdb.d/005_alert_resolved.sql:ro
+      - ./schema/006_evidence_events.sql:/docker-entrypoint-initdb.d/006_evidence_events.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -58,6 +59,12 @@ services:
     environment:
       MORI_QUERY_BACKEND: postgres
       MORI_DATABASE_URL: postgresql://${MORI_DB_USER:-mori}:${MORI_DB_PASSWORD:-mori}@soc-postgres:5432/${MORI_DB_NAME:-mori_soc}
+      # 세션 인증 / 관리자 계정 / 데모 모드 — 컨테이너에 전달(미전달 시 코드 기본값 사용)
+      MORI_AUTH_ENABLED: ${MORI_AUTH_ENABLED:-true}
+      MORI_ADMIN_PASSWORD: ${MORI_ADMIN_PASSWORD:-1234}
+      MORI_DEMO_MODE: ${MORI_DEMO_MODE:-true}
+      # Trivy 원격 인제스트 토큰 — 설정 시 에이전트/CSOP가 세션 없이 Bearer/X-MORI-Token 로 push
+      MORI_INGEST_TOKEN: ${MORI_INGEST_TOKEN:-}
       # 데모 임팩트용 인메모리 시드(triage/asset owners/user profiles) — 운영에선 0으로 비활성화
       MORI_DEMO_SEED: ${MORI_DEMO_SEED:-1}
       MORI_GRAFANA_URL: ${GRAFANA_URL:-http://mori.rmstudio.co.kr:13000}
@@ -86,11 +93,11 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    # 브라운필드: 소스 연결은 .env(URL/creds)로만 결정. 번들 zabbix-web 에 의존하지
+    # 않는다(외부 Zabbix 를 가리킬 수 있어야 함) → 폴러는 매 주기 재시도한다.
     depends_on:
       soc-postgres:
         condition: service_healthy
-      zabbix-web:
-        condition: service_started
     command: ["python", "-m", "mori_soc.worker"]
     environment:
       MORI_DATABASE_URL: postgresql://${MORI_DB_USER:-mori}:${MORI_DB_PASSWORD:-mori}@soc-postgres:5432/${MORI_DB_NAME:-mori_soc}
@@ -119,11 +126,10 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    # 브라운필드: 외부 Zabbix 를 가리킬 수 있어야 하므로 번들 zabbix-web 에 의존하지 않음.
     depends_on:
       soc-postgres:
         condition: service_healthy
-      zabbix-web:
-        condition: service_started
     command: ["python", "-m", "mori_soc.pollers.zabbix"]
     environment:
       MORI_DATABASE_URL: postgresql://${MORI_DB_USER:-mori}:${MORI_DB_PASSWORD:-mori}@soc-postgres:5432/${MORI_DB_NAME:-mori_soc}
@@ -232,6 +238,7 @@ services:
     networks: [soc]
 
   postgres:
+    profiles: ["bundled", "zabbix"]
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -248,6 +255,7 @@ services:
     networks: [soc]
 
   zabbix-server:
+    profiles: ["bundled", "zabbix"]
     image: zabbix/zabbix-server-pgsql:alpine-7.4-latest
     restart: unless-stopped
     depends_on:
@@ -263,6 +271,7 @@ services:
     networks: [soc]
 
   zabbix-web:
+    profiles: ["bundled", "zabbix"]
     image: zabbix/zabbix-web-nginx-pgsql:alpine-7.4-latest
     restart: unless-stopped
     depends_on:
@@ -293,6 +302,7 @@ services:
     networks: [soc]
 
   mysql:
+    profiles: ["bundled", "fleet"]
     image: mysql:8.0
     restart: unless-stopped
     command:
@@ -313,6 +323,7 @@ services:
     networks: [soc]
 
   redis:
+    profiles: ["bundled", "fleet"]
     image: redis:7-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
@@ -326,6 +337,7 @@ services:
     networks: [soc]
 
   fleet-init:
+    profiles: ["bundled", "fleet"]
     image: alpine:3.20
     command: sh -c "mkdir -p /logs /vulndb && chown -R 100:101 /logs /vulndb"
     volumes:
@@ -333,6 +345,7 @@ services:
       - fleet-vulndb:/vulndb
 
   fleet:
+    profiles: ["bundled", "fleet"]
     image: fleetdm/fleet
     restart: unless-stopped
     depends_on:
@@ -374,6 +387,7 @@ services:
     networks: [soc]
 
   wazuh.manager:
+    profiles: ["bundled", "wazuh"]
     image: wazuh/wazuh-manager:4.14.4
     hostname: wazuh.manager
     restart: unless-stopped
@@ -412,6 +426,7 @@ services:
     networks: [soc]
 
   wazuh.indexer:
+    profiles: ["bundled", "wazuh"]
     image: wazuh/wazuh-indexer:4.14.4
     hostname: wazuh.indexer
     restart: unless-stopped
@@ -428,6 +443,7 @@ services:
     networks: [soc]
 
   wazuh.dashboard:
+    profiles: ["bundled", "wazuh"]
     image: wazuh/wazuh-dashboard:4.14.4
     hostname: wazuh.dashboard
     restart: unless-stopped

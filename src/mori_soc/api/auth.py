@@ -171,7 +171,15 @@ def build_session_auth_middleware(sessions: dict[str, dict[str, Any]]):
     class _SessionAuthMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request: _StarletteRequest, call_next):  # type: ignore[override]
             path = request.url.path
-            if path in AUTH_PUBLIC_PATHS or path.startswith("/redoc") or path.startswith("/static"):
+            # ``/ingest/*`` push 엔드포인트는 자체 토큰(MORI_INGEST_TOKEN) 또는 세션
+            # 인증을 핸들러에서 직접 강제한다 → 세션 미들웨어는 우회해야 무세션 토큰
+            # push(에이전트/CSOP)가 가능. (조회용 /evidence 는 우회하지 않고 RBAC 적용.)
+            if (
+                path in AUTH_PUBLIC_PATHS
+                or path.startswith("/redoc")
+                or path.startswith("/static")
+                or path.startswith("/ingest/")
+            ):
                 return await call_next(request)
             token = request.cookies.get("mori_session", "")
             if token and token in sessions:

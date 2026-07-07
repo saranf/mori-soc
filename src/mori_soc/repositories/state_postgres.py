@@ -252,5 +252,40 @@ class PostgresStateRepository(StateRepository):
                  record.get("assessed_by", ""), record.get("assessed_at"), record.get("updated_at")),
             )
 
+    # ── evidence_events (CSOP diff envelopes) ──────────────────────────────────
+    def load_evidence_events(self, limit: int = 500) -> list[dict[str, Any]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, host_id, artifact_name, delta_type, cve, summary, source, envelope, received_at "
+                "FROM ui_evidence_events ORDER BY received_at DESC NULLS LAST LIMIT %s",
+                (max(0, int(limit)),),
+            )
+            return [
+                {"id": r[0], "host_id": r[1], "artifact_name": r[2], "delta_type": r[3],
+                 "cve": r[4], "summary": r[5], "source": r[6], "envelope": r[7] or {},
+                 "received_at": r[8]}
+                for r in cur.fetchall()
+            ]
+
+    def save_evidence_event(self, event_id: str, record: dict[str, Any]) -> None:
+        envelope = record.get("envelope") or {}
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO ui_evidence_events (id, host_id, artifact_name, delta_type, cve,
+                                                summary, source, envelope, received_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET
+                    host_id = EXCLUDED.host_id, artifact_name = EXCLUDED.artifact_name,
+                    delta_type = EXCLUDED.delta_type, cve = EXCLUDED.cve, summary = EXCLUDED.summary,
+                    source = EXCLUDED.source, envelope = EXCLUDED.envelope,
+                    received_at = EXCLUDED.received_at
+                """,
+                (event_id, record.get("host_id", ""), record.get("artifact_name", ""),
+                 record.get("delta_type", ""), record.get("cve", ""), record.get("summary", ""),
+                 record.get("source", "csop"),
+                 Jsonb(envelope) if Jsonb is not None else envelope, record.get("received_at")),
+            )
+
 
 __all__ = ["PostgresStateRepository", "PSYCOPG_AVAILABLE"]
