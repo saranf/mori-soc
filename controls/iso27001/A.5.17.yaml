@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.5 Organizational controls"
 title_ko: "인증 정보"
 title_en: "Authentication information"
-evidence_sources: []
-status: "draft"
+intent_ko: "인증 정보를 안전하게 관리한다."
+intent_en: "Securely manage authentication information."
+evidence_sources: [mori]
+status: reviewed

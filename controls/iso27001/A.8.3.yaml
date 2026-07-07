@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "정보 접근 제한"
 title_en: "Information access restriction"
-evidence_sources: []
-status: "draft"
+intent_ko: "정보 접근을 필요 최소 원칙으로 제한한다."
+intent_en: "Restrict information access on a need-to-know basis."
+evidence_sources: [mori]
+status: reviewed

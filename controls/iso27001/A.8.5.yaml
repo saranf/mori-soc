@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "안전한 인증"
 title_en: "Secure authentication"
-evidence_sources: []
-status: "draft"
+intent_ko: "안전한 인증(세션·권한 통제)을 적용한다."
+intent_en: "Apply secure authentication (session/authorization control)."
+evidence_sources: [mori]
+status: reviewed

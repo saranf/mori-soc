@@ -3,7 +3,7 @@
     "controls": 194,
     "isms_p": 101,
     "iso27001": 93,
-    "reviewed": 48,
+    "reviewed": 58,
     "mappings": 61,
     "defects": 5
   },
@@ -728,8 +728,12 @@
       "section": "2.5 인증 및 권한관리",
       "title_ko": "사용자 계정 관리",
       "title_en": "User account management",
-      "evidence_sources": [],
-      "status": "draft"
+      "intent_ko": "사용자 계정의 생성·변경·삭제를 통제하고 이력을 남긴다.",
+      "intent_en": "Control user-account create/change/delete and keep records.",
+      "evidence_sources": [
+        "mori"
+      ],
+      "status": "reviewed"
     },
     {
       "id": "2.5.2",
@@ -739,8 +743,12 @@
       "section": "2.5 인증 및 권한관리",
       "title_ko": "사용자 식별",
       "title_en": "User identification",
-      "evidence_sources": [],
-      "status": "draft"
+      "intent_ko": "사용자를 유일하게 식별한다.",
+      "intent_en": "Uniquely identify users.",
+      "evidence_sources": [
+        "mori"
+      ],
+      "status": "reviewed"
     },
     {
       "id": "2.5.3",
@@ -750,8 +758,12 @@
       "section": "2.5 인증 및 권한관리",
       "title_ko": "사용자 인증",
       "title_en": "User authentication",
-      "evidence_sources": [],
-      "status": "draft"
+      "intent_ko": "사용자 인증 수단을 운영하고 점검한다.",
+      "intent_en": "Operate and review user authentication.",
+      "evidence_sources": [
+        "mori"
+      ],
+      "status": "reviewed"
     },
     {
       "id": "2.5.4",
@@ -814,8 +826,12 @@
       "section": "2.6 접근통제",
       "title_ko": "정보시스템 접근",
       "title_en": "Information-system access",
-      "evidence_sources": [],
-      "status": "draft"
+      "intent_ko": "정보시스템 접근 권한과 접근 기록을 관리한다.",
+      "intent_en": "Manage information-system access rights and access records.",
+      "evidence_sources": [
+        "mori"
+      ],
+      "status": "reviewed"
     },
     {
       "id": "2.6.3",
@@ -1364,8 +1380,12 @@
       "domain": "A.5 Organizational controls",
       "title_ko": "접근통제",
       "title_en": "Access control",
-      "evidence_sources": [],
-      "status": "draft"
+      "intent_ko": "접근통제 정책을 수립·운영하고 이행을 기록한다.",
+      "intent_en": "Establish and operate access control and record enforcement.",
+      "evidence_sources": [
+        "mori"
+      ],
+      "status": "reviewed"
     },
     {
       "id": "A.5.16",
@@ -1374,8 +1394,12 @@
       "domain": "A.5 Organizational controls",
       "title_ko": "식별자 관리",
       "title_en": "Identity management",
-      "evidence_sources": [],
-      "status": "draft"
+      "intent_ko": "식별자(계정) 전주기를 관리한다.",
+      "intent_en": "Manage the full identity (account) lifecycle.",
+      "evidence_sources": [
+        "mori"
+      ],
+      "status": "reviewed"
     },
     {
       "id": "A.5.17",
@@ -1384,8 +1408,12 @@
       "domain": "A.5 Organizational controls",
       "title_ko": "인증 정보",
       "title_en": "Authentication information",
-      "evidence_sources": [],
-      "status": "draft"
+      "intent_ko": "인증 정보를 안전하게 관리한다.",
+      "intent_en": "Securely manage authentication information.",
+      "evidence_sources": [
+        "mori"
+      ],
+      "status": "reviewed"
     },
     {
       "id": "A.5.18",
@@ -2085,8 +2113,12 @@
       "domain": "A.8 Technological controls",
       "title_ko": "특권 접근 권한",
       "title_en": "Privileged access rights",
-      "evidence_sources": [],
-      "status": "draft"
+      "intent_ko": "특권 접근 권한을 제한하고 정기 검토한다.",
+      "intent_en": "Restrict and periodically review privileged access rights.",
+      "evidence_sources": [
+        "mori"
+      ],
+      "status": "reviewed"
     },
     {
       "id": "A.8.20",
@@ -2208,8 +2240,12 @@
       "domain": "A.8 Technological controls",
       "title_ko": "정보 접근 제한",
       "title_en": "Information access restriction",
-      "evidence_sources": [],
-      "status": "draft"
+      "intent_ko": "정보 접근을 필요 최소 원칙으로 제한한다.",
+      "intent_en": "Restrict information access on a need-to-know basis.",
+      "evidence_sources": [
+        "mori"
+      ],
+      "status": "reviewed"
     },
     {
       "id": "A.8.30",
@@ -2282,8 +2318,12 @@
       "domain": "A.8 Technological controls",
       "title_ko": "안전한 인증",
       "title_en": "Secure authentication",
-      "evidence_sources": [],
-      "status": "draft"
+      "intent_ko": "안전한 인증(세션·권한 통제)을 적용한다.",
+      "intent_en": "Apply secure authentication (session/authorization control).",
+      "evidence_sources": [
+        "mori"
+      ],
+      "status": "reviewed"
     },
     {
       "id": "A.8.6",

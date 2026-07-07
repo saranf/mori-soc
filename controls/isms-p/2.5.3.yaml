@@ -5,5 +5,7 @@ domain: "2. 보호대책 요구사항"
 section: "2.5 인증 및 권한관리"
 title_ko: "사용자 인증"
 title_en: "User authentication"
-evidence_sources: []
-status: "draft"
+intent_ko: "사용자 인증 수단을 운영하고 점검한다."
+intent_en: "Operate and review user authentication."
+evidence_sources: [mori]
+status: reviewed

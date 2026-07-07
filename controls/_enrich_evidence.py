@@ -87,6 +87,27 @@ ENRICH: dict[str, tuple[list[str], str, str]] = {
               "Review security requirements and run vulnerability testing on development artifacts."),
     "A.8.29": (["trivy"], "개발·인수 단계에서 보안 테스트를 수행한다.",
                "Perform security testing during development and acceptance."),
+    # ── 3차 확장: 식별·접근통제 (MORI RBAC/감사 + LDAP 디렉터리 동기화 증적) ──
+    "2.5.1": (["mori"], "사용자 계정의 생성·변경·삭제를 통제하고 이력을 남긴다.",
+              "Control user-account create/change/delete and keep records."),
+    "2.5.2": (["mori"], "사용자를 유일하게 식별한다.",
+              "Uniquely identify users."),
+    "2.5.3": (["mori"], "사용자 인증 수단을 운영하고 점검한다.",
+              "Operate and review user authentication."),
+    "2.6.2": (["mori"], "정보시스템 접근 권한과 접근 기록을 관리한다.",
+              "Manage information-system access rights and access records."),
+    "A.5.15": (["mori"], "접근통제 정책을 수립·운영하고 이행을 기록한다.",
+               "Establish and operate access control and record enforcement."),
+    "A.5.16": (["mori"], "식별자(계정) 전주기를 관리한다.",
+               "Manage the full identity (account) lifecycle."),
+    "A.5.17": (["mori"], "인증 정보를 안전하게 관리한다.",
+               "Securely manage authentication information."),
+    "A.8.2": (["mori"], "특권 접근 권한을 제한하고 정기 검토한다.",
+              "Restrict and periodically review privileged access rights."),
+    "A.8.3": (["mori"], "정보 접근을 필요 최소 원칙으로 제한한다.",
+              "Restrict information access on a need-to-know basis."),
+    "A.8.5": (["mori"], "안전한 인증(세션·권한 통제)을 적용한다.",
+              "Apply secure authentication (session/authorization control)."),
 }
 
 

@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.5 Organizational controls"
 title_ko: "식별자 관리"
 title_en: "Identity management"
-evidence_sources: []
-status: "draft"
+intent_ko: "식별자(계정) 전주기를 관리한다."
+intent_en: "Manage the full identity (account) lifecycle."
+evidence_sources: [mori]
+status: reviewed

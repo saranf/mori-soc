@@ -5,5 +5,7 @@ domain: "2. 보호대책 요구사항"
 section: "2.5 인증 및 권한관리"
 title_ko: "사용자 계정 관리"
 title_en: "User account management"
-evidence_sources: []
-status: "draft"
+intent_ko: "사용자 계정의 생성·변경·삭제를 통제하고 이력을 남긴다."
+intent_en: "Control user-account create/change/delete and keep records."
+evidence_sources: [mori]
+status: reviewed

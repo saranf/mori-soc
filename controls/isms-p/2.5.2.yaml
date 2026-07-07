@@ -5,5 +5,7 @@ domain: "2. 보호대책 요구사항"
 section: "2.5 인증 및 권한관리"
 title_ko: "사용자 식별"
 title_en: "User identification"
-evidence_sources: []
-status: "draft"
+intent_ko: "사용자를 유일하게 식별한다."
+intent_en: "Uniquely identify users."
+evidence_sources: [mori]
+status: reviewed

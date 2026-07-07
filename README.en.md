@@ -686,9 +686,9 @@ MORI SOC combines open-source security tools to provide a single ops screen, wit
 
 ### Phase 2 — Control catalog (identity pivot) · 🟡 *skeleton complete — filling in*
 > **A parallel, independent track from the pollers (Phase 3).** The catalog is domain-knowledge work with no code dependency, publishable to the community as it completes. **Prerequisite for P3-5 (Control Mapping) and P4-3 (Evidence Pack).**
-- ✅ **Full skeleton** ([`controls/`](controls/)) — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 controls** (all KO/EN titles) + **61 N:M mappings** + 5 defects. **48 `reviewed`** (evidence sources wired). JSON Schema validation (`validate.py`) + runtime JSON artifact build
+- ✅ **Full skeleton** ([`controls/`](controls/)) — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 controls** (all KO/EN titles) + **61 N:M mappings** + 5 defects. **58 `reviewed`** (evidence sources wired). JSON Schema validation (`validate.py`) + runtime JSON artifact build
 - ✅ `schema/007` control tables (KO/EN) + **catalog→DB sync on boot** (`services/control_catalog.py`)
-- ✅ **Control-tree screen** — dashboard "Control catalog" card (admin·security), framework→domain→section tree + **auto-derived lite/full coverage %** (`GET /controls/tree`, currently **lite ~19% / full ~25%**)
+- ✅ **Control-tree screen** — dashboard "Control catalog" card (admin·security), framework→domain→section tree + **auto-derived lite/full coverage %** (`GET /controls/tree`, currently **lite ~24% / full ~30%**)
 - ✅ **Per-control evidence-pack PDF (one click)** — `GET /controls/detail/{id}/evidence.pdf`. An evidence mapper joining control + mappings + related defects to the **current live evidence-gap counts**. 📄 per control in the tree
 - ✅ dashboard **GRC preset** — today's work queue (evidence gaps) card (admin·security) · **catalog CI** (validation + JSON freshness, GitHub Actions)
 - 🔲 Remaining: keep filling draft controls (raises coverage) · auto-collect evidence (per-source live joins into the control screen)

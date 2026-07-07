@@ -5,5 +5,7 @@ domain: "2. 보호대책 요구사항"
 section: "2.6 접근통제"
 title_ko: "정보시스템 접근"
 title_en: "Information-system access"
-evidence_sources: []
-status: "draft"
+intent_ko: "정보시스템 접근 권한과 접근 기록을 관리한다."
+intent_en: "Manage information-system access rights and access records."
+evidence_sources: [mori]
+status: reviewed

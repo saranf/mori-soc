@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.5 Organizational controls"
 title_ko: "접근통제"
 title_en: "Access control"
-evidence_sources: []
-status: "draft"
+intent_ko: "접근통제 정책을 수립·운영하고 이행을 기록한다."
+intent_en: "Establish and operate access control and record enforcement."
+evidence_sources: [mori]
+status: reviewed
