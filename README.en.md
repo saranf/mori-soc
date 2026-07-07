@@ -63,15 +63,31 @@ A lightweight SOC platform built by integrating open-source security tools so th
 
 > 🔌 **A read-only evidence layer on top of your existing tools** — **MORI-SOC is designed to sit on top of existing monitoring and security tools, not replace them.** It connects to your running Zabbix / Wazuh / FleetDM / Trivy in **read-only mode via configuration only** (no agent installation, no change to existing tool configuration) and organizes operational evidence, incident history, vulnerability actions, and compliance views.
 
-| Area | Tool | MORI's role |
+### Product positioning — not the "viewing layer", the "evidence layer"
+
+MORI is **not a unified monitoring dashboard.** Time-series, log exploration, and real-time visualization are delegated to the tools that already do them well (**Grafana/Loki**); MORI sits one layer above and owns **"judge, record, prove."**
+
+| Layer | Owns | Tool |
 |---|---|---|
-| Infrastructure monitoring | Zabbix | Asset state / availability evidence |
-| Log centralization | Loki + Fluent Bit | Log collection & retention evidence |
-| Endpoint management | FleetDM | Asset identification & configuration checks |
-| Security events | Wazuh | Alert detection & triage evidence |
-| Vulnerability scanning | Trivy | Vulnerability checks, remediation plans & exceptions evidence |
-| Visualization | Grafana | Operational dashboards |
-| Unified operations UI | **MORI API** (`/ui`) | Unified controls/assets/vulns/alerts/incidents + audit log |
+| **Viewing layer** | time-series · logs · real-time visualization | Grafana · Loki *(delegated via deep links)* |
+| **Evidence layer (MORI's place)** | triage → remediation workflow → control mapping → evidence PDF → audit log | **MORI API** (`/ui`) |
+
+> Core thesis: the product is **not "unified monitoring" — it's "monitoring that becomes ISMS-P / ISO 27001 evidence as you look at it."**
+
+### Why these five — per-source ISMS-P coverage
+
+Each source owns a **non-overlapping set of certification controls.** This mapping is both the rationale for the stack and the basis for poller ordering ("fill the largest evidence gap first").
+
+| Data source | ISMS-P controls (representative) | ISO 27001 Annex A | Evidence form | MORI status |
+|---|---|---|---|---|
+| **Fleet** (osquery) | 1.2.1 asset ID · 2.1.3 asset mgmt · 2.10.6 endpoint | A.5.9 · A.8.9 | Asset inventory / config state | 🔲 Phase 3 |
+| **Zabbix** | 2.9.x operations/monitoring · availability | A.8.6 · A.8.16 | Uptime · threshold alerts + handling history | ✅ Live (verified) |
+| **Trivy** | 2.10.8 patch mgmt · 2.11.2 vuln check/remediate | A.8.8 | Scan history · remediation plans · exception approvals | ✅ Remote push |
+| **Wazuh** | 2.9.4~5 log mgmt · 2.10.9 malware · 2.11.3 anomaly | A.8.7 · A.8.15 · A.8.16 | Detection events · rule matches · response records | 🔲 Phase 3 |
+| **Loki** | 2.9.4 log retention (statutory access-log retention) | A.8.15 | Retention policy + storage proof | 🟡 Collect |
+| **MORI itself** | 1.x management system · 2.11.4~5 incident response | A.5.24~27 | Incident tickets · audit log · PDCA | ✅ Core |
+
+> 💡 Once the control catalog (Phase 2) lands, this mapping auto-derives **"lite = N% control coverage / full = M%"**.
 
 ---
 
@@ -190,6 +206,8 @@ A guidance modal automatically surfaces so that host-level bulk plans don't conf
 | **Overview** | Asset/alert/vuln summary cards + Critical vulnerability detail modal exposing **plan / exception** columns | Per-host progress visible right on the dashboard |
 | **Assets (Server / PC / Trivy)** | Per-host owner/team/category edits + **manual override of server asset importance** | Takes priority over auto-classification (asset_classifier). Audit log records every change |
 | **Vulnerability management (Trivy)** | Host-level remediation plan / exception + **per-CVE detailed plan / exception** | Author / target date / expiry / reason recorded. Conflict guidance modal |
+| **📥 Remote ingest (v0.7)** | `POST /ingest/trivy` (raw report, `?hostname=` host mapping) · `POST /ingest/evidence` (CSOP before/after diff envelope) — **session-less push** via `MORI_INGEST_TOKEN` | Evidence in `ui_evidence_events` (`schema/006`). `GET /evidence` admin·security only |
+| **🧩 Brownfield mode (v0.7)** | `docker compose up` = MORI core only → connect to existing Zabbix/Trivy via `.env`. Bundled sources behind `--profile bundled`/`zabbix`/`fleet`/`wazuh` | [docs/BROWNFIELD_CONNECT.md](docs/BROWNFIELD_CONNECT.md) |
 | **🎯 Risk Assessment (R-series)** | Per-CVE **3×3 risk matrix** (impact × likelihood) + treatment decision (mitigate/accept/transfer/avoid) · approver · residual risk · review date. Click a matrix cell/level → drill-down. **Admin-only assessment basis** | ISMS-P risk mgmt / ISO 27001 6.1.2·8.8. **admin·security only**. Persisted in `ui_risk_register` |
 | **🔐 Role-aware dashboard** | Role-aware security hero (risk KPIs/TOP ↔ my-servers remediation) + **24h/12h infra status** (Zabbix/Wazuh deep links) + **panel editing** (per-user widget on/off, persisted) | Responsive grid. Infra/helpdesk see remediation rate, not risk grades |
 | **🚨 Alert Triage** | 3-tier state (🔴🟡🟢) change, analyst·**actor** separation, history display | If actor is omitted on UI, falls back to session user → "unknown" |
@@ -213,8 +231,9 @@ A guidance modal automatically surfaces so that host-level bulk plans don't conf
 |---|---|---|
 | **UI operational state → PostgreSQL persistence (M2-1)** | ✅ Done — `schema/003_*` + `repositories/state_*.py` (StateRepository) cache-aside + write-through. The 6 stores survive restarts, verified by an integration test (`tests/test_state_persistence.py`) | ✅ Done |
 | **Zabbix API polling** | ✅ **Verified** — real Zabbix API, problem→collect→Triage→Incident→evidence→resolve end-to-end (`collectors/zabbix_events.py`, `tests/test_zabbix_events.py`) | ✅ Done |
-| **Fleet / Wazuh API polling** | Parser·Collector ready, REST poller (`pollers/fleet.py`, `pollers/wazuh.py`) not yet connected | 🔴 High |
-| **Trivy JSON ingestion** | Collector implementation complete, scheduled-run packaging in progress | 🔴 High |
+| **Control catalog (Phase 2)** | ISMS-P/ISO N:M mapping + common defects + control-tree screen — **the product-identity pivot; comes before pollers** | 🔴 Top |
+| **Trivy ingest** | ✅ Remote token push (`/ingest/trivy`·`/ingest/evidence`) done · only local scheduled scan automation remains | 🟡 Medium |
+| **Fleet / Wazuh API poller** | Parser·Collector ready, REST poller not yet connected — **Phase 3** (after the control catalog). Done = wired into MORI workflow, not just data arriving | 🔴 High |
 
 ### 🔲 Planned / Future work
 
@@ -644,59 +663,56 @@ MORI SOC combines open-source security tools to provide a single ops screen, wit
 | **LDAP / AD** | Directory account + privilege binding consistency checks (seed) | 🔲 Activates with `LDAP_URL` in production |
 | **Grafana** | Operational dashboards that query Postgres / Loki directly | ✅ Operational |
 
-## 🗺️ Phase roadmap (Phase 2 → 4)
+## 🗺️ Roadmap (Phase 0 → 5)
 
-> MORI is at **Phase 1 (data collection/normalization core) complete + Phase 2 Alpha (Audit-Ready ops & evidence UI)**. The following is the long-term direction; each Phase builds on the previous one — Phase 2 (make it operational) → Phase 3 (assist judgment) → Phase 4 (adoption & ecosystem).
+> **The identity pivot**: today MORI is an "audit-ready ops UI." The goal is **"a platform where, centered on a control catalog, the monitoring of five sources becomes ISMS-P/ISO 27001 evidence as it happens."** Ordering matters — **the control catalog (Phase 2) comes before the pollers (Phase 3).** Each phase has a **done criterion** to prevent solo-dev drift.
 
-### Phase 2 — Read-only Evidence Layer over Existing Tools
+> **3 core principles**: ① **delegate viewing to Grafana** — no time-series charts inside MORI (deep links only). ② **collection ≠ evidence** — a poller is done when it's wired into the MORI workflow (triage→remediate→record), not when "data arrives." ③ **lite/full packaging** — a lite profile (no Wazuh) for 1–2 person orgs alongside full.
 
-*Sit **on top of** your existing tools rather than replacing them — persist the in-memory operational state to PostgreSQL (M2-1 done), connect Zabbix/Wazuh/Fleet/Trivy in **config-based read-only** mode (N-series), then extend into real signal flows (M2-2~5) and a Zabbix template (M2-6).*
+> **5 read-only integration principles** — ① read-only token recommended ② no change to existing configuration ③ isolated source failure (won't break MORI) ④ source freshness shown ⑤ last sync time / failure reason stored
 
-> **5 read-only integration principles** — ① read-only token recommended ② no change to existing system configuration ③ a single source failure must not break MORI as a whole (isolated failure) ④ source freshness is shown ⑤ last sync time / failure reason is stored
+### Phase 0 — Foundations of trust · *in progress*
+- 🟡 compose profile split — brownfield default (core only) + `bundled`/`zabbix`/`fleet`/`wazuh` **(done)** → rename to `lite`/`full`/`demo` **(planned)**
+- 🟡 pass `MORI_ADMIN_PASSWORD`·`MORI_INGEST_TOKEN` into the container + `/health` insecure warning **(done)** → remove Wazuh hard-coded creds, `:?required` on weak defaults, `MORI_DEMO_SEED` default 0 **(planned)**
+- 🔲 move root temp files (`_scan_*`, `_routes_*`) → `tools/`, README-code sync (route snapshot in CI)
+- ✅ **Done when**: 0 plaintext passwords in the repo · `docker compose -f … lite up` boots in one line
 
-| ID | Work | Status |
-|---|---|---|
-| **J** (foundation) | Split `server.py` into modules — i18n / templates / auth / payloads + a `routes/` package (16 domain modules, `RouteContext`). **2,962→888 lines (-70%)**, lossless-verified (OpenAPI diff · SHA · 115 tests). A refactor that lowers regression risk for the persistence/poller work that follows | ✅ Done |
-| **M2-1** (M-series) | Persist the 6 UI operational state stores (`asset_owners`·`asset_audit_log`·`vuln_actions`·`triage_store`·`incident_store`·`user_profiles`) to PostgreSQL — `schema/003_*` + `repositories/state_*.py` (StateRepository) cache-aside + write-through. Round-trip integration test passes (`tests/test_state_persistence.py`), 120 tests green | ✅ Done |
-| **N-1** (config onboarding) | Config-based source onboarding — `config/sources.yaml` schema + loader (per-source `enabled`/`url`/`username`/`token_env`/`input_dir`). Secrets referenced only by `*_env` env-var names (never stored in the repo/DB) | 🔲 New |
-| **N-2** (connection metadata) | Source connection metadata store — persist per-source enabled flag, last sync time, last failure reason (extends `source_syncs`) | 🔲 New |
-| **N-3** (guardrails) | Read-only onboarding guardrails — no agent install, no change to existing tool config, isolated source failure, freshness surfacing (healthy/warning/stale) | 🔲 New |
-| **M2-2** | Zabbix API polling integration — problem → ingestion → alert → triage → incident → evidence → resolve | ✅ **Done (verified against real API)** |
-| **M2-3** | Fleet / Wazuh REST poller connection — host/osquery·alert → asset/triage, reflect `source_syncs` freshness | 🔲 Parser·Collector ready |
-| **M2-4** | Trivy JSON ingestion automation — `trivy-*-scan.sh` output → vulnerabilities → vuln_actions → reports | 🟡 Automation packaging |
-| **M2-5** | Add CVE Lite collector — JS/TS lockfile dependency vulnerability source (`source=cve_lite`, direct/transitive, fix_command) | 🔲 New |
-| **M2-6** | MORI → Zabbix Template/export — `templates/zabbix/mori-soc-template.yaml` + `mori-zabbix-export-metrics.py` (critical/high/pending/lag metrics) | 🔲 New |
+### Phase 1 — Structure + persistence · ✅ *mostly done*
+- ✅ **J**: `server.py` split into `routes/` (16 domains) + `RouteContext`, 2,962→888 lines (-70%), lossless-verified
+- ✅ **M2-1 + R-2**: 6 UI operational stores + risk register → PostgreSQL cache-aside + write-through (`schema/003·004`)
+- ✅ **Done when**: triage/incident/owner/plan survive a restart (round-trip test passes)
 
-### Phase 3 — Guided Investigation & Evidence Assistant
+### Phase 2 — Control catalog (identity pivot) · 🔲 *next, the core*
+- `controls/` open data — ISMS-P 101 + ISO 93 + N:M mapping + `common_defects` (v1: full skeleton + 60~70 mappings + 10~15 deep defect cases)
+- `schema/007` control tables + YAML→DB sync on boot + evidence mapper
+- PDCA screen → **control-tree screen** (evidence-source status / last update / owner / evidence PDF button)
+- dashboard **GRC preset** (today's work queue / evidence gaps / audit D-day), catalog community release
+- ✅ **Done when**: NLQ "show me evidence for 2.11.2" → real-data answer · PDF in one click from the control screen
 
-*Based on the accumulated data/evidence, help a single security operator decide "what to look at first." Not AI auto-patching — limited to investigation/summary assistance.*
+### Phase 3 — Complete collection, realize "see it all in one place" · 🟡 *partial*
+- ✅ **M2-2** Zabbix poller verified against real API · ✅ Trivy/CSOP remote push (`/ingest/trivy`·`/ingest/evidence`)
+- 🔲 Trivy auto-scan by default (`MORI_ENABLE_TRIVY` on + schedule)
+- 🔲 **Wazuh poller (new)** — detection events → MORI alert queue → handling history as 2.11.3 evidence (compose service def first)
+- 🔲 **Fleet poller (new)** — asset inventory → MORI asset sync (manual → auto-discovery, 1.2.1 evidence)
+- 🔲 tie Loki retention to controls — statutory access-log retention (1yr default, 2yr for unique-ID data) surfaced as 2.9.4 evidence
+- 🔲 ship 5 Grafana dashboard JSONs (1/source + 1 unified) — control screen → Grafana panel deep link
+- ✅ **Done when**: in the full profile, all 5 sources map onto control screens
 
-| ID | Work |
-|---|---|
-| **P3-1** | Evidence Gap Detector — Critical/High without a plan, exceptions expiring soon, completed items without a rescan, untriaged alerts, closed incidents without an exported report |
-| **P3-2** | Guided Triage Summary — alert/finding summary + affected assets · related CVEs/triggers · recent observations · recommended check points |
-| **P3-3** | Multi-source Investigation Pivot — Zabbix problem → host → Fleet/Wazuh/Trivy → user/ip/process → expand to same owner/team assets |
-| **P3-4** | Audit Report Draft — monthly Critical/High · remediated/pending/exception · evidence gaps · SLA breaches summary draft |
-| **P3-5** | Control Mapping Assistant — map Findings/Incidents to ISMS-P / ISO 27001 control candidates (applied after operator approval) |
+### Phase 4 — Complete audit readiness · 🔲
+- Risk assessment UI (`schema/004`): asset importance × threat × real vuln → treatment decision + approval record
+- **Evidence Gap Detector** (new intent `evidence_gaps`) — expired freshness / exceptions expiring / Critical without a plan
+- SoA generator · **Evidence Pack** (P4-3): per-control evidence bundle PDF · defect tracker (finding → remediation → completion evidence)
+- ✅ **Done when**: a "mock audit scenario" — every document an auditor asks for is exportable from the tool
 
-> 🚫 **Phase 3 hard limits**: no auto-patch / auto-exception-approval / auto-incident-close. **Judgment assistance only.**
+### Phase 5 — Adoption · 🔲 *(can run in parallel)*
+- onboarding wizard (scope → assets → owners, first value in 30 min) · Korean-first docs + "Top-N ISMS-P defects & fixes" content · 2–3 pilot orgs
 
-### Phase 4 — Deployment, Ecosystem & Small-Team Adoption
-
-*Real adoptability and ecosystem. So that a small/mid org with no dedicated infra staff can drive ISMS-P/ISO 27001 compliance with a single security operator.*
-
-| ID | Work |
-|---|---|
-| **P4-1** | MORI Lite packaging — lightweight stack (API/UI + PostgreSQL + Trivy + CVE Lite) vs MORI Full Demo (Zabbix/Fleet/Wazuh/Loki/Grafana) |
-| **P4-2** | Zabbix-only Adoption Pack — Zabbix template + export script + `docs/zabbix-only.md` (Trivy/CVE Lite results → zabbix_sender without a full MORI install) |
-| **P4-3** | ISMS-P / ISO 27001 Evidence Pack — per-control sample reports (`docs/evidence-pack/`): vulnerability management, logging/monitoring, monthly report, exception register, action plan |
-| **P4-4** | Integration Marketplace structure — organize `integrations/{zabbix,trivy,cvelite,wazuh,fleet,ldap}` connector structure/docs (real plugin system later) |
-| **P4-5** | Operational hardening — `SECURITY.md`·`CONTRIBUTING.md`·`CHANGELOG.md` ✅, CI (tests) ✅ / HTTPS·reverse proxy, LDAP/AD rollout, upgrade guide, release checklist 🔲 |
-| **P4-6** | Demo scenario / video — compose up → Trivy import → Zabbix alert → CVE plan → exception → Incident → audit PDF → check via Zabbix template (5–8 min) |
+> 🚫 **AI hard limits** (collection/investigation assistance only): no auto-patch / auto-exception-approval / auto-incident-close.
 
 ### Other backlog
-
-- **Webhook integrations** — Slack / Teams / Email notifications (`SLACK_WEBHOOK_URL` slot exists only)
+- **Webhook integrations** — Slack / Teams / Email (`SLACK_WEBHOOK_URL` slot only)
+- **CVE Lite collector** — JS/TS lockfile dependency vulnerabilities (`source=cve_lite`)
+- **MORI → Zabbix export** — critical/high/pending/lag metrics → zabbix_sender (Zabbix-only adoption pack)
 - **SQL-based read optimization** — gradually move snapshot reads to Postgres views
 
 ---
