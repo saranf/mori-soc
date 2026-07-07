@@ -686,12 +686,13 @@ MORI SOC combines open-source security tools to provide a single ops screen, wit
 
 ### Phase 2 — Control catalog (identity pivot) · 🟡 *skeleton complete — filling in*
 > **A parallel, independent track from the pollers (Phase 3).** The catalog is domain-knowledge work with no code dependency, publishable to the community as it completes. **Prerequisite for P3-5 (Control Mapping) and P4-3 (Evidence Pack).**
-- ✅ **Full skeleton** ([`controls/`](controls/)) — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 controls** (all KO/EN titles) + 7 mappings + 5 defects. JSON Schema validation (`validate.py`) + runtime JSON artifact build
+- ✅ **Full skeleton** ([`controls/`](controls/)) — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 controls** (all KO/EN titles) + **61 N:M mappings** + 5 defects. 29 `reviewed` (evidence sources wired). JSON Schema validation (`validate.py`) + runtime JSON artifact build
 - ✅ `schema/007` control tables (KO/EN) + **catalog→DB sync on boot** (`services/control_catalog.py`)
-- ✅ **Control-tree screen** — dashboard "Control catalog" card (admin·security), framework→domain→section tree + **auto-derived lite/full coverage %** (`GET /controls/tree`)
+- ✅ **Control-tree screen** — dashboard "Control catalog" card (admin·security), framework→domain→section tree + **auto-derived lite/full coverage %** (`GET /controls/tree`, currently lite ~10% / full ~15%)
+- ✅ **Per-control evidence-pack PDF (one click)** — `GET /controls/detail/{id}/evidence.pdf`. An evidence mapper joining control + mappings + related defects to the **current live evidence-gap counts**. 📄 per control in the tree
 - ✅ dashboard **GRC preset** — today's work queue (evidence gaps) card (admin·security)
-- 🔲 Remaining: fill draft controls' intent/evidence (→reviewed) · grow to 60~70 mappings, 10~15 defects · promote `validate.py` to CI · per-control evidence PDF (evidence mapper)
-- ✅ **Done when**: NLQ "show me evidence for 2.11.2" → real-data answer · PDF in one click from the control screen
+- 🔲 Remaining: keep filling draft controls (raises coverage) · promote `validate.py` to CI · auto-collect evidence (per-source live joins)
+- ✅ **Done when**: NLQ "show me evidence for 2.11.2" → real-data answer · one-click PDF from the control screen ✅
 
 ### Phase 3 — Complete collection, realize "see it all in one place" · 🟡 *partial*
 - ✅ **M2-2** Zabbix poller verified against real API · ✅ Trivy/CSOP remote push (`/ingest/trivy`·`/ingest/evidence`)

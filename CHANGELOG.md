@@ -15,6 +15,11 @@ versions are `x.y.z-alpha.n`.
   runtime artifact so the image needs no PyYAML).
 - **Catalog→DB sync** (`schema/007`, bilingual `controls`/`control_mappings`/`control_defects`)
   run best-effort on app boot (`services/control_catalog.py`).
+- **Per-control evidence-pack PDF** (evidence mapper) — `GET /controls/detail/{id}` +
+  `.../evidence.pdf`: joins a control to its cross-mappings, related defects, and the
+  **current live evidence-gap counts**, rendered as a one-click PDF (📄 per control in the
+  tree). 29 controls enriched to `reviewed`; crossmappings grown 7 → **61** (coverage
+  lite ~10% / full ~15%).
 - **Control-tree screen** — dashboard "Control catalog" card (admin·security),
   framework→domain→section tree with **auto-derived lite/full coverage %** (`GET /controls/tree`).
 - **Evidence-gap "today's work queue"** dashboard card (admin·security) —
