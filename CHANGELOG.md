@@ -30,6 +30,11 @@ versions are `x.y.z-alpha.n`.
   controls pending · **unmapped assets (Zabbix×Fleet×Trivy reconciliation)**
   (`GET /dashboard/evidence-gaps`). Common defects link to these tiles via `mori_signal`.
 
+- **Live evidence mapper** — clicking a control in the tree fetches per-source **live
+  data** (Trivy open CVEs, Zabbix/Wazuh recent alerts + monitored hosts, Fleet assets,
+  MORI incidents/risk/audit) shown inline and in the evidence-pack PDF, with a deep-link to
+  the relevant tab. Turns "mapped" into "here is this much real evidence right now."
+
 ### Changed
 - Bilingual (KO/EN) coverage extended across the catalog, `controls/README`,
   `docs/BROWNFIELD_CONNECT`, and the README roadmap (Fleet reframed as "foundation work").

@@ -689,9 +689,9 @@ MORI SOC combines open-source security tools to provide a single ops screen, wit
 - ✅ **Full skeleton** ([`controls/`](controls/)) — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 controls** (all KO/EN titles) + **61 N:M mappings** + 5 defects. **58 `reviewed`** (evidence sources wired). JSON Schema validation (`validate.py`) + runtime JSON artifact build
 - ✅ `schema/007` control tables (KO/EN) + **catalog→DB sync on boot** (`services/control_catalog.py`)
 - ✅ **Control-tree screen** — dashboard "Control catalog" card (admin·security), framework→domain→section tree + **auto-derived lite/full coverage %** (`GET /controls/tree`, currently **lite ~24% / full ~30%**)
-- ✅ **Per-control evidence-pack PDF (one click)** — `GET /controls/detail/{id}/evidence.pdf`. An evidence mapper joining control + mappings + related defects to the **current live evidence-gap counts**. 📄 per control in the tree
+- ✅ **Click a control → live evidence + evidence-pack PDF (one click)** — opening a control in the tree wires it to **live per-source data** (e.g. 2.11.2 → real open-CVE count from Trivy, A.8.16 → last-7-day detections & monitored hosts, account controls → MORI incidents/audit). `GET /controls/detail/{id}` (+`/evidence.pdf`) — with mappings, related defects, and **current live evidence-gap counts**; click to deep-link to the relevant tab
 - ✅ dashboard **GRC preset** — today's work queue (evidence gaps) card (admin·security) · **catalog CI** (validation + JSON freshness, GitHub Actions)
-- 🔲 Remaining: keep filling draft controls (raises coverage) · auto-collect evidence (per-source live joins into the control screen)
+- 🔲 Remaining: keep filling draft controls (raises coverage) · refine per-source live joins (host↔control granularity)
 - ℹ️ **Honest coverage ceiling**: full ~25% is the share of controls the 5 technical sources produce **automated** evidence for. The rest (policy/HR/physical/privacy) are documentary-evidence territory — not force-mapped
 - ✅ **Done when**: NLQ "show me evidence for 2.11.2" → real-data answer · one-click PDF from the control screen ✅
 

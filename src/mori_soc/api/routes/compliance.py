@@ -155,13 +155,54 @@ def register_compliance(ctx: RouteContext) -> None:
         except Exception:
             return {}
 
+    def _source_metrics() -> dict[str, Any]:
+        """증적 소스별 라이브 실데이터 집계(통제 상세/PDF의 '실증적' 섹션용)."""
+        from datetime import timedelta
+        try:
+            svc = get_query_service()
+            store = svc.store
+        except Exception:
+            return {}
+        now = datetime.now(tz=timezone.utc)
+        wk = now - timedelta(days=7)
+        m: dict[str, Any] = {}
+        vulns = [v for v in getattr(store, "vulnerabilities", [])
+                 if getattr(v, "source", "") == "trivy" and getattr(v, "resolved_at", None) is None]
+        crit = sum(1 for v in vulns if getattr(v, "severity", "") == "critical")
+        high = sum(1 for v in vulns if getattr(v, "severity", "") == "high")
+        m["trivy"] = {"count": len(vulns),
+                      "summary_ko": f"미조치 취약점 {len(vulns)}건 (Critical {crit}·High {high})",
+                      "summary_en": f"{len(vulns)} open vulns (Critical {crit} · High {high})"}
+        alerts = list(getattr(store, "alerts", []))
+        zbx7 = sum(1 for a in alerts if getattr(a, "source", "") == "zabbix" and getattr(a, "observed_at", now) >= wk)
+        wz7 = sum(1 for a in alerts if getattr(a, "source", "") == "wazuh" and getattr(a, "observed_at", now) >= wk)
+        fleet_hosts = zbx_hosts = 0
+        try:
+            for chk in (build_crosscheck_payload(svc).get("checks", []) or []):
+                if chk.get("id") == "zabbix_vs_fleet":
+                    fleet_hosts = int(chk.get("fleet_count", 0) or 0)
+                    zbx_hosts = int(chk.get("zabbix_count", 0) or 0)
+        except Exception:
+            pass
+        m["zabbix"] = {"count": zbx7, "summary_ko": f"최근 7일 경보 {zbx7}건 · 모니터링 자산 {zbx_hosts}",
+                       "summary_en": f"{zbx7} alerts (7d) · {zbx_hosts} monitored hosts"}
+        m["wazuh"] = {"count": wz7, "summary_ko": f"최근 7일 탐지 {wz7}건", "summary_en": f"{wz7} detections (7d)"}
+        m["fleet"] = {"count": fleet_hosts, "summary_ko": f"수집 자산 {fleet_hosts}", "summary_en": f"{fleet_hosts} collected assets"}
+        m["loki"] = {"summary_ko": "로그 보존 정책 적용(Loki)", "summary_en": "log retention configured (Loki)"}
+        inc = len(ctx.incidents or {})
+        risk = len(ctx.risk_register or {})
+        audit = len(ctx.action_audit_log or [])
+        m["mori"] = {"count": inc, "summary_ko": f"인시던트 {inc} · 위험평가 {risk} · 감사이벤트 {audit}",
+                     "summary_en": f"{inc} incidents · {risk} risk assessments · {audit} audit events"}
+        return m
+
     @app.get("/controls/detail/{control_id}", tags=["Compliance"])
     def control_detail(control_id: str, request: Request) -> dict[str, Any]:
-        """한 통제의 증적 상세(매핑·결함·증적 소스 + 현재 공백 수). admin·security 전용."""
+        """한 통제의 증적 상세(매핑·결함·증적 소스 + 라이브 실증적 + 현재 공백). admin·security 전용."""
         if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
             raise HTTPException(status_code=403, detail="control detail requires admin or security role")
         from mori_soc.services.control_catalog import build_control_detail
-        detail = build_control_detail(control_id, gaps=_live_gaps())
+        detail = build_control_detail(control_id, gaps=_live_gaps(), metrics=_source_metrics())
         if detail is None:
             raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
         return detail
@@ -173,7 +214,7 @@ def register_compliance(ctx: RouteContext) -> None:
             raise HTTPException(status_code=403, detail="control evidence PDF requires admin or security role")
         from mori_soc.services.control_catalog import control_evidence_pdf
         try:
-            pdf = control_evidence_pdf(control_id, gaps=_live_gaps())
+            pdf = control_evidence_pdf(control_id, gaps=_live_gaps(), metrics=_source_metrics())
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         if pdf is None:

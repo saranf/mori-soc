@@ -6133,8 +6133,10 @@ def render_user_dashboard_html(
           const title = (lang==='en' ? c.title_en : c.title_ko) || c.title_ko || c.title_en || '';
           const dim = c.mapped ? '' : 'opacity:0.5;';
           const srcs = (c.evidence_sources||[]).map(badge).join('');
-          const pdf = `<a href=\"/controls/detail/${encodeURIComponent(c.id)}/evidence.pdf\" target=\"_blank\" title=\"${tt('dash.ctl.pdf','증적 팩 PDF')}\" style=\"margin-left:6px;text-decoration:none;font-size:11px\">📄</a>`;
-          return `<div style=\"padding:3px 0;${dim}\"><span style=\"color:#64748b;font-size:11px\">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${srcs}${pdf}</div>`;
+          const enc = encodeURIComponent(c.id);
+          const clickable = c.mapped ? 'cursor:pointer' : '';
+          const pdf = `<a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" title=\"${tt('dash.ctl.pdf','증적 팩 PDF')}\" style=\"margin-left:6px;text-decoration:none;font-size:11px\">📄</a>`;
+          return `<div style=\"padding:3px 0;${dim}\"><span onclick=\"toggleControlDetail('${enc}', this)\" style=\"${clickable}\"><span style=\"color:#64748b;font-size:11px\">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${srcs}</span>${pdf}<div class=\"ctl-detail\" style=\"display:none;margin:4px 0 8px 16px;padding:6px 10px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;font-size:12px\"></div></div>`;
         };
         let html = '';
         (data.tree || []).forEach(fw => {
@@ -6155,6 +6157,39 @@ def render_user_dashboard_html(
       } catch(e) { box.innerHTML = `<div class=\"empty\">${tt('dash.ctl.err','통제 카탈로그를 불러오지 못했습니다.')}</div>`; }
     }
     window.loadControlTree = loadControlTree;
+    async function toggleControlDetail(enc, el) {
+      const box = el.parentElement.querySelector('.ctl-detail');
+      if (!box) return;
+      if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+      box.style.display = 'block';
+      box.innerHTML = `<span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span>`;
+      try {
+        const res = await fetch('/controls/detail/' + enc);
+        if (!res.ok) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.err','통제 카탈로그를 불러오지 못했습니다.')}</span>`; return; }
+        const d = await res.json();
+        const lang = (window.lang === 'en') ? 'en' : 'ko';
+        let h = '';
+        if ((d.evidence_live||[]).length) {
+          h += `<div style=\"font-weight:700;color:#5eead4;margin-bottom:2px\">${tt('dash.ctl.live','실증적 (현재)')}</div>`;
+          h += d.evidence_live.map(e => {
+            const lbl = (lang==='en'?e.label_en:e.label_ko) || e.source;
+            const sm = (lang==='en'?e.summary_en:e.summary_ko) || '-';
+            return `<div onclick=\"switchTab('${e.tab}')\" style=\"cursor:pointer;color:#cbd5e1;padding:1px 0\">• ${escapeHtml(lbl)}: <b>${escapeHtml(sm)}</b> ↗</div>`;
+          }).join('');
+        }
+        if ((d.mapped_to||[]).length) {
+          h += `<div style=\"font-weight:700;color:#93c5fd;margin:6px 0 2px\">${tt('dash.ctl.map','매핑')}</div>`;
+          h += d.mapped_to.map(m => `<div style=\"color:#94a3b8\">↔ ${escapeHtml(m.id)} ${escapeHtml((lang==='en'?m.title_en:m.title_ko)||'')} <span style=\"font-size:10px\">(${escapeHtml(m.relation)})</span></div>`).join('');
+        }
+        if ((d.defects||[]).length) {
+          h += `<div style=\"font-weight:700;color:#f59e0b;margin:6px 0 2px\">${tt('dash.ctl.def','관련 결함')}</div>`;
+          h += d.defects.map(x => { const gc=(typeof x.gap_count==='number')?` · ${tt('dash.ctl.gap','현재 공백')} ${x.gap_count}`:''; return `<div style=\"color:#cbd5e1\">⚠ ${escapeHtml((lang==='en'?x.title_en:x.title_ko)||'')}${escapeHtml(gc)}</div>`; }).join('');
+        }
+        h += `<div style=\"margin-top:6px\"><a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" style=\"color:#38bdf8;text-decoration:none\">📄 ${tt('dash.ctl.pdf','증적 팩 PDF')}</a></div>`;
+        box.innerHTML = h || `<span class=\"empty\">—</span>`;
+      } catch(e) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.err','통제 카탈로그를 불러오지 못했습니다.')}</span>`; }
+    }
+    window.toggleControlDetail = toggleControlDetail;
     window._applyEvidenceGating = _applyEvidenceGating;
     async function loadEvidenceGaps() {
       const box = document.getElementById('evidence_gap_box');

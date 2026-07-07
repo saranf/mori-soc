@@ -96,16 +96,41 @@ def build_tree(catalog: dict[str, Any] | None = None) -> dict[str, Any]:
     }
 
 
-def build_control_detail(control_id: str, gaps: dict[str, Any] | None = None) -> dict[str, Any] | None:
-    """한 통제의 증적 상세 — 통제 + 크로스매핑 + 관련 결함(+현재 증적 공백 수).
+# 증적 소스 → UI 라벨/딥링크 탭
+_SOURCE_META: dict[str, dict[str, str]] = {
+    "trivy": {"ko": "Trivy 취약점", "en": "Trivy vulnerabilities", "tab": "compliance"},
+    "zabbix": {"ko": "Zabbix 경보·자산", "en": "Zabbix alerts & assets", "tab": "triage"},
+    "wazuh": {"ko": "Wazuh 탐지", "en": "Wazuh detections", "tab": "triage"},
+    "fleet": {"ko": "Fleet 자산", "en": "Fleet assets", "tab": "assets"},
+    "loki": {"ko": "Loki 로그", "en": "Loki logs", "tab": "assets"},
+    "mori": {"ko": "MORI 운영 기록", "en": "MORI operational records", "tab": "incidents"},
+}
 
-    evidence mapper 의 1차 형태: 통제를 그 증적 소스·매핑·심사 결함으로 연결하고,
-    결함의 ``mori_signal`` 을 대시보드 evidence-gaps 카운트(gaps)와 이어붙인다.
+
+def build_control_detail(control_id: str, gaps: dict[str, Any] | None = None,
+                         metrics: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """한 통제의 증적 상세 — 통제 + 크로스매핑 + 관련 결함 + **라이브 실증적**.
+
+    evidence mapper: 통제를 그 증적 소스·매핑·심사 결함으로 연결하고, ``metrics``
+    (소스별 실데이터 집계)를 붙여 "매핑됨"을 넘어 "지금 이만큼의 실증적이 있다"를
+    보여준다. 결함의 ``mori_signal`` 은 대시보드 evidence-gaps 카운트(gaps)와 이어붙인다.
     """
     cat = load_catalog()
     control = next((c for c in cat.get("controls", []) if c.get("id") == control_id), None)
     if control is None:
         return None
+
+    metrics = metrics or {}
+    evidence_live: list[dict[str, Any]] = []
+    for s in control.get("evidence_sources") or []:
+        meta = _SOURCE_META.get(s, {})
+        m = metrics.get(s) or {}
+        evidence_live.append({
+            "source": s, "label_ko": meta.get("ko", s), "label_en": meta.get("en", s),
+            "tab": meta.get("tab", ""),
+            "summary_ko": m.get("summary_ko", ""), "summary_en": m.get("summary_en", ""),
+            "count": m.get("count"),
+        })
 
     mapped: list[dict[str, Any]] = []
     by_id = {c.get("id"): c for c in cat.get("controls", [])}
@@ -131,12 +156,14 @@ def build_control_detail(control_id: str, gaps: dict[str, Any] | None = None) ->
             defects.append({**d, "gap_count": gap_map.get(sig) if sig else None})
 
     return {"control": control, "mapped_to": mapped, "defects": defects,
+            "evidence_live": evidence_live,
             "generated_at": datetime.now(tz=timezone.utc).isoformat()}
 
 
-def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None) -> bytes | None:
+def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
+                         metrics: dict[str, Any] | None = None) -> bytes | None:
     """통제 증적 팩 PDF (reportlab). 통제 미존재 시 None."""
-    detail = build_control_detail(control_id, gaps=gaps)
+    detail = build_control_detail(control_id, gaps=gaps, metrics=metrics)
     if detail is None:
         return None
     try:
@@ -184,6 +211,12 @@ def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None) ->
         story.append(Paragraph(esc(c.get("evidence_hint_ko")), body))
     if c.get("evidence_hint_en"):
         story.append(Paragraph(esc(c.get("evidence_hint_en")), small))
+
+    if detail.get("evidence_live"):
+        story.append(Paragraph("실증적 (현재) / Live evidence", h2))
+        for e in detail["evidence_live"]:
+            s = e.get("summary_ko") or "— (수집 데이터 없음)"
+            story.append(Paragraph(f"• {esc(e.get('label_ko'))}: {esc(s)}", body))
 
     if detail["mapped_to"]:
         story.append(Paragraph("크로스매핑 / Cross-mapping", h2))
