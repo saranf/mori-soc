@@ -684,12 +684,13 @@ MORI SOC combines open-source security tools to provide a single ops screen, wit
 - ✅ **M2-1 + R-2**: 6 UI operational stores + risk register → PostgreSQL cache-aside + write-through (`schema/003·004`)
 - ✅ **Done when**: triage/incident/owner/plan survive a restart (round-trip test passes)
 
-### Phase 2 — Control catalog (identity pivot) · 🟡 *started (skeleton) — the core next*
-> **A parallel, independent track from the pollers (Phase 3).** The catalog is domain-knowledge work with no code dependency, so you can fill it on days when poller coding is blocked, and it's an independent asset publishable to the community the moment it's done. **It is a prerequisite for P3-5 (Control Mapping) and P4-3 (Evidence Pack)** — you need control data before you can map to it.
-- 🟡 `controls/` open data — ISMS-P 101 + ISO 27001:2022 Annex A 93 as YAML + N:M crossmapping + `common_defects`. **Skeleton · JSON Schema · samples started** ([`controls/`](controls/)); v1 target: full skeleton + 60~70 mappings + 10~15 deep defect cases (no bulk mapping — solo dev drift)
-- 🔲 JSON Schema validation CI (YAML validity) + `schema/007` control tables + YAML→DB sync on boot + evidence mapper
-- 🔲 PDCA screen → **control-tree screen** (evidence-source status / last update / owner / evidence PDF button)
-- 🟡 dashboard **GRC preset** — today's work queue (evidence gaps) card started (admin·security); audit D-day after catalog wiring
+### Phase 2 — Control catalog (identity pivot) · 🟡 *skeleton complete — filling in*
+> **A parallel, independent track from the pollers (Phase 3).** The catalog is domain-knowledge work with no code dependency, publishable to the community as it completes. **Prerequisite for P3-5 (Control Mapping) and P4-3 (Evidence Pack).**
+- ✅ **Full skeleton** ([`controls/`](controls/)) — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 controls** (all KO/EN titles) + 7 mappings + 5 defects. JSON Schema validation (`validate.py`) + runtime JSON artifact build
+- ✅ `schema/007` control tables (KO/EN) + **catalog→DB sync on boot** (`services/control_catalog.py`)
+- ✅ **Control-tree screen** — dashboard "Control catalog" card (admin·security), framework→domain→section tree + **auto-derived lite/full coverage %** (`GET /controls/tree`)
+- ✅ dashboard **GRC preset** — today's work queue (evidence gaps) card (admin·security)
+- 🔲 Remaining: fill draft controls' intent/evidence (→reviewed) · grow to 60~70 mappings, 10~15 defects · promote `validate.py` to CI · per-control evidence PDF (evidence mapper)
 - ✅ **Done when**: NLQ "show me evidence for 2.11.2" → real-data answer · PDF in one click from the control screen
 
 ### Phase 3 — Complete collection, realize "see it all in one place" · 🟡 *partial*

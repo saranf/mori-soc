@@ -1,5 +1,7 @@
 # 브라운필드 연결 — 기존 Zabbix/Wazuh/Fleet 위에 MORI 얹기
 
+**🇰🇷 한국어** · [🇬🇧 English](./BROWNFIELD_CONNECT.en.md)
+
 이미 운영 중인 모니터링·보안 도구가 있는 환경에서, **MORI 코어만 띄우고 `.env` 설정만으로** 기존 인프라에 read-only로 연결하는 방법입니다. MORI가 자체 번들 Zabbix/Fleet/Wazuh를 띄울 필요가 없습니다.
 
 ## TL;DR

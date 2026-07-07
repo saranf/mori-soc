@@ -684,12 +684,13 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 - ✅ **M2-1 + R-2**: UI 운영 상태 6종 + 위험성 평가 대장 → PostgreSQL cache-aside + write-through(`schema/003·004`, `state_*.py`)
 - ✅ **완료 기준**: 재시작 후 트리아지/인시던트/소유자/조치계획 생존 라운드트립 테스트 통과
 
-### Phase 2 — 통제 카탈로그 (제품 정체성 전환) · 🟡 *착수(골격) — 다음 핵심*
-> **폴러(Phase 3)와 병렬 독립 트랙.** 카탈로그는 코드 의존성이 없는 도메인 지식 작업이라, 폴러 코딩이 막히는 날 번갈아 채울 수 있고 완성되는 대로 즉시 커뮤니티에 공개 가능한 독립 자산이다. **P3-5(Control Mapping)·P4-3(Evidence Pack)의 전제조건** — 매핑할 통제 데이터가 먼저 있어야 성립한다.
-- 🟡 `controls/` 오픈 데이터 — ISMS-P 101 + ISO 27001:2022 Annex A 93 YAML 구조화 + N:M 크로스매핑 + `common_defects`. **골격·JSON Schema·샘플 착수됨**([`controls/`](controls/)); 1차 목표는 전 항목 골격 + 매핑 60~70건 + 결함사례 10~15건 깊게(전량 매핑 금지 — 혼자라 늘어짐)
-- 🔲 JSON Schema 검증 CI(YAML 유효성) + `schema/007` 통제 테이블 + 기동 시 YAML→DB 싱크 + evidence mapper
-- 🔲 PDCA 화면 → **인증기준 트리 화면**(증적 소스 상태 / 마지막 갱신 / 담당자 / 증적 PDF 버튼)
-- 🟡 대시보드 **GRC 프리셋** — 오늘의 작업 큐(증적 공백) 카드 착수됨(admin·security). 심사 D-day는 카탈로그 연결 후
+### Phase 2 — 통제 카탈로그 (제품 정체성 전환) · 🟡 *골격 완료 — 채우는 중*
+> **폴러(Phase 3)와 병렬 독립 트랙.** 카탈로그는 코드 의존성이 없는 도메인 지식 작업이라, 폴러 코딩이 막히는 날 번갈아 채울 수 있고 완성되는 대로 즉시 커뮤니티에 공개 가능한 독립 자산이다. **P3-5(Control Mapping)·P4-3(Evidence Pack)의 전제조건.**
+- ✅ **전 항목 골격**([`controls/`](controls/)) — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 통제**(모두 한/영 제목) + N:M 매핑 7 + 결함 5. JSON Schema 검증(`validate.py`) + 런타임 JSON 아티팩트 빌드
+- ✅ `schema/007` 통제 테이블(한/영) + **기동 시 카탈로그→DB 싱크**(`services/control_catalog.py`)
+- ✅ **인증기준 트리 화면** — 대시보드 '통제 카탈로그' 카드(admin·security), framework→domain→section 트리 + **lite/full 커버리지 % 자동 산출**(`GET /controls/tree`)
+- ✅ 대시보드 **GRC 프리셋** — 오늘의 작업 큐(증적 공백) 카드(admin·security)
+- 🔲 남은 일: draft 통제 intent/evidence 채우기(→reviewed) · 매핑 60~70·결함 10~15 확장 · `validate.py`→CI 승격 · 통제별 증적 PDF(evidence mapper)
 - ✅ **완료 기준**: 자연어 "2.11.2 증적 보여줘" → 실데이터 응답 · 통제 화면에서 PDF 1클릭
 
 ### Phase 3 — 수집 완성, "한방에 보기" 실현 · 🟡 *부분*

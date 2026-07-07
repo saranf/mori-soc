@@ -4,6 +4,29 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.8.0-alpha.1] — 2026-07-07 — Control Catalog (Phase 2 skeleton) + Evidence-Gap Dashboard
+
+### Added
+- **Control catalog** (`controls/`) — the Phase 2 identity pivot. ISMS-P 2023 (101) +
+  ISO 27001:2022 Annex A (93) = **194 controls**, all with KO/EN titles, plus N:M
+  crossmapping and common-defect cases. JSON Schema (draft-07) for control/mapping/defect,
+  a stdlib+PyYAML `validate.py` (schema + cross-reference integrity), a full-skeleton
+  generator, and a YAML→JSON build (`src/mori_soc/data/controls_catalog.json`, a committed
+  runtime artifact so the image needs no PyYAML).
+- **Catalog→DB sync** (`schema/007`, bilingual `controls`/`control_mappings`/`control_defects`)
+  run best-effort on app boot (`services/control_catalog.py`).
+- **Control-tree screen** — dashboard "Control catalog" card (admin·security),
+  framework→domain→section tree with **auto-derived lite/full coverage %** (`GET /controls/tree`).
+- **Evidence-gap "today's work queue"** dashboard card (admin·security) —
+  unremediated Critical/High · exceptions expiring (D-7) · untriaged alerts · overdue ·
+  controls pending · **unmapped assets (Zabbix×Fleet×Trivy reconciliation)**
+  (`GET /dashboard/evidence-gaps`). Common defects link to these tiles via `mori_signal`.
+
+### Changed
+- Bilingual (KO/EN) coverage extended across the catalog, `controls/README`,
+  `docs/BROWNFIELD_CONNECT`, and the README roadmap (Fleet reframed as "foundation work").
+- Removed the CSOP evidence-events UI card (the `/ingest`·`/evidence` APIs remain).
+
 ## [v0.7.0-alpha.1] — 2026-07-07 — CSOP Evidence Ingest + Brownfield Mode
 
 ### Added
