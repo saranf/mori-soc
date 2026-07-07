@@ -5,5 +5,7 @@ domain: "2. 보호대책 요구사항"
 section: "2.12 재해복구"
 title_ko: "재해 복구 시험 및 개선"
 title_en: "Disaster-recovery testing and improvement"
-evidence_sources: []
-status: "draft"
+intent_ko: "재해 복구 시험을 수행하고 결과로 절차를 개선한다."
+intent_en: "Run disaster-recovery tests and improve procedures from the results."
+evidence_sources: [mori]
+status: reviewed

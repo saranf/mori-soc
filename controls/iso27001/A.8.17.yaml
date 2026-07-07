@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "시각 동기화"
 title_en: "Clock synchronization"
-evidence_sources: []
-status: "draft"
+intent_ko: "시스템 시각 동기화를 점검한다."
+intent_en: "Check clock synchronization across systems."
+evidence_sources: [zabbix]
+status: reviewed

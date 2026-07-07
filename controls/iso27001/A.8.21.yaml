@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "네트워크 서비스의 보안"
 title_en: "Security of network services"
-evidence_sources: []
-status: "draft"
+intent_ko: "네트워크 서비스의 보안·가용성을 모니터링한다."
+intent_en: "Monitor security and availability of network services."
+evidence_sources: [zabbix]
+status: reviewed

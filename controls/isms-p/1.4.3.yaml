@@ -5,5 +5,7 @@ domain: "1. 관리체계 수립 및 운영"
 section: "1.4 관리체계 점검 및 개선"
 title_ko: "관리체계 개선"
 title_en: "Management-system improvement"
-evidence_sources: []
-status: "draft"
+intent_ko: "점검 결과를 반영해 관리체계를 개선한다."
+intent_en: "Improve the management system based on review findings."
+evidence_sources: [mori]
+status: reviewed

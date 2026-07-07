@@ -686,12 +686,13 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 
 ### Phase 2 — 통제 카탈로그 (제품 정체성 전환) · 🟡 *골격 완료 — 채우는 중*
 > **폴러(Phase 3)와 병렬 독립 트랙.** 카탈로그는 코드 의존성이 없는 도메인 지식 작업이라, 폴러 코딩이 막히는 날 번갈아 채울 수 있고 완성되는 대로 즉시 커뮤니티에 공개 가능한 독립 자산이다. **P3-5(Control Mapping)·P4-3(Evidence Pack)의 전제조건.**
-- ✅ **전 항목 골격**([`controls/`](controls/)) — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 통제**(모두 한/영 제목) + **N:M 매핑 61** + 결함 5. 29건 `reviewed`(증적 소스 연결). JSON Schema 검증(`validate.py`) + 런타임 JSON 아티팩트 빌드
+- ✅ **전 항목 골격**([`controls/`](controls/)) — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 통제**(모두 한/영 제목) + **N:M 매핑 61** + 결함 5. **48건 `reviewed`**(증적 소스 연결). JSON Schema 검증(`validate.py`) + 런타임 JSON 아티팩트 빌드
 - ✅ `schema/007` 통제 테이블(한/영) + **기동 시 카탈로그→DB 싱크**(`services/control_catalog.py`)
-- ✅ **인증기준 트리 화면** — 대시보드 '통제 카탈로그' 카드(admin·security), framework→domain→section 트리 + **lite/full 커버리지 % 자동 산출**(`GET /controls/tree`, 현재 lite ~10%·full ~15%)
+- ✅ **인증기준 트리 화면** — 대시보드 '통제 카탈로그' 카드(admin·security), framework→domain→section 트리 + **lite/full 커버리지 % 자동 산출**(`GET /controls/tree`, 현재 **lite ~19%·full ~25%**)
 - ✅ **통제별 증적 팩 PDF(1클릭)** — `GET /controls/detail/{id}/evidence.pdf`. 통제+매핑+관련 결함에 **현재 증적 공백 수(live)**를 이어붙이는 evidence mapper. 트리에서 통제별 📄
-- ✅ 대시보드 **GRC 프리셋** — 오늘의 작업 큐(증적 공백) 카드(admin·security)
-- 🔲 남은 일: draft 통제 계속 채우기(커버리지 ↑) · `validate.py`→CI 승격 · 증적 자동 수집(소스별 라이브 조인)
+- ✅ 대시보드 **GRC 프리셋** — 오늘의 작업 큐(증적 공백) 카드(admin·security) · **카탈로그 CI**(검증 + JSON 신선도, GitHub Actions)
+- 🔲 남은 일: draft 통제 계속 채우기(커버리지 ↑) · 증적 자동 수집(소스별 라이브 조인 → 통제 화면에 실데이터 직결)
+- ℹ️ **커버리지 상한 정직 안내**: full ~25%는 5개 기술 소스가 **자동 증적**을 만드는 통제 비율. 나머지(정책·인적·물리·개인정보)는 문서 증적 영역으로, 억지 매핑하지 않는다
 - ✅ **완료 기준**: 자연어 "2.11.2 증적 보여줘" → 실데이터 응답 · 통제 화면에서 PDF 1클릭 ✅
 
 ### Phase 3 — 수집 완성, "한방에 보기" 실현 · 🟡 *부분*

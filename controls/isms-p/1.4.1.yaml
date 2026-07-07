@@ -5,5 +5,7 @@ domain: "1. 관리체계 수립 및 운영"
 section: "1.4 관리체계 점검 및 개선"
 title_ko: "법적 요구사항 준수 검토"
 title_en: "Legal-requirement compliance review"
-evidence_sources: []
-status: "draft"
+intent_ko: "법적 요구사항 준수 여부를 정기 검토하고 결과를 기록한다."
+intent_en: "Periodically review legal-requirement compliance and record results."
+evidence_sources: [mori]
+status: reviewed

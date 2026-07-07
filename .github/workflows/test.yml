@@ -38,3 +38,28 @@ jobs:
           PYTHONPATH: src
         # Postgres-backed tests self-skip when MORI_DATABASE_URL is unset.
         run: python -m unittest discover -s tests -p "test_*.py" -v
+
+  catalog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate control catalog (schema + cross-references)
+        run: python controls/validate.py
+
+      - name: Verify runtime JSON is in sync with YAML
+        # Rebuild the committed artifact; fail if it differs (someone edited YAML
+        # without re-running controls/_build_catalog_json.py).
+        run: |
+          python controls/_build_catalog_json.py
+          git diff --exit-code -- src/mori_soc/data/controls_catalog.json \
+            || { echo "::error::controls_catalog.json is stale — run 'python controls/_build_catalog_json.py' and commit"; exit 1; }

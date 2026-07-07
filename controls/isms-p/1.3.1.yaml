@@ -5,5 +5,7 @@ domain: "1. 관리체계 수립 및 운영"
 section: "1.3 관리체계 운영"
 title_ko: "보호대책 구현"
 title_en: "Implementation of protective measures"
-evidence_sources: []
-status: "draft"
+intent_ko: "선정한 보호대책을 구현하고 구현 현황을 관리한다."
+intent_en: "Implement selected protective measures and track implementation status."
+evidence_sources: [mori]
+status: reviewed

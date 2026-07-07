@@ -5,5 +5,7 @@ domain: "2. 보호대책 요구사항"
 section: "2.9 시스템 및 서비스 운영관리"
 title_ko: "변경관리"
 title_en: "Change management"
-evidence_sources: []
-status: "draft"
+intent_ko: "변경을 통제 절차에 따라 승인·기록한다."
+intent_en: "Approve and record changes per the change-control procedure."
+evidence_sources: [mori]
+status: reviewed

@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.5 Organizational controls"
 title_ko: "정보보안의 독립적 검토"
 title_en: "Independent review of information security"
-evidence_sources: []
-status: "draft"
+intent_ko: "정보보안에 대한 독립적 검토를 수행·기록한다."
+intent_en: "Perform and record independent reviews of information security."
+evidence_sources: [mori]
+status: reviewed

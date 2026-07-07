@@ -5,5 +5,7 @@ domain: "2. 보호대책 요구사항"
 section: "2.6 접근통제"
 title_ko: "네트워크 접근"
 title_en: "Network access"
-evidence_sources: []
-status: "draft"
+intent_ko: "네트워크 접근·연결 상태를 모니터링하고 이상을 탐지한다."
+intent_en: "Monitor network access/connectivity and detect anomalies."
+evidence_sources: [zabbix, wazuh]
+status: reviewed

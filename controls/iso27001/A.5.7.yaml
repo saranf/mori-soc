@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.5 Organizational controls"
 title_ko: "위협 인텔리전스"
 title_en: "Threat intelligence"
-evidence_sources: []
-status: "draft"
+intent_ko: "위협 인텔리전스를 수집·활용해 탐지에 반영한다."
+intent_en: "Collect and use threat intelligence to inform detection."
+evidence_sources: [wazuh]
+status: reviewed

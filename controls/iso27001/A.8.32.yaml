@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "변경 관리"
 title_en: "Change management"
-evidence_sources: []
-status: "draft"
+intent_ko: "변경을 통제 절차에 따라 관리·기록한다."
+intent_en: "Manage and record changes per the change-control procedure."
+evidence_sources: [mori]
+status: reviewed

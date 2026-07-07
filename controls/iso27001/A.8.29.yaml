@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "개발 및 인수 단계의 보안 테스트"
 title_en: "Security testing in development and acceptance"
-evidence_sources: []
-status: "draft"
+intent_ko: "개발·인수 단계에서 보안 테스트를 수행한다."
+intent_en: "Perform security testing during development and acceptance."
+evidence_sources: [trivy]
+status: reviewed

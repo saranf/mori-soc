@@ -5,5 +5,7 @@ domain: "2. 보호대책 요구사항"
 section: "2.10 시스템 및 서비스 보안관리"
 title_ko: "공개서버 보안"
 title_en: "Public-server security"
-evidence_sources: []
-status: "draft"
+intent_ko: "공개서버의 취약점·가용성을 점검·모니터링한다."
+intent_en: "Scan and monitor public servers for vulnerabilities and availability."
+evidence_sources: [trivy, zabbix]
+status: reviewed

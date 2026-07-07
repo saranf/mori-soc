@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "정보처리시설의 이중화"
 title_en: "Redundancy of information processing facilities"
-evidence_sources: []
-status: "draft"
+intent_ko: "정보처리시설의 가용성·이중화를 모니터링한다."
+intent_en: "Monitor availability and redundancy of information-processing facilities."
+evidence_sources: [zabbix]
+status: reviewed

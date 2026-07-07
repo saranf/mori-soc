@@ -18,8 +18,11 @@ versions are `x.y.z-alpha.n`.
 - **Per-control evidence-pack PDF** (evidence mapper) — `GET /controls/detail/{id}` +
   `.../evidence.pdf`: joins a control to its cross-mappings, related defects, and the
   **current live evidence-gap counts**, rendered as a one-click PDF (📄 per control in the
-  tree). 29 controls enriched to `reviewed`; crossmappings grown 7 → **61** (coverage
-  lite ~10% / full ~15%).
+  tree). **48 controls** enriched to `reviewed`; crossmappings grown 7 → **61** (coverage
+  lite ~19% / full ~25% — the honest ceiling for 5 technical sources; policy/HR/physical/
+  privacy controls are documentary-evidence territory and are not force-mapped).
+- **Catalog CI** (`.github/workflows/test.yml`) — a `catalog` job runs `controls/validate.py`
+  and fails if the committed `controls_catalog.json` is stale vs the YAML.
 - **Control-tree screen** — dashboard "Control catalog" card (admin·security),
   framework→domain→section tree with **auto-derived lite/full coverage %** (`GET /controls/tree`).
 - **Evidence-gap "today's work queue"** dashboard card (admin·security) —

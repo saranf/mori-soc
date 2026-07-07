@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.5 Organizational controls"
 title_ko: "정보보안 정책·규칙·표준 준수"
 title_en: "Compliance with policies, rules and standards for information security"
-evidence_sources: []
-status: "draft"
+intent_ko: "정책·규칙·표준 준수를 점검하고 결과를 관리한다."
+intent_en: "Check compliance with policies, rules and standards and manage results."
+evidence_sources: [mori]
+status: reviewed

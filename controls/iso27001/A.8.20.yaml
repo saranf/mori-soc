@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "네트워크 보안"
 title_en: "Networks security"
-evidence_sources: []
-status: "draft"
+intent_ko: "네트워크 보안 상태를 모니터링·점검한다."
+intent_en: "Monitor and review network security."
+evidence_sources: [zabbix, wazuh]
+status: reviewed
