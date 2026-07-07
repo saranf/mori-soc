@@ -7,10 +7,10 @@ unpacking preamble (binding shared stores + the ``get_query_service`` helper fro
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from mori_soc.services.reports import (
@@ -29,6 +29,12 @@ def register_compliance(ctx: RouteContext) -> None:
     get_query_service = ctx.get_query_service
     vuln_actions = ctx.vuln_actions
     triage_store = ctx.triage_store
+    sessions = ctx.sessions
+
+    def _evidence_role(request: Request) -> str | None:
+        token = request.cookies.get("mori_session", "")
+        sess = sessions.get(token) if sessions else None
+        return sess.get("role") if sess else None
 
     @app.get("/compliance/pdca", tags=["Compliance"])
     def compliance_pdca_summary() -> dict[str, Any]:
@@ -41,6 +47,48 @@ def register_compliance(ctx: RouteContext) -> None:
             )
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"compliance pdca unavailable: {exc}") from exc
+
+    @app.get("/dashboard/evidence-gaps", tags=["Compliance"])
+    def dashboard_evidence_gaps(request: Request) -> dict[str, Any]:
+        """'오늘의 작업 큐' — 증적으로 이어지지 않은 미조치 항목 카운트.
+
+        MORI 의 '증적 층' 정체성을 대시보드에 노출한다. 위험성 평가와 동일하게
+        admin·security 롤 전용(인프라·헬프데스크는 조치 현황만). PDCA 집계
+        (build_pdca_payload)를 재사용하고, 예외 만료 임박은 vuln_actions 에서 계산.
+        """
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="evidence gaps require admin or security role")
+        try:
+            pdca = build_pdca_payload(get_query_service(), vuln_actions=vuln_actions, alert_triage=triage_store)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"evidence gaps unavailable: {exc}") from exc
+
+        now = datetime.now(tz=timezone.utc)
+        soon = now + timedelta(days=7)
+        expiring = 0
+        for action in vuln_actions.values():
+            raw = str(action.get("exception_until", "")).strip()
+            if not raw:
+                continue
+            try:
+                dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+            if now <= dt <= soon:
+                expiring += 1
+
+        src = pdca.get("pending_sources", {}) or {}
+        gaps = {
+            "vuln_pending": int(src.get("trivy", 0) or 0),
+            "exceptions_expiring": expiring,
+            "untriaged_alerts": int(src.get("alert", 0) or 0),
+            "overdue": int(pdca.get("overdue_count", 0) or 0),
+            "control_pending": int(src.get("control_check", 0) or 0),
+        }
+        return {"generated_at": pdca.get("generated_at"), "gaps": gaps,
+                "total": gaps["vuln_pending"] + gaps["untriaged_alerts"] + gaps["control_pending"]}
 
     @app.get("/compliance/pdca/pending.csv", tags=["Compliance"])
     def compliance_pdca_pending_csv() -> Any:

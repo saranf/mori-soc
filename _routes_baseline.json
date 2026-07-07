@@ -354,6 +354,16 @@
     ]
   },
   {
+    "path": "/dashboard/evidence-gaps",
+    "methods": [
+      "GET"
+    ],
+    "name": "dashboard_evidence_gaps",
+    "tags": [
+      "Compliance"
+    ]
+  },
+  {
     "path": "/dashboard/preferences",
     "methods": [
       "GET"
@@ -394,6 +404,16 @@
     ],
     "name": "swagger_ui_redirect",
     "tags": []
+  },
+  {
+    "path": "/evidence",
+    "methods": [
+      "GET"
+    ],
+    "name": "evidence_list",
+    "tags": [
+      "Sources"
+    ]
   },
   {
     "path": "/fleet/hosts",
@@ -478,6 +498,26 @@
     ]
   },
   {
+    "path": "/ingest/evidence",
+    "methods": [
+      "POST"
+    ],
+    "name": "ingest_evidence",
+    "tags": [
+      "Sources"
+    ]
+  },
+  {
+    "path": "/ingest/trivy",
+    "methods": [
+      "POST"
+    ],
+    "name": "ingest_trivy",
+    "tags": [
+      "Sources"
+    ]
+  },
+  {
     "path": "/interpret",
     "methods": [
       "POST"
@@ -546,6 +586,16 @@
     "tags": []
   },
   {
+    "path": "/vulnerabilities/risk-summary",
+    "methods": [
+      "GET"
+    ],
+    "name": "vuln_risk_summary",
+    "tags": [
+      "Vulnerabilities"
+    ]
+  },
+  {
     "path": "/vulnerabilities/{vuln_id}/action",
     "methods": [
       "GET"
@@ -581,6 +631,26 @@
       "PUT"
     ],
     "name": "vuln_plan_upsert",
+    "tags": [
+      "Vulnerabilities"
+    ]
+  },
+  {
+    "path": "/vulnerabilities/{vuln_id}/risk",
+    "methods": [
+      "GET"
+    ],
+    "name": "vuln_risk_get",
+    "tags": [
+      "Vulnerabilities"
+    ]
+  },
+  {
+    "path": "/vulnerabilities/{vuln_id}/risk",
+    "methods": [
+      "PUT"
+    ],
+    "name": "vuln_risk_upsert",
     "tags": [
       "Vulnerabilities"
     ]

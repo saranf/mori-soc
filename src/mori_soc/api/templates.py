@@ -2945,6 +2945,32 @@ def render_user_dashboard_html(
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">Critical</div><div class=\"metric-value\" style=\"color:#fca5a5\" id=\"trivy_critical\">-</div></section>
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">High</div><div class=\"metric-value\" style=\"color:#fdba74\" id=\"trivy_high\">-</div></section>
         </div>
+        <!-- 🎯 증적 공백 / 오늘의 작업 큐 (admin·security 전용) -->
+        <section class=\"card\" id=\"evidence_gap_card\">
+          <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+            <h2 style=\"margin:0\" data-i18n=\"dash.gap.title\">🎯 오늘의 작업 큐 (증적 공백)</h2>
+            <span id=\"evidence_gap_ts\" style=\"font-size:12px;color:#94a3b8\"></span>
+          </div>
+          <div class=\"subtext\" data-i18n=\"dash.gap.sub\">증적으로 이어지지 않은 미조치 항목입니다. 타일을 클릭하면 해당 탭으로 이동합니다.</div>
+          <div id=\"evidence_gap_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+        </section>
+        <!-- 📥 CSOP 증적 이벤트 (admin·security 전용) -->
+        <section class=\"card\" id=\"evidence_events_card\">
+          <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+            <h2 style=\"margin:0\" data-i18n=\"dash.evi.title\">📥 CSOP 증적 이벤트</h2>
+            <div style=\"display:flex;align-items:center;gap:8px\">
+              <select id=\"evidence_delta_filter\" onchange=\"loadEvidenceEvents()\" style=\"width:auto;padding:4px 8px;font-size:12px\">
+                <option value=\"\" data-i18n=\"dash.evi.all\">전체</option>
+                <option value=\"new\">new</option>
+                <option value=\"fixed\">fixed</option>
+                <option value=\"reopened\">reopened</option>
+              </select>
+              <button onclick=\"loadEvidenceEvents()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" data-i18n=\"dash.evi.refresh\">↻ 새로고침</button>
+            </div>
+          </div>
+          <div class=\"subtext\" data-i18n=\"dash.evi.sub\">원격 스캐너/CSOP가 push한 조치 전/후 증적(delta)입니다.</div>
+          <div id=\"evidence_events_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+        </section>
         <!-- 🎯 위험성 평가 매트릭스 (R-4) -->
         <section class=\"card\" id=\"risk_matrix_card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
@@ -6084,6 +6110,79 @@ def render_user_dashboard_html(
       if (rc) rc.style.display = _canAssessRisk() ? '' : 'none';
     }
     window._applyRiskGating = _applyRiskGating;
+    /* 증적 층(증적 공백 + CSOP 증적)도 보안 판단이라 admin·security 만. /evidence·/dashboard/evidence-gaps 서버 정책과 동일. */
+    const _EVIDENCE_ROLES = ['admin', 'security'];
+    function _canViewEvidence() { return _EVIDENCE_ROLES.includes(_currentUserRole); }
+    function _applyEvidenceGating() {
+      const show = _canViewEvidence();
+      ['evidence_gap_card', 'evidence_events_card'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = show ? '' : 'none';
+      });
+      if (show) { loadEvidenceGaps(); loadEvidenceEvents(); }
+    }
+    window._applyEvidenceGating = _applyEvidenceGating;
+    async function loadEvidenceGaps() {
+      const box = document.getElementById('evidence_gap_box');
+      if (!box) return;
+      try {
+        const res = await fetch('/dashboard/evidence-gaps');
+        if (!res.ok) { box.innerHTML = `<div class=\"empty\">${tt('dash.gap.err','증적 공백을 불러오지 못했습니다.')}</div>`; return; }
+        const data = await res.json();
+        const g = data.gaps || {};
+        const tsEl = document.getElementById('evidence_gap_ts');
+        if (tsEl && data.generated_at) tsEl.textContent = tt('dash.gap.updated','기준 ') + String(data.generated_at).slice(0,16).replace('T',' ');
+        const tiles = [
+          { key:'vuln_pending', icon:'⚠️', label: tt('dash.gap.vuln','조치 안 된 Critical/High'), tab:'compliance', color:'#f87171' },
+          { key:'exceptions_expiring', icon:'⏰', label: tt('dash.gap.exc','예외 만료 D-7 이내'), tab:'assets', color:'#fbbf24' },
+          { key:'untriaged_alerts', icon:'🚨', label: tt('dash.gap.alert','미트리아지 alert'), tab:'triage', color:'#fb923c' },
+          { key:'overdue', icon:'⌛', label: tt('dash.gap.overdue','조치 기한 초과'), tab:'compliance', color:'#f472b6' },
+          { key:'control_pending', icon:'📋', label: tt('dash.gap.control','미조치 통제'), tab:'compliance', color:'#60a5fa' },
+        ];
+        box.innerHTML = `<div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px\">` +
+          tiles.map(t => {
+            const n = Number(g[t.key] || 0);
+            return `<div onclick=\"switchTab('${t.tab}')\" role=\"button\" tabindex=\"0\" style=\"cursor:pointer;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px\">
+              <div style=\"font-size:12px;color:#94a3b8\">${t.icon} ${escapeHtml(t.label)}</div>
+              <div style=\"font-size:24px;font-weight:800;color:${n>0?t.color:'#334155'}\">${n}</div>
+            </div>`;
+          }).join('') + `</div>`;
+      } catch(e) { box.innerHTML = `<div class=\"empty\">${tt('dash.gap.err','증적 공백을 불러오지 못했습니다.')}</div>`; }
+    }
+    window.loadEvidenceGaps = loadEvidenceGaps;
+    async function loadEvidenceEvents() {
+      const box = document.getElementById('evidence_events_box');
+      if (!box) return;
+      const sel = document.getElementById('evidence_delta_filter');
+      const delta = sel ? sel.value : '';
+      try {
+        const res = await fetch('/evidence?limit=100' + (delta ? '&delta=' + encodeURIComponent(delta) : ''));
+        if (!res.ok) { box.innerHTML = `<div class=\"empty\">${tt('dash.evi.err','증적을 불러오지 못했습니다.')}</div>`; return; }
+        const data = await res.json();
+        const events = Array.isArray(data.events) ? data.events : [];
+        if (!events.length) { box.innerHTML = `<div class=\"empty\">${tt('dash.evi.none','아직 수신된 증적이 없습니다.')}</div>`; return; }
+        const deltaBadge = (d) => {
+          const c = ({fixed:'#22c55e', new:'#f87171', reopened:'#fbbf24'})[d] || '#64748b';
+          return `<span style=\"background:${c}22;color:${c};border:1px solid ${c}55;padding:1px 8px;border-radius:6px;font-size:11px\">${escapeHtml(d||'-')}</span>`;
+        };
+        box.innerHTML = `<div class=\"table-wrap\"><table style=\"width:100%;border-collapse:collapse;font-size:13px\">
+          <thead><tr style=\"text-align:left;color:#94a3b8\">
+            <th style=\"padding:6px 8px\">${tt('dash.evi.col.time','시각')}</th>
+            <th style=\"padding:6px 8px\">${tt('dash.evi.col.host','호스트')}</th>
+            <th style=\"padding:6px 8px\">${tt('dash.evi.col.delta','delta')}</th>
+            <th style=\"padding:6px 8px\">${tt('dash.evi.col.cve','CVE')}</th>
+            <th style=\"padding:6px 8px\">${tt('dash.evi.col.summary','요약')}</th>
+          </tr></thead><tbody>` +
+          events.map(ev => `<tr style=\"border-top:1px solid #1e293b\">
+            <td style=\"padding:6px 8px;color:#cbd5e1\">${escapeHtml(String(ev.received_at||'').slice(0,16).replace('T',' '))}</td>
+            <td style=\"padding:6px 8px\">${escapeHtml(ev.host_id||'-')}</td>
+            <td style=\"padding:6px 8px\">${deltaBadge(ev.delta_type)}</td>
+            <td style=\"padding:6px 8px;color:#93c5fd\">${escapeHtml(ev.cve||'-')}</td>
+            <td style=\"padding:6px 8px;color:#cbd5e1\">${escapeHtml(ev.summary||ev.artifact_name||'-')}</td>
+          </tr>`).join('') + `</tbody></table></div>`;
+      } catch(e) { box.innerHTML = `<div class=\"empty\">${tt('dash.evi.err','증적을 불러오지 못했습니다.')}</div>`; }
+    }
+    window.loadEvidenceEvents = loadEvidenceEvents;
     async function applyRoleBasedTabs() {
       try {
         const res = await fetch('/auth/me');
@@ -6117,6 +6216,7 @@ def render_user_dashboard_html(
         const badge = document.getElementById('ui_user_badge');
         if (badge && me.username) { badge.removeAttribute('data-i18n'); badge.textContent = me.username; }
         _applyRiskGating();
+        _applyEvidenceGating();
         if (document.getElementById('security_hero_body')) renderSecurityHero();
       } catch(e) { /* 비로그인 상태에서도 대시보드는 동작 */ }
     }
