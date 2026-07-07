@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.5 Organizational controls"
 title_ko: "정보보안 사고 대응"
 title_en: "Response to information security incidents"
-evidence_sources: []
-status: "draft"
+intent_ko: "정해진 절차에 따라 정보보안 사고에 대응한다."
+intent_en: "Respond to information security incidents per defined procedures."
+evidence_sources: [mori]
+status: reviewed

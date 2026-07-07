@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.5 Organizational controls"
 title_ko: "정보보안 이벤트의 평가 및 결정"
 title_en: "Assessment and decision on information security events"
-evidence_sources: []
-status: "draft"
+intent_ko: "정보보안 이벤트를 평가하여 사고 여부를 결정한다."
+intent_en: "Assess information security events and decide whether they are incidents."
+evidence_sources: [mori, wazuh]
+status: reviewed

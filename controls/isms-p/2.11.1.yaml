@@ -5,5 +5,7 @@ domain: "2. 보호대책 요구사항"
 section: "2.11 사고 예방 및 대응"
 title_ko: "사고 예방 및 대응체계 구축"
 title_en: "Incident prevention and response framework"
-evidence_sources: []
-status: "draft"
+intent_ko: "사고 예방·대응 체계를 수립하고 탐지→대응 절차를 운영한다."
+intent_en: "Establish an incident prevention/response framework and run the detect→respond procedure."
+evidence_sources: [mori, wazuh]
+status: reviewed

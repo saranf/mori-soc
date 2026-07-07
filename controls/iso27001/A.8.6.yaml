@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "용량 관리"
 title_en: "Capacity management"
-evidence_sources: []
-status: "draft"
+intent_ko: "자원 사용량을 모니터링하고 용량을 관리한다."
+intent_en: "Monitor resource usage and manage capacity."
+evidence_sources: [zabbix]
+status: reviewed

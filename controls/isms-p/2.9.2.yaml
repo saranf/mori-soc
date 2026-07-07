@@ -5,5 +5,7 @@ domain: "2. 보호대책 요구사항"
 section: "2.9 시스템 및 서비스 운영관리"
 title_ko: "성능 및 장애관리"
 title_en: "Performance and fault management"
-evidence_sources: []
-status: "draft"
+intent_ko: "시스템 성능·장애를 모니터링하고 임계치 초과·장애를 기록·대응한다."
+intent_en: "Monitor performance/faults; record and respond to threshold breaches and outages."
+evidence_sources: [zabbix]
+status: reviewed

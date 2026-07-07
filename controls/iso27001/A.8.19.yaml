@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "운영 시스템의 소프트웨어 설치"
 title_en: "Installation of software on operational systems"
-evidence_sources: []
-status: "draft"
+intent_ko: "운영 시스템에 설치된 소프트웨어를 식별·통제한다."
+intent_en: "Identify and control software installed on operational systems."
+evidence_sources: [fleet]
+status: reviewed

@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "사용자 엔드포인트 장치"
 title_en: "User endpoint devices"
-evidence_sources: []
-status: "draft"
+intent_ko: "사용자 엔드포인트 장치를 보호·점검한다."
+intent_en: "Protect and check user endpoint devices."
+evidence_sources: [fleet]
+status: reviewed

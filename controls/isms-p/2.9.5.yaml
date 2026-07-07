@@ -5,5 +5,7 @@ domain: "2. 보호대책 요구사항"
 section: "2.9 시스템 및 서비스 운영관리"
 title_ko: "로그 및 접속기록 점검"
 title_en: "Log and access-record review"
-evidence_sources: []
-status: "draft"
+intent_ko: "로그·접속기록을 정기적으로 점검하여 이상 여부를 확인한다."
+intent_en: "Periodically review logs/access records to detect anomalies."
+evidence_sources: [loki, wazuh]
+status: reviewed

@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.5 Organizational controls"
 title_ko: "정보보안 사고 관리 계획 및 준비"
 title_en: "Information security incident management planning and preparation"
-evidence_sources: []
-status: "draft"
+intent_ko: "정보보안 사고 관리 계획을 수립·준비한다."
+intent_en: "Plan and prepare for information security incident management."
+evidence_sources: [mori]
+status: reviewed

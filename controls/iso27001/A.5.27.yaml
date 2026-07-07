@@ -4,5 +4,7 @@ version: "2022"
 domain: "A.5 Organizational controls"
 title_ko: "정보보안 사고로부터의 학습"
 title_en: "Learning from information security incidents"
-evidence_sources: []
-status: "draft"
+intent_ko: "사고로부터 교훈을 도출해 통제를 개선한다."
+intent_en: "Derive lessons from incidents to strengthen controls."
+evidence_sources: [mori]
+status: reviewed

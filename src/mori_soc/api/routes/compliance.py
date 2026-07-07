@@ -118,6 +118,70 @@ def register_compliance(ctx: RouteContext) -> None:
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"control catalog unavailable: {exc}") from exc
 
+    def _live_gaps() -> dict[str, Any]:
+        """evidence-gaps 카운트를 재계산(통제 증적 팩의 결함 수치용). 실패 시 빈 dict."""
+        try:
+            from datetime import timedelta
+            pdca = build_pdca_payload(get_query_service(), vuln_actions=vuln_actions, alert_triage=triage_store)
+            src = pdca.get("pending_sources", {}) or {}
+            now = datetime.now(tz=timezone.utc)
+            soon = now + timedelta(days=7)
+            expiring = 0
+            for action in vuln_actions.values():
+                raw = str(action.get("exception_until", "")).strip()
+                if not raw:
+                    continue
+                try:
+                    dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                except ValueError:
+                    continue
+                if now <= dt <= soon:
+                    expiring += 1
+            unmapped = 0
+            try:
+                cross = build_crosscheck_payload(get_query_service())
+                for chk in cross.get("checks", []) or []:
+                    if chk.get("id") == "source_coverage":
+                        unmapped = int(chk.get("uncovered_hosts", 0) or 0)
+                        break
+            except Exception:
+                unmapped = 0
+            return {"vuln_pending": int(src.get("trivy", 0) or 0), "exceptions_expiring": expiring,
+                    "untriaged_alerts": int(src.get("alert", 0) or 0),
+                    "overdue": int(pdca.get("overdue_count", 0) or 0),
+                    "control_pending": int(src.get("control_check", 0) or 0), "unmapped_assets": unmapped}
+        except Exception:
+            return {}
+
+    @app.get("/controls/detail/{control_id}", tags=["Compliance"])
+    def control_detail(control_id: str, request: Request) -> dict[str, Any]:
+        """한 통제의 증적 상세(매핑·결함·증적 소스 + 현재 공백 수). admin·security 전용."""
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="control detail requires admin or security role")
+        from mori_soc.services.control_catalog import build_control_detail
+        detail = build_control_detail(control_id, gaps=_live_gaps())
+        if detail is None:
+            raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
+        return detail
+
+    @app.get("/controls/detail/{control_id}/evidence.pdf", tags=["Compliance"])
+    def control_evidence_pdf_route(control_id: str, request: Request) -> Any:
+        """통제 증적 팩 PDF(1클릭 export). admin·security 전용."""
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="control evidence PDF requires admin or security role")
+        from mori_soc.services.control_catalog import control_evidence_pdf
+        try:
+            pdf = control_evidence_pdf(control_id, gaps=_live_gaps())
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        if pdf is None:
+            raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
+        safe = control_id.replace("/", "_")
+        return StreamingResponse(iter([pdf]), media_type="application/pdf",
+                                 headers={"Content-Disposition": f'attachment; filename="mori-evidence-{safe}.pdf"'})
+
     @app.get("/compliance/pdca/pending.csv", tags=["Compliance"])
     def compliance_pdca_pending_csv() -> Any:
         """미조치 / 기한 초과 항목(PDCA Do 단계)을 CSV로 다운로드."""

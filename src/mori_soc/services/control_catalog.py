@@ -10,8 +10,10 @@ stdlib json 으로 읽는다 — 이미지에 PyYAML 이 없어도 동작.
 """
 from __future__ import annotations
 
+import io
 import json
 import pathlib
+from datetime import datetime, timezone
 from typing import Any
 
 _DATA_PATH = pathlib.Path(__file__).resolve().parent.parent / "data" / "controls_catalog.json"
@@ -94,6 +96,125 @@ def build_tree(catalog: dict[str, Any] | None = None) -> dict[str, Any]:
     }
 
 
+def build_control_detail(control_id: str, gaps: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """한 통제의 증적 상세 — 통제 + 크로스매핑 + 관련 결함(+현재 증적 공백 수).
+
+    evidence mapper 의 1차 형태: 통제를 그 증적 소스·매핑·심사 결함으로 연결하고,
+    결함의 ``mori_signal`` 을 대시보드 evidence-gaps 카운트(gaps)와 이어붙인다.
+    """
+    cat = load_catalog()
+    control = next((c for c in cat.get("controls", []) if c.get("id") == control_id), None)
+    if control is None:
+        return None
+
+    mapped: list[dict[str, Any]] = []
+    by_id = {c.get("id"): c for c in cat.get("controls", [])}
+    for m in cat.get("mappings", []):
+        peers: list[str] = []
+        if m.get("isms_p") == control_id:
+            peers = list(m.get("iso27001") or [])
+        elif control_id in (m.get("iso27001") or []):
+            peers = [m.get("isms_p")]
+        for pid in peers:
+            peer = by_id.get(pid, {})
+            mapped.append({
+                "id": pid, "title_ko": peer.get("title_ko", ""), "title_en": peer.get("title_en", ""),
+                "relation": m.get("relation", "related"),
+                "note_ko": m.get("note_ko", ""), "note_en": m.get("note_en", ""),
+            })
+
+    gap_map = (gaps or {})
+    defects: list[dict[str, Any]] = []
+    for d in cat.get("defects", []):
+        if control_id in (d.get("controls") or []):
+            sig = d.get("mori_signal", "")
+            defects.append({**d, "gap_count": gap_map.get(sig) if sig else None})
+
+    return {"control": control, "mapped_to": mapped, "defects": defects,
+            "generated_at": datetime.now(tz=timezone.utc).isoformat()}
+
+
+def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None) -> bytes | None:
+    """통제 증적 팩 PDF (reportlab). 통제 미존재 시 None."""
+    detail = build_control_detail(control_id, gaps=gaps)
+    if detail is None:
+        return None
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("reportlab not installed; PDF output unavailable") from exc
+    from mori_soc.services.reports import _get_pdf_font
+
+    c = detail["control"]
+    font = _get_pdf_font()
+    styles = getSampleStyleSheet()
+    h1 = ParagraphStyle("h1", parent=styles["Title"], fontName=font, fontSize=16, leading=20, spaceAfter=4)
+    h2 = ParagraphStyle("h2", parent=styles["Heading2"], fontName=font, fontSize=12, leading=16, spaceBefore=10, spaceAfter=4)
+    body = ParagraphStyle("body", parent=styles["Normal"], fontName=font, fontSize=9.5, leading=14)
+    small = ParagraphStyle("small", parent=styles["Normal"], fontName=font, fontSize=8, leading=11, textColor=colors.grey)
+
+    def esc(s: Any) -> str:
+        return str(s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
+                            topMargin=16 * mm, bottomMargin=14 * mm, title=f"MORI Evidence Pack {c.get('id')}")
+    story: list[Any] = []
+    fw = "ISMS-P 2023" if c.get("framework") == "isms-p" else "ISO 27001:2022"
+    story.append(Paragraph(f"[{esc(c.get('id'))}] {esc(c.get('title_ko'))}", h1))
+    story.append(Paragraph(f"{esc(c.get('title_en'))} · {fw}", small))
+    meta = " · ".join(x for x in [esc(c.get("domain")), esc(c.get("section")), f"status: {esc(c.get('status'))}"] if x)
+    story.append(Paragraph(meta, small))
+
+    if c.get("intent_ko") or c.get("intent_en"):
+        story.append(Paragraph("취지 / Intent", h2))
+        if c.get("intent_ko"):
+            story.append(Paragraph(esc(c.get("intent_ko")), body))
+        if c.get("intent_en"):
+            story.append(Paragraph(esc(c.get("intent_en")), small))
+
+    story.append(Paragraph("증적 소스 / Evidence sources", h2))
+    srcs = ", ".join(c.get("evidence_sources") or []) or "— (미연결 / not wired)"
+    story.append(Paragraph(esc(srcs), body))
+    if c.get("evidence_hint_ko"):
+        story.append(Paragraph(esc(c.get("evidence_hint_ko")), body))
+    if c.get("evidence_hint_en"):
+        story.append(Paragraph(esc(c.get("evidence_hint_en")), small))
+
+    if detail["mapped_to"]:
+        story.append(Paragraph("크로스매핑 / Cross-mapping", h2))
+        rows = [["ID", "Title", "Relation"]]
+        for m in detail["mapped_to"]:
+            rows.append([esc(m["id"]), esc(m.get("title_ko") or m.get("title_en")), esc(m["relation"])])
+        t = Table(rows, colWidths=[30 * mm, 110 * mm, 30 * mm])
+        t.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e293b")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        story.append(t)
+
+    if detail["defects"]:
+        story.append(Paragraph("관련 심사 결함 / Related defects", h2))
+        for d in detail["defects"]:
+            gc = d.get("gap_count")
+            gc_txt = f"  · 현재 증적 공백: {gc}건" if isinstance(gc, int) else ""
+            story.append(Paragraph(f"• [{esc(d.get('severity'))}] {esc(d.get('title_ko'))}{esc(gc_txt)}", body))
+            if d.get("fix_ko"):
+                story.append(Paragraph(f"↳ 시정: {esc(d.get('fix_ko'))}", small))
+
+    story.append(Spacer(1, 10 * mm))
+    story.append(Paragraph(f"생성 {esc(detail['generated_at'][:19])} · MORI SOC 통제 증적 팩 (draft catalog v1 — 공식 고시 대비 검증 필요)", small))
+    doc.build(story)
+    return buf.getvalue()
+
+
 def sync_catalog_to_db(dsn: str) -> dict[str, int]:
     """카탈로그를 schema/007 테이블로 upsert. psycopg 필요. 반환: 반영 건수."""
     import psycopg
@@ -159,4 +280,4 @@ def sync_catalog_to_db(dsn: str) -> dict[str, int]:
     return {"controls": len(controls), "mappings": len(mappings), "defects": len(defects)}
 
 
-__all__ = ["load_catalog", "build_tree", "sync_catalog_to_db"]
+__all__ = ["load_catalog", "build_tree", "build_control_detail", "control_evidence_pdf", "sync_catalog_to_db"]

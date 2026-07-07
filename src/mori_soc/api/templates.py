@@ -6133,7 +6133,8 @@ def render_user_dashboard_html(
           const title = (lang==='en' ? c.title_en : c.title_ko) || c.title_ko || c.title_en || '';
           const dim = c.mapped ? '' : 'opacity:0.5;';
           const srcs = (c.evidence_sources||[]).map(badge).join('');
-          return `<div style=\"padding:3px 0;${dim}\"><span style=\"color:#64748b;font-size:11px\">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${srcs}</div>`;
+          const pdf = `<a href=\"/controls/detail/${encodeURIComponent(c.id)}/evidence.pdf\" target=\"_blank\" title=\"${tt('dash.ctl.pdf','증적 팩 PDF')}\" style=\"margin-left:6px;text-decoration:none;font-size:11px\">📄</a>`;
+          return `<div style=\"padding:3px 0;${dim}\"><span style=\"color:#64748b;font-size:11px\">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${srcs}${pdf}</div>`;
         };
         let html = '';
         (data.tree || []).forEach(fw => {

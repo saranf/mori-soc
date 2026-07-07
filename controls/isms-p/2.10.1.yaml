@@ -5,5 +5,7 @@ domain: "2. 보호대책 요구사항"
 section: "2.10 시스템 및 서비스 보안관리"
 title_ko: "보안시스템 운영"
 title_en: "Security-system operation"
-evidence_sources: []
-status: "draft"
+intent_ko: "보안시스템(탐지·차단)의 정책과 이벤트를 운영·점검한다."
+intent_en: "Operate and review the policies and events of security systems (detection/blocking)."
+evidence_sources: [wazuh]
+status: reviewed

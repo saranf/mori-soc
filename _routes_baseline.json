@@ -354,6 +354,26 @@
     ]
   },
   {
+    "path": "/controls/detail/{control_id}",
+    "methods": [
+      "GET"
+    ],
+    "name": "control_detail",
+    "tags": [
+      "Compliance"
+    ]
+  },
+  {
+    "path": "/controls/detail/{control_id}/evidence.pdf",
+    "methods": [
+      "GET"
+    ],
+    "name": "control_evidence_pdf_route",
+    "tags": [
+      "Compliance"
+    ]
+  },
+  {
     "path": "/controls/tree",
     "methods": [
       "GET"
