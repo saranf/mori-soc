@@ -6174,7 +6174,14 @@ def render_user_dashboard_html(
           h += d.evidence_live.map(e => {
             const lbl = (lang==='en'?e.label_en:e.label_ko) || e.source;
             const sm = (lang==='en'?e.summary_en:e.summary_ko) || '-';
-            return `<div onclick=\"switchTab('${e.tab}')\" style=\"cursor:pointer;color:#cbd5e1;padding:1px 0\">• ${escapeHtml(lbl)}: <b>${escapeHtml(sm)}</b> ↗</div>`;
+            let row = `<div onclick=\"switchTab('${e.tab}')\" style=\"cursor:pointer;color:#cbd5e1;padding:1px 0\">• ${escapeHtml(lbl)}: <b>${escapeHtml(sm)}</b> ↗</div>`;
+            const bd = e.breakdown || [];
+            if (bd.length) {
+              row += `<div style=\"margin:1px 0 3px 14px;color:#94a3b8;font-size:11px\">` +
+                bd.map(r => `<div>– ${escapeHtml(r.label)}: ${escapeHtml(r.value)}</div>`).join('') +
+                (e.more ? `<div style=\"color:#64748b\">… +${e.more}</div>` : '') + `</div>`;
+            }
+            return row;
           }).join('');
         }
         if ((d.mapped_to||[]).length) {

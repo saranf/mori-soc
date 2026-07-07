@@ -156,7 +156,13 @@ def register_compliance(ctx: RouteContext) -> None:
             return {}
 
     def _source_metrics() -> dict[str, Any]:
-        """증적 소스별 라이브 실데이터 집계(통제 상세/PDF의 '실증적' 섹션용)."""
+        """증적 소스별 라이브 실데이터 집계 + **호스트↔통제 단위 breakdown**.
+
+        각 소스는 전역 요약(summary)에 더해, 어느 자산/엔티티가 그 증적을 갖는지
+        상위 목록(breakdown: [{label, value}])을 붙인다 — 통제 상세에서 "어느 자산의
+        그 통제 증적"까지 드릴다운.
+        """
+        from collections import defaultdict
         from datetime import timedelta
         try:
             svc = get_query_service()
@@ -165,17 +171,49 @@ def register_compliance(ctx: RouteContext) -> None:
             return {}
         now = datetime.now(tz=timezone.utc)
         wk = now - timedelta(days=7)
+        hostnames = {getattr(h, "host_id", ""): getattr(h, "hostname", "") for h in getattr(store, "hosts", [])}
+
+        def _hn(hid: str) -> str:
+            return hostnames.get(hid, "") or hid or "(unknown)"
+
+        def _top(rows: list[dict], key: str, n: int = 8) -> tuple[list[dict], int]:
+            rows.sort(key=lambda r: r.get(key, 0), reverse=True)
+            return rows[:n], max(0, len(rows) - n)
+
         m: dict[str, Any] = {}
+        # ── Trivy: 호스트별 미조치 Critical/High ──
         vulns = [v for v in getattr(store, "vulnerabilities", [])
                  if getattr(v, "source", "") == "trivy" and getattr(v, "resolved_at", None) is None]
         crit = sum(1 for v in vulns if getattr(v, "severity", "") == "critical")
         high = sum(1 for v in vulns if getattr(v, "severity", "") == "high")
+        tb: dict[str, dict[str, int]] = defaultdict(lambda: {"critical": 0, "high": 0, "n": 0})
+        for v in vulns:
+            sev = getattr(v, "severity", "")
+            if sev in ("critical", "high"):
+                b = tb[getattr(v, "host_id", "") or ""]
+                b[sev] += 1
+                b["n"] += 1
+        t_rows = [{"label": _hn(h), "value": f"C{d['critical']}·H{d['high']}", "n": d["n"]} for h, d in tb.items()]
+        t_top, t_more = _top(t_rows, "n")
         m["trivy"] = {"count": len(vulns),
                       "summary_ko": f"미조치 취약점 {len(vulns)}건 (Critical {crit}·High {high})",
-                      "summary_en": f"{len(vulns)} open vulns (Critical {crit} · High {high})"}
+                      "summary_en": f"{len(vulns)} open vulns (Critical {crit} · High {high})",
+                      "breakdown": [{"label": r["label"], "value": r["value"]} for r in t_top], "more": t_more}
+        # ── Zabbix / Wazuh: 호스트별 최근 7일 경보/탐지 ──
         alerts = list(getattr(store, "alerts", []))
-        zbx7 = sum(1 for a in alerts if getattr(a, "source", "") == "zabbix" and getattr(a, "observed_at", now) >= wk)
-        wz7 = sum(1 for a in alerts if getattr(a, "source", "") == "wazuh" and getattr(a, "observed_at", now) >= wk)
+
+        def _alert_metric(source: str, ko_word: str, en_word: str) -> dict[str, Any]:
+            d: dict[str, int] = defaultdict(int)
+            for a in alerts:
+                if getattr(a, "source", "") == source and getattr(a, "observed_at", now) >= wk:
+                    d[getattr(a, "host_id", "") or ""] += 1
+            total = sum(d.values())
+            rows = [{"label": _hn(h), "value": f"{n}", "n": n} for h, n in d.items()]
+            top, more = _top(rows, "n")
+            return {"count": total, "summary_ko": f"최근 7일 {ko_word} {total}건",
+                    "summary_en": f"{total} {en_word} (7d)",
+                    "breakdown": [{"label": r["label"], "value": r["value"]} for r in top], "more": more}
+
         fleet_hosts = zbx_hosts = 0
         try:
             for chk in (build_crosscheck_payload(svc).get("checks", []) or []):
@@ -184,16 +222,25 @@ def register_compliance(ctx: RouteContext) -> None:
                     zbx_hosts = int(chk.get("zabbix_count", 0) or 0)
         except Exception:
             pass
-        m["zabbix"] = {"count": zbx7, "summary_ko": f"최근 7일 경보 {zbx7}건 · 모니터링 자산 {zbx_hosts}",
-                       "summary_en": f"{zbx7} alerts (7d) · {zbx_hosts} monitored hosts"}
-        m["wazuh"] = {"count": wz7, "summary_ko": f"최근 7일 탐지 {wz7}건", "summary_en": f"{wz7} detections (7d)"}
-        m["fleet"] = {"count": fleet_hosts, "summary_ko": f"수집 자산 {fleet_hosts}", "summary_en": f"{fleet_hosts} collected assets"}
-        m["loki"] = {"summary_ko": "로그 보존 정책 적용(Loki)", "summary_en": "log retention configured (Loki)"}
-        inc = len(ctx.incidents or {})
+        m["zabbix"] = _alert_metric("zabbix", "경보", "alerts")
+        m["zabbix"]["summary_ko"] += f" · 모니터링 자산 {zbx_hosts}"
+        m["zabbix"]["summary_en"] += f" · {zbx_hosts} monitored hosts"
+        m["wazuh"] = _alert_metric("wazuh", "탐지", "detections")
+        m["fleet"] = {"count": fleet_hosts, "summary_ko": f"수집 자산 {fleet_hosts}",
+                      "summary_en": f"{fleet_hosts} collected assets", "breakdown": [], "more": 0}
+        m["loki"] = {"summary_ko": "로그 보존 정책 적용(Loki)", "summary_en": "log retention configured (Loki)",
+                     "breakdown": [], "more": 0}
+        # ── MORI: 최근 인시던트 ──
+        inc_vals = list((ctx.incidents or {}).values())
+        inc_sorted = sorted(inc_vals, key=lambda x: str(x.get("updated_at") or x.get("created_at") or ""), reverse=True)
+        inc_bd = [{"label": (i.get("title") or i.get("incident_id") or "-"), "value": str(i.get("status") or "")}
+                  for i in inc_sorted[:5]]
         risk = len(ctx.risk_register or {})
         audit = len(ctx.action_audit_log or [])
-        m["mori"] = {"count": inc, "summary_ko": f"인시던트 {inc} · 위험평가 {risk} · 감사이벤트 {audit}",
-                     "summary_en": f"{inc} incidents · {risk} risk assessments · {audit} audit events"}
+        m["mori"] = {"count": len(inc_vals),
+                     "summary_ko": f"인시던트 {len(inc_vals)} · 위험평가 {risk} · 감사이벤트 {audit}",
+                     "summary_en": f"{len(inc_vals)} incidents · {risk} risk assessments · {audit} audit events",
+                     "breakdown": inc_bd, "more": max(0, len(inc_vals) - 5)}
         return m
 
     @app.get("/controls/detail/{control_id}", tags=["Compliance"])

@@ -130,6 +130,7 @@ def build_control_detail(control_id: str, gaps: dict[str, Any] | None = None,
             "tab": meta.get("tab", ""),
             "summary_ko": m.get("summary_ko", ""), "summary_en": m.get("summary_en", ""),
             "count": m.get("count"),
+            "breakdown": m.get("breakdown") or [], "more": m.get("more", 0),
         })
 
     mapped: list[dict[str, Any]] = []
@@ -217,6 +218,10 @@ def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
         for e in detail["evidence_live"]:
             s = e.get("summary_ko") or "— (수집 데이터 없음)"
             story.append(Paragraph(f"• {esc(e.get('label_ko'))}: {esc(s)}", body))
+            for row in (e.get("breakdown") or [])[:8]:
+                story.append(Paragraph(f"&nbsp;&nbsp;&nbsp;&nbsp;- {esc(row.get('label'))}: {esc(row.get('value'))}", small))
+            if e.get("more"):
+                story.append(Paragraph(f"&nbsp;&nbsp;&nbsp;&nbsp;… +{esc(e.get('more'))}", small))
 
     if detail["mapped_to"]:
         story.append(Paragraph("크로스매핑 / Cross-mapping", h2))
