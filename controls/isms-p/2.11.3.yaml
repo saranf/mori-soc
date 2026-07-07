@@ -1,0 +1,15 @@
+id: "2.11.3"
+framework: isms-p
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.11 사고 예방 및 대응"
+title_ko: "이상행위 분석 및 모니터링"
+title_en: "Anomaly analysis and monitoring"
+intent_ko: >-
+  침해 시도·이상행위를 탐지하기 위해 로그·이벤트를 지속 모니터링하고, 탐지 기준에
+  따라 분석·대응한다.
+evidence_sources: [wazuh, zabbix]
+evidence_hint_ko: >-
+  Wazuh 탐지 룰 매칭 이벤트 + Zabbix 임계치 알림 → MORI Alert Triage 처리 이력.
+mori_intents: [alert_summary, host_timeline]
+tags: [monitoring, detection]

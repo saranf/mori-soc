@@ -1,0 +1,11 @@
+id: "A.8.15"
+framework: iso27001
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "로깅"
+title_en: "Logging"
+intent_ko: >-
+  활동·예외·결함·기타 관련 이벤트를 기록하는 로그를 생성·보관·보호·분석한다.
+evidence_sources: [loki, wazuh]
+evidence_hint_ko: "Loki 로그 수집·보존 정책 + Wazuh 이벤트 로그."
+tags: [logging, retention]

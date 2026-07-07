@@ -1,0 +1,12 @@
+id: "A.8.16"
+framework: iso27001
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "모니터링 활동"
+title_en: "Monitoring activities"
+intent_ko: >-
+  네트워크·시스템·응용의 이상행위를 탐지하고 잠재적 보안사고를 평가하기 위해
+  지속적으로 모니터링한다.
+evidence_sources: [zabbix, wazuh]
+evidence_hint_ko: "Zabbix 임계치 모니터링 + Wazuh 이상행위 탐지 → MORI Triage 처리."
+tags: [monitoring, detection]

@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MORI Control",
+  "description": "하나의 인증기준(ISMS-P) 또는 통제(ISO 27001 Annex A) 항목.",
+  "type": "object",
+  "required": ["id", "framework", "title_ko", "evidence_sources"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "description": "예: '2.11.2'(ISMS-P) 또는 'A.8.8'(ISO)" },
+    "framework": { "enum": ["isms-p", "iso27001"] },
+    "version": { "type": "string", "description": "예: '2023'(ISMS-P), '2022'(ISO)" },
+    "domain": { "type": "string", "description": "대분류. 예: '2. 보호대책 요구사항'" },
+    "section": { "type": "string", "description": "중분류. 예: '2.11 사고 예방 및 대응'" },
+    "title_ko": { "type": "string" },
+    "title_en": { "type": "string" },
+    "intent_ko": { "type": "string", "description": "인증기준 취지(요약)" },
+    "evidence_sources": {
+      "type": "array",
+      "description": "이 통제의 증적을 만들어내는 MORI 소스",
+      "items": { "enum": ["zabbix", "wazuh", "fleet", "trivy", "loki", "mori"] }
+    },
+    "evidence_hint_ko": { "type": "string", "description": "어떤 형태의 증적으로 충족되는지" },
+    "mori_intents": { "type": "array", "items": { "type": "string" }, "description": "관련 NLQ 인텐트" },
+    "tags": { "type": "array", "items": { "type": "string" } }
+  }
+}

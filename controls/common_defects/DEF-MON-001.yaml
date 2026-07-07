@@ -1,0 +1,12 @@
+id: "DEF-MON-001"
+controls: ["2.11.3", "A.8.16"]
+title_ko: "경보는 발생하나 트리아지·처리 기록이 없음"
+symptom_ko: >-
+  Zabbix/Wazuh 경보가 발생하지만 누가 언제 확인·판단·처리했는지 기록이 없다.
+evidence_gap_ko: >-
+  "탐지했다"는 있으나 "정해진 절차로 처리했다"의 증적(트리아지 상태·담당자·이력)이 없다.
+mori_signal: untriaged_alerts
+fix_ko: >-
+  경보를 MORI Alert Triage로 물려 상태(🔴🟡🟢)·담당자·변경이력을 기록하고, 미트리아지
+  건을 작업 큐에 노출한다.
+severity: medium

@@ -1,0 +1,11 @@
+id: "A.8.8"
+framework: iso27001
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "기술적 취약점 관리"
+title_en: "Management of technical vulnerabilities"
+intent_ko: >-
+  사용 중인 정보시스템의 기술적 취약점 정보를 입수하고 노출을 평가하여 적절한 조치를 취한다.
+evidence_sources: [trivy]
+evidence_hint_ko: "Trivy 스캔 이력 + 조치계획/예외 승인 대장."
+tags: [vulnerability, patch]

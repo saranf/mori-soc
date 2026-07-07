@@ -1,0 +1,11 @@
+id: "DEF-VULN-002"
+controls: ["2.11.2"]
+title_ko: "위험수용(예외) 승인은 있으나 재평가 없이 만료 방치"
+symptom_ko: >-
+  취약점 조치 예외(위험수용)를 승인해두고 만료일 이후에도 재평가·갱신 없이 방치한다.
+evidence_gap_ko: >-
+  예외의 유효기간·재평가 증적이 없어 "무기한 예외"가 되어버린다.
+mori_signal: exceptions_expiring
+fix_ko: >-
+  예외에 만료일을 필수화하고 D-7 임박 항목을 작업 큐에 노출해 재평가를 유도한다.
+severity: medium

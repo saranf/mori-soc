@@ -1,0 +1,16 @@
+id: "1.2.1"
+framework: isms-p
+version: "2023"
+domain: "1. 관리체계 수립 및 운영"
+section: "1.2 위험 관리"
+title_ko: "정보자산 식별"
+title_en: "Information asset identification"
+intent_ko: >-
+  조직의 정보자산을 누락 없이 식별·목록화하고 중요도를 산정하여 최신 상태로 유지한다.
+  자산 식별이 부실하면 이후 모든 보호대책의 적용 범위가 불명확해진다.
+evidence_sources: [fleet, zabbix]
+evidence_hint_ko: >-
+  Fleet(osquery) 자동 발견 호스트 + Zabbix 서버 자산의 대사(reconciliation) 결과.
+  수기 목록이 아닌 자동 수집·현행화된 자산 인벤토리 스냅샷.
+mori_intents: [unmapped_assets, host_fleet_queries]
+tags: [asset, foundation]

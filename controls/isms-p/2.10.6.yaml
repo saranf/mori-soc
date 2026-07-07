@@ -1,0 +1,16 @@
+id: "2.10.6"
+framework: isms-p
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.10 시스템 및 서비스 보안관리"
+title_ko: "업무용 단말기기 보안"
+title_en: "Business device (endpoint) security"
+intent_ko: >-
+  PC·노트북 등 업무용 단말의 보안 설정(디스크 암호화, 화면잠금, 설치 소프트웨어 등)을
+  기준에 따라 적용·점검하고 이탈 단말을 관리한다.
+evidence_sources: [fleet]
+evidence_hint_ko: >-
+  Fleet osquery 구성 점검 — 디스크 암호화 적용률, 설치 앱/시작 프로그램 인벤토리,
+  기준 이탈 단말 목록.
+mori_intents: [host_fleet_queries]
+tags: [endpoint, configuration]

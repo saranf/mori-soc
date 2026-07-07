@@ -1,0 +1,14 @@
+id: "2.10.9"
+framework: isms-p
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.10 시스템 및 서비스 보안관리"
+title_ko: "악성코드 통제"
+title_en: "Malware control"
+intent_ko: >-
+  악성코드 감염을 예방·탐지하고, 탐지 시 정해진 절차에 따라 대응·기록한다.
+evidence_sources: [wazuh]
+evidence_hint_ko: >-
+  Wazuh 악성코드/룰 탐지 이벤트 + 트리아지·대응 처리 이력.
+mori_intents: [alert_summary]
+tags: [malware, detection]

@@ -1,0 +1,11 @@
+id: "A.8.9"
+framework: iso27001
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "형상 관리"
+title_en: "Configuration management"
+intent_ko: >-
+  하드웨어·소프트웨어·서비스·네트워크의 보안 형상을 수립·문서화·구현·모니터링·검토한다.
+evidence_sources: [fleet]
+evidence_hint_ko: "Fleet osquery 구성 상태(설정·설치 소프트웨어) 스냅샷과 기준 이탈 점검."
+tags: [configuration, endpoint]

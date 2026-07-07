@@ -1,0 +1,11 @@
+id: "A.5.9"
+framework: iso27001
+version: "2022"
+domain: "A.5 Organizational controls"
+title_ko: "정보 및 기타 관련 자산의 목록"
+title_en: "Inventory of information and other associated assets"
+intent_ko: >-
+  정보 및 관련 자산의 목록을 작성·유지하고 소유자를 지정한다.
+evidence_sources: [fleet, zabbix]
+evidence_hint_ko: "Fleet+Zabbix 자동 자산 인벤토리 + 소유자(담당자) 지정 현황."
+tags: [asset]

@@ -1,0 +1,11 @@
+id: "DEF-PATCH-001"
+controls: ["2.10.8", "A.8.8"]
+title_ko: "조치계획 목표일(SLA) 초과 방치"
+symptom_ko: >-
+  조치계획은 있으나 목표일을 지나도록 조치·연장·재승인 없이 초과 상태로 방치된다.
+evidence_gap_ko: >-
+  SLA 준수/초과에 대한 관리 증적이 없어 조치 이행의 실효성을 증명하지 못한다.
+mori_signal: overdue
+fix_ko: >-
+  목표일 초과 항목을 작업 큐 상단에 노출하고, 연장 시 사유·재승인을 기록한다.
+severity: high

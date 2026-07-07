@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MORI Common Defect",
+  "description": "심사에서 자주 나오는 결함 사례. MORI 의 증적 공백 신호(mori_signal)와 연결된다.",
+  "type": "object",
+  "required": ["id", "controls", "title_ko", "severity"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "description": "예: 'DEF-VULN-001'" },
+    "controls": { "type": "array", "items": { "type": "string" }, "description": "관련 통제 id(ISMS-P/ISO 혼용 가능)" },
+    "title_ko": { "type": "string" },
+    "symptom_ko": { "type": "string", "description": "결함 증상" },
+    "evidence_gap_ko": { "type": "string", "description": "무슨 증적이 비어 결함이 되는가" },
+    "mori_signal": {
+      "type": "string",
+      "description": "대시보드 '오늘의 작업 큐' 타일 키(evidence-gaps). 예: vuln_pending / unmapped_assets / untriaged_alerts / exceptions_expiring / overdue / control_pending. 없으면 빈 문자열."
+    },
+    "fix_ko": { "type": "string", "description": "시정 방향" },
+    "severity": { "enum": ["high", "medium", "low"] }
+  }
+}

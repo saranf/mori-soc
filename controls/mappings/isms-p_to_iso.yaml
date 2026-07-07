@@ -1,0 +1,31 @@
+# ISMS-P(2023) ↔ ISO 27001:2022 Annex A 크로스매핑 (샘플)
+# relation: equivalent(동등) | subset(부분집합) | superset(상위집합) | related(관련)
+mappings:
+  - isms_p: "1.2.1"
+    iso27001: ["A.5.9"]
+    relation: equivalent
+    note_ko: "정보자산 식별 ≡ 자산 목록"
+  - isms_p: "2.9.4"
+    iso27001: ["A.8.15"]
+    relation: equivalent
+    note_ko: "로그·접속기록 관리 ≡ 로깅"
+  - isms_p: "2.10.6"
+    iso27001: ["A.8.9"]
+    relation: related
+    note_ko: "단말 보안은 형상관리와 밀접(단말 구성 상태 점검)"
+  - isms_p: "2.10.8"
+    iso27001: ["A.8.8"]
+    relation: subset
+    note_ko: "패치관리 ⊂ 기술적 취약점 관리"
+  - isms_p: "2.10.9"
+    iso27001: ["A.8.7"]
+    relation: equivalent
+    note_ko: "악성코드 통제 ≡ 멀웨어 보호"
+  - isms_p: "2.11.2"
+    iso27001: ["A.8.8"]
+    relation: equivalent
+    note_ko: "취약점 점검·조치 ≡ 기술적 취약점 관리"
+  - isms_p: "2.11.3"
+    iso27001: ["A.8.16", "A.8.15"]
+    relation: related
+    note_ko: "이상행위 분석·모니터링 ~ 모니터링 활동(+로깅 기반)"

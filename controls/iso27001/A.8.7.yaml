@@ -1,0 +1,11 @@
+id: "A.8.7"
+framework: iso27001
+version: "2022"
+domain: "A.8 Technological controls"
+title_ko: "멀웨어에 대한 보호"
+title_en: "Protection against malware"
+intent_ko: >-
+  멀웨어로부터 보호하기 위한 탐지·예방·복구 통제를 구현하고 사용자 인식을 병행한다.
+evidence_sources: [wazuh]
+evidence_hint_ko: "Wazuh 멀웨어 탐지 이벤트 + 대응 처리 이력."
+tags: [malware]

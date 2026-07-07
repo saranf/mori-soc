@@ -1,0 +1,11 @@
+id: "DEF-VULN-001"
+controls: ["2.11.2", "A.8.8"]
+title_ko: "취약점 점검은 수행하나 조치계획·기한이 없음"
+symptom_ko: >-
+  Trivy 등으로 취약점은 발견하지만 Critical/High에 대한 조치계획·목표일·담당자가 없다.
+evidence_gap_ko: >-
+  "점검했다"는 증적은 있으나 "조치했다/조치 중이다"의 증적(조치계획 대장)이 비어 있다.
+mori_signal: vuln_pending
+fix_ko: >-
+  CVE별 조치계획(목표일·담당자) 수립을 강제하고, 미조치 Critical/High를 작업 큐에 노출한다.
+severity: high

@@ -1,0 +1,15 @@
+id: "2.11.5"
+framework: isms-p
+version: "2023"
+domain: "2. 보호대책 요구사항"
+section: "2.11 사고 예방 및 대응"
+title_ko: "사고 대응 및 복구"
+title_en: "Incident response and recovery"
+intent_ko: >-
+  침해사고 발생 시 신고·분석·대응·복구 절차를 이행하고, 처리 경과와 결과를 기록하여
+  재발 방지에 활용한다.
+evidence_sources: [mori]
+evidence_hint_ko: >-
+  MORI 인시던트 티켓(상태·담당자·노트·변경이력) + 감사 로그 + 월간 리포트.
+mori_intents: []
+tags: [incident, response]
