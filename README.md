@@ -64,15 +64,31 @@ MORI의 핵심 가치: **기존 Zabbix가 이미 만들어내는 운영 데이�
 > 🔌 **기존 도구 위에 얹는 read-only 증적 레이어** — MORI-SOC는 운영 중인 모니터링·보안 도구를 **대체하지 않습니다.** 기존 Zabbix / Wazuh / FleetDM / Trivy에 **config만으로(에이전트 설치·기존 도구 설정 변경 없이) read-only로 연결**해 운영 증적·인시던트 이력·취약점 조치·컴플라이언스 뷰를 정리합니다.
 > *(MORI-SOC is designed to sit on top of existing monitoring and security tools, not replace them.)*
 
-| 영역 | 도구 | MORI 역할 |
+### 제품 포지셔닝 — "보는 층"이 아니라 "증적 층"
+
+MORI는 **통합 관제 대시보드가 아닙니다.** 시계열·로그 탐색·실시간 시각화는 이미 잘하는 도구(**Grafana/Loki**)에 위임하고, MORI는 그 위층에서 **"판단·기록·증명"**을 담당합니다.
+
+| 층 | 담당 | 도구 |
 |---|---|---|
-| 인프라 모니터링 | Zabbix | 자산 현황·가용성 증적 |
-| 로그 중앙화 | Loki + Fluent Bit | 로그 수집·보관 증적 |
-| 엔드포인트 관리 | FleetDM | 자산 식별·구성 점검 |
-| 보안 이벤트 | Wazuh | 경보 탐지·트리아지 증적 |
-| 취약점 스캔 | Trivy | 취약점 점검·조치 계획·예외 처리 증적 |
-| 시각화 | Grafana | 운영 현황 대시보드 |
-| 통합 운영 UI | **MORI API** (`/ui`) | 통제·자산·취약점·알람·인시던트 통합 + 감사 로그 |
+| **보는 층** | 시계열·로그·실시간 시각화 | Grafana · Loki *(딥링크로 위임)* |
+| **증적 층 (MORI의 자리)** | 트리아지 → 조치 워크플로 → 통제 매핑 → 증적 PDF → 감사 로그 | **MORI API** (`/ui`) |
+
+> 핵심 명제: **"통합 관제"가 제품이 아니라, "관제가 그대로 ISMS-P / ISO 27001 증적이 되는 것"**이 제품입니다.
+
+### 왜 이 다섯 개를 묶었나 — 소스별 ISMS-P 담당 구역
+
+각 소스가 **서로 겹치지 않는 인증기준**을 담당합니다. 이 매핑이 스택 구성의 근거이자, 폴러 개발 순서("증적 공백이 큰 통제부터")의 기준입니다.
+
+| 데이터 소스 | 담당 ISMS-P 인증기준(대표) | ISO 27001 Annex A | 증적 형태 | MORI 연동 상태 |
+|---|---|---|---|---|
+| **Fleet** (osquery) | 1.2.1 자산 식별 · 2.1.3 자산 관리 · 2.10.6 단말기 보안 | A.5.9 · A.8.9 | 자산 인벤토리·구성 상태 | 🔲 Phase 3 |
+| **Zabbix** | 2.9.x 운영·모니터링 · 가용성 관리 | A.8.6 · A.8.16 | 가동률·임계치 알림+처리 이력 | ✅ 라이브(검증) |
+| **Trivy** | 2.10.8 패치관리 · 2.11.2 취약점 점검·조치 | A.8.8 | 스캔 이력·조치계획·예외 승인 | ✅ 원격 push |
+| **Wazuh** | 2.9.4~5 로그 관리 · 2.10.9 악성코드 · 2.11.3 이상행위 | A.8.7 · A.8.15 · A.8.16 | 탐지 이벤트·룰 매칭·대응 기록 | 🔲 Phase 3 |
+| **Loki** | 2.9.4 로그 보존(접속기록 법정 보존기간) | A.8.15 | 로그 보존 정책+보관 증빙 | 🟡 수집 |
+| **MORI 자체** | 1.x 관리체계 · 2.11.4~5 사고 대응 | A.5.24~27 | 인시던트 티켓·감사 로그·PDCA | ✅ 코어 |
+
+> 💡 통제 카탈로그(Phase 2)가 붙으면 이 매핑에서 **"lite = 통제 커버리지 N% / full = M%"** 수치가 자동 산출됩니다.
 
 ---
 
@@ -190,6 +206,8 @@ flowchart LR
 | **개요 (Overview)** | 자산·경보·취약점 요약 카드 + Critical 취약점 상세 모달에 **조치 계획 / 조치 예외** 컬럼 노출 | 호스트별 진행 상태를 대시보드에서 즉시 확인 |
 | **자산 (서버 / PC / Trivy)** | 호스트별 담당자·팀·카테고리 편집 + **서버 자산 중요도 수동 재정의** | 자동 분류(asset_classifier)보다 우선 적용. 변경분 감사 로그 |
 | **취약점 관리 (Trivy)** | 호스트 단위 조치 계획 / 조치 예외 + **CVE별 상세 조치 계획 / 조치 예외** | 작성자·목표일·만료일·사유 기록. 충돌 안내 모달 |
+| **📥 원격 인제스트 (v0.7)** | `POST /ingest/trivy`(원본 리포트, `?hostname=` 호스트 매핑) · `POST /ingest/evidence`(CSOP 조치 전/후 diff envelope) — `MORI_INGEST_TOKEN` 토큰으로 **무세션 push** | 증적은 `ui_evidence_events`(`schema/006`). 조회 `GET /evidence` admin·security 전용 |
+| **🧩 브라운필드 모드 (v0.7)** | `docker compose up` = MORI 코어만 → 기존 Zabbix/Trivy에 `.env`로 연결. 번들 소스는 `--profile bundled`/`zabbix`/`fleet`/`wazuh` | [docs/BROWNFIELD_CONNECT.md](docs/BROWNFIELD_CONNECT.md) |
 | **🎯 위험성 평가 (R-series)** | CVE별 **3×3 위험 매트릭스**(영향도×발생가능성) + 위험처리 결정(조치/수용/이관/회피)·승인자·잔여위험·재평가일. 매트릭스 셀/등급 클릭 → 해당 버킷 드릴다운. **어드민 전용 산정 근거** | ISMS-P 위험관리 / ISO 27001 6.1.2·8.8. **admin·security 전용**. `ui_risk_register` 영속화 |
 | **🔐 역할별 대시보드** | 역할별 보안 히어로(위험 KPI/TOP ↔ 내 서버 조치율) + **24h/12h 인프라 현황**(Zabbix/Wazuh 딥링크) + **패널 편집**(위젯 on/off 개인 영속화) | 반응형 그리드. 인프라/헬프데스크는 위험등급 대신 조치율만 |
 | **🚨 Alert Triage** | 3단계 상태(🔴🟡🟢) 변경, 분석관·**변경자(actor)** 분리 기록, 이력 표시 | UI에서 actor 미입력 시 세션 사용자 → "unknown" fallback |
@@ -213,8 +231,9 @@ flowchart LR
 |---|---|---|
 | **UI 운영 상태 → PostgreSQL 영속화 (M2-1)** | ✅ 완료 — `schema/003_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through. 6종 store 재시작 후 유지, 통합 테스트(`tests/test_state_persistence.py`)로 검증 | ✅ 완료 |
 | **Zabbix API polling** | ✅ **검증 완료** — 실 Zabbix API로 problem→수집→Triage→Incident→증적→해소 end-to-end 동작 (`collectors/zabbix_events.py`, `tests/test_zabbix_events.py`) | ✅ 완료 |
-| **Fleet / Wazuh API polling** | Parser·Collector 준비됨, REST poller(`pollers/fleet.py`, `pollers/wazuh.py`) 미연결 — **다음 단계** | 🔴 높음 |
-| **Trivy JSON ingestion** | Collector 구현 완료, 정기 실행 패키징/자동화 진행 중 | 🔴 높음 |
+| **통제 카탈로그 (Phase 2)** | ISMS-P/ISO N:M 매핑 + 결함사례 + 인증기준 트리 화면 — **제품 정체성 전환의 핵심, 폴러보다 우선** | 🔴 최우선 |
+| **Trivy 인제스트** | ✅ 원격 토큰 push(`/ingest/trivy`·`/ingest/evidence`) 완료 · 로컬 정기 스캔 자동화(스케줄)만 남음 | 🟡 중 |
+| **Fleet / Wazuh API poller** | Parser·Collector 준비됨, REST poller 미연결 — **Phase 3**(통제 카탈로그 이후). 완료 기준 = 데이터 유입이 아니라 MORI 워크플로에 물림 | 🔴 높음 |
 
 ### 🔲 Planned / 추후 작업
 
@@ -644,60 +663,57 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 | **LDAP / AD** | 디렉토리 계정 + 권한 바인딩 정합성 점검(시드) | 🔲 운영 적용 시 `LDAP_URL` 활성화 |
 | **Grafana** | Postgres / Loki를 직접 조회하는 운영 대시보드 | ✅ 동작 |
 
-## 🗺️ Phase 로드맵 (Phase 2 → 4)
+## 🗺️ 로드맵 (Phase 0 → 5)
 
-> MORI는 **Phase 1(데이터 수집/정규화 코어) 완료 + Phase 2 Alpha(Audit-Ready 운영·증적 UI)** 상태입니다. 아래는 장기 방향으로, 각 Phase는 이전 단계 위에 쌓입니다 — Phase 2(운영 가능화) → Phase 3(판단 보조) → Phase 4(도입·생태계화).
+> **정체성 전환의 축**: 현재 MORI는 "감사 대응 운영 UI"입니다. 목표는 **"통제 카탈로그를 중심으로, 다섯 소스의 관제가 그대로 ISMS-P/ISO 27001 증적이 되는 플랫폼"**입니다. 그래서 순서가 중요합니다 — **통제 카탈로그(Phase 2)를 폴러(Phase 3)보다 먼저.** 각 Phase에 **완료 기준**을 달아 혼자 개발 시 늘어짐을 방지합니다.
 
-### Phase 2 — Read-only Evidence Layer over Existing Tools
+> **핵심 원칙 3**: ① **보는 건 Grafana에 위임** — MORI 안에 시계열 차트 만들지 않음(딥링크만). ② **수집 ≠ 증적** — 폴러 완료 기준은 "데이터가 들어온다"가 아니라 "MORI 워크플로(트리아지→조치→기록)에 물렸다". ③ **lite/full 패키징** — 1~2인 조직용 lite(Wazuh 제외)와 full을 병행.
 
-*기존 운영 중인 도구를 **대체하지 않고** 그 위에 얹는다 — 인메모리 운영 상태를 PostgreSQL에 영속화하고(M2-1 완료), Zabbix/Wazuh/Fleet/Trivy를 **config 기반 read-only**로 연결(N-series)한 뒤 실제 신호 흐름(M2-2~5)·Zabbix 템플릿(M2-6)으로 확장.*
+> **read-only 통합 5원칙** — ① read-only 토큰 권장 ② 기존 시스템 설정 변경 없음 ③ 소스 장애 격리(MORI 전체로 번지지 않음) ④ source freshness 표시 ⑤ 마지막 수집 시각·실패 사유 저장
 
-> **read-only 통합 5원칙** — ① read-only 토큰 권장 ② 기존 시스템 설정 변경 없음 ③ 특정 소스 장애가 MORI 전체 장애로 번지지 않음(격리) ④ source freshness 표시 ⑤ 마지막 수집 시각·실패 사유 저장
+### Phase 0 — 신뢰 기반 다지기 · *진행 중*
+- 🟡 compose 프로파일 분리 — 브라운필드 기본(코어만) + `bundled`/`zabbix`/`fleet`/`wazuh` **(완료)**. → `lite`/`full`/`demo` 3종 명명 정리 **(예정)**
+- 🟡 `MORI_ADMIN_PASSWORD`·`MORI_INGEST_TOKEN` 컨테이너 전달 + `/health` insecure 경고 **(완료)** → Wazuh 하드코딩 크리덴셜 제거, 약한 기본값 `:?required`화, `MORI_DEMO_SEED` 기본 0 **(예정)**
+- 🔲 루트 임시파일(`_scan_*`, `_routes_*` 등) → `tools/` 이동, README-코드 싱크(라우트 snapshot CI화)
+- ✅ **완료 기준**: 레포에 평문 비밀번호 0건 · `docker compose -f … lite up` 한 줄 기동
 
-| ID | 작업 | 상태 |
-|---|---|---|
-| **J** (기반) | `server.py` 모듈 분리 — i18n / templates / auth / payloads + `routes/` 패키지(16 도메인 모듈, `RouteContext`). **2,962→888줄(-70%)**, 무손실 검증(OpenAPI diff·SHA·115 테스트). 이후 영속화·폴러 작업의 회귀 위험을 낮추는 리팩터 기반 | ✅ 완료 |
-| **M2-1** (M-series) | UI 운영 상태 6종 store(`asset_owners`·`asset_audit_log`·`vuln_actions`·`triage_store`·`incident_store`·`user_profiles`) → PostgreSQL 영속화 — `schema/003_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through. 6종 라운드트립 통합 테스트 통과(`tests/test_state_persistence.py`), 120 테스트 그린 | ✅ 완료 |
-| **N-1** (config 온보딩) | Config 기반 소스 온보딩 — `config/sources.yaml` 스키마 + 로더(소스별 `enabled`/`url`/`username`/`token_env`/`input_dir`). 시크릿은 `*_env` 환경변수 이름으로만 참조(리포지토리·DB에 비저장) | 🔲 신규 |
-| **N-2** (연결 메타) | 소스 연결 메타데이터 저장 — 소스별 enabled·마지막 sync 시각·마지막 실패 사유 영속화(`source_syncs` 확장) | 🔲 신규 |
-| **N-3** (가드레일) | Read-only 온보딩 가드레일 — 에이전트 미설치·기존 도구 설정 무변경·소스 장애 격리·freshness 노출(healthy/warning/stale) | 🔲 신규 |
-| **M2-2** | Zabbix API polling 통합 검증 — problem → ingestion → alert → triage → incident → 증적 → 해소 | ✅ **완료 (실 API 검증)** |
-| **M2-3** | Fleet / Wazuh REST poller 연결 — host/osquery·alert → asset/triage, `source_syncs` freshness 반영 | 🔲 Parser·Collector 준비됨 |
-| **M2-4** | Trivy JSON ingestion 자동화 — `trivy-*-scan.sh` 결과 → vulnerabilities → vuln_actions → 리포트 | 🟡 자동화 패키징 중 |
-| **M2-5** | CVE Lite collector 추가 — JS/TS lockfile 의존성 취약점 source(`source=cve_lite`, direct/transitive, fix_command) | 🔲 신규 |
-| **M2-6** | MORI → Zabbix Template/export — `templates/zabbix/mori-soc-template.yaml` + `mori-zabbix-export-metrics.py` (critical/high/pending/lag metric) | 🔲 신규 |
+### Phase 1 — 구조 + 영속화 · ✅ *대부분 완료*
+- ✅ **J**: `server.py` 모듈 분리 — `routes/`(16 도메인) + `RouteContext`, 2,962→888줄(-70%), 무손실 검증(OpenAPI diff·SHA·테스트)
+- ✅ **M2-1 + R-2**: UI 운영 상태 6종 + 위험성 평가 대장 → PostgreSQL cache-aside + write-through(`schema/003·004`, `state_*.py`)
+- ✅ **완료 기준**: 재시작 후 트리아지/인시던트/소유자/조치계획 생존 라운드트립 테스트 통과
 
-### Phase 3 — Guided Investigation & Evidence Assistant
+### Phase 2 — 통제 카탈로그 (제품 정체성 전환) · 🔲 *다음 핵심*
+- `controls/` 오픈 데이터 — ISMS-P 101 + ISO 93 + N:M 매핑 + `common_defects`(1차: 전 항목 골격 + 매핑 60~70건 + 결함사례 10~15건 깊게)
+- `schema/007` 통제 테이블 + 기동 시 YAML→DB 싱크 + evidence mapper
+- PDCA 화면 → **인증기준 트리 화면**(증적 소스 상태 / 마지막 갱신 / 담당자 / 증적 PDF 버튼)
+- 대시보드 **GRC 프리셋**(오늘의 작업 큐 / 증적 공백 / 심사 D-day), 카탈로그 커뮤니티 공개
+- ✅ **완료 기준**: 자연어 "2.11.2 증적 보여줘" → 실데이터 응답 · 통제 화면에서 PDF 1클릭
 
-*쌓인 데이터·증적을 기반으로 보안 담당자 1인이 "무엇을 먼저 볼지" 판단하도록 보조. AI 자동 패치가 아니라 조사/요약 보조에 한정.*
+### Phase 3 — 수집 완성, "한방에 보기" 실현 · 🟡 *부분*
+- ✅ **M2-2** Zabbix 폴러 실 API 검증 · ✅ Trivy/CSOP 원격 push(`/ingest/trivy`·`/ingest/evidence`)
+- 🔲 Trivy 자동 스캔 기본화(`MORI_ENABLE_TRIVY` on + 스케줄)
+- 🔲 **Wazuh 폴러 신규** — 탐지 이벤트 → MORI 알림 큐 → 처리 이력이 2.11.3 증적으로(compose 서비스 정의부터)
+- 🔲 **Fleet 폴러 신규** — 자산 인벤토리 → MORI 자산 동기화(수동 등록 → 자동 발견, 1.2.1 증적)
+- 🔲 Loki retention 을 통제와 연결 — 접속기록 법정 보존기간(기본 1년, 고유식별정보 취급 시 2년) 설정값을 2.9.4 증적으로 노출
+- 🔲 Grafana 대시보드 JSON 5종 동봉(소스별 1 + 통합 1) — 통제 화면 → Grafana 패널 딥링크
+- ✅ **완료 기준**: full 프로파일에서 5개 소스 데이터가 통제 화면에 매핑되어 표시
 
-| ID | 작업 |
-|---|---|
-| **P3-1** | Evidence Gap Detector — 조치계획 없는 Critical/High, 예외 만료 임박, 재스캔 없는 완료 항목, 미트리아지 alert, 리포트 미export incident |
-| **P3-2** | Guided Triage Summary — alert/finding 요약 + 영향 자산·관련 CVE/trigger·최근 observation·권장 확인 포인트 |
-| **P3-3** | Multi-source Investigation Pivot — Zabbix problem → host → Fleet/Wazuh/Trivy → user/ip/process → 동일 owner/team 자산 확장 |
-| **P3-4** | Audit Report Draft — 월간 Critical/High·조치 완료/미조치/예외·증적 누락·SLA 초과 요약 초안 |
-| **P3-5** | Control Mapping Assistant — Finding/Incident를 ISMS-P / ISO 27001 통제 후보에 매핑(담당자 승인 후 반영) |
+### Phase 4 — 심사 대응 완성 · 🔲
+- 위험평가 UI(`schema/004` 활용): 자산 중요도 × 위협 × 실취약점 → 처리 결정 + 승인 기록
+- **Evidence Gap Detector**(신규 인텐트 `evidence_gaps`) — freshness 만료 / 예외 만료 임박 / 조치계획 없는 Critical
+- SoA 생성기 · **Evidence Pack**(P4-3): 통제 단위 증적 묶음 PDF · 심사 결함 트래커(지적 → 시정 → 완료 증적)
+- ✅ **완료 기준**: "모의 심사 시나리오" — 심사원 요구 문서 목록을 도구에서 전부 export
 
-> 🚫 **Phase 3 금지선**: 자동 패치 / 자동 예외 승인 / 자동 Incident close 금지. **판단 보조**까지만.
+### Phase 5 — 확산 · 🔲 *(병행 가능)*
+- 온보딩 마법사(범위 → 자산 → 담당자, 30분 내 첫 가치) · 한국어 우선 문서 + "ISMS-P 결함 Top N 대응법" 콘텐츠 · 파일럿 조직 2~3곳
 
-### Phase 4 — Deployment, Ecosystem & Small-Team Adoption
-
-*실제 도입 가능성과 생태계화. 인프라 전담자가 없는 중소형 조직이 보안 담당자 1인으로 ISMS-P/ISO 27001 대응을 끌고 갈 수 있게.*
-
-| ID | 작업 |
-|---|---|
-| **P4-1** | MORI Lite 패키징 — (API/UI + PostgreSQL + Trivy + CVE Lite) 경량 구성 vs MORI Full Demo(Zabbix/Fleet/Wazuh/Loki/Grafana) 분리 |
-| **P4-2** | Zabbix-only Adoption Pack — Zabbix 템플릿 + export 스크립트 + `docs/zabbix-only.md` (MORI 전체 설치 없이 Trivy/CVE Lite 결과 → zabbix_sender) |
-| **P4-3** | ISMS-P / ISO 27001 Evidence Pack — 통제별 샘플 리포트(`docs/evidence-pack/`): 취약점 관리, 로깅/모니터링, 월간 리포트, 예외 등록부, 조치계획 |
-| **P4-4** | Integration Marketplace 구조 — `integrations/{zabbix,trivy,cvelite,wazuh,fleet,ldap}` connector 구조/문서 정리(실제 플러그인 시스템은 추후) |
-| **P4-5** | 운영 안정화 — `SECURITY.md`·`CONTRIBUTING.md`·`CHANGELOG.md` ✅, CI(tests) ✅ / HTTPS·리버스 프록시, LDAP/AD 운영 적용, upgrade guide, release checklist 🔲 |
-| **P4-6** | 데모 시나리오 / 영상 — compose up → Trivy import → Zabbix alert → CVE 조치계획 → 예외 → Incident → 감사 PDF → Zabbix template 확인 (5~8분) |
+> 🚫 **AI 금지선**(수집·조사 보조까지만): 자동 패치 / 자동 예외 승인 / 자동 Incident close 금지.
 
 ### 그 외 백로그
-
-- **Webhook 연동** — Slack / Teams / Email 알림 (`SLACK_WEBHOOK_URL` 자리만 존재)
-- **SQL 기반 읽기 최적화** — snapshot 조회를 Postgres view 기반으로 점진 전환
+- **Webhook 연동** — Slack / Teams / Email(`SLACK_WEBHOOK_URL` 자리만 존재)
+- **CVE Lite collector** — JS/TS lockfile 의존성 취약점(`source=cve_lite`)
+- **MORI → Zabbix export** — critical/high/pending/lag metric → zabbix_sender(Zabbix-only 도입 팩)
+- **SQL 기반 읽기 최적화** — snapshot 조회를 Postgres view 로 점진 전환
 
 ---
 
