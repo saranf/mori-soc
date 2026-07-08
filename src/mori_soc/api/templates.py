@@ -24,6 +24,7 @@ DOCS_PORTAL_URL = os.getenv("MORI_DOCS_PORTAL_URL", "http://mori.rmstudio.co.kr:
 FLEET_UI_URL = os.getenv("MORI_FLEET_UI_URL", "")
 ZABBIX_UI_URL = os.getenv("MORI_ZABBIX_UI_URL", "")
 WAZUH_UI_URL = os.getenv("MORI_WAZUH_UI_URL", "")
+GRAFANA_UI_URL = os.getenv("MORI_GRAFANA_URL", "")
 USER_DASHBOARD_CARD_LABELS = {
     "total_hosts": "Total Hosts",
     "offline_hosts": "Offline Hosts",
@@ -2523,6 +2524,7 @@ def render_user_dashboard_html(
     fleet_ui_url: str = FLEET_UI_URL,
     zabbix_ui_url: str = ZABBIX_UI_URL,
     wazuh_ui_url: str = WAZUH_UI_URL,
+    grafana_ui_url: str = GRAFANA_UI_URL,
 ) -> str:
     default_preferences_json = json.dumps(DEFAULT_USER_DASHBOARD_PREFERENCES, ensure_ascii=False)
     card_labels_json = json.dumps(USER_DASHBOARD_CARD_LABELS, ensure_ascii=False)
@@ -3021,16 +3023,6 @@ def render_user_dashboard_html(
         </details>
       </section>
 
-      <!-- 📚 통제 카탈로그 트리 (ISMS-P 101 × ISO, admin·security 전용) — 이행 상태 편집 -->
-      <section class=\"card\" id=\"control_tree_card\">
-        <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-          <h2 style=\"margin:0\" data-i18n=\"dash.ctl.title\">📚 통제 카탈로그 (ISMS-P × ISO 27001)</h2>
-          <span id=\"control_tree_coverage\" style=\"font-size:12px;color:#94a3b8\"></span>
-        </div>
-        <div class=\"subtext\" data-i18n=\"dash.ctl.sub_compliance\">ISMS-P 101개 인증기준 트리. 항목을 클릭하면 이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 편집할 수 있고, 재시작 후에도 유지됩니다.</div>
-        <div id=\"control_tree_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
-      </section>
-
       <!-- PDCA Summary Cards -->
       <section class=\"metrics\" id=\"pdca_cards\">
         <div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.pdca_loading\">⏳ PDCA 데이터를 불러오는 중…</div>
@@ -3048,7 +3040,16 @@ def render_user_dashboard_html(
 
       <!-- 상세 분석 (기본 접힘 — 처음 보는 담당자에겐 과부하라 뒤로) -->
       <details class=\"card\" style=\"padding:0\">
-        <summary style=\"cursor:pointer;padding:16px 18px;font-weight:700;color:#e2e8f0;font-size:15px\" data-i18n=\"dash.pdca.detail_toggle\">📊 상세 분석 — 통제 상태 · 카테고리 · PDCA Cycle (펼치기)</summary>
+        <summary style=\"cursor:pointer;padding:16px 18px;font-weight:700;color:#e2e8f0;font-size:15px\" data-i18n=\"dash.pdca.detail_toggle\">📊 상세 분석 — 통제 카탈로그 · 통제 상태 · 카테고리 · PDCA Cycle (펼치기)</summary>
+        <!-- 📚 통제 카탈로그 트리 (ISMS-P 101 × ISO, admin·security 전용) — 이행 상태 편집 -->
+        <section class=\"card\" id=\"control_tree_card\" style=\"margin:0 16px 12px\">
+          <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+            <h2 style=\"margin:0\" data-i18n=\"dash.ctl.title\">📚 통제 카탈로그 (ISMS-P × ISO 27001)</h2>
+            <span id=\"control_tree_coverage\" style=\"font-size:12px;color:#94a3b8\"></span>
+          </div>
+          <div class=\"subtext\" data-i18n=\"dash.ctl.sub_compliance\">ISMS-P 101개 인증기준 트리. 항목을 클릭하면 이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 편집할 수 있고, 재시작 후에도 유지됩니다.</div>
+          <div id=\"control_tree_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+        </section>
         <div class=\"layout\" style=\"padding:0 16px 16px\">
           <div class=\"stack\">
             <section class=\"card\">
@@ -4749,6 +4750,26 @@ def render_user_dashboard_html(
       return `<div style=\"display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid #1e293b\">
         <span style=\"color:#94a3b8\">${label}</span><span style=\"color:#e2e8f0;text-align:right\">${value}</span></div>`;
     }
+    /* 호스트 상세 모달용 외부 연동 딥링크(Zabbix/Grafana/Fleet). URL 미설정 소스는 생략. */
+    function _hostDeepLinks(h) {
+      const btn = (href, label, color) => `<a href=\"${escapeHtml(href)}\" target=\"_blank\" rel=\"noopener\" style=\"display:inline-flex;align-items:center;gap:4px;background:${color}18;border:1px solid ${color}66;color:${color};border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;text-decoration:none\">${label} ↗</a>`;
+      const links = [];
+      if (ZABBIX_URL) {
+        links.push(btn(`${ZABBIX_URL}/zabbix.php?action=host.list&filter_set=1&filter_host=${encodeURIComponent(h.hostname)}`, 'Zabbix', '#7dd3fc'));
+      }
+      if (GRAFANA_URL) {
+        const q = h.host_id ? `{host_id=\"${h.host_id}\"}` : `{hostname=\"${h.hostname}\"}`;
+        const panes = encodeURIComponent(JSON.stringify({ pane: { queries: [{ refId: 'A', expr: q, queryType: 'range' }], range: { from: 'now-6h', to: 'now' } } }));
+        links.push(btn(`${GRAFANA_URL}/explore?schemaVersion=1&panes=${panes}&orgId=1`, 'Grafana', '#f59e0b'));
+      }
+      if (FLEET_URL) {
+        links.push(btn(`${FLEET_URL}/hosts?query=${encodeURIComponent(h.hostname)}`, 'Fleet', '#34d399'));
+      }
+      if (!links.length) {
+        return `<div style=\"font-size:11px;color:#64748b;margin-bottom:12px\">${tt('dash.host.no_links','연동 URL 미설정 (.env: MORI_ZABBIX_UI_URL·MORI_GRAFANA_URL·MORI_FLEET_UI_URL)')}</div>`;
+      }
+      return `<div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px\">${links.join('')}</div>`;
+    }
     async function openHostDetail(hostname) {
       const modal = document.getElementById('host_detail_modal');
       const titleEl = document.getElementById('host_detail_title');
@@ -4772,7 +4793,7 @@ def render_user_dashboard_html(
         ${_kv(tt('dash.host.exception','예외'), excStr)}
         ${h.last_seen_at?_kv(tt('dash.dyn.lbl.last_seen','마지막 확인'), escapeHtml(formatTime(h.last_seen_at))):''}
       </div>`;
-      bodyEl.innerHTML = meta + `<div id=\"host_detail_remed\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>`;
+      bodyEl.innerHTML = _hostDeepLinks(h) + meta + `<div id=\"host_detail_remed\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>`;
       modal.style.display = 'flex';
       // E: 미조치 3버킷
       const remedEl = document.getElementById('host_detail_remed');
@@ -4816,6 +4837,7 @@ def render_user_dashboard_html(
     const FLEET_URL = '__FLEET_UI_URL__';
     const ZABBIX_URL = '__ZABBIX_UI_URL__';
     const WAZUH_URL = '__WAZUH_UI_URL__';
+    const GRAFANA_URL = '__GRAFANA_UI_URL__';
 
     /* hostname → 담당자 조회 (Fleet + Zabbix 캐시에서) */
     function _ownerForHost(hostname) {
@@ -6662,6 +6684,7 @@ def render_user_dashboard_html(
         .replace("__FLEET_UI_URL__", fleet_ui_url)
         .replace("__ZABBIX_UI_URL__", zabbix_ui_url)
         .replace("__WAZUH_UI_URL__", wazuh_ui_url)
+        .replace("__GRAFANA_UI_URL__", grafana_ui_url)
         .replace("__GUIDE_LABELS_JSON__", guide_labels_json)
         .replace("__I18N_TOGGLE__", _i18n_toggle_html(fixed=False))
         .replace("__I18N_SCRIPT__", _i18n_script(_DASHBOARD_I18N))
