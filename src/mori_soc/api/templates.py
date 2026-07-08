@@ -566,7 +566,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <div class=\"stack\">
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.signup_requests\">🙋 가입 요청 관리</h2>
-          <div class=\"subtext\" data-i18n=\"admin.s.sub.signup_requests\">사용자가 제출한 가입 요청 목록입니다. 승인하면 운영자가 별도로 계정을 생성해야 합니다.</div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.signup_requests\">사용자가 제출한 가입 요청 목록입니다. 역할·초기 비밀번호를 정해 승인하면 계정이 자동 생성됩니다(LDAP 활성 시 디렉터리, 아니면 로컬). 초기 비밀번호는 1회 표시됩니다.</div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
             <button id=\"reload_signup_requests\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
           </div>
@@ -1801,13 +1801,19 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
               <div>
                 <strong>${r.name}</strong> <span style="color:#94a3b8;font-size:12px;">${r.email}</span>
+                ${r.username ? `<span style="color:#7dd3fc;font-size:12px;margin-left:6px;font-family:monospace">@${r.username}</span>` : ''}
                 ${r.department ? `<span style="color:#64748b;font-size:12px;margin-left:6px;">[${r.department}]</span>` : ''}
                 <div style="font-size:12px;color:#94a3b8;margin-top:4px;">${r.reason || tt('admin.dyn.no_reason','(사유 없음)')}</div>
                 <div style="font-size:11px;color:#475569;margin-top:4px;">${tt('admin.dyn.col.created','요청일')}: ${r.created_at || '-'}${r.reviewed_at ? ' / ' + tt('admin.dyn.col.reviewed','처리일') + ': ' + r.reviewed_at : ''}</div>
+                ${r.status === 'approved' && r.username ? `<div style="font-size:11px;color:#4ade80;margin-top:3px">${tt('admin.dyn.signup.provisioned','계정 생성됨')}: ${r.username} (${r.role || 'user'}, ${r.backend || ''})</div>` : ''}
               </div>
               <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                 <span>${statusBadge(r.status)}</span>
                 ${r.status === 'pending' ? `
+                  <select id="surole_${r.id}" style="font-size:12px;padding:3px 6px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:5px" title="${tt('admin.dyn.signup.role','부여 역할')}">
+                    <option value="user">user</option><option value="helpdesk">helpdesk</option><option value="monitor">monitor</option><option value="auditor">auditor</option><option value="security">security</option><option value="admin">admin</option>
+                  </select>
+                  <input id="supw_${r.id}" placeholder="${tt('admin.dyn.signup.pw_ph','초기 PW(비우면 자동)')}" style="font-size:12px;padding:3px 6px;width:130px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:5px" />
                   <button class="secondary" style="font-size:12px;padding:4px 10px" onclick="handleSignupRequest('${r.id}','approved')">${tt('admin.dyn.approve','승인')}</button>
                   <button class="danger" style="font-size:12px;padding:4px 10px" onclick="handleSignupRequest('${r.id}','rejected')">${tt('admin.dyn.reject','거절')}</button>
                 ` : ''}
@@ -1822,14 +1828,25 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     async function handleSignupRequest(id, status) {
       if (!signupStatusEl) return;
       signupStatusEl.textContent = tt('admin.dyn.processing','처리 중…');
+      const body = { status };
+      if (status === 'approved') {
+        body.role = document.getElementById('surole_' + id)?.value || 'user';
+        const pw = (document.getElementById('supw_' + id)?.value || '').trim();
+        if (pw) body.password = pw;
+      }
       try {
         const res = await fetch(`/auth/signup-requests/${id}`, {
           method: 'PATCH',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({status})
+          body: JSON.stringify(body)
         });
-        if (!res.ok) throw new Error((await res.json()).detail || res.status);
-        signupStatusEl.textContent = status === 'approved' ? tt('admin.dyn.approve_done','✅ 승인 완료') : tt('admin.dyn.reject_done','❌ 거절 완료');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || res.status);
+        if (status === 'approved' && data.username) {
+          signupStatusEl.innerHTML = `${tt('admin.dyn.approve_done','✅ 승인 완료')} — <strong>${data.username}</strong> (${data.role}, ${data.backend}) · ${tt('admin.dyn.signup.initpw','초기 비밀번호')}: <code style="background:#0b1322;padding:1px 6px;border-radius:4px;color:#fde68a">${data.initial_password}</code> ${tt('admin.dyn.signup.copy_note','(사용자에게 전달, 1회 표시)')}`;
+        } else {
+          signupStatusEl.textContent = tt('admin.dyn.reject_done','❌ 거절 완료');
+        }
         await loadSignupRequests();
       } catch(e) {
         signupStatusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`;
@@ -6814,6 +6831,7 @@ def render_signup_request_html(success: bool = False) -> str:
     body_html = """
     <p data-i18n="signup.intro" style="color:#94a3b8;font-size:14px;margin-bottom:20px;">계정 사용을 원하시면 아래 정보를 입력하고 운영자에게 가입을 요청하세요.</p>
     <div class="field"><label data-i18n="signup.label.name">이름 *</label><input id="req_name" placeholder="홍길동" data-i18n-placeholder="signup.placeholder.name" /></div>
+    <div class="field"><label data-i18n="signup.label.username">로그인 아이디</label><input id="req_username" placeholder="hong" autocomplete="off" data-i18n-placeholder="signup.placeholder.username" /></div>
     <div class="field"><label data-i18n="signup.label.email">이메일 *</label><input id="req_email" type="email" placeholder="hong@company.com" /></div>
     <div class="field"><label data-i18n="signup.label.dept">부서</label><input id="req_dept" placeholder="보안팀" data-i18n-placeholder="signup.placeholder.dept" /></div>
     <div class="field"><label data-i18n="signup.label.reason">요청 사유</label><textarea id="req_reason" style="width:100%;background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;color:#e2e8f0;padding:10px 14px;font-size:14px;min-height:80px;outline:none;" placeholder="업무 목적 및 필요 권한을 간략히 작성해주세요." data-i18n-placeholder="signup.placeholder.reason"></textarea></div>
@@ -6823,6 +6841,7 @@ def render_signup_request_html(success: bool = False) -> str:
     <script>
       document.getElementById('submit_btn').addEventListener('click', async () => {
         const name = document.getElementById('req_name').value.trim();
+        const username = document.getElementById('req_username').value.trim();
         const email = document.getElementById('req_email').value.trim();
         const department = document.getElementById('req_dept').value.trim();
         const reason = document.getElementById('req_reason').value.trim();
@@ -6832,7 +6851,7 @@ def render_signup_request_html(success: bool = False) -> str:
         try {
           const res = await fetch('/auth/signup-request', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({name, email, department, reason})
+            body: JSON.stringify({name, username, email, department, reason})
           });
           if (res.ok) {
             const title = window.t('signup.success.title');

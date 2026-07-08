@@ -78,7 +78,8 @@ services:
       MORI_LDAP_ENABLED: ${MORI_LDAP_ENABLED:-false}
       MORI_LDAP_URL: ${MORI_LDAP_URL:-ldap://openldap:389}
       MORI_LDAP_BIND_DN: ${MORI_LDAP_BIND_DN:-cn=admin,dc=mori,dc=local}
-      MORI_LDAP_BIND_PW: ${MORI_LDAP_BIND_PW:-admin}
+      # 바인드 비밀번호: MORI_LDAP_BIND_PW → MORI_LDAP_BIND_PASSWORD → 번들 OpenLDAP 관리자(LDAP_ADMIN_PASSWORD) 순
+      MORI_LDAP_BIND_PW: ${MORI_LDAP_BIND_PW:-${MORI_LDAP_BIND_PASSWORD:-${LDAP_ADMIN_PASSWORD:-admin}}}
       MORI_LDAP_BASE_DN: ${MORI_LDAP_BASE_DN:-ou=users,dc=mori,dc=local}
       MORI_LDAP_USER_ATTR: ${MORI_LDAP_USER_ATTR:-uid}
     ports:

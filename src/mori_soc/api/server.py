@@ -239,6 +239,11 @@ def create_app(
     user_profiles.update(state_repo.load_user_profiles())
     settings.update(state_repo.load_settings())
     control_status.update(state_repo.load_control_status())
+    # LDAP 가입 승인으로 만든 계정의 역할을 복원(비밀번호는 LDAP이 검증하므로 role만).
+    for _skey, _sval in settings.items():
+        if _skey.startswith("ldaprole:"):
+            _luser = _skey[len("ldaprole:"):]
+            local_users[_luser] = {"password": "", "role": _sval}
 
     # ── Demo seed (in-memory) ────────────────────────────────────────────────
     # triage_store / asset_owners / user_profiles 는 런타임 인메모리 저장소라 SQL 시드로

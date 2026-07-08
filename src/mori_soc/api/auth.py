@@ -58,14 +58,30 @@ class AuthConfig:
     auth_enabled: bool
 
 
+def _env_first(*names: str, default: str = "") -> str:
+    """First non-empty env var among ``names`` (for MORI_LDAP_* → LDAP_* fallback)."""
+    for name in names:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return default
+
+
 def read_auth_config() -> AuthConfig:
-    """Read auth-related environment variables into an :class:`AuthConfig`."""
-    ldap_url = os.environ.get("LDAP_URL", "").strip()
-    ldap_bind_dn = os.environ.get("LDAP_BIND_DN", "").strip()
-    ldap_bind_pw = os.environ.get("LDAP_BIND_PASSWORD", "").strip()
-    ldap_base_dn = os.environ.get("LDAP_BASE_DN", "").strip()
-    ldap_user_attr = os.environ.get("LDAP_USER_ATTR", "uid").strip()
-    ldap_enabled = bool(ldap_url and LDAP3_AVAILABLE)
+    """Read auth-related environment variables into an :class:`AuthConfig`.
+
+    LDAP is **opt-in**: it activates only when ``MORI_LDAP_ENABLED`` is truthy
+    *and* an LDAP URL is set *and* ``ldap3`` is installed. Env var names accept the
+    canonical ``MORI_LDAP_*`` form (as wired in docker-compose), falling back to the
+    legacy unprefixed ``LDAP_*`` for backward compatibility.
+    """
+    ldap_url = _env_first("MORI_LDAP_URL", "LDAP_URL")
+    ldap_bind_dn = _env_first("MORI_LDAP_BIND_DN", "LDAP_BIND_DN")
+    ldap_bind_pw = _env_first("MORI_LDAP_BIND_PW", "MORI_LDAP_BIND_PASSWORD", "LDAP_BIND_PASSWORD")
+    ldap_base_dn = _env_first("MORI_LDAP_BASE_DN", "LDAP_BASE_DN")
+    ldap_user_attr = _env_first("MORI_LDAP_USER_ATTR", "LDAP_USER_ATTR", default="uid")
+    ldap_flag = os.environ.get("MORI_LDAP_ENABLED", "").strip().lower() in ("1", "true", "yes", "on")
+    ldap_enabled = bool(ldap_flag and ldap_url and LDAP3_AVAILABLE)
     admin_user = os.environ.get("MORI_ADMIN_USER", "admin")
     admin_password = os.environ.get("MORI_ADMIN_PASSWORD", "1234")
     auth_enabled = bool(os.environ.get("MORI_AUTH_ENABLED", "") or ldap_enabled)
@@ -111,7 +127,8 @@ def ldap_verify(
         if bind_dn and base_dn:
             # Search-then-bind: use service account to find the user DN
             admin_conn = _LdapConnection(server, bind_dn, bind_pw, auto_bind=True)
-            admin_conn.search(base_dn, f"({user_attr}={username})", search_scope=_LDAP_SUBTREE, attributes=["dn"])
+            # 'dn' 은 유효한 속성 타입이 아니므로 요청하지 않는다(entry_dn 은 항상 제공됨).
+            admin_conn.search(base_dn, f"({user_attr}={username})", search_scope=_LDAP_SUBTREE, attributes=["cn"])
             if not admin_conn.entries:
                 return False
             user_dn = str(admin_conn.entries[0].entry_dn)
@@ -147,6 +164,44 @@ def verify_credentials(
             pass
     user = local_users.get(username)
     return user is not None and user["password"] == password
+
+
+def ldap_add_user(
+    config: AuthConfig,
+    uid: str,
+    password: str,
+    cn: str = "",
+    sn: str = "",
+    mail: str = "",
+) -> tuple[bool, str]:
+    """Create an ``inetOrgPerson`` under the LDAP base DN. Returns (ok, error).
+
+    Used by the approval-based signup flow to provision a real account that can
+    then log in to MORI **and** any other service pointed at the same directory
+    (Grafana/Zabbix/Fleet). Requires ``config.ldap_bind_dn`` to have write access.
+    """
+    if not config.ldap_enabled or not LDAP3_AVAILABLE or _LdapServer is None:
+        return False, "LDAP is not enabled"
+    if not (config.ldap_bind_dn and config.ldap_base_dn):
+        return False, "LDAP bind DN / base DN required for account creation"
+    try:
+        server = _LdapServer(config.ldap_url, get_info=_LDAP_ALL, connect_timeout=5)
+        conn = _LdapConnection(server, config.ldap_bind_dn, config.ldap_bind_pw, auto_bind=True)
+        user_dn = f"{config.ldap_user_attr}={uid},{config.ldap_base_dn}"
+        attrs: dict[str, Any] = {
+            "objectClass": ["inetOrgPerson", "organizationalPerson", "person", "top"],
+            "cn": cn or uid,
+            "sn": sn or uid,
+            "userPassword": password,
+        }
+        if mail:
+            attrs["mail"] = mail
+        ok = conn.add(user_dn, attributes=attrs)
+        if not ok:
+            return False, str(conn.result.get("description", conn.result))
+        return True, ""
+    except Exception as exc:  # pragma: no cover - network/dir errors
+        return False, str(exc)
 
 
 # Public paths that bypass the session-auth middleware.

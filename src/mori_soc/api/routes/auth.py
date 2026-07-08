@@ -16,10 +16,15 @@ from typing import Any
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from mori_soc.api.auth import DEFAULT_ROLE_PERMISSIONS
+from mori_soc.api.auth import DEFAULT_ROLE_PERMISSIONS, ldap_add_user
 from mori_soc.api.templates import render_login_html, render_signup_request_html
 from mori_soc.api.payloads import _isoformat
 from mori_soc.api.routes.context import RouteContext
+
+# 가입 승인 시 부여 가능한 역할
+_SIGNUP_ROLES = {"admin", "security", "monitor", "auditor", "helpdesk", "user"}
+# LDAP 사용자 역할을 재시작 후에도 유지하기 위한 settings 키 접두사
+_LDAP_ROLE_PREFIX = "ldaprole:"
 
 
 def register_auth(ctx: RouteContext) -> None:
@@ -80,13 +85,21 @@ def register_auth(ctx: RouteContext) -> None:
 
     @app.post("/auth/signup-request", tags=["Auth"])
     def submit_signup_request(payload: dict[str, Any]) -> dict[str, Any]:
-        """가입 요청 제출: {name, email, department, reason}."""
+        """가입 요청 제출: {username, name, email, department, reason}.
+
+        승인제(approval): 요청만 접수하고, admin 승인 시 계정이 실제로 생성된다.
+        `username` 은 로그인 아이디(승인 시 LDAP uid / 로컬 계정명으로 사용).
+        """
+        username = str(payload.get("username", "")).strip()
         name = str(payload.get("name", "")).strip()
         email = str(payload.get("email", "")).strip()
         if not name or not email:
             raise HTTPException(status_code=400, detail="이름과 이메일은 필수입니다.")
+        if username and username in local_users:
+            raise HTTPException(status_code=409, detail="이미 사용 중인 아이디입니다.")
         req = {
             "id": str(uuid.uuid4()),
+            "username": username or email.split("@")[0],
             "name": name,
             "email": email,
             "department": str(payload.get("department", "")).strip(),
@@ -104,18 +117,73 @@ def register_auth(ctx: RouteContext) -> None:
         return {"requests": signup_requests, "total": len(signup_requests)}
 
     @app.patch("/auth/signup-requests/{req_id}", tags=["Auth"])
-    def update_signup_request(req_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-        """가입 요청 승인/거절 (어드민용). status: approved | rejected."""
+    def update_signup_request(req_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """가입 요청 승인/거절 (어드민용). status: approved | rejected.
+
+        승인 시 계정을 **실제로 생성**한다:
+        - LDAP 활성(`MORI_LDAP_ENABLED=true`): `ldap_add_user` 로 디렉터리에 계정 생성 →
+          같은 LDAP을 보는 다른 서비스(Grafana/Zabbix/Fleet)에서도 로그인 가능. 역할은
+          `ui_settings`(`ldaprole:<user>`)에 영속되어 재시작 후에도 유지.
+        - LDAP 비활성(기본): 로컬 계정(local_users)으로 생성(이번 세션 유지).
+        승인 body: `{status:"approved", role?, password?}` — role 기본 `user`,
+        password 미지정 시 랜덤 초기 비밀번호를 생성해 응답으로 1회 반환.
+        """
         valid_statuses = {"approved", "rejected", "pending"}
         new_status = str(payload.get("status", "")).strip()
         if new_status not in valid_statuses:
             raise HTTPException(status_code=400, detail=f"status must be one of: {', '.join(sorted(valid_statuses))}")
-        for req in signup_requests:
-            if req["id"] == req_id:
-                req["status"] = new_status
-                req["reviewed_at"] = _isoformat(datetime.now(tz=timezone.utc))
-                return req
-        raise HTTPException(status_code=404, detail="가입 요청을 찾을 수 없습니다.")
+
+        req = next((r for r in signup_requests if r["id"] == req_id), None)
+        if req is None:
+            raise HTTPException(status_code=404, detail="가입 요청을 찾을 수 없습니다.")
+
+        actor = ""
+        token = request.cookies.get("mori_session", "")
+        sess = sessions.get(token) if sessions else None
+        if sess:
+            actor = sess.get("username", "") or ""
+
+        result: dict[str, Any] = {}
+        if new_status == "approved" and req.get("status") != "approved":
+            role = str(payload.get("role", "user")).strip() or "user"
+            if role not in _SIGNUP_ROLES:
+                raise HTTPException(status_code=400, detail=f"role must be one of: {', '.join(sorted(_SIGNUP_ROLES))}")
+            username = str(req.get("username", "")).strip()
+            if not username:
+                raise HTTPException(status_code=400, detail="가입 요청에 아이디가 없습니다.")
+            if username in local_users:
+                raise HTTPException(status_code=409, detail="이미 존재하는 계정입니다.")
+            password = str(payload.get("password", "")).strip() or uuid.uuid4().hex[:12]
+            cfg = ctx.auth_config
+
+            if cfg is not None and getattr(cfg, "ldap_enabled", False):
+                ok, err = ldap_add_user(
+                    cfg, uid=username, password=password,
+                    cn=req.get("name") or username, sn=req.get("name") or username,
+                    mail=req.get("email", ""),
+                )
+                if not ok:
+                    raise HTTPException(status_code=502, detail=f"LDAP 계정 생성 실패: {err}")
+                # 역할만 로컬에 매핑(비밀번호는 LDAP이 검증) + settings에 영속
+                local_users[username] = {"password": "", "role": role}
+                ctx.settings[_LDAP_ROLE_PREFIX + username] = role
+                if ctx.persist_setting:
+                    ctx.persist_setting(_LDAP_ROLE_PREFIX + username, actor)
+                result["backend"] = "ldap"
+            else:
+                local_users[username] = {"password": password, "role": role}
+                result["backend"] = "local"
+
+            result["username"] = username
+            result["role"] = role
+            result["initial_password"] = password  # 1회 노출(운영자가 사용자에게 전달)
+            if _log_action:
+                _log_action(actor or "unknown", "SIGNUP_APPROVE",
+                            f"{username} → role={role} ({result['backend']})")
+
+        req["status"] = new_status
+        req["reviewed_at"] = _isoformat(datetime.now(tz=timezone.utc))
+        return {**req, **result}
 
     def _user_profile(uname: str) -> dict[str, Any]:
         """username → 프로필 dict (없으면 빈 기본값)."""

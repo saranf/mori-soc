@@ -16,7 +16,8 @@
 
 - 🎯 **대상** — 보안 담당자 1~2명 + IT 헬프데스크로 ISMS-P / ISO 27001을 준비해야 하는 중소형 조직
 - 🚀 **한 줄 시작** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, 데모 전용)
-- 📖 **설치·운영 가이드** — 처음이면 [**시작하기(신규 사용자)**](docs/GETTING_STARTED.md), 이미 Zabbix/Wazuh/Fleet를 운영 중이면 [**기존 스택 연결**](docs/BROWNFIELD_CONNECT.md) (둘 다 한/영)
+- 📖 **설치·운영 가이드** — 처음이면 [**시작하기(신규 사용자)**](docs/GETTING_STARTED.md), 이미 Zabbix/Wazuh/Fleet를 운영 중이면 [**기존 스택 연결**](docs/BROWNFIELD_CONNECT.md), 계정 통합은 [**LDAP 통합**](docs/LDAP_INTEGRATION.md) (모두 한/영)
+- 🔑 **LDAP 통합 인증 (선택)** — 기본은 로컬 계정, **원하면** `MORI_LDAP_ENABLED=true`로 켜면 로그인이 LDAP으로 되고 **가입 승인 시 LDAP 계정이 생성**되어 같은 LDAP을 보는 **Grafana/Zabbix/Fleet에서도 같은 계정으로 로그인**. 기존 사내 LDAP/AD도 URL만 바꿔 연결. → [가이드](docs/LDAP_INTEGRATION.md)
 - 📊 **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · **위험성 평가 매트릭스** · Compliance PDCA + **통제 카탈로그(ISMS-P 101 × ISO)** · 6종 감사 증적 CSV/PDF
 - 🎯 **위험성 평가 (R-series)** — 취약점(CVE)별 **위험도 = 영향도(자산 중요도 상/중/하) × 발생가능성(심각도)** 를 3×3 매트릭스로 **점수(1~9)** 산정(라벨보다 점수 우선), 위험처리 결정(조치/수용/이관/회피)·잔여위험·재평가일 기록. **어드민 전용 산정 근거(provenance)** 패널. **위험 수용 기준(DoA)** — admin이 임계 점수를 입력하면 그 이하 위험은 **기본 수용가능**으로 자동 분류. ISMS-P 위험관리 / ISO 27001 6.1.2·8.8 기반
 - 📚 **통제 카탈로그 (Phase 2)** — ISMS-P 101 + ISO 27001:2022 93 = **194개 인증기준**(한/영) 트리를 **컴플라이언스 탭**에 표시. 통제별 **이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 편집**하면 `control_status`(`schema/009`)에 **영속(재시작 유지)** + 변경 이력 기록. 통제별 **증적 팩 PDF** 1클릭. admin·security 전용
@@ -635,6 +636,7 @@ docker compose up -d mori-api
 |---|---|
 | **`docs/GETTING_STARTED.md`** (한/영) | **신규 사용자 설치·운영 가이드** — 데모 기동 → 첫 운영 → 운영 전환 (쉽게) |
 | **`docs/BROWNFIELD_CONNECT.md`** (한/영) | **기존 Zabbix/Wazuh/Fleet 연결 가이드** — `.env`만으로 read-only 연결 (단계별) |
+| **`docs/LDAP_INTEGRATION.md`** (한/영) | **LDAP 통합 인증(선택)** — 계정 하나로 MORI·Grafana·Zabbix·Fleet 로그인, 가입 승인 시 계정 생성 |
 | `docs/FUNCTIONAL_SPEC.md` | 기능 정의서 원문 |
 | `docs/SECURITY_CONTROL_MAPPING.md` | 보안 통제(Security Controls) 매핑 |
 | `docs/IMPLEMENTATION_ROADMAP.md` | 기능 정의서 기준 구현 로드맵 |

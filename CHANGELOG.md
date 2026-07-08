@@ -4,6 +4,26 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.12.0-alpha.1] — 2026-07-08 — LDAP 통합 인증 (선택) + 가입 승인 프로비저닝
+
+계정 하나로 MORI·Grafana·Zabbix·Fleet 로그인. **기본 OFF**, 원하면 켜는 옵션.
+
+### Added
+- **LDAP 계정 생성** (`auth.ldap_add_user`) — `inetOrgPerson` 를 디렉터리에 추가.
+- **가입 승인 프로비저닝(승인제)** — `/signup-request` 에 로그인 아이디 필드 추가, admin 승인
+  시 **역할·초기 비밀번호**를 정하면 계정이 실제로 생성된다: LDAP 활성 시 디렉터리 계정(같은
+  LDAP을 보는 Grafana/Zabbix/Fleet 에서도 로그인), 비활성 시 로컬 계정. 역할은 `ui_settings`
+  (`ldaprole:<uid>`)에 영속되어 **재시작 후 유지**, 초기 비밀번호는 승인 화면에 1회 표시.
+- **헬퍼 스크립트** `scripts/mori-ldap-adduser.sh` — 번들/외부 LDAP 에 사용자 CLI 추가(OU 자동 생성).
+- **문서** `docs/LDAP_INTEGRATION.md`(+`.en`) — 켜기/가입/CLI 추가/기존 Grafana·Zabbix 연동/끄기.
+
+### Fixed
+- **LDAP 로그인이 항상 실패하던 버그** — `ldap_verify` 가 검색 시 유효하지 않은 속성 `dn` 을
+  요청해 예외 → 인증 실패로 처리되던 문제 수정(`cn` 으로 변경, DN 은 `entry_dn` 사용).
+- **LDAP env 배선 불일치** — `read_auth_config` 가 무프리픽스 `LDAP_*` 를 읽어 compose 의
+  `MORI_LDAP_*` 와 어긋나던 문제 수정(`MORI_LDAP_*` 우선 + 레거시 폴백). **`MORI_LDAP_ENABLED`
+  을 실제로 존중**(기본 OFF). compose 바인드 비밀번호를 `LDAP_ADMIN_PASSWORD` 와 자동 일치.
+
 ## [v0.11.0-alpha.1] — 2026-07-08 — 자산 뷰 정제 · 딥링크 · 필터
 
 ### Added
