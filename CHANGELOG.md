@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.11.0-alpha.1] — 2026-07-08 — 자산 뷰 정제 · 딥링크 · 필터
+
+### Added
+- **호스트 상세 모달 외부 딥링크** — '내 담당 서버' 행 더블클릭 상세에 자산 종류별 딥링크:
+  서버→**Zabbix**, PC→**Fleet**, 공통→**Grafana**(Explore, host 로그). `MORI_GRAFANA_URL`
+  플레이스홀더 치환 추가. URL 미설정 소스는 자동 생략.
+- **자산 테이블 필터** — Fleet·Zabbix 자산 표에 **팀별 드롭다운** + **'⭐ 내 자산만'**
+  체크박스(프로필 담당서버/담당자 일치). 팀 옵션은 자산 team 값에서 자동 추출.
+
+### Changed
+- **취약점 현황(Trivy) 표** — `High/Medium/Low` 카운트 컬럼을 **위험점수(1~9)** 컬럼으로
+  대체(Critical·합계 유지). 위험점수 = 영향도(중요도)×발생가능성(최고 심각도).
+- **'내 담당 서버' 표 간소화** — 컬럼을 `호스트명·중요도·상태·IP`로(분류 컬럼 제거, 그룹
+  헤더가 이미 카테고리). 헤더/값 좌측정렬 통일.
+- 통제 카탈로그 트리를 컴플라이언스 탭 상단 카드 → **'상세 분석' 접이식 섹션**으로 이동.
+
 ## [v0.10.0-alpha.1] — 2026-07-08 — Control Catalog 이행상태 편집 (M2-7)
 
 컴플라이언스 화면을 시드 control_checks 12건이 아니라 **ISMS-P 101개 인증기준 카탈로그**로

@@ -21,6 +21,14 @@ Security Control Mapping은 다음 목적을 가진다.
 
 본 문서는 **ISMS / ISO 27001 / 일반 보안 운영 기준**을 참고하여 작성되었다.
 
+> **현행화(2026-07-08)**: 이 문서의 개념 매핑은 이제 **실제 통제 카탈로그**로 구현되어 있다.
+> - 카탈로그 원본: `controls/`(ISMS-P + ISO 27001, 한·영 병기) — 총 194건(ISMS-P 101 + ISO 93)
+> - 스키마: `schema/007_controls.sql`(`controls` / `control_mappings` / `control_defects`)
+> - UI: **컴플라이언스 탭**의 통제 트리(도메인 → 통제 계층)
+> - 이행상태 편집: `schema/009_control_status.sql`(`control_status`)로 status/owner/exception_reason/improvement_plan/due_date를 편집·영속화
+>
+> 아래 §2~§11의 매핑 표는 개념 수준의 요약이며, 최신·상세 매핑은 위 카탈로그를 정본으로 한다.
+
 ## 2. Security Control Categories
 
 Security Visibility Platform은 다음 보안 통제 영역을 지원한다.

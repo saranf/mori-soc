@@ -16,13 +16,14 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 
 - 🎯 **Target audience** — Small to mid-sized organizations with 1–2 security staff + IT helpdesk preparing for ISMS-P / ISO 27001
 - 🚀 **One-line start** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, demo only)
-- 📊 **Screens** — Unified dashboard · Alert Triage · Incidents · Assets / Vulnerabilities · **Risk Assessment Matrix** · Compliance PDCA · 6 audit-evidence CSV/PDF reports
-- 🎯 **Risk Assessment (R-series)** — Per-CVE **Risk = Impact (asset importance H/M/L) × Likelihood (severity)** scored on a 3×3 matrix, with treatment decision (mitigate/accept/transfer/avoid) · residual risk · review date. **Admin-only assessment-basis (provenance)** panel. Based on ISMS-P risk management / ISO 27001 6.1.2·8.8
-- 🔐 **Role-aware screens** — Risk assessment is **admin·security only**; infra/helpdesk see only **their servers' vulnerabilities & remediation rate**. **My servers** is trimmed to `hostname·importance·category·status·IP`; **double-click a row** opens a detail modal that buckets open items into **exception-expired / overdue / other risks**. The dashboard is a **role-aware security hero + 24h/12h infra status (Zabbix/Wazuh deep links)**, with **panel editing** for per-user widget selection (persisted)
+- 📊 **Screens** — Unified dashboard · Alert Triage · Incidents · Assets / Vulnerabilities · **Risk Assessment Matrix** · Compliance PDCA + **Control catalog (ISMS-P 101 × ISO)** · 6 audit-evidence CSV/PDF reports
+- 🎯 **Risk Assessment (R-series)** — Per-CVE **Risk = Impact (asset importance H/M/L) × Likelihood (severity)** as a **score (1–9)** on a 3×3 matrix (score-forward), with treatment decision (mitigate/accept/transfer/avoid) · residual risk · review date. **Admin-only assessment-basis (provenance)** panel. A single **risk-acceptance threshold (DoA)** auto-classifies risks at or below it as **auto-acceptable**. Based on ISMS-P risk management / ISO 27001 6.1.2·8.8
+- 📚 **Control catalog (Phase 2)** — ISMS-P 101 + ISO 27001:2022 93 = **194 criteria** (KO/EN) as a tree in the **Compliance tab**. Edit each control's **implementation status (implemented/partial/not-implemented/N-A) · owner · plan · due date** → persisted to `control_status` (`schema/009`, survives restarts) + change history. One-click per-control **evidence-pack PDF**. admin·security only
+- 🔐 **Role-aware screens** — Risk assessment & control catalog are **admin·security only**; infra/helpdesk see only **their servers' vulnerabilities & remediation rate**. **My servers** is trimmed to `hostname·importance·status·IP`; **double-click a row** opens a detail modal that buckets open items into **exception-expired / overdue / other risks** + **Zabbix/Grafana/Fleet deep-links** (per asset kind). Asset tables have **team & 'my assets only' filters**. The Trivy table shows a **risk score (1–9)** instead of severity counts. The dashboard is a **role-aware security hero + 24h/12h infra status (Zabbix/Wazuh deep links)**, with **panel editing** for per-user widget selection (persisted)
 - 🌐 **Multi-language UI** — Korean / English toggle on every page (login, dashboard, admin console); moved from a fixed top-right widget into the **account menu (👤)**, persisted in a cookie + localStorage and switches instantly without a reload
 - 👤 **User profile + My Servers** — Save name · department · assigned servers to your account, and view only your assets in a dedicated **⭐ My Servers** view (profile-menu shortcut)
 - 🧾 **Automatic evidence** — Asset owner/importance, host/CVE-level remediation plans & exceptions, **per-CVE risk assessment**, Triage & Incident state changes
-- ✅ **Persistence (M2-1 + R-2 done)** — UI operational state stores (asset owners · audit log · vuln actions · Triage · Incidents · profiles + the **risk register `ui_risk_register`**) are **write-through persisted** to PostgreSQL and survive restarts.
+- ✅ **Persistence (M2-1 + R-2 + M2-7)** — UI operational state stores (asset owners · audit log · vuln actions · Triage · Incidents · profiles + the **risk register `ui_risk_register`** + **org settings `ui_settings`** (risk DoA) + **control status `control_status`**) are **write-through persisted** to PostgreSQL and survive restarts. (schema `001`–`009`)
 - 🔌 **Live data integration** — **Zabbix real-time polling is verified against the real API** (problem→Triage→Incident→evidence→resolve). **Trivy/CSOP integrate via remote token push** (`/ingest/trivy`·`/ingest/evidence`). **Fleet / Wazuh live integration is Next**.
 - 🧩 **Brownfield** — for existing Zabbix/Wazuh/Fleet, run **MORI core only and connect via `.env`** (no bundled sources). `docker compose up` = core only, `--profile bundled` = bundled demo. → [guide](docs/BROWNFIELD_CONNECT.md)
 
@@ -123,7 +124,7 @@ flowchart LR
         QC[query_catalog<br/>12 intents]
         QS[query_service<br/>_INTENT_HANDLERS]
         V[views<br/>latest/risk/timeline]
-        RP[reports<br/>5 CSV types]
+        RP[reports<br/>6 CSV/PDF types]
     end
 
     subgraph REPO["Repositories"]
@@ -231,7 +232,7 @@ A guidance modal automatically surfaces so that host-level bulk plans don't conf
 
 | Item | Status | Priority |
 |---|---|---|
-| **UI operational state → PostgreSQL persistence (M2-1)** | ✅ Done — `schema/003_*` + `repositories/state_*.py` (StateRepository) cache-aside + write-through. The 6 stores survive restarts, verified by an integration test (`tests/test_state_persistence.py`) | ✅ Done |
+| **UI operational state → PostgreSQL persistence (M2-1 → 10 stores)** | ✅ Done — `schema/003~009_*` + `repositories/state_*.py` (StateRepository) cache-aside + write-through. M2-1 6 stores → expanded to 10 (R-2/evidence/settings/control status); survive restarts, verified by an integration test (`tests/test_state_persistence.py`) | ✅ Done |
 | **Zabbix API polling** | ✅ **Verified** — real Zabbix API, problem→collect→Triage→Incident→evidence→resolve end-to-end (`collectors/zabbix_events.py`, `tests/test_zabbix_events.py`) | ✅ Done |
 | **Control catalog (Phase 2)** | ISMS-P/ISO N:M mapping + common defects + control-tree screen — **the product-identity pivot; comes before pollers** | 🔴 Top |
 | **Trivy ingest** | ✅ Remote token push (`/ingest/trivy`·`/ingest/evidence`) done · only local scheduled scan automation remains | 🟡 Medium |
@@ -373,7 +374,7 @@ src/mori_soc/
 │   ├── postgres.py        ← Postgres repository (holds normalized seed → query snapshot)
 │   ├── state_base.py      ← StateRepository ABC (interface for the 6 UI operational stores)
 │   ├── state_memory.py    ← InMemoryStateRepository (default for tests/demo, pure dicts)
-│   └── state_postgres.py  ← PostgresStateRepository (write-through for the 6 stores, schema/003)
+│   └── state_postgres.py  ← PostgresStateRepository (write-through for the 10 stores, schema/003~009)
 ├── models/entities.py     ← Host, HostAlias, Alert, Vulnerability, ControlCheckResult …
 └── worker.py              ← Poller orchestrator
 ```
@@ -383,10 +384,10 @@ src/mori_soc/
 | Storage area | Current status | Location |
 |---|---|---|
 | **Normalized security data** (hosts / alerts / vulnerabilities / observations / fleet_query_results / control_checks / directory_accounts / source_syncs …) | PostgreSQL **seed schema + seed data** loaded. Boot-time load into InMemoryRepository for queries | `schema/001_phase1_initial.sql`, `repositories/postgres.py`, `repositories/memory.py` |
-| **UI operational state — 6 stores** (survive restarts) | Persisted to PostgreSQL via cache-aside + write-through. Warm-loaded DB→memory at boot, written through to the DB on every mutation | `schema/003_*`, `repositories/state_*.py`, `api/server.py` → `api/routes/context.py` |
-| Phase 2 persistence (6 stores → Postgres) | ✅ M2-1 done — StateRepository layer + `schema/003`. Round-trip verified by an integration test | `tests/test_state_persistence.py` |
+| **UI operational state — 10 stores** (survive restarts) | Persisted to PostgreSQL via cache-aside + write-through. Warm-loaded DB→memory at boot, written through to the DB on every mutation | `schema/003~009_*`, `repositories/state_*.py`, `api/server.py` → `api/routes/context.py` |
+| Phase 2 persistence (stores → Postgres) | ✅ M2-1 (6 stores) done → later expanded to **10** (R-2 / evidence / settings / control status). StateRepository layer + `schema/003~009`. Round-trip verified by an integration test | `tests/test_state_persistence.py` |
 
-#### Persisted 6-store detail (cache-aside + write-through)
+#### Persisted store detail (cache-aside + write-through, 10 stores)
 
 | Variable | Content |
 |---|---|
@@ -396,8 +397,12 @@ src/mori_soc/
 | `triage_store` | alert_id → {status, analyst, note, changed_by, changed_at, history[]} |
 | `incident_store` | incident_id → {…, history[]} |
 | `user_profiles` | username → {display_name, department, assigned_servers[], updated_at} |
+| `risk_register` (R-2) | vuln_id → {impact, likelihood, score, level, treatment, residual, review_due, assessed_by, …} |
+| `evidence_events` (v0.7) | id → CSOP before/after diff envelope (host_id, cve, delta_type, …) |
+| `settings` (M2) | key → value (e.g. `risk_doa` acceptance threshold) |
+| `control_status` (M2-7) | control_id → {status, owner, exception_reason, improvement_plan, due_date, updated_by} |
 
-→ The 6 stores above are warm-loaded from PostgreSQL into memory at boot, and every mutation is written through to the DB immediately (M2-1 done). State survives restarts.
+→ The stores above (M2-1 6 → 10) are warm-loaded from PostgreSQL into memory at boot, and every mutation is written through to the DB immediately. State survives restarts. (schema `001`–`009`)
 
 ### 12 natural language query intents
 

@@ -16,13 +16,14 @@
 
 - 🎯 **대상** — 보안 담당자 1~2명 + IT 헬프데스크로 ISMS-P / ISO 27001을 준비해야 하는 중소형 조직
 - 🚀 **한 줄 시작** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, 데모 전용)
-- 📊 **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · **위험성 평가 매트릭스** · Compliance PDCA · 6종 감사 증적 CSV/PDF
+- 📊 **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · **위험성 평가 매트릭스** · Compliance PDCA + **통제 카탈로그(ISMS-P 101 × ISO)** · 6종 감사 증적 CSV/PDF
 - 🎯 **위험성 평가 (R-series)** — 취약점(CVE)별 **위험도 = 영향도(자산 중요도 상/중/하) × 발생가능성(심각도)** 를 3×3 매트릭스로 **점수(1~9)** 산정(라벨보다 점수 우선), 위험처리 결정(조치/수용/이관/회피)·잔여위험·재평가일 기록. **어드민 전용 산정 근거(provenance)** 패널. **위험 수용 기준(DoA)** — admin이 임계 점수를 입력하면 그 이하 위험은 **기본 수용가능**으로 자동 분류. ISMS-P 위험관리 / ISO 27001 6.1.2·8.8 기반
-- 🔐 **역할별 화면** — 위험성 평가는 **admin·security 전용**, 인프라·헬프데스크는 **내 담당 서버 취약점·조치율**만 열람. **내 담당 서버**는 `호스트명·중요도·분류·상태·IP`로 간소화, 행 **더블클릭 → 상세 모달**에서 미조치를 **예외 만료·조치기한 초과·기타 위험** 3버킷으로 표시. 대시보드는 **역할별 보안 히어로 + 24h/12h 인프라 현황(Zabbix/Wazuh 딥링크)** 로 구성, **패널 편집**으로 개인별 위젯 선택·영속화
+- 📚 **통제 카탈로그 (Phase 2)** — ISMS-P 101 + ISO 27001:2022 93 = **194개 인증기준**(한/영) 트리를 **컴플라이언스 탭**에 표시. 통제별 **이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 편집**하면 `control_status`(`schema/009`)에 **영속(재시작 유지)** + 변경 이력 기록. 통제별 **증적 팩 PDF** 1클릭. admin·security 전용
+- 🔐 **역할별 화면** — 위험성 평가·통제 카탈로그는 **admin·security 전용**, 인프라·헬프데스크는 **내 담당 서버 취약점·조치율**만 열람. **내 담당 서버**는 `호스트명·중요도·상태·IP`로 간소화, 행 **더블클릭 → 상세 모달**에서 미조치를 **예외 만료·조치기한 초과·기타 위험** 3버킷으로 표시 + **Zabbix/Grafana/Fleet 딥링크**(자산 종류별). 자산 표엔 **팀별·'내 자산만' 필터**. 취약점(Trivy) 표는 심각도 대신 **위험점수(1~9)** 표기. 대시보드는 **역할별 보안 히어로 + 24h/12h 인프라 현황(Zabbix/Wazuh 딥링크)** 로 구성, **패널 편집**으로 개인별 위젯 선택·영속화
 - 🌐 **다국어 UI** — 로그인·대시보드·어드민 콘솔 전 페이지 한국어/영어 토글 (우상단 고정 위젯 → **계정 메뉴(👤)**로 이동, 쿠키·localStorage 저장, 새로고침 없이 즉시 전환)
 - 👤 **사용자 프로필 + 내 서버** — 이름·부서·담당 서버를 계정에 저장하고, 담당 자산만 모아 보는 **⭐ 내 서버** 뷰(프로필 메뉴 바로가기) 제공
 - 🧾 **자동 증적** — 자산 담당자·중요도, 호스트/CVE 단위 조치 계획·예외, **CVE별 위험성 평가**, Triage·인시던트 상태 변경
-- ✅ **영속화 (M2-1 + R-2 완료)** — UI 운영 상태 store(자산 담당자·감사로그·취약점 조치·Triage·인시던트·프로필 + **위험성 평가 대장 `ui_risk_register`**)는 PostgreSQL에 **write-through 영속화**되어 재시작 후에도 유지.
+- ✅ **영속화 (M2-1 + R-2 + M2-7)** — UI 운영 상태 store(자산 담당자·감사로그·취약점 조치·Triage·인시던트·프로필 + **위험성 평가 대장 `ui_risk_register`** + **조직 설정 `ui_settings`**(위험 DoA) + **통제 이행상태 `control_status`**)는 PostgreSQL에 **write-through 영속화**되어 재시작 후에도 유지. (스키마 `001`~`009`)
 - 🔌 **실데이터 연동** — **Zabbix 실시간 폴링은 실 API로 검증됨**(problem→Triage→Incident→증적→해소). **Trivy/CSOP는 원격 토큰 push**(`/ingest/trivy`·`/ingest/evidence`)로 연동. **Fleet / Wazuh 라이브 연동은 다음 단계(Next)**.
 - 🧩 **브라운필드** — 기존 Zabbix/Wazuh/Fleet 환경이면 **MORI 코어만 띄우고 `.env` 설정만으로** 연결(번들 소스 불필요). `docker compose up` = 코어만, `--profile bundled` = 번들 데모 포함. → [가이드](docs/BROWNFIELD_CONNECT.md)
 
@@ -124,7 +125,7 @@ flowchart LR
         QC[query_catalog<br/>12 intents]
         QS[query_service<br/>_INTENT_HANDLERS]
         V[views<br/>latest/risk/timeline]
-        RP[reports<br/>5종 CSV]
+        RP[reports<br/>6종 CSV/PDF]
     end
 
     subgraph REPO["저장소 (repositories)"]
@@ -173,7 +174,7 @@ flowchart LR
 
 > 실선은 현재 운영 중인 흐름. `MORI_QUERY_BACKEND=postgres` 환경에서 **API는 매 요청마다 PostgreSQL의 최신 스냅샷을 읽어(InMemoryQueryStore로 매 요청 materialize)** 질의에 사용합니다 — 즉 **부팅 스냅샷이 아니라 라이브 조회**입니다. 따라서 `mori-worker`가 폴링해 적재한 실데이터(예: **실제 Zabbix problem → alerts**)는 **API 재시작 없이 다음 요청에 바로** 반영됩니다. UI 운영 상태(triage / incidents / asset owners / vuln actions / asset audit log / user profiles + risk register)는 **cache-aside + write-through**로 PostgreSQL에 영속화됩니다(M2-1·R-2). ✅ **Zabbix 실시간 폴링은 동작 검증됨**([🎬 실전 시나리오](#-실전-시나리오--zabbix-운영-문제--감사-증적-실제-api-연동-검증됨)); Fleet/Wazuh 라이브 연동은 다음 단계입니다.
 >
-> **API 구조(Task J 완료):** `server.py`는 인메모리 상태와 헬퍼 클로저를 `RouteContext`로 조립한 뒤 16개 도메인 모듈을 등록하는 **얇은 오케스트레이터(888줄)** 로 슬림화되었습니다. 각 엔드포인트는 `routes/<domain>.py`의 `register_<domain>(ctx)`가 소유하며, 인메모리 6종 store는 `RouteContext`를 통해 모듈 간 공유됩니다.
+> **API 구조(Task J 완료):** `server.py`는 인메모리 상태와 헬퍼 클로저를 `RouteContext`로 조립한 뒤 16개 도메인 모듈을 등록하는 **얇은 오케스트레이터(888줄)** 로 슬림화되었습니다. 각 엔드포인트는 `routes/<domain>.py`의 `register_<domain>(ctx)`가 소유하며, 인메모리 운영 store(10종)는 `RouteContext`를 통해 모듈 간 공유됩니다.
 
 ---
 
@@ -216,7 +217,7 @@ flowchart LR
 | **📋 인시던트 관리** | 생성·상태변경·노트·날짜필터·텍스트검색·CSV 다운로드 + 변경 이력 | CSV 다운로드 시 "변경 내역 미포함" 안내 모달 표시 |
 | **✅ Compliance PDCA** | Plan/Do/Check/Act 4단계 카드, 카테고리별 Pass/Fail/Warning 표 | **Do 카드 클릭 → 미조치 항목 모달** (통제 + Trivy + Alert 통합) |
 | **미조치 / 기한 초과** | 통제 점검(fail/warning) + Trivy critical/high + Alert critical/high(7일) 통합 표시 | **📥 CSV 다운로드** (`/compliance/pdca/pending.csv`) |
-| **📥 감사 증적 리포트** | 자산·계정·로그·취약점·월간 5종 CSV + **PDF** (NanumGothic 임베드) | **🔍 미리보기 모달**(상위 50행 + CSV/PDF 다운로드 버튼) |
+| **📥 감사 증적 리포트** | 자산·계정·로그·취약점·월간·**위험성 평가 대장 6종 CSV + PDF** (NanumGothic 임베드) | **🔍 미리보기 모달**(상위 50행 + CSV/PDF 다운로드 버튼) |
 | **📡 Source Freshness · Collector Lag** | 수집기별 마지막 성공 시각·lag·SLA 임계 시각화 (`/dashboard` `source_coverage`) | Admin Overview + 사용자 대시보드에 카드/표 노출 |
 | **🔀 교차 검증** | Zabbix × Fleet × Trivy 호스트 매핑 차이 / 미매핑 자산 검출 | source_coverage / orphan check |
 | **💬 자연어 질의 (FAB)** | 12개 인텐트 디스패치 (alert_summary, offline_hosts, top_vulnerable_hosts, host_timeline …) | `/interpret` + `/query` |
@@ -231,7 +232,7 @@ flowchart LR
 
 | 항목 | 현황 | 우선순위 |
 |---|---|---|
-| **UI 운영 상태 → PostgreSQL 영속화 (M2-1)** | ✅ 완료 — `schema/003_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through. 6종 store 재시작 후 유지, 통합 테스트(`tests/test_state_persistence.py`)로 검증 | ✅ 완료 |
+| **UI 운영 상태 → PostgreSQL 영속화 (M2-1 → 10종 확장)** | ✅ 완료 — `schema/003~009_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through. M2-1 6종 → R-2/증적/설정/통제상태 포함 **10종** 재시작 후 유지, 통합 테스트(`tests/test_state_persistence.py`)로 검증 | ✅ 완료 |
 | **Zabbix API polling** | ✅ **검증 완료** — 실 Zabbix API로 problem→수집→Triage→Incident→증적→해소 end-to-end 동작 (`collectors/zabbix_events.py`, `tests/test_zabbix_events.py`) | ✅ 완료 |
 | **통제 카탈로그 (Phase 2)** | ISMS-P/ISO N:M 매핑 + 결함사례 + 인증기준 트리 화면 — **제품 정체성 전환의 핵심, 폴러보다 우선** | 🔴 최우선 |
 | **Trivy 인제스트** | ✅ 원격 토큰 push(`/ingest/trivy`·`/ingest/evidence`) 완료 · 로컬 정기 스캔 자동화(스케줄)만 남음 | 🟡 중 |
@@ -372,7 +373,7 @@ src/mori_soc/
 │   ├── postgres.py        ← Postgres 저장소 (정규화 시드 보유 → 질의 스냅샷)
 │   ├── state_base.py      ← StateRepository ABC (UI 운영 상태 6종 인터페이스)
 │   ├── state_memory.py    ← InMemoryStateRepository (기본·테스트/데모, 순수 dict)
-│   └── state_postgres.py  ← PostgresStateRepository (6종 store write-through, schema/003)
+│   └── state_postgres.py  ← PostgresStateRepository (10종 store write-through, schema/003~009)
 ├── models/entities.py     ← Host, HostAlias, Alert, Vulnerability, ControlCheckResult …
 └── worker.py              ← 폴러 오케스트레이터
 ```
@@ -382,10 +383,10 @@ src/mori_soc/
 | 저장 영역 | 현재 상태 | 위치 |
 |---|---|---|
 | **Normalized security data** (hosts / alerts / vulnerabilities / observations / fleet_query_results / control_checks / directory_accounts / source_syncs …) | PostgreSQL **시드 스키마 + 시드 데이터** 적재. 부팅 시 InMemoryRepository로 로드되어 질의에 사용 | `schema/001_phase1_initial.sql`, `repositories/postgres.py`, `repositories/memory.py` |
-| **UI operational state — 6종 store** (재시작 후 유지) | cache-aside + write-through로 PostgreSQL 영속화. 부팅 시 DB→인메모리 워밍, 변경 즉시 DB 기록 | `schema/003_*`, `repositories/state_*.py`, `api/server.py` → `api/routes/context.py` |
-| Phase 2 영속화 (6종 store → Postgres) | ✅ M2-1 완료 — StateRepository 계층 + `schema/003`. 통합 테스트로 라운드트립 검증 | `tests/test_state_persistence.py` |
+| **UI operational state — 10종 store** (재시작 후 유지) | cache-aside + write-through로 PostgreSQL 영속화. 부팅 시 DB→인메모리 워밍, 변경 즉시 DB 기록 | `schema/003~009_*`, `repositories/state_*.py`, `api/server.py` → `api/routes/context.py` |
+| Phase 2 영속화 (store → Postgres) | ✅ M2-1(6종) 완료 → 이후 R-2/증적/설정/통제상태로 **10종 확장**. StateRepository 계층 + `schema/003~009`. 통합 테스트로 라운드트립 검증 | `tests/test_state_persistence.py` |
 
-#### 영속화된 6종 운영 store 상세 (cache-aside + write-through)
+#### 영속화된 운영 store 상세 (cache-aside + write-through, 10종)
 
 | 변수 | 내용 |
 |---|---|
@@ -395,8 +396,12 @@ src/mori_soc/
 | `triage_store` | alert_id → {status, analyst, note, changed_by, changed_at, history[]} |
 | `incident_store` | incident_id → {…, history[]} |
 | `user_profiles` | username → {display_name, department, assigned_servers[], updated_at} |
+| `risk_register` (R-2) | vuln_id → {impact, likelihood, score, level, treatment, residual, review_due, assessed_by, …} |
+| `evidence_events` (v0.7) | id → CSOP 조치 전/후 diff envelope (host_id, cve, delta_type, …) |
+| `settings` (M2) | key → value (예: `risk_doa` 위험 수용 기준) |
+| `control_status` (M2-7) | control_id → {status, owner, exception_reason, improvement_plan, due_date, updated_by} |
 
-→ 위 6개 store는 부팅 시 PostgreSQL에서 인메모리로 워밍 로드되고, 모든 변경이 즉시 DB로 write-through됩니다(M2-1 완료). 재시작 후에도 상태가 유지됩니다.
+→ 위 store들(M2-1 6종 → 10종)은 부팅 시 PostgreSQL에서 인메모리로 워밍 로드되고, 모든 변경이 즉시 DB로 write-through됩니다. 재시작 후에도 상태가 유지됩니다. (스키마 `001`~`009`)
 
 ### 12개 자연어 질의 인텐트
 

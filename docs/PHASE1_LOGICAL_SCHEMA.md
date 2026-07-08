@@ -205,3 +205,23 @@ Phase 1 API는 우선 아래 응답 패턴을 따릅니다.
 4. 첫 질의 템플릿 3~5개 구현
 
 초기 DDL 초안은 `schema/001_phase1_initial.sql`에서 관리합니다.
+
+## 9. 마이그레이션 현황 (2026-07-08 기준)
+
+이 문서의 논리 스키마는 Phase 1 초안이며, 실제 스키마는 아래 순번으로 확장되었습니다.
+DDL은 `schema/NNN_*.sql`에서 순차 적용됩니다.
+
+| 순번 | 파일 | 추가 내용 |
+| --- | --- | --- |
+| 001 | `001_phase1_initial.sql` | Phase 1 초기: `hosts`, `host_aliases`, `alerts`, `vulnerabilities`, `query_results`, `host_observations` + 조회 뷰 |
+| 002 | `002_phase2_compliance_identity.sql` | Phase 2 Compliance/Identity 스키마 확장 |
+| 003 | `003_phase2_ui_operational_state.sql` | 운영 UI 상태 영속화(자산 소유자/감사 로그/취약점 조치/Triage/인시던트/사용자 프로파일) |
+| 004 | `004_risk_register.sql` | 위험성 평가 `risk_register` |
+| 005 | `005_alert_resolved.sql` | 경보 조치완료 상태(`alert_resolved`) |
+| 006 | `006_evidence_events.sql` | 증적 이벤트(`ui_evidence_events`, CSOP 조치 전/후 diff envelope) |
+| 007 | `007_controls.sql` | 통제 카탈로그(`controls` / `control_mappings` / `control_defects`, 한·영) |
+| 008 | `008_settings.sql` | 설정 key-value(`ui_settings`, 위험 DoA 수용기준 등) |
+| 009 | `009_control_status.sql` | 통제 이행상태 편집(`control_status`: `control_id` PK, status/owner/exception_reason/improvement_plan/due_date/updated_at/updated_by) |
+
+영속화는 `StateRepository`(`state_base`/`state_memory`/`state_postgres`)의 cache-aside + write-through 패턴으로,
+`user_profiles`, `asset_owners`, `asset_audit_log`, `vuln_actions`, `triage`, `incidents`, `risk_register`, `evidence_events`, `settings`, `control_status` 상태를 재시작 후에도 유지합니다.

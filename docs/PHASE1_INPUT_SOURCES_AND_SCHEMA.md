@@ -24,12 +24,13 @@
 | FleetDM | 호스트 인벤토리 | Fleet 서비스 (`:1337`) 기반 API/내부 DB 연계 예정 | 추가 구현 필요 | `host` |
 | FleetDM | osquery status 로그 | `/logs/osqueryd.status.log` → Fluent Bit → Loki (`job=fleetdm`, `log_type=status`) | 이미 수집 중 | `query_result`, `host_observation` |
 | FleetDM | osquery results 로그 | `/logs/osqueryd.results.log` → Fluent Bit → Loki (`job=fleetdm`, `log_type=result`) | 이미 수집 중 | `query_result` |
-| FleetDM | 취약점 정보 | Fleet 서비스/API 기반 수집 예정, 취약점 DB 볼륨 사용 중 | 추가 구현 필요 | `vulnerability` |
-| Wazuh | alert/rule 이벤트 | Wazuh Manager/API (`:55000`) 및 내부 indexer 연계 예정 | 추가 구현 필요 | `alert` |
-| Wazuh | agent inventory/status | Wazuh API 기반 수집 예정 | 추가 구현 필요 | `host`, `alert` |
-| Zabbix | host inventory | Zabbix Web/API (`:18081`) 연계 예정 | 추가 구현 필요 | `host` |
-| Zabbix | trigger/event | Zabbix API 기반 수집 예정 | 추가 구현 필요 | `alert`, `host_observation` |
-| Zabbix | metric snapshot | Zabbix API 기반 수집 예정 | 추가 구현 필요 | `host_observation` |
+| FleetDM | 취약점 정보 | Fleet 서비스/API 기반 수집 예정, 취약점 DB 볼륨 사용 중 | 라이브 폴러 미구현(Phase 3 예정) | `vulnerability` |
+| Trivy | 컨테이너/OS 패키지 취약점 | 로컬 리포트 폴링 또는 원격 push (`POST /ingest/trivy`, CSOP), `MORI_INGEST_TOKEN` 무세션 인제스트 | 연동 완료 | `vulnerability` |
+| Wazuh | alert/rule 이벤트 | Wazuh Manager/API (`:55000`) 및 내부 indexer 연계 예정 | 라이브 폴러 미구현(Phase 3 예정) | `alert` |
+| Wazuh | agent inventory/status | Wazuh API 기반 수집 예정 | 라이브 폴러 미구현(Phase 3 예정) | `host`, `alert` |
+| Zabbix | host inventory | Zabbix Web/API (`:18081`) JSON-RPC 라이브 연동 | 실시간 연동 검증 완료 | `host` |
+| Zabbix | trigger/event | Zabbix API 기반 실시간 수집 | 실시간 연동 검증 완료 | `alert`, `host_observation` |
+| Zabbix | metric snapshot | Zabbix API 기반 실시간 수집 | 실시간 연동 검증 완료 | `host_observation` |
 | Host logs | 시스템/애플리케이션 로그 | `/var/log/*.log`, `/var/log/*/*.log` → Fluent Bit → Loki (`job=fluent-bit`, `source=host`) | 이미 수집 중 | `login_event`, `process`, `alert` |
 
 ## 4. Source별 우선 구현 순서
@@ -202,3 +203,8 @@ Phase 1에서 먼저 템플릿화할 질문 후보는 아래와 같습니다.
 
 권장 순서는 **스키마 상세화 → 구현 골격 추가**입니다.
 세부 테이블 설계는 `docs/PHASE1_LOGICAL_SCHEMA.md`에서 이어집니다.
+
+> **현행화(2026-07-08)**: 이 문서는 Phase 1 초안 명세이며, 실제 스키마는 `schema/001..009`까지 확장되었습니다.
+> 001 phase1 초기 → 002 compliance/identity → 003 운영 UI 상태 → 004 risk_register → 005 alert_resolved →
+> 006 evidence_events(CSOP diff) → 007 controls(통제 카탈로그) → 008 settings(위험 DoA) → 009 control_status(통제 이행상태 편집).
+> 마이그레이션별 상세는 `docs/PHASE1_LOGICAL_SCHEMA.md` §9를 참조하세요.

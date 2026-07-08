@@ -4,7 +4,7 @@
 
 MORI의 **정체성 전환(Phase 2)** 핵심 자산. 다섯 소스(Zabbix/Wazuh/Fleet/Trivy/Loki)의 운영 데이터를 **어떤 인증기준의 증적으로 쓰는지** 기계가 읽을 수 있게 구조화한다. 코드 의존성이 없는 **독립 트랙**이라 폴러 개발과 병렬로 채우고, 완성되는 대로 커뮤니티에 공개 가능하다.
 
-> 상태: 🟡 **전 항목 골격 완료** — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 통제**(모두 한/영 제목). 이 중 14건은 증적 소스가 연결된 `reviewed`, 나머지는 `draft` 골격(공식 고시 대비 검증 필요). 매핑 7·결함 5. 다음: 매핑 60~70·결함 10~15로 확장.
+> 상태: 🟢 **라이브** — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 통제**(모두 한/영 제목). 이 중 14건은 증적 소스가 연결된 `reviewed`, 나머지는 `draft` 골격(공식 고시 대비 검증 필요). 매핑 61·결함 5. **Compliance 탭 트리**에서 조회·편집 가능하며 통제 상태(control_status)는 `schema/009`에 영속화된다. 커버리지 lite ~24% / full ~30%(정직한 상한). 다음: 결함 10~15로 확장.
 
 ## 디렉터리 구조
 
@@ -27,7 +27,7 @@ controls/*.yaml  ──_build_catalog_json.py──▶  src/mori_soc/data/contro
                                                      │ (런타임 아티팩트, 커밋됨)
              기동 시 services/control_catalog.sync_catalog_to_db() ──▶ schema/007 테이블
                                                      │
-                        GET /controls/tree  ──▶  대시보드 '통제 카탈로그' 카드(admin·security)
+                        GET /controls/tree  ──▶  Compliance 탭 트리(admin·security) — 조회·편집, 통제상태 → schema/009
 ```
 
 이미지에는 `src/`만 복사되고 PyYAML이 없으므로, **런타임은 JSON 아티팩트만 stdlib로 읽는다.** `controls/*.yaml`을 수정하면 반드시 `_build_catalog_json.py`를 다시 실행해 JSON을 갱신·커밋한다.
@@ -46,4 +46,4 @@ python controls/validate.py            # 스키마 준수 + id 상호참조 + mo
 python controls/_build_catalog_json.py # 런타임 JSON 재빌드(커밋)
 ```
 
-> Phase 2 정식 단계에서 `validate.py`를 GitHub Actions CI로 승격한다. 로드맵 위치는 README "🗺️ 로드맵 (Phase 0 → 5)"의 **Phase 2 — 통제 카탈로그**. 전제조건: 이 카탈로그가 있어야 P3-5(Control Mapping)·P4-3(Evidence Pack)이 성립한다.
+> `validate.py`는 GitHub Actions CI(catalog validate job)로 승격되어 있다. 로드맵 위치는 README "🗺️ 로드맵 (Phase 0 → 5)"의 **Phase 2 — 통제 카탈로그**. 전제조건: 이 카탈로그가 있어야 P3-5(Control Mapping)·P4-3(Evidence Pack)이 성립한다.
