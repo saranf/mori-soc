@@ -1827,7 +1827,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       const form = document.getElementById('ldap_add_form');
       ldapListEl.innerHTML = `<span class="empty">${tt('admin.dyn.loading','로딩 중…')}</span>`;
       try {
-        const st = await (await fetch('/admin/ldap/status')).json();
+        const sres = await fetch('/admin/ldap/status');
+        if (!sres.ok) { ldapListEl.innerHTML = `<span class="empty">${sres.status===401||sres.status===403 ? tt('admin.dyn.ldap.reauth','세션이 만료됐습니다. 새로고침 후 다시 로그인하세요.') : tt('admin.dyn.error_prefix','오류: ')+('HTTP '+sres.status)}</span>`; return; }
+        const st = await sres.json();
         if (!st.enabled) {
           if (badge) { badge.textContent = tt('admin.dyn.ldap.disabled','● 비활성'); badge.style.color = '#64748b'; }
           if (form) form.style.display = 'none';
