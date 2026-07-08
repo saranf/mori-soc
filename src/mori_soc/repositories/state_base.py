@@ -103,5 +103,16 @@ class StateRepository(ABC):
         """Upsert one org setting (idempotent on ``key``)."""
         raise NotImplementedError
 
+    # ── control_status: control_id -> runtime 이행 상태 (M2-7) ──────────────────
+    @abstractmethod
+    def load_control_status(self) -> dict[str, dict[str, Any]]:
+        """All persisted control-status records keyed by control_id."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_control_status(self, control_id: str, record: dict[str, Any]) -> None:
+        """Upsert one control-status record (idempotent on ``control_id``)."""
+        raise NotImplementedError
+
 
 __all__ = ["StateRepository"]

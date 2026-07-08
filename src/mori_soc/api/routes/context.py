@@ -59,6 +59,8 @@ class RouteContext:
     user_profiles: dict[str, dict[str, Any]] = field(default_factory=dict)
     # settings: 조직 단위 운영 설정 key -> value string (예: risk_doa)
     settings: dict[str, str] = field(default_factory=dict)
+    # control_status: control_id -> 런타임 이행 상태 레코드 (M2-7)
+    control_status: dict[str, dict[str, Any]] = field(default_factory=dict)
     guides: dict[str, dict[str, Any]] = field(default_factory=dict)
     user_dashboard_prefs: dict[str, dict[str, Any]] = field(default_factory=dict)
 
@@ -91,6 +93,7 @@ class RouteContext:
     persist_incident: Optional[Callable[[str], None]] = None
     persist_risk_assessment: Optional[Callable[[str], None]] = None
     persist_setting: Optional[Callable[..., None]] = None
+    persist_control_status: Optional[Callable[[str], None]] = None
 
 
 __all__ = ["RouteContext"]

@@ -305,5 +305,43 @@ class PostgresStateRepository(StateRepository):
                 (key, value, updated_by or None),
             )
 
+    # ── control_status (M2-7 통제 이행 상태) ────────────────────────────────────
+    def load_control_status(self) -> dict[str, dict[str, Any]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT control_id, status, owner, exception_reason, improvement_plan, "
+                "due_date, updated_at, updated_by FROM control_status"
+            )
+            out: dict[str, dict[str, Any]] = {}
+            for r in cur.fetchall():
+                out[r[0]] = {
+                    "control_id": r[0], "status": r[1], "owner": r[2] or "",
+                    "exception_reason": r[3] or "", "improvement_plan": r[4] or "",
+                    "due_date": r[5].isoformat() if r[5] else "",
+                    "updated_at": r[6].isoformat() if r[6] else None,
+                    "updated_by": r[7] or "",
+                }
+            return out
+
+    def save_control_status(self, control_id: str, record: dict[str, Any]) -> None:
+        due = record.get("due_date") or None
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO control_status (control_id, status, owner, exception_reason,
+                                            improvement_plan, due_date, updated_at, updated_by)
+                VALUES (%s, %s, %s, %s, %s, %s, now(), %s)
+                ON CONFLICT (control_id) DO UPDATE SET
+                    status = EXCLUDED.status, owner = EXCLUDED.owner,
+                    exception_reason = EXCLUDED.exception_reason,
+                    improvement_plan = EXCLUDED.improvement_plan,
+                    due_date = EXCLUDED.due_date, updated_at = now(),
+                    updated_by = EXCLUDED.updated_by
+                """,
+                (control_id, record.get("status", "미정"), record.get("owner") or None,
+                 record.get("exception_reason") or None, record.get("improvement_plan") or None,
+                 due, record.get("updated_by") or None),
+            )
+
 
 __all__ = ["PostgresStateRepository", "PSYCOPG_AVAILABLE"]

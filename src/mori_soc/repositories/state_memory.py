@@ -26,6 +26,7 @@ class InMemoryStateRepository(StateRepository):
         self._risk_register: dict[str, dict[str, Any]] = {}
         self._evidence_events: dict[str, dict[str, Any]] = {}
         self._settings: dict[str, str] = {}
+        self._control_status: dict[str, dict[str, Any]] = {}
 
     # ── user_profiles ──────────────────────────────────────────────────────────
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:
@@ -97,6 +98,13 @@ class InMemoryStateRepository(StateRepository):
 
     def save_setting(self, key: str, value: str, updated_by: str = "") -> None:
         self._settings[key] = value
+
+    # ── control_status ──────────────────────────────────────────────────────────
+    def load_control_status(self) -> dict[str, dict[str, Any]]:
+        return copy.deepcopy(self._control_status)
+
+    def save_control_status(self, control_id: str, record: dict[str, Any]) -> None:
+        self._control_status[control_id] = copy.deepcopy(record)
 
 
 __all__ = ["InMemoryStateRepository"]
