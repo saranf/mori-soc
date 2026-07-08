@@ -688,7 +688,8 @@ MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제�
 > **폴러(Phase 3)와 병렬 독립 트랙.** 카탈로그는 코드 의존성이 없는 도메인 지식 작업이라, 폴러 코딩이 막히는 날 번갈아 채울 수 있고 완성되는 대로 즉시 커뮤니티에 공개 가능한 독립 자산이다. **P3-5(Control Mapping)·P4-3(Evidence Pack)의 전제조건.**
 - ✅ **전 항목 골격**([`controls/`](controls/)) — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 통제**(모두 한/영 제목) + **N:M 매핑 61** + 결함 5. **58건 `reviewed`**(증적 소스 연결). JSON Schema 검증(`validate.py`) + 런타임 JSON 아티팩트 빌드
 - ✅ `schema/007` 통제 테이블(한/영) + **기동 시 카탈로그→DB 싱크**(`services/control_catalog.py`)
-- ✅ **인증기준 트리 화면** — 대시보드 '통제 카탈로그' 카드(admin·security), framework→domain→section 트리 + **lite/full 커버리지 % 자동 산출**(`GET /controls/tree`, 현재 **lite ~24%·full ~30%**)
+- ✅ **인증기준 트리 화면** — **컴플라이언스 탭**의 '통제 카탈로그'(admin·security), framework→domain→section 트리 + **lite/full 커버리지 % 자동 산출**(`GET /controls/tree`, 현재 **lite ~24%·full ~30%**)
+- ✅ **통제 이행 상태 편집·영속 (M2-7)** — 통제별 이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 트리에서 편집, `control_status`(`schema/009`)에 **write-through 영속(재시작 유지)** + action-audit-log 기록(`PUT /controls/status/{id}`, admin·security)
 - ✅ **통제 클릭 → 라이브 실증적 + 증적 팩 PDF(1클릭)** — 트리에서 통제를 열면 소스별 **실데이터 직결** + **호스트↔통제 breakdown**(예: 2.11.2 → `onboard-web-01: C1·H1`, `db-primary: C0·H1` 처럼 **어느 자산이 그 증적을 갖는지**). `GET /controls/detail/{id}`(+`/evidence.pdf`) — 매핑·관련 결함·**현재 증적 공백 수(live)**까지. 클릭 시 해당 탭 딥링크
 - ✅ 대시보드 **GRC 프리셋** — 오늘의 작업 큐(증적 공백) 카드(admin·security) · **카탈로그 CI**(검증 + JSON 신선도, GitHub Actions)
 - 🔲 남은 일: draft 통제 계속 채우기(커버리지 ↑) · Phase 3 라이브 폴러(Fleet/Wazuh)로 실증적 소스 확대

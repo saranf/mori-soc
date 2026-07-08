@@ -4,6 +4,29 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.10.0-alpha.1] — 2026-07-08 — Control Catalog 이행상태 편집 (M2-7)
+
+컴플라이언스 화면을 시드 control_checks 12건이 아니라 **ISMS-P 101개 인증기준 카탈로그**로
+운영. 통제별 이행 상태를 편집·영속한다.
+
+### Added
+- **control_status 편집·영속** (`schema/009_control_status.sql`) — 통제별 이행 상태
+  (이행/부분이행/미이행/해당없음/미정)·담당자·예외사유·개선계획·기한. `controls`(원본,
+  schema/007)와 분리된 유일 편집 테이블. StateRepository `load/save_control_status` +
+  부팅 warm-load + write-through 영속 → **재시작 후에도 유지**.
+- **`PUT /controls/status/{id}`** (admin·security) — 상태 편집. 상태 화이트리스트·기한
+  형식·통제 존재 검증, 변경을 action-audit-log 에 기록. `GET /controls/tree` 에 `status_map`,
+  `GET /controls/detail/{id}` 에 `runtime_status` 병기.
+- **컴플라이언스 탭 통제 트리** — 통제 카탈로그 트리(ISMS-P 101 × ISO)를 자산 탭에서
+  **컴플라이언스 탭으로 이동**, 항목에 이행 상태 배지 + 클릭 상세에 **상태 편집 폼**.
+  기존 control_checks 기반 PDCA 요약은 삭제하지 않고 병행 유지.
+
+### Note
+- 의뢰서(M2-7)의 schema/006·`controls(id)` FK·`checkpoints/operation` 상세뷰는 현재
+  레포 상태(006=evidence_events, controls PK=(framework,id), YAML 필드 상이)에 맞춰 적응:
+  schema/009 신규 + `control_id` 단독 PK + 기존 카탈로그 서비스 재사용. 카탈로그 YAML→DB
+  싱크와 CI validate(`catalog` 잡)는 이미 구축돼 있어 재사용.
+
 ## [v0.9.0-alpha.1] — 2026-07-08 — Risk UX 점수화 + DoA 수용기준 + 내 서버 조치현황
 
 피드백 반영: 위험을 라벨(Critical/High) 대신 **점수**로, 대시보드는 최소화, 내 담당
