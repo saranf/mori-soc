@@ -2906,6 +2906,8 @@ def render_user_dashboard_html(
           <div class=\"asset-search-bar\">
             <input type=\"text\" id=\"fleet_search_hostname\" placeholder=\"호스트명 검색…\" data-i18n-placeholder=\"dash.assets.host_search_ph\" oninput=\"filterAssetTable('fleet')\" />
             <select id=\"fleet_search_status\" onchange=\"filterAssetTable('fleet')\"><option value=\"\" data-i18n=\"dash.assets.all_status\">전체 상태</option><option value=\"online\" data-i18n=\"dash.assets.online\">온라인</option><option value=\"offline\" data-i18n=\"dash.assets.offline\">오프라인</option><option value=\"unknown\" data-i18n=\"dash.assets.unknown\">알 수 없음</option></select>
+            <select id=\"fleet_search_team\" onchange=\"filterAssetTable('fleet')\"><option value=\"\" data-i18n=\"dash.assets.all_team\">전체 팀</option></select>
+            <label style=\"display:inline-flex;align-items:center;gap:5px;color:#cbd5e1;font-size:12px;cursor:pointer;white-space:nowrap\"><input type=\"checkbox\" id=\"fleet_search_mine\" onchange=\"filterAssetTable('fleet')\" /> <span data-i18n=\"dash.assets.only_mine\">⭐ 내 자산만</span></label>
             <span class=\"asset-search-count\" id=\"fleet_search_count\"></span>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.assets.fleet_sub\">Fleet에서 관리되는 PC 엔드포인트 현황입니다.</div>
@@ -2932,6 +2934,8 @@ def render_user_dashboard_html(
             <input type=\"text\" id=\"zabbix_search_hostname\" placeholder=\"호스트명 검색…\" data-i18n-placeholder=\"dash.assets.host_search_ph\" oninput=\"filterAssetTable('zabbix')\" />
             <select id=\"zabbix_search_category\" onchange=\"filterAssetTable('zabbix')\"><option value=\"\" data-i18n=\"dash.assets.all_category\">전체 분류</option></select>
             <select id=\"zabbix_search_status\" onchange=\"filterAssetTable('zabbix')\"><option value=\"\" data-i18n=\"dash.assets.all_status\">전체 상태</option><option value=\"online\" data-i18n=\"dash.assets.online\">온라인</option><option value=\"offline\" data-i18n=\"dash.assets.offline\">오프라인</option><option value=\"unknown\" data-i18n=\"dash.assets.unknown\">알 수 없음</option></select>
+            <select id=\"zabbix_search_team\" onchange=\"filterAssetTable('zabbix')\"><option value=\"\" data-i18n=\"dash.assets.all_team\">전체 팀</option></select>
+            <label style=\"display:inline-flex;align-items:center;gap:5px;color:#cbd5e1;font-size:12px;cursor:pointer;white-space:nowrap\"><input type=\"checkbox\" id=\"zabbix_search_mine\" onchange=\"filterAssetTable('zabbix')\" /> <span data-i18n=\"dash.assets.only_mine\">⭐ 내 자산만</span></label>
             <span class=\"asset-search-count\" id=\"zabbix_search_count\"></span>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.assets.zabbix_sub\">Zabbix에서 모니터링 중인 서버 현황과 최근 메트릭입니다.</div>
@@ -4750,20 +4754,20 @@ def render_user_dashboard_html(
       return `<div style=\"display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid #1e293b\">
         <span style=\"color:#94a3b8\">${label}</span><span style=\"color:#e2e8f0;text-align:right\">${value}</span></div>`;
     }
-    /* 호스트 상세 모달용 외부 연동 딥링크(Zabbix/Grafana/Fleet). URL 미설정 소스는 생략. */
-    function _hostDeepLinks(h) {
+    /* 호스트 상세 모달용 외부 연동 딥링크. 자산 종류에 맞는 소스만: 서버→Zabbix, PC→Fleet, 공통→Grafana. */
+    function _hostDeepLinks(h, kind) {
       const btn = (href, label, color) => `<a href=\"${escapeHtml(href)}\" target=\"_blank\" rel=\"noopener\" style=\"display:inline-flex;align-items:center;gap:4px;background:${color}18;border:1px solid ${color}66;color:${color};border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;text-decoration:none\">${label} ↗</a>`;
       const links = [];
-      if (ZABBIX_URL) {
+      if (kind === 'zabbix' && ZABBIX_URL) {
         links.push(btn(`${ZABBIX_URL}/zabbix.php?action=host.list&filter_set=1&filter_host=${encodeURIComponent(h.hostname)}`, 'Zabbix', '#7dd3fc'));
+      }
+      if (kind === 'fleet' && FLEET_URL) {
+        links.push(btn(`${FLEET_URL}/hosts?query=${encodeURIComponent(h.hostname)}`, 'Fleet', '#34d399'));
       }
       if (GRAFANA_URL) {
         const q = h.host_id ? `{host_id=\"${h.host_id}\"}` : `{hostname=\"${h.hostname}\"}`;
         const panes = encodeURIComponent(JSON.stringify({ pane: { queries: [{ refId: 'A', expr: q, queryType: 'range' }], range: { from: 'now-6h', to: 'now' } } }));
         links.push(btn(`${GRAFANA_URL}/explore?schemaVersion=1&panes=${panes}&orgId=1`, 'Grafana', '#f59e0b'));
-      }
-      if (FLEET_URL) {
-        links.push(btn(`${FLEET_URL}/hosts?query=${encodeURIComponent(h.hostname)}`, 'Fleet', '#34d399'));
       }
       if (!links.length) {
         return `<div style=\"font-size:11px;color:#64748b;margin-bottom:12px\">${tt('dash.host.no_links','연동 URL 미설정 (.env: MORI_ZABBIX_UI_URL·MORI_GRAFANA_URL·MORI_FLEET_UI_URL)')}</div>`;
@@ -4776,6 +4780,8 @@ def render_user_dashboard_html(
       const bodyEl = document.getElementById('host_detail_body');
       if (!modal || !bodyEl) return;
       const h = _hostFromCache(hostname) || { hostname };
+      const _isZ = (_assetCache.zabbix || []).some(x => x.hostname === hostname);
+      const kind = _isZ ? 'zabbix' : 'fleet';  // 서버(Zabbix)면 Zabbix, 아니면 PC(Fleet)
       if (titleEl) titleEl.textContent = `🖥️ ${hostname}`;
       const imp = (h.importance || '').trim();
       const impStr = imp ? `<span style=\"color:${_MINE_IMP_COLOR[imp]||'#94a3b8'};font-weight:700\">${escapeHtml(imp)}</span>` : '-';
@@ -4793,7 +4799,7 @@ def render_user_dashboard_html(
         ${_kv(tt('dash.host.exception','예외'), excStr)}
         ${h.last_seen_at?_kv(tt('dash.dyn.lbl.last_seen','마지막 확인'), escapeHtml(formatTime(h.last_seen_at))):''}
       </div>`;
-      bodyEl.innerHTML = _hostDeepLinks(h) + meta + `<div id=\"host_detail_remed\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>`;
+      bodyEl.innerHTML = _hostDeepLinks(h, kind) + meta + `<div id=\"host_detail_remed\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>`;
       modal.style.display = 'flex';
       // E: 미조치 3버킷
       const remedEl = document.getElementById('host_detail_remed');
@@ -5705,6 +5711,9 @@ def render_user_dashboard_html(
         renderZabbixTable(_assetCache.zabbix, document.getElementById('zabbix_table'));
         // Populate Zabbix category dropdown
         _populateZabbixCategories(_assetCache.zabbix);
+        // Populate team dropdowns (Fleet/Zabbix)
+        _populateTeams('zabbix_search_team', _assetCache.zabbix);
+        _populateTeams('fleet_search_team', _assetCache.fleet);
         // Trivy summary
         document.getElementById('trivy_affected_hosts').textContent = data.trivy?.affected_hosts ?? '-';
         document.getElementById('trivy_total_vulns').textContent = data.trivy?.total_vulns ?? '-';
@@ -5731,19 +5740,42 @@ def render_user_dashboard_html(
       while (sel.options.length > 1) sel.remove(1);
       cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
     }
+    /* 팀 드롭다운 채우기 (Fleet/Zabbix 공통) — 자산의 team 값에서 유니크 추출 */
+    function _populateTeams(selId, hosts) {
+      const sel = document.getElementById(selId);
+      if (!sel) return;
+      const cur = sel.value;
+      const teams = [...new Set(hosts.map(h => (h.team || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
+      while (sel.options.length > 1) sel.remove(1);
+      teams.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; sel.appendChild(o); });
+      if (cur && teams.includes(cur)) sel.value = cur;
+    }
 
     function _updateSearchCount(tab, shown, total) {
       const el = document.getElementById(`${tab}_search_count`);
       if (el) el.textContent = shown === total ? tt('dash.dyn.count_total','총 {total}건').replace('{total}',total) : tt('dash.dyn.count_partial','{shown} / {total}건').replace('{shown}',shown).replace('{total}',total);
     }
 
+    /* 프로필 담당 서버(assigned_servers) 또는 담당자(이름) 일치 = 내 자산 */
+    function _isMyAsset(h) {
+      const assigned = new Set((_currentProfile.assigned_servers || []).map(s => String(s).toLowerCase()));
+      const myName = (_currentProfile.display_name || '').trim().toLowerCase();
+      if (assigned.has(String(h.hostname || '').toLowerCase())) return true;
+      if (myName && String(h.owner || '').trim().toLowerCase() === myName) return true;
+      return false;
+    }
+    window._isMyAsset = _isMyAsset;
     function filterAssetTable(tab) {
       const hostnameVal = (document.getElementById(`${tab}_search_hostname`)?.value || '').trim().toLowerCase();
       if (tab === 'fleet') {
         const statusVal = document.getElementById('fleet_search_status')?.value || '';
+        const teamVal = document.getElementById('fleet_search_team')?.value || '';
+        const mineOnly = document.getElementById('fleet_search_mine')?.checked;
         const filtered = _assetCache.fleet.filter(h => {
           if (hostnameVal && !h.hostname.toLowerCase().includes(hostnameVal)) return false;
           if (statusVal && h.status !== statusVal) return false;
+          if (teamVal && (h.team || '') !== teamVal) return false;
+          if (mineOnly && !_isMyAsset(h)) return false;
           return true;
         });
         renderFleetTable(filtered, document.getElementById('fleet_table'));
@@ -5751,10 +5783,14 @@ def render_user_dashboard_html(
       } else if (tab === 'zabbix') {
         const statusVal = document.getElementById('zabbix_search_status')?.value || '';
         const catVal = document.getElementById('zabbix_search_category')?.value || '';
+        const teamVal = document.getElementById('zabbix_search_team')?.value || '';
+        const mineOnly = document.getElementById('zabbix_search_mine')?.checked;
         const filtered = _assetCache.zabbix.filter(h => {
           if (hostnameVal && !h.hostname.toLowerCase().includes(hostnameVal)) return false;
           if (statusVal && h.status !== statusVal) return false;
           if (catVal && h.category !== catVal) return false;
+          if (teamVal && (h.team || '') !== teamVal) return false;
+          if (mineOnly && !_isMyAsset(h)) return false;
           return true;
         });
         renderZabbixTable(filtered, document.getElementById('zabbix_table'));
