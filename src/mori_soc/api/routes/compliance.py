@@ -23,6 +23,9 @@ from mori_soc.services.reports import (
 from mori_soc.api.payloads import build_crosscheck_payload, build_pdca_payload
 from mori_soc.api.routes.context import RouteContext
 
+# M2-7: 통제 이행 상태 허용값 (ISMS-P 자율점검 관점)
+_CONTROL_STATUSES = {"미정", "이행", "부분이행", "미이행", "해당없음"}
+
 
 def register_compliance(ctx: RouteContext) -> None:
     app = ctx.app
@@ -36,6 +39,13 @@ def register_compliance(ctx: RouteContext) -> None:
         token = request.cookies.get("mori_session", "")
         sess = sessions.get(token) if sessions else None
         return sess.get("role") if sess else None
+
+    def _control_status_default(control_id: str) -> dict[str, Any]:
+        return {
+            "control_id": control_id, "status": "미정", "owner": "",
+            "exception_reason": "", "improvement_plan": "", "due_date": "",
+            "updated_at": None, "updated_by": "",
+        }
 
     def _parse_date(value: Any) -> "date | None":
         try:
@@ -180,7 +190,10 @@ def register_compliance(ctx: RouteContext) -> None:
             raise HTTPException(status_code=403, detail="control catalog requires admin or security role")
         from mori_soc.services.control_catalog import build_tree
         try:
-            return build_tree()
+            data = build_tree()
+            # M2-7: 통제별 런타임 이행 상태(control_status)를 트리에 병기 → 화면에서 상태 뱃지/편집.
+            data["status_map"] = {cid: dict(rec) for cid, rec in ctx.control_status.items()}
+            return data
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"control catalog unavailable: {exc}") from exc
 
@@ -318,7 +331,52 @@ def register_compliance(ctx: RouteContext) -> None:
         detail = build_control_detail(control_id, gaps=_live_gaps(), metrics=_source_metrics())
         if detail is None:
             raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
+        # M2-7: 현재 이행 상태(편집 대상)를 상세에 병기.
+        detail["runtime_status"] = ctx.control_status.get(control_id, _control_status_default(control_id))
         return detail
+
+    @app.put("/controls/status/{control_id}", tags=["Compliance"])
+    def control_status_upsert(control_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """통제 이행 상태 편집(상태·담당자·예외사유·개선계획·기한). admin·security 전용.
+
+        변경은 control_status 에 write-through 영속(재시작 후 유지)되고, action-audit-log 에 기록된다.
+        """
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="control status edit requires admin or security role")
+        from mori_soc.services.control_catalog import load_catalog
+        valid_ids = {c.get("id") for c in load_catalog().get("controls", [])}
+        if valid_ids and control_id not in valid_ids:
+            raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
+        status = str(payload.get("status", "")).strip() or "미정"
+        if status not in _CONTROL_STATUSES:
+            raise HTTPException(status_code=400, detail=f"status must be one of {sorted(_CONTROL_STATUSES)}")
+        due = str(payload.get("due_date", "")).strip()
+        if due:
+            try:
+                date.fromisoformat(due[:10])
+            except ValueError:
+                raise HTTPException(status_code=400, detail="due_date must be YYYY-MM-DD") from None
+        user = ""
+        if ctx.get_session_username:
+            user = ctx.get_session_username(request) or ""
+        old = ctx.control_status.get(control_id, {})
+        record = {
+            "control_id": control_id,
+            "status": status,
+            "owner": str(payload.get("owner", "")).strip(),
+            "exception_reason": str(payload.get("exception_reason", "")).strip(),
+            "improvement_plan": str(payload.get("improvement_plan", "")).strip(),
+            "due_date": due,
+            "updated_at": datetime.now(tz=timezone.utc).isoformat(),
+            "updated_by": user or "unknown",
+        }
+        ctx.control_status[control_id] = record
+        if ctx.persist_control_status:
+            ctx.persist_control_status(control_id)
+        if ctx.log_action:
+            ctx.log_action(user or "unknown", "CONTROL_STATUS",
+                           f"{control_id}: {old.get('status', '미정')} → {status}")
+        return record
 
     @app.get("/controls/detail/{control_id}/evidence.pdf", tags=["Compliance"])
     def control_evidence_pdf_route(control_id: str, request: Request) -> Any:
