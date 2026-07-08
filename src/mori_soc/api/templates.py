@@ -157,6 +157,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     label { font-size: 13px; color: #cbd5e1; }
     input, select, textarea, button { width: 100%; box-sizing: border-box; border-radius: 12px; border: 1px solid #334155; background: #0b1220; color: #e5e7eb; padding: 10px 12px; }
     textarea { resize: vertical; min-height: 120px; font-family: ui-monospace, SFMono-Regular, monospace; }
+    /* 컴팩트 인라인 입력(폼 한 줄에 여러 개) — 베이스 팔레트와 통일 */
+    .inp-sm { width: auto; border-radius: 10px; border: 1px solid #334155; background: #0b1220; color: #e5e7eb; padding: 7px 10px; font-size: 13px; }
+    .inp-sm:focus { outline: none; border-color: #2563eb; }
     /* 버튼 계층: primary(저장/실행) / secondary(보조) / ghost(중립) / danger(삭제) */
     button { border: 1px solid #1e3a5f; background: #1e3a5f; color: #93c5fd; font-weight: 600; cursor: pointer; font-size: 13px; }
     button:hover { background: #1e4a7a; border-color: #2563eb; color: #bfdbfe; }
@@ -527,13 +530,13 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           </div>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.ldap\">디렉터리에 사용자를 직접 추가·삭제하고 비밀번호·역할을 바꿉니다. 여기서 만든 계정은 같은 LDAP을 보는 Grafana/Zabbix/Fleet 에서도 로그인됩니다. (LDAP 비활성 시 .env의 MORI_LDAP_ENABLED=true 필요)</div>
           <div id=\"ldap_add_form\" style=\"display:none;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0\">
-            <input id=\"ldap_new_uid\" placeholder=\"uid (아이디)\" data-i18n-placeholder=\"admin.s.ph.ldap_uid\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:130px\" />
-            <input id=\"ldap_new_cn\" placeholder=\"이름(cn)\" data-i18n-placeholder=\"admin.s.ph.ldap_cn\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:120px\" />
-            <input id=\"ldap_new_mail\" placeholder=\"email\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:160px\" />
-            <input id=\"ldap_new_pw\" placeholder=\"초기 비밀번호\" data-i18n-placeholder=\"admin.s.ph.ldap_pw\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:140px\" />
-            <select id=\"ldap_new_role\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 8px;font-size:13px\"><option value=\"user\">user</option><option value=\"helpdesk\">helpdesk</option><option value=\"monitor\">monitor</option><option value=\"auditor\">auditor</option><option value=\"security\">security</option><option value=\"admin\">admin</option></select>
-            <button class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px\" onclick=\"ldapAddUser()\" data-i18n=\"admin.s.btn.ldap_add\">+ 추가</button>
-            <button id=\"reload_ldap_users\" class=\"secondary\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
+            <input id=\"ldap_new_uid\" class=\"inp-sm\" placeholder=\"uid (아이디)\" data-i18n-placeholder=\"admin.s.ph.ldap_uid\" style=\"width:130px\" />
+            <input id=\"ldap_new_cn\" class=\"inp-sm\" placeholder=\"이름(cn)\" data-i18n-placeholder=\"admin.s.ph.ldap_cn\" style=\"width:120px\" />
+            <input id=\"ldap_new_mail\" class=\"inp-sm\" placeholder=\"email\" style=\"width:160px\" />
+            <input id=\"ldap_new_pw\" class=\"inp-sm\" placeholder=\"초기 비밀번호\" data-i18n-placeholder=\"admin.s.ph.ldap_pw\" style=\"width:140px\" />
+            <select id=\"ldap_new_role\" class=\"inp-sm\"><option value=\"user\">user</option><option value=\"helpdesk\">helpdesk</option><option value=\"monitor\">monitor</option><option value=\"auditor\">auditor</option><option value=\"security\">security</option><option value=\"admin\">admin</option></select>
+            <button class=\"secondary\" style=\"width:auto;padding:7px 14px;font-size:13px\" onclick=\"ldapAddUser()\" data-i18n=\"admin.s.btn.ldap_add\">+ 추가</button>
+            <button id=\"reload_ldap_users\" class=\"secondary\" style=\"width:auto;padding:7px 12px;font-size:13px\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
           </div>
           <div id=\"ldap_users_list\" class=\"list\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
           <div class=\"status-line\" id=\"ldap_users_status\"></div>
@@ -569,8 +572,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <h2 data-i18n=\"admin.h.asset_audit\">📝 자산 변경 이력</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.asset_audit\">사용자가 수정한 담당자·카테고리 변경 이력입니다. 최신 순으로 표시됩니다.</div>
           <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
-            <input id=\"audit_filter_hostname\" placeholder=\"호스트명으로 검색\" data-i18n-placeholder=\"admin.s.ph.audit_host\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:180px\" />
-            <select id=\"audit_filter_field\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px\">
+            <input id=\"audit_filter_hostname\" class=\"inp-sm\" placeholder=\"호스트명으로 검색\" data-i18n-placeholder=\"admin.s.ph.audit_host\" style=\"width:180px\" />
+            <select id=\"audit_filter_field\" class=\"inp-sm\">
               <option value=\"\" data-i18n=\"admin.s.opt.all_items\">전체 항목</option>
               <option value=\"owner\" data-i18n=\"admin.s.opt.owner\">담당자</option>
               <option value=\"category\" data-i18n=\"admin.s.opt.category\">카테고리</option>
@@ -586,8 +589,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <h2 data-i18n=\"admin.h.user_activity\">👤 사용자 행동 로그</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.user_activity\">로그인·로그아웃·탭 전환·쿼리 실행 등 모든 사용자 행동이 기록됩니다.</div>
           <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
-            <input id=\"userlog_filter_user\" placeholder=\"사용자명으로 검색\" data-i18n-placeholder=\"admin.s.ph.userlog_user\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:180px\" />
-            <select id=\"userlog_filter_action\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px\">
+            <input id=\"userlog_filter_user\" class=\"inp-sm\" placeholder=\"사용자명으로 검색\" data-i18n-placeholder=\"admin.s.ph.userlog_user\" style=\"width:180px\" />
+            <select id=\"userlog_filter_action\" class=\"inp-sm\">
               <option value=\"\" data-i18n=\"admin.s.opt.all_actions\">전체 액션</option>
               <option value=\"LOGIN\">LOGIN</option>
               <option value=\"LOGIN_FAIL\">LOGIN_FAIL</option>
@@ -1767,10 +1770,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                 <span>${statusBadge(r.status)}</span>
                 ${r.status === 'pending' ? `
-                  <select id="surole_${r.id}" style="font-size:12px;padding:3px 6px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:5px" title="${tt('admin.dyn.signup.role','부여 역할')}">
+                  <select id="surole_${r.id}" class="inp-sm" style="font-size:12px;padding:4px 8px" title="${tt('admin.dyn.signup.role','부여 역할')}">
                     <option value="user">user</option><option value="helpdesk">helpdesk</option><option value="monitor">monitor</option><option value="auditor">auditor</option><option value="security">security</option><option value="admin">admin</option>
                   </select>
-                  <input id="supw_${r.id}" placeholder="${tt('admin.dyn.signup.pw_ph','초기 PW(비우면 자동)')}" style="font-size:12px;padding:3px 6px;width:130px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:5px" />
+                  <input id="supw_${r.id}" class="inp-sm" placeholder="${tt('admin.dyn.signup.pw_ph','초기 PW(비우면 자동)')}" style="font-size:12px;padding:4px 8px;width:130px" />
                   <button class="secondary" style="font-size:12px;padding:4px 10px" onclick="handleSignupRequest('${r.id}','approved')">${tt('admin.dyn.approve','승인')}</button>
                   <button class="danger" style="font-size:12px;padding:4px 10px" onclick="handleSignupRequest('${r.id}','rejected')">${tt('admin.dyn.reject','거절')}</button>
                 ` : ''}
@@ -1848,7 +1851,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               ${u.mail ? `<span style="color:#94a3b8;font-size:12px;margin-left:6px">${escapeHtml(u.mail)}</span>` : ''}
             </div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-              <select onchange="ldapSetRole('${escapeHtml(u.uid)}', this.value)" style="font-size:12px;padding:3px 6px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:5px" title="${tt('admin.dyn.ldap.role','MORI 역할')}">${roleOpts}</select>
+              <select onchange="ldapSetRole('${escapeHtml(u.uid)}', this.value)" class="inp-sm" style="font-size:12px;padding:4px 8px" title="${tt('admin.dyn.ldap.role','MORI 역할')}">${roleOpts}</select>
               <button class="secondary" style="font-size:12px;padding:3px 9px" onclick="ldapResetPw('${escapeHtml(u.uid)}')">${tt('admin.dyn.ldap.resetpw','비번 재설정')}</button>
               <button class="danger" style="font-size:12px;padding:3px 9px" onclick="ldapDeleteUser('${escapeHtml(u.uid)}')">${tt('admin.dyn.delete','삭제')}</button>
             </div>
