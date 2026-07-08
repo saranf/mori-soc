@@ -114,7 +114,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 <head>
   <meta charset=\"utf-8\" />
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-  <title data-i18n-doctitle=\"admin.doctitle\">MORI Security Dashboard</title>
+  <title data-i18n-doctitle=\"admin.doctitle\">MORI — 관리자 콘솔</title>
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0b1220; color: #e5e7eb; }
@@ -303,8 +303,6 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <!-- ── Admin Tab Nav (8 tabs, Phase 2 정렬) ────────────────────────── -->
     <nav class=\"tabs-nav\" id=\"admin_tabs_nav\">
       <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\" data-i18n=\"admin.tab.overview\">📊 Overview</button>
-      <button data-atab=\"compliance\" onclick=\"switchAdminTab('compliance')\" data-i18n=\"admin.tab.compliance\">✅ Compliance</button>
-      <button data-atab=\"triage\" onclick=\"switchAdminTab('triage')\" data-i18n=\"admin.tab.triage\">🚨 Triage &amp; Incidents</button>
       <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\" data-i18n=\"admin.tab.remediation\">🔧 Remediation</button>
       <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\" data-i18n=\"admin.tab.assets\">👤 자산 / Owners</button>
       <button data-atab=\"access\" onclick=\"switchAdminTab('access')\" data-i18n=\"admin.tab.access\">🛡️ Access Control</button>
@@ -349,59 +347,6 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <h2 data-i18n=\"admin.h.recent_activity\">Recent Activity</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.recent_activity\">최근 alert / observation / fleet query 결과를 시간순으로 합쳐 보여줍니다.</div>
           <div class=\"list\" id=\"recent_activity\"></div>
-        </section>
-      </div>
-    </div>
-
-    <!-- ── Tab: Compliance (Phase 2 control_checks) ──────────────────────── -->
-    <div class=\"atab-panel\" id=\"atab_compliance\">
-      <section class=\"metrics\" id=\"admin_compliance_cards\"></section>
-      <div class=\"stack\">
-        <section class=\"card\">
-          <h2 data-i18n=\"admin.h.pdca_status\">📋 통제 점검 현황 (PDCA)</h2>
-          <div class=\"subtext\" data-i18n-html=\"admin.s.sub.pdca\">
-            <code>control_check_results</code> 테이블 기준 ISMS-P / ISO 27001 통제 점검 결과입니다.
-            상세 시각화와 미조치 항목 편집은 <a href=\"/ui#compliance\" style=\"color:#7dd3fc\">사용자 대시보드 Compliance 탭 ↗</a>에서 가능합니다.
-          </div>
-          <div class=\"actions\" style=\"margin-bottom:12px\">
-            <button id=\"admin_reload_compliance\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
-            <a href=\"/compliance/pdca/pending.csv\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\" data-i18n=\"admin.s.btn.pending_csv\">📥 미조치 CSV</a>
-          </div>
-          <div class=\"table-wrap\" id=\"admin_compliance_categories\"></div>
-        </section>
-        <section class=\"card\">
-          <h2 data-i18n=\"admin.h.pending\">🔧 미조치 항목 (통제 + Trivy + Alert)</h2>
-          <div class=\"subtext\" data-i18n=\"admin.s.sub.pending\">기한 초과는 🔴 표시. 통제 점검 fail/warning + Trivy critical/high + Alert critical/high (7일) 통합.</div>
-          <div class=\"table-wrap\" id=\"admin_compliance_pending\"></div>
-        </section>
-      </div>
-    </div>
-
-    <!-- ── Tab: Triage & Incidents ───────────────────────────────────────── -->
-    <div class=\"atab-panel\" id=\"atab_triage\">
-      <div class=\"stack\">
-        <section class=\"card\">
-          <h2 data-i18n=\"admin.h.triage\">🚨 Alert Triage 현황</h2>
-          <div class=\"subtext\" data-i18n-html=\"admin.s.sub.triage\">
-            triage 상태가 설정된 alert 목록입니다. 편집은
-            <a href=\"/ui#triage\" style=\"color:#7dd3fc\">사용자 대시보드 Triage 탭 ↗</a>에서 가능합니다.
-          </div>
-          <div class=\"actions\" style=\"margin-bottom:12px\">
-            <button id=\"admin_reload_triage\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
-          </div>
-          <div class=\"table-wrap\" id=\"admin_triage_list\"></div>
-        </section>
-        <section class=\"card\">
-          <h2 data-i18n=\"admin.h.incidents\">📋 인시던트 (incident_store)</h2>
-          <div class=\"subtext\" data-i18n-html=\"admin.s.sub.incidents\">
-            등록된 인시던트와 처리 상태입니다. 생성·노트는
-            <a href=\"/ui#incidents\" style=\"color:#7dd3fc\">사용자 대시보드 Incidents 탭 ↗</a>에서 가능합니다.
-          </div>
-          <div class=\"actions\" style=\"margin-bottom:12px\">
-            <button id=\"admin_reload_incidents\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
-            <a href=\"/incidents?format=csv\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\" data-i18n=\"admin.s.btn.incidents_csv\">📥 인시던트 CSV</a>
-          </div>
-          <div class=\"table-wrap\" id=\"admin_incidents_list\"></div>
         </section>
       </div>
     </div>
@@ -664,12 +609,6 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
   <nav class=\"admin-bottom-nav\" id=\"admin_bottom_nav\">
     <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\">
       <span class=\"bn-icon\">📊</span><span data-i18n=\"admin.s.bn.overview\">Overview</span>
-    </button>
-    <button data-atab=\"compliance\" onclick=\"switchAdminTab('compliance')\">
-      <span class=\"bn-icon\">✅</span><span data-i18n=\"admin.s.bn.compliance\">Compliance</span>
-    </button>
-    <button data-atab=\"triage\" onclick=\"switchAdminTab('triage')\">
-      <span class=\"bn-icon\">🚨</span><span data-i18n=\"admin.s.bn.triage\">Triage</span>
     </button>
     <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\">
       <span class=\"bn-icon\">🔧</span><span data-i18n=\"admin.s.bn.remediation\">조치</span>
@@ -1771,8 +1710,6 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       window.scrollTo({ top: 0, behavior: 'smooth' });
       // 탭별 lazy 로더 dispatch (Phase 2)
       if (tab === 'logs') { loadAuditLog(); loadUserActivityLog(); }
-      if (tab === 'compliance') loadAdminCompliance();
-      if (tab === 'triage') { loadAdminTriage(); loadAdminIncidents(); }
       if (tab === 'remediation') { loadAdminVulnActions(); loadAdminActionPlans(); }
       if (tab === 'overview') { loadAdminPhase2Health(); loadAdminSourceFreshness(); }
     }
@@ -2347,7 +2284,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       document.getElementById('admin_reload_freshness').addEventListener('click', loadAdminSourceFreshness);
     }
 
-    async function loadAdminCompliance() {
+    async function loadAdminCompliance() {  // (deprecated — Compliance는 /ui 에서만 편집)
       const cardsEl = document.getElementById('admin_compliance_cards');
       const catEl = document.getElementById('admin_compliance_categories');
       const pendingEl = document.getElementById('admin_compliance_pending');
@@ -2849,6 +2786,7 @@ def render_user_dashboard_html(
           <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0f2035;border:1px solid #1e3a5f;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
             <button type=\"button\" onclick=\"openProfileModal()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.edit_profile\">👤 프로필 편집</button>
             <button type=\"button\" onclick=\"shortcutMyServers()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.my_servers\">⭐ 내 서버</button>
+            <a id=\"ui_admin_console_link\" href=\"/admin\" style=\"display:none;width:100%;text-align:left;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;text-decoration:none\" data-i18n=\"dash.account.admin_console\">⚙️ 관리자 콘솔 ↗</a>
             <div style=\"border-top:1px solid #1e3a5f;margin:10px 0\"></div>
             <div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\" data-i18n=\"dash.account.language\">언어 / Language</div>
             __I18N_TOGGLE__
@@ -6694,6 +6632,8 @@ def render_user_dashboard_html(
         }
         const badge = document.getElementById('ui_user_badge');
         if (badge && me.username) { badge.removeAttribute('data-i18n'); badge.textContent = me.username; }
+        const adminLink = document.getElementById('ui_admin_console_link');
+        if (adminLink) adminLink.style.display = (_currentUserRole === 'admin') ? 'block' : 'none';
         _applyRiskGating();
         _applyEvidenceGating();
         if (document.getElementById('security_hero_body')) renderSecurityHero();

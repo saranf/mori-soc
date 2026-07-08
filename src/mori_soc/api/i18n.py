@@ -213,6 +213,7 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.panel.reset_layout": "↔️ 크기 초기화",
         "dash.panel.layout_reset": "↔️ 패널 크기 초기화됨",
         "dash.account.my_servers": "⭐ 내 서버",
+        "dash.account.admin_console": "⚙️ 관리자 콘솔 ↗",
         "dash.risk.matrix_title": "🎯 위험성 평가 매트릭스",
         "dash.risk.matrix_sub": "위험도 = 영향도(자산 중요도) × 발생가능성(심각도+보정). 미평가 항목은 자동 제안 등급으로 집계됩니다.",
         "dash.gap.title": "🎯 오늘의 작업 큐 (증적 공백)",
@@ -794,6 +795,7 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.panel.reset_layout": "↔️ Reset sizes",
         "dash.panel.layout_reset": "↔️ Panel sizes reset",
         "dash.account.my_servers": "⭐ My Servers",
+        "dash.account.admin_console": "⚙️ Admin console ↗",
         "dash.risk.matrix_title": "🎯 Risk Assessment Matrix",
         "dash.risk.matrix_sub": "Risk = Impact (asset importance) × Likelihood (severity + adjustments). Unassessed items are counted with their auto-suggested grade.",
         "dash.gap.title": "🎯 Today's work queue (evidence gaps)",
@@ -1330,7 +1332,7 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
 
 _ADMIN_I18N: dict[str, dict[str, str]] = {
     "ko": {
-        "admin.doctitle": "MORI Security Dashboard",
+        "admin.doctitle": "MORI — 관리자 콘솔",
         "admin.hero.title": "MORI — 점검·통제 운영 콘솔",
         "admin.hero.intro": "통제 항목 점검 결과를 관리하고, 수집 데이터를 교차 검증하며, 사용자 대시보드 노출 범위를 제어하는 관리자 운영 콘솔입니다.",
         "admin.links.docs": "운영 문서 / 포털",
@@ -1697,7 +1699,7 @@ _ADMIN_I18N: dict[str, dict[str, str]] = {
         "admin.s.dlg.overview_copy": "선택한 카드의 상세 목록입니다.",
     },
     "en": {
-        "admin.doctitle": "MORI Security Dashboard",
+        "admin.doctitle": "MORI — Admin Console",
         "admin.hero.title": "MORI — Controls & Operations Console",
         "admin.hero.intro": "Operator console for managing control-check results, cross-verifying collected data, and controlling user dashboard exposure scope.",
         "admin.links.docs": "Operations docs / portal",
