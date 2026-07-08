@@ -22,6 +22,7 @@ try:
         Connection as _LdapConnection,
         ALL as _LDAP_ALL,
         SUBTREE as _LDAP_SUBTREE,
+        MODIFY_REPLACE as _LDAP_MODIFY_REPLACE,
     )
     LDAP3_AVAILABLE = True
 except ImportError:  # pragma: no cover - exercised by runtime guard tests
@@ -29,6 +30,7 @@ except ImportError:  # pragma: no cover - exercised by runtime guard tests
     _LdapConnection = None
     _LDAP_ALL = None
     _LDAP_SUBTREE = None
+    _LDAP_MODIFY_REPLACE = None
     LDAP3_AVAILABLE = False
 
 
@@ -201,6 +203,80 @@ def ldap_add_user(
             return False, str(conn.result.get("description", conn.result))
         return True, ""
     except Exception as exc:  # pragma: no cover - network/dir errors
+        return False, str(exc)
+
+
+def _ldap_admin_conn(config: AuthConfig):
+    """Bind as the service account for admin operations. Returns (conn, error)."""
+    if not config.ldap_enabled or not LDAP3_AVAILABLE or _LdapServer is None:
+        return None, "LDAP is not enabled"
+    if not (config.ldap_bind_dn and config.ldap_base_dn):
+        return None, "LDAP bind DN / base DN required"
+    try:
+        server = _LdapServer(config.ldap_url, get_info=_LDAP_ALL, connect_timeout=5)
+        return _LdapConnection(server, config.ldap_bind_dn, config.ldap_bind_pw, auto_bind=True), ""
+    except Exception as exc:  # pragma: no cover
+        return None, str(exc)
+
+
+def ldap_list_users(config: AuthConfig, limit: int = 500) -> tuple[list[dict[str, str]], str]:
+    """List directory users under the base DN. Returns (users, error)."""
+    conn, err = _ldap_admin_conn(config)
+    if conn is None:
+        return [], err
+    try:
+        conn.search(
+            config.ldap_base_dn, "(objectClass=inetOrgPerson)",
+            search_scope=_LDAP_SUBTREE, attributes=["cn", "mail", config.ldap_user_attr],
+            size_limit=max(1, int(limit)),
+        )
+        out: list[dict[str, str]] = []
+        for e in conn.entries:
+            attrs = e.entry_attributes_as_dict
+            uid_vals = attrs.get(config.ldap_user_attr) or []
+            cn_vals = attrs.get("cn") or []
+            mail_vals = attrs.get("mail") or []
+            out.append({
+                "uid": str(uid_vals[0]) if uid_vals else "",
+                "cn": str(cn_vals[0]) if cn_vals else "",
+                "mail": str(mail_vals[0]) if mail_vals else "",
+                "dn": str(e.entry_dn),
+            })
+        out.sort(key=lambda r: r["uid"])
+        return out, ""
+    except Exception as exc:  # pragma: no cover
+        return [], str(exc)
+
+
+def ldap_delete_user(config: AuthConfig, uid: str) -> tuple[bool, str]:
+    """Delete ``uid=<uid>,<base_dn>``. Returns (ok, error)."""
+    conn, err = _ldap_admin_conn(config)
+    if conn is None:
+        return False, err
+    try:
+        user_dn = f"{config.ldap_user_attr}={uid},{config.ldap_base_dn}"
+        ok = conn.delete(user_dn)
+        if not ok:
+            return False, str(conn.result.get("description", conn.result))
+        return True, ""
+    except Exception as exc:  # pragma: no cover
+        return False, str(exc)
+
+
+def ldap_set_password(config: AuthConfig, uid: str, password: str) -> tuple[bool, str]:
+    """Reset ``userPassword`` for ``uid``. Returns (ok, error)."""
+    conn, err = _ldap_admin_conn(config)
+    if conn is None:
+        return False, err
+    if _LDAP_MODIFY_REPLACE is None:
+        return False, "ldap3 unavailable"
+    try:
+        user_dn = f"{config.ldap_user_attr}={uid},{config.ldap_base_dn}"
+        ok = conn.modify(user_dn, {"userPassword": [(_LDAP_MODIFY_REPLACE, [password])]})
+        if not ok:
+            return False, str(conn.result.get("description", conn.result))
+        return True, ""
+    except Exception as exc:  # pragma: no cover
         return False, str(exc)
 
 

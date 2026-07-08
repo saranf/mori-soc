@@ -574,6 +574,26 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"status-line\" id=\"signup_requests_status\"></div>
         </section>
 
+        <!-- 🔑 LDAP 사용자 관리 (admin 전용, LDAP 활성 시) -->
+        <section class=\"card\">
+          <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+            <h2 style=\"margin:0\" data-i18n=\"admin.h.ldap\">🔑 LDAP 사용자 관리</h2>
+            <span id=\"ldap_status_badge\" style=\"font-size:12px;color:#94a3b8\"></span>
+          </div>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.ldap\">디렉터리에 사용자를 직접 추가·삭제하고 비밀번호·역할을 바꿉니다. 여기서 만든 계정은 같은 LDAP을 보는 Grafana/Zabbix/Fleet 에서도 로그인됩니다. (LDAP 비활성 시 .env의 MORI_LDAP_ENABLED=true 필요)</div>
+          <div id=\"ldap_add_form\" style=\"display:none;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0\">
+            <input id=\"ldap_new_uid\" placeholder=\"uid (아이디)\" data-i18n-placeholder=\"admin.s.ph.ldap_uid\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:130px\" />
+            <input id=\"ldap_new_cn\" placeholder=\"이름(cn)\" data-i18n-placeholder=\"admin.s.ph.ldap_cn\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:120px\" />
+            <input id=\"ldap_new_mail\" placeholder=\"email\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:160px\" />
+            <input id=\"ldap_new_pw\" placeholder=\"초기 비밀번호\" data-i18n-placeholder=\"admin.s.ph.ldap_pw\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:13px;width:140px\" />
+            <select id=\"ldap_new_role\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 8px;font-size:13px\"><option value=\"user\">user</option><option value=\"helpdesk\">helpdesk</option><option value=\"monitor\">monitor</option><option value=\"auditor\">auditor</option><option value=\"security\">security</option><option value=\"admin\">admin</option></select>
+            <button class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px\" onclick=\"ldapAddUser()\" data-i18n=\"admin.s.btn.ldap_add\">+ 추가</button>
+            <button id=\"reload_ldap_users\" class=\"secondary\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
+          </div>
+          <div id=\"ldap_users_list\" class=\"list\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
+          <div class=\"status-line\" id=\"ldap_users_status\"></div>
+        </section>
+
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.role_perms\">🔐 역할별 탭 권한 관리</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.role_perms\">각 계정 역할에서 보이는 탭을 설정합니다. 저장 후 다음 로그인부터 적용됩니다.</div>
@@ -1765,7 +1785,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         switchAdminTab(tab);
         // settings/access 탭은 init 시 1회 렌더되므로 언어 변경 시 직접 재렌더
         if (tab === 'settings') { renderDashboardPreferences(); renderGuideButtons(guideExamplesEl, guideExamples); }
-        if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); }
+        if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); loadLdapUsers(); }
       } catch (e) { /* best-effort */ }
     };
 
@@ -1856,6 +1876,102 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     if (document.getElementById('reload_signup_requests')) {
       document.getElementById('reload_signup_requests')?.addEventListener('click', loadSignupRequests);
     }
+
+    // ── LDAP 사용자 관리 (admin 전용) ──────────────────────────────────────────
+    const ldapListEl = document.getElementById('ldap_users_list');
+    const ldapStatusMsgEl = document.getElementById('ldap_users_status');
+    let _ldapRoles = ['user','helpdesk','monitor','auditor','security','admin'];
+    async function loadLdapUsers() {
+      if (!ldapListEl) return;
+      const badge = document.getElementById('ldap_status_badge');
+      const form = document.getElementById('ldap_add_form');
+      ldapListEl.innerHTML = `<span class="empty">${tt('admin.dyn.loading','로딩 중…')}</span>`;
+      try {
+        const st = await (await fetch('/admin/ldap/status')).json();
+        if (!st.enabled) {
+          if (badge) { badge.textContent = tt('admin.dyn.ldap.disabled','● 비활성'); badge.style.color = '#64748b'; }
+          if (form) form.style.display = 'none';
+          ldapListEl.innerHTML = `<span class="empty">${tt('admin.dyn.ldap.off_note','LDAP이 꺼져 있습니다. .env 의 MORI_LDAP_ENABLED=true 로 켜면 여기서 관리할 수 있습니다.')}</span>`;
+          return;
+        }
+        if (badge) { badge.textContent = `● ${tt('admin.dyn.ldap.enabled','활성')} · ${st.url} · ${st.base_dn}`; badge.style.color = '#4ade80'; }
+        if (Array.isArray(st.roles) && st.roles.length) _ldapRoles = st.roles;
+        if (form) form.style.display = 'flex';
+        const res = await fetch('/admin/ldap/users');
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        const data = await res.json();
+        const users = data.users || [];
+        if (!users.length) { ldapListEl.innerHTML = `<span class="empty">${tt('admin.dyn.ldap.none','디렉터리에 사용자가 없습니다.')}</span>`; return; }
+        ldapListEl.innerHTML = users.map(u => {
+          const roleOpts = _ldapRoles.map(r => `<option value="${r}"${u.role===r?' selected':''}>${r}</option>`).join('');
+          return `<div class="owner-row" style="border:1px solid #1e3a5f;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div>
+              <strong style="font-family:monospace;color:#7dd3fc">${escapeHtml(u.uid)}</strong>
+              <span style="color:#e2e8f0;font-size:13px;margin-left:6px">${escapeHtml(u.cn||'')}</span>
+              ${u.mail ? `<span style="color:#94a3b8;font-size:12px;margin-left:6px">${escapeHtml(u.mail)}</span>` : ''}
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <select onchange="ldapSetRole('${escapeHtml(u.uid)}', this.value)" style="font-size:12px;padding:3px 6px;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:5px" title="${tt('admin.dyn.ldap.role','MORI 역할')}">${roleOpts}</select>
+              <button class="secondary" style="font-size:12px;padding:3px 9px" onclick="ldapResetPw('${escapeHtml(u.uid)}')">${tt('admin.dyn.ldap.resetpw','비번 재설정')}</button>
+              <button class="danger" style="font-size:12px;padding:3px 9px" onclick="ldapDeleteUser('${escapeHtml(u.uid)}')">${tt('admin.dyn.delete','삭제')}</button>
+            </div>
+          </div>`;
+        }).join('');
+      } catch(e) {
+        ldapListEl.innerHTML = `<span class="empty">${tt('admin.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`;
+      }
+    }
+    window.loadLdapUsers = loadLdapUsers;
+
+    async function ldapAddUser() {
+      const g = id => document.getElementById(id);
+      const uid = g('ldap_new_uid').value.trim();
+      const password = g('ldap_new_pw').value.trim();
+      if (!uid || !password) { if (ldapStatusMsgEl) ldapStatusMsgEl.textContent = tt('admin.dyn.ldap.need_uid_pw','uid 와 초기 비밀번호는 필수입니다.'); return; }
+      const body = { uid, cn: g('ldap_new_cn').value.trim(), mail: g('ldap_new_mail').value.trim(), password, role: g('ldap_new_role').value };
+      try {
+        const res = await fetch('/admin/ldap/users', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.detail || res.status);
+        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.added','✅ 추가됨')}: ${d.uid} (${d.role})`; ldapStatusMsgEl.style.color = '#4ade80'; }
+        ['ldap_new_uid','ldap_new_cn','ldap_new_mail','ldap_new_pw'].forEach(i => g(i).value = '');
+        await loadLdapUsers();
+      } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#f87171'; } }
+    }
+    window.ldapAddUser = ldapAddUser;
+
+    async function ldapDeleteUser(uid) {
+      if (!confirm(tt('admin.dyn.ldap.confirm_del','LDAP 사용자를 삭제할까요? ') + uid)) return;
+      try {
+        const res = await fetch('/admin/ldap/users/' + encodeURIComponent(uid), { method:'DELETE' });
+        const d = await res.json(); if (!res.ok) throw new Error(d.detail || res.status);
+        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.deleted','🗑️ 삭제됨')}: ${uid}`; ldapStatusMsgEl.style.color = '#94a3b8'; }
+        await loadLdapUsers();
+      } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#f87171'; } }
+    }
+    window.ldapDeleteUser = ldapDeleteUser;
+
+    async function ldapResetPw(uid) {
+      const pw = prompt(tt('admin.dyn.ldap.newpw_prompt','새 비밀번호를 입력하세요:') + ' ' + uid);
+      if (!pw) return;
+      try {
+        const res = await fetch('/admin/ldap/users/' + encodeURIComponent(uid) + '/password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password: pw}) });
+        const d = await res.json(); if (!res.ok) throw new Error(d.detail || res.status);
+        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.pw_done','🔑 비밀번호 재설정됨')}: ${uid}`; ldapStatusMsgEl.style.color = '#4ade80'; }
+      } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#f87171'; } }
+    }
+    window.ldapResetPw = ldapResetPw;
+
+    async function ldapSetRole(uid, role) {
+      try {
+        const res = await fetch('/admin/ldap/users/' + encodeURIComponent(uid) + '/role', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({role}) });
+        const d = await res.json(); if (!res.ok) throw new Error(d.detail || res.status);
+        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.role_done','역할 변경됨')}: ${uid} → ${role}`; ldapStatusMsgEl.style.color = '#4ade80'; }
+      } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#f87171'; } }
+    }
+    window.ldapSetRole = ldapSetRole;
+
+    document.getElementById('reload_ldap_users')?.addEventListener('click', loadLdapUsers);
 
     // ── Asset Audit Log ────────────────────────────────────────────────────
     const auditLogListEl = document.getElementById('audit_log_list');

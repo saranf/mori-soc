@@ -241,7 +241,7 @@ def create_app(
     control_status.update(state_repo.load_control_status())
     # LDAP 가입 승인으로 만든 계정의 역할을 복원(비밀번호는 LDAP이 검증하므로 role만).
     for _skey, _sval in settings.items():
-        if _skey.startswith("ldaprole:"):
+        if _skey.startswith("ldaprole:") and _sval:  # 빈 값(삭제됨)은 건너뜀
             _luser = _skey[len("ldaprole:"):]
             local_users[_luser] = {"password": "", "role": _sval}
 
@@ -999,6 +999,10 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
     # ── Org settings (위험 DoA 기준 등) ──────────────────────────────────────────
     from mori_soc.api.routes.settings import register_settings
     register_settings(ctx)
+
+    # ── LDAP 사용자 관리 (admin 전용, LDAP 활성 시) ──────────────────────────────
+    from mori_soc.api.routes.ldap_admin import register_ldap_admin
+    register_ldap_admin(ctx)
 
     # ── Incidents ────────────────────────────────────────────────────────────────
     from mori_soc.api.routes.incidents import register_incidents

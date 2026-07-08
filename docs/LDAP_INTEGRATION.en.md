@@ -68,9 +68,27 @@ local accounts such as the administrator (`admin`) still log in as before.
 
 ---
 
-## 3. Adding users directly via CLI (helper script)
+## 3. Managing users directly
 
-An administrator can also create LDAP accounts directly, without the signup form.
+### (A) MORI admin UI (recommended)
+
+Log in as `admin` → **Admin console → Access Control → 🔑 LDAP User Management**.
+When LDAP is on, the header shows `● Enabled · <url> · <base_dn>`, and below you can:
+
+- **List users** — uid · name · email · MORI role
+- **Add** — enter uid · name · email · initial password · role → **+ Add**
+- **Reset password / change role / delete** — inline per row
+
+An admin can create and manage accounts immediately without the signup form, and
+accounts created here also log in to Grafana/Zabbix/Fleet pointed at the same LDAP.
+(If LDAP is off, the panel just shows how to enable it.)
+
+> API: `GET /admin/ldap/status` · `GET/POST /admin/ldap/users` ·
+> `POST /admin/ldap/users/{uid}/password` · `.../role` · `DELETE /admin/ldap/users/{uid}` (all admin-only)
+
+### (B) CLI helper script
+
+You can also create accounts straight from a server terminal.
 
 ```bash
 # Add to the bundled OpenLDAP

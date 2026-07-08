@@ -64,9 +64,26 @@ docker compose up -d openldap mori-api
 
 ---
 
-## 3. 사용자를 CLI로 바로 추가 (헬퍼 스크립트)
+## 3. 사용자 직접 관리
 
-가입 폼 없이 관리자가 직접 LDAP 계정을 만들 수도 있습니다.
+### (A) MORI 어드민 UI (권장)
+
+`admin` 으로 로그인 → **어드민 콘솔 → Access Control(접근 제어) → 🔑 LDAP 사용자 관리**.
+LDAP이 켜져 있으면 상단에 `● 활성 · <url> · <base_dn>` 이 표시되고, 아래에서:
+
+- **사용자 목록** — uid·이름·이메일·MORI 역할
+- **추가** — uid·이름·이메일·초기 비밀번호·역할 입력 → **+ 추가**
+- **비번 재설정 / 역할 변경 / 삭제** — 각 행에서 바로
+
+가입 폼 없이 관리자가 즉시 계정을 만들고 관리할 수 있고, 여기서 만든 계정은 같은 LDAP을
+보는 Grafana/Zabbix/Fleet 에서도 로그인됩니다. (LDAP이 꺼져 있으면 켜라는 안내만 표시)
+
+> API: `GET /admin/ldap/status` · `GET/POST /admin/ldap/users` ·
+> `POST /admin/ldap/users/{uid}/password` · `.../role` · `DELETE /admin/ldap/users/{uid}` (모두 admin 전용)
+
+### (B) CLI 헬퍼 스크립트
+
+서버 터미널에서 바로 만들 수도 있습니다.
 
 ```bash
 # 번들 OpenLDAP 에 추가

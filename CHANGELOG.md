@@ -9,6 +9,10 @@ versions are `x.y.z-alpha.n`.
 계정 하나로 MORI·Grafana·Zabbix·Fleet 로그인. **기본 OFF**, 원하면 켜는 옵션.
 
 ### Added
+- **어드민 LDAP 사용자 관리 UI** — 어드민 콘솔 → Access Control → **🔑 LDAP 사용자 관리**:
+  상태 표시 + 사용자 목록/추가/삭제/비번 재설정/역할 변경(admin 전용). 엔드포인트
+  `GET /admin/ldap/status`·`GET/POST /admin/ldap/users`·`.../{uid}/password`·`.../role`·
+  `DELETE .../{uid}` + 헬퍼 `auth.ldap_list_users/ldap_delete_user/ldap_set_password`.
 - **LDAP 계정 생성** (`auth.ldap_add_user`) — `inetOrgPerson` 를 디렉터리에 추가.
 - **가입 승인 프로비저닝(승인제)** — `/signup-request` 에 로그인 아이디 필드 추가, admin 승인
   시 **역할·초기 비밀번호**를 정하면 계정이 실제로 생성된다: LDAP 활성 시 디렉터리 계정(같은
