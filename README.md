@@ -16,6 +16,7 @@
 
 - 🎯 **대상** — 보안 담당자 1~2명 + IT 헬프데스크로 ISMS-P / ISO 27001을 준비해야 하는 중소형 조직
 - 🚀 **한 줄 시작** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, 데모 전용)
+- 📖 **설치·운영 가이드** — 처음이면 [**시작하기(신규 사용자)**](docs/GETTING_STARTED.md), 이미 Zabbix/Wazuh/Fleet를 운영 중이면 [**기존 스택 연결**](docs/BROWNFIELD_CONNECT.md) (둘 다 한/영)
 - 📊 **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · **위험성 평가 매트릭스** · Compliance PDCA + **통제 카탈로그(ISMS-P 101 × ISO)** · 6종 감사 증적 CSV/PDF
 - 🎯 **위험성 평가 (R-series)** — 취약점(CVE)별 **위험도 = 영향도(자산 중요도 상/중/하) × 발생가능성(심각도)** 를 3×3 매트릭스로 **점수(1~9)** 산정(라벨보다 점수 우선), 위험처리 결정(조치/수용/이관/회피)·잔여위험·재평가일 기록. **어드민 전용 산정 근거(provenance)** 패널. **위험 수용 기준(DoA)** — admin이 임계 점수를 입력하면 그 이하 위험은 **기본 수용가능**으로 자동 분류. ISMS-P 위험관리 / ISO 27001 6.1.2·8.8 기반
 - 📚 **통제 카탈로그 (Phase 2)** — ISMS-P 101 + ISO 27001:2022 93 = **194개 인증기준**(한/영) 트리를 **컴플라이언스 탭**에 표시. 통제별 **이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 편집**하면 `control_status`(`schema/009`)에 **영속(재시작 유지)** + 변경 이력 기록. 통제별 **증적 팩 PDF** 1클릭. admin·security 전용
@@ -26,6 +27,7 @@
 - ✅ **영속화 (M2-1 + R-2 + M2-7)** — UI 운영 상태 store(자산 담당자·감사로그·취약점 조치·Triage·인시던트·프로필 + **위험성 평가 대장 `ui_risk_register`** + **조직 설정 `ui_settings`**(위험 DoA) + **통제 이행상태 `control_status`**)는 PostgreSQL에 **write-through 영속화**되어 재시작 후에도 유지. (스키마 `001`~`009`)
 - 🔌 **실데이터 연동** — **Zabbix 실시간 폴링은 실 API로 검증됨**(problem→Triage→Incident→증적→해소). **Trivy/CSOP는 원격 토큰 push**(`/ingest/trivy`·`/ingest/evidence`)로 연동. **Fleet / Wazuh 라이브 연동은 다음 단계(Next)**.
 - 🧩 **브라운필드** — 기존 Zabbix/Wazuh/Fleet 환경이면 **MORI 코어만 띄우고 `.env` 설정만으로** 연결(번들 소스 불필요). `docker compose up` = 코어만, `--profile bundled` = 번들 데모 포함. → [가이드](docs/BROWNFIELD_CONNECT.md)
+- 🔗 **소스 딥링크 자유 설정** — 화면의 `Zabbix/Fleet/Wazuh/Grafana ↗` 버튼은 각 소스 콘솔로 연결됩니다. 기본값은 MORI 데모지만 `.env`의 `MORI_ZABBIX_UI_URL`·`MORI_FLEET_UI_URL`·`MORI_WAZUH_UI_URL`·`MORI_GRAFANA_URL`을 **내 서버 URL로 자유롭게 교체**(비우면 해당 링크만 숨김, 자산 종류에 맞는 링크만 노출)
 
 > ⚠️ **Alpha / Work in Progress** — 일상 보안 운영 + 감사 증적 누적 시나리오가 동작하고, **UI 운영 상태는 PostgreSQL에 영속화(M2-1·R-2)** 되어 재시작 후에도 유지됩니다. **Zabbix 는 실시간 폴링이 실 API로 검증**되어 problem→alert→Triage 가 재시작 없이 흐릅니다(다른 시드 데이터는 데모용). **Fleet / Wazuh 라이브 연동은 다음 단계**입니다.
 
@@ -631,6 +633,8 @@ docker compose up -d mori-api
 
 | 문서 | 내용 |
 |---|---|
+| **`docs/GETTING_STARTED.md`** (한/영) | **신규 사용자 설치·운영 가이드** — 데모 기동 → 첫 운영 → 운영 전환 (쉽게) |
+| **`docs/BROWNFIELD_CONNECT.md`** (한/영) | **기존 Zabbix/Wazuh/Fleet 연결 가이드** — `.env`만으로 read-only 연결 (단계별) |
 | `docs/FUNCTIONAL_SPEC.md` | 기능 정의서 원문 |
 | `docs/SECURITY_CONTROL_MAPPING.md` | 보안 통제(Security Controls) 매핑 |
 | `docs/IMPLEMENTATION_ROADMAP.md` | 기능 정의서 기준 구현 로드맵 |

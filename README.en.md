@@ -16,6 +16,7 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 
 - 🎯 **Target audience** — Small to mid-sized organizations with 1–2 security staff + IT helpdesk preparing for ISMS-P / ISO 27001
 - 🚀 **One-line start** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, demo only)
+- 📖 **Install & operate guides** — new here? [**Getting Started (new users)**](docs/GETTING_STARTED.en.md); already running Zabbix/Wazuh/Fleet? [**Connect an existing stack**](docs/BROWNFIELD_CONNECT.en.md) (both KO/EN)
 - 📊 **Screens** — Unified dashboard · Alert Triage · Incidents · Assets / Vulnerabilities · **Risk Assessment Matrix** · Compliance PDCA + **Control catalog (ISMS-P 101 × ISO)** · 6 audit-evidence CSV/PDF reports
 - 🎯 **Risk Assessment (R-series)** — Per-CVE **Risk = Impact (asset importance H/M/L) × Likelihood (severity)** as a **score (1–9)** on a 3×3 matrix (score-forward), with treatment decision (mitigate/accept/transfer/avoid) · residual risk · review date. **Admin-only assessment-basis (provenance)** panel. A single **risk-acceptance threshold (DoA)** auto-classifies risks at or below it as **auto-acceptable**. Based on ISMS-P risk management / ISO 27001 6.1.2·8.8
 - 📚 **Control catalog (Phase 2)** — ISMS-P 101 + ISO 27001:2022 93 = **194 criteria** (KO/EN) as a tree in the **Compliance tab**. Edit each control's **implementation status (implemented/partial/not-implemented/N-A) · owner · plan · due date** → persisted to `control_status` (`schema/009`, survives restarts) + change history. One-click per-control **evidence-pack PDF**. admin·security only
@@ -25,7 +26,8 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 - 🧾 **Automatic evidence** — Asset owner/importance, host/CVE-level remediation plans & exceptions, **per-CVE risk assessment**, Triage & Incident state changes
 - ✅ **Persistence (M2-1 + R-2 + M2-7)** — UI operational state stores (asset owners · audit log · vuln actions · Triage · Incidents · profiles + the **risk register `ui_risk_register`** + **org settings `ui_settings`** (risk DoA) + **control status `control_status`**) are **write-through persisted** to PostgreSQL and survive restarts. (schema `001`–`009`)
 - 🔌 **Live data integration** — **Zabbix real-time polling is verified against the real API** (problem→Triage→Incident→evidence→resolve). **Trivy/CSOP integrate via remote token push** (`/ingest/trivy`·`/ingest/evidence`). **Fleet / Wazuh live integration is Next**.
-- 🧩 **Brownfield** — for existing Zabbix/Wazuh/Fleet, run **MORI core only and connect via `.env`** (no bundled sources). `docker compose up` = core only, `--profile bundled` = bundled demo. → [guide](docs/BROWNFIELD_CONNECT.md)
+- 🧩 **Brownfield** — for existing Zabbix/Wazuh/Fleet, run **MORI core only and connect via `.env`** (no bundled sources). `docker compose up` = core only, `--profile bundled` = bundled demo. → [guide](docs/BROWNFIELD_CONNECT.en.md)
+- 🔗 **Configurable source deep-links** — the `Zabbix/Fleet/Wazuh/Grafana ↗` buttons open each source's console. Defaults point to the MORI demo, but set `MORI_ZABBIX_UI_URL`·`MORI_FLEET_UI_URL`·`MORI_WAZUH_UI_URL`·`MORI_GRAFANA_URL` in `.env` to **your own server URLs** (empty = that link is hidden; only the link matching the asset kind is shown)
 
 > ⚠️ **Alpha / Work in Progress** — Day-to-day security operations + audit-evidence accumulation work, and **UI operational state is persisted to PostgreSQL (M2-1 · R-2)** across restarts. **Zabbix real-time polling is verified against the real API**, so problem→alert→Triage flows live with no restart (other seed data is for demo). **Fleet / Wazuh live integration is the next step.**
 
@@ -47,7 +49,7 @@ A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumula
 
 MORI's core value: **turn the operational data Zabbix already produces into ISMS-P / ISO 27001 audit evidence.** The pipeline below works **end-to-end against the real Zabbix API** (no API restart — the API reads PostgreSQL live on every request).
 
-> 💡 This scenario needs the bundled Zabbix. The brownfield default (`docker compose up`) starts core only, so bring up the demo Zabbix with `docker compose --profile zabbix up -d` (or `--profile bundled`). With an existing Zabbix, just repoint `MORI_ZABBIX_API_URL` in `.env` → [brownfield guide](docs/BROWNFIELD_CONNECT.md).
+> 💡 This scenario needs the bundled Zabbix. The brownfield default (`docker compose up`) starts core only, so bring up the demo Zabbix with `docker compose --profile zabbix up -d` (or `--profile bundled`). With an existing Zabbix, just repoint `MORI_ZABBIX_API_URL` in `.env` → [brownfield guide](docs/BROWNFIELD_CONNECT.en.md).
 
 1. **A Zabbix problem occurs** — demo: `./scripts/mori-zabbix-demo-problem.sh` (fires a trigger on the Zabbix server → a real problem event)
 2. **MORI worker collects** — `mori-worker` polls `problem.get` every 30s → normalizes (severity/host/timestamp) → upserts into PostgreSQL `alerts` + records source freshness
@@ -210,7 +212,7 @@ A guidance modal automatically surfaces so that host-level bulk plans don't conf
 | **Assets (Server / PC / Trivy)** | Per-host owner/team/category edits + **manual override of server asset importance** | Takes priority over auto-classification (asset_classifier). Audit log records every change |
 | **Vulnerability management (Trivy)** | Host-level remediation plan / exception + **per-CVE detailed plan / exception** | Author / target date / expiry / reason recorded. Conflict guidance modal |
 | **📥 Remote ingest (v0.7)** | `POST /ingest/trivy` (raw report, `?hostname=` host mapping) · `POST /ingest/evidence` (CSOP before/after diff envelope) — **session-less push** via `MORI_INGEST_TOKEN` | Evidence in `ui_evidence_events` (`schema/006`). `GET /evidence` admin·security only |
-| **🧩 Brownfield mode (v0.7)** | `docker compose up` = MORI core only → connect to existing Zabbix/Trivy via `.env`. Bundled sources behind `--profile bundled`/`zabbix`/`fleet`/`wazuh` | [docs/BROWNFIELD_CONNECT.md](docs/BROWNFIELD_CONNECT.md) |
+| **🧩 Brownfield mode (v0.7)** | `docker compose up` = MORI core only → connect to existing Zabbix/Trivy via `.env`. Bundled sources behind `--profile bundled`/`zabbix`/`fleet`/`wazuh` | [docs/BROWNFIELD_CONNECT.en.md](docs/BROWNFIELD_CONNECT.en.md) |
 | **🎯 Risk Assessment (R-series)** | Per-CVE **3×3 risk matrix** (impact × likelihood) as a **score (1–9)** + treatment decision (mitigate/accept/transfer/avoid) · approver · residual risk · review date. A single **risk-acceptance threshold (DoA)** auto-classifies risks at or below it as **auto-acceptable** (`ui_settings`). Click a matrix cell/level → drill-down. **Admin-only assessment basis** | ISMS-P risk mgmt / ISO 27001 6.1.2·8.8. **admin·security only**. Persisted in `ui_risk_register`·`ui_settings` |
 | **🔐 Role-aware dashboard** | Role-aware security hero (risk KPIs/TOP ↔ my-servers remediation) + **24h/12h infra status** (Zabbix/Wazuh deep links) + **panel editing** (per-user widget on/off, persisted) | Responsive grid. Infra/helpdesk see remediation rate, not risk grades |
 | **🚨 Alert Triage** | 3-tier state (🔴🟡🟢) change, analyst·**actor** separation, history display | If actor is omitted on UI, falls back to session user → "unknown" |
@@ -260,7 +262,7 @@ A guidance modal automatically surfaces so that host-level bulk plans don't conf
 
 ### Brownfield mode — sit on top of existing Zabbix/Wazuh/Fleet
 
-If you already run Zabbix·Wazuh·FleetDM·Trivy, start **MORI core only and connect via `.env`** (no bundled sources needed). Full guide: [docs/BROWNFIELD_CONNECT.md](docs/BROWNFIELD_CONNECT.md).
+If you already run Zabbix·Wazuh·FleetDM·Trivy, start **MORI core only and connect via `.env`** (no bundled sources needed). Full guide: [docs/BROWNFIELD_CONNECT.en.md](docs/BROWNFIELD_CONNECT.en.md).
 
 ```bash
 # 1) Start MORI core only (api + worker + postgres; bundled sources excluded)
@@ -632,6 +634,8 @@ Operational state generated by demo seed / during operation (the 6 UI operationa
 
 | Document | Content |
 |---|---|
+| **`docs/GETTING_STARTED.en.md`** (KO/EN) | **New-user install & operations guide** — demo start → first operations → production switch (easy) |
+| **`docs/BROWNFIELD_CONNECT.en.md`** (KO/EN) | **Connect existing Zabbix/Wazuh/Fleet** — read-only, `.env` only (step-by-step) |
 | `docs/FUNCTIONAL_SPEC.md` | Original functional spec (Korean) |
 | `docs/SECURITY_CONTROL_MAPPING.md` | Security controls mapping |
 | `docs/IMPLEMENTATION_ROADMAP.md` | Implementation roadmap against the functional spec |
