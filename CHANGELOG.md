@@ -4,6 +4,18 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.13.0-alpha.1] — 2026-07-08 — 관리자 콘솔 정리 (중복 제거 · 진입점 · 톤 통일)
+
+### Changed
+- **`/admin` 중복 운영 탭 제거** — 내용이 `/ui#…` 링크뿐이던 **Compliance · Triage & Incidents**
+  탭을 콘솔에서 제거(운영 뷰는 `/ui`로 일원화) → 관리자 콘솔은 **6탭**(Overview · Remediation ·
+  자산/Owners · Access Control · Audit & Logs · Settings)으로 슬림화.
+- **진입점 정리** — 사용자 대시보드(`/ui`) 계정 메뉴에 **⚙️ 관리자 콘솔** 링크(admin 전용) 추가
+  (기존엔 `/ui`→`/admin` 링크가 없었음). 문서 타이틀 `MORI — 관리자 콘솔`로 정정.
+- **입력 컨트롤 톤 통일** — LDAP 사용자 관리·가입 승인·감사/사용자 로그 필터의 제각각이던
+  인라인 입력/셀렉트 스타일(#1e293b·radius 5~6)을 공용 `.inp-sm` 클래스로 교체 → 콘솔 베이스
+  팔레트(#0b1220·radius 10·#334155)로 통일.
+
 ## [v0.12.0-alpha.1] — 2026-07-08 — LDAP 통합 인증 (선택) + 가입 승인 프로비저닝
 
 계정 하나로 MORI·Grafana·Zabbix·Fleet 로그인. **기본 OFF**, 원하면 켜는 옵션.

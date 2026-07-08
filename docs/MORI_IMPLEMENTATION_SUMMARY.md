@@ -13,7 +13,7 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 | MVC 2 — PostgresRepository | ✅ 코드 완료 / 🔲 운영 미연결 | `repositories/postgres.py` (인메모리에서 운영 중) |
 | MVC 3 — Docker/Compose 배포선 | ✅ 완료 | `docker-compose.yml`, GitHub Actions, `scripts/mori-backup.sh` · `mori-restore.sh` |
 | MVC 4 — 자연어 질의 + 운영 UI | ✅ 완료 | `intent_parser` + `/ui` |
-| **Phase 2 — 운영 UI + 감사 증적 + 운영성 폴리시** | ✅ 패키징 준비 완료 | RBAC, 자산/취약점/Triage/인시던트/PDCA, 감사 로그, **6종 증적(CSV+PDF, 위험성 평가 대장 포함)** 리포트, Source Freshness, 8탭 어드민 콘솔, KO/EN 다국어, 사용자 프로필 + 내 서버 뷰 |
+| **Phase 2 — 운영 UI + 감사 증적 + 운영성 폴리시** | ✅ 패키징 준비 완료 | RBAC, 자산/취약점/Triage/인시던트/PDCA, 감사 로그, **6종 증적(CSV+PDF, 위험성 평가 대장 포함)** 리포트, Source Freshness, 6탭 관리자 콘솔, KO/EN 다국어, 사용자 프로필 + 내 서버 뷰 |
 | **Phase 2 (심화) — 위험성 평가 · 통제 카탈로그 · 증적 인제스트** | ✅ 완료 | **위험성 평가(R-series)** — CVE별 위험점수(1~9)·위험처리·DoA / **통제 카탈로그(M2-7)** — 194 YAML(ISMS-P 101+ISO 93) + 통제별 이행상태 편집·영속 + 증적팩 PDF / **CSOP 증적 인제스트(v0.7)** — `/ingest/trivy`·`/ingest/evidence`·`/evidence` / **Brownfield 모드** — 기존 인프라 `.env` 무변경 연결 |
 | **Phase 2 (남은 작업) — Signal Integration** | 🟡 진행 중 | 모듈 분리(J) ✅ 완료 → store Postgres 영속화(스키마 009까지, 10종) ✅ 완료 → **Zabbix 실시간 폴링 end-to-end 검증됨** → **config 기반 read-only 소스 온보딩(N-series)** + Fleet/Wazuh 라이브 폴러(Phase 3) + CVE Lite(M2-5) + Zabbix 템플릿 export(M2-6) |
 | Phase 3 — Guided Investigation & Evidence Assistant | 🔲 미착수 | Evidence Gap Detector / Triage 요약 / multi-hop pivot / 리포트 초안 / **Fleet·Wazuh 라이브 폴러** (판단 보조까지만) |
@@ -112,9 +112,10 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 - 소스별 SLA — zabbix 5분, wazuh 10분, fleet 10일, trivy 7일, ldap 8시간 (`docs/collection-standards.md` 기준)
 - `/health` 응답에도 source coverage 요약 포함 (healthy/stale/error/unknown count)
 
-### 어드민 콘솔 (8탭 개편)
+### 관리자 콘솔 (6탭 — 운영 뷰는 /ui 로 일원화)
 
-- Overview · Reports · **Access Control**(가입 요청 + 사용자 + 권한) · **Audit Log** · Data Sources · **Compliance** · Settings · Dangerous Actions
+- Overview · Remediation · 자산 / Owners · **Access Control**(RBAC + 가입 승인 + **LDAP 사용자 관리**) · **Audit & Logs** · Settings
+- 중복이던 운영 뷰(Compliance · Triage · Incidents)는 `/ui`에만 두고 콘솔에서 제거 → 사용자 대시보드 계정 메뉴 → **⚙️ 관리자 콘솔** 링크로 진입
 - 가입 요청 탭은 Access Control 안으로 통합 (기존 별도 `atab_users` → `atab_access`)
 
 ### 교차 검증
@@ -231,7 +232,7 @@ MORI는 SOC-lite 배포 스캐폴드에서 출발해, **데이터 수집/정규�
 - **CSOP 증적 인제스트(v0.7)** — `/ingest/*` + `/evidence`
 - **Brownfield 모드** — 기존 인프라 `.env` 무변경 연결
 - **Zabbix 실시간 폴링 end-to-end 검증**
-- 어드민 콘솔 8탭 개편 (Access Control 통합)
+- 관리자 콘솔 6탭 정리 (운영 뷰 /ui 일원화 + Access Control 통합 + LDAP 사용자 관리)
 - 백업/복원 스크립트 (`mori-backup.sh` / `mori-restore.sh`)
 - `/health` 강화 (DB ping + source coverage 요약 + insecure_defaults)
 - 기본 비밀번호 감지 경고 로그

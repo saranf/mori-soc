@@ -307,7 +307,7 @@ docker compose --profile bundled up -d          # 전체(Zabbix+Fleet+Wazuh 데�
 - Latest Host Status: offline / unknown 호스트를 우선 노출하여 즉시 확인 대상 식별
 - **Source Freshness · Collector Lag** 카드: Fleet/Wazuh/Zabbix/Trivy 수집기 last_sync + lag + SLA 표시
 - 사용자 대시보드 탭: **대시보드 / Alert Triage / 인시던트 / 자산 현황 / Compliance PDCA / 가이드 & 기준** (RBAC 역할별 on·off)
-- **어드민 콘솔(/admin) 8탭** (Phase 2 정렬): Overview · Compliance · Triage & Incidents · Remediation · 자산 / Owners · Access Control · Audit & Logs · Settings (역할별 노출 탭 자동 제한)
+- **어드민 콘솔(/admin) 6탭** (관리자 전용): Overview · Remediation · 자산 / Owners · Access Control(RBAC·가입 승인·**LDAP 사용자 관리**) · Audit & Logs · Settings. 운영 뷰(Compliance·Triage·인시던트)는 `/ui`로 일원화, 사용자 대시보드 계정 메뉴 → **⚙️ 관리자 콘솔** 링크로 진입
 
 #### 2) 자연어 질의 (NLQ) — `interpret` → `query`
 

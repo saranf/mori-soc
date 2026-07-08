@@ -307,7 +307,7 @@ When demo mode is started, the platform behaves as follows.
 - Latest Host Status: prioritizes offline / unknown hosts for immediate attention
 - **Source Freshness · Collector Lag** card: Fleet/Wazuh/Zabbix/Trivy collector last_sync + lag + SLA
 - User dashboard tabs: **Dashboard / Alert Triage / Incidents / Asset status / Compliance PDCA / Guides & Standards** (RBAC per-role on·off)
-- **Admin console (/admin) 8 tabs** (Phase 2 reorg): Overview · Compliance · Triage & Incidents · Remediation · Assets / Owners · Access Control · Audit & Logs · Settings (per-role exposed tabs auto-restricted)
+- **Admin console (/admin) 6 tabs** (admin-only): Overview · Remediation · Assets / Owners · Access Control (RBAC · signup approval · **LDAP user management**) · Audit & Logs · Settings. Operational views (Compliance · Triage · Incidents) live only in `/ui`; reach the console from the dashboard account menu → **⚙️ Admin console**
 
 #### 2) Natural language queries (NLQ) — `interpret` → `query`
 
