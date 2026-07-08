@@ -2954,15 +2954,6 @@ def render_user_dashboard_html(
           <div class=\"subtext\" data-i18n=\"dash.gap.sub\">증적으로 이어지지 않은 미조치 항목입니다. 타일을 클릭하면 해당 탭으로 이동합니다.</div>
           <div id=\"evidence_gap_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
-        <!-- 📚 통제 카탈로그 트리 (ISMS-P × ISO, admin·security 전용) -->
-        <section class=\"card\" id=\"control_tree_card\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-            <h2 style=\"margin:0\" data-i18n=\"dash.ctl.title\">📚 통제 카탈로그 (ISMS-P × ISO 27001)</h2>
-            <span id=\"control_tree_coverage\" style=\"font-size:12px;color:#94a3b8\"></span>
-          </div>
-          <div class=\"subtext\" data-i18n=\"dash.ctl.sub\">인증기준별 증적 소스 매핑·커버리지. 회색 항목은 아직 증적 소스가 연결되지 않은 골격입니다.</div>
-          <div id=\"control_tree_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
-        </section>
         <!-- 🎯 위험성 평가 매트릭스 (R-4) -->
         <section class=\"card\" id=\"risk_matrix_card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
@@ -3028,6 +3019,16 @@ def render_user_dashboard_html(
           <summary style=\"cursor:pointer;color:#7dd3fc;font-size:12px\" data-i18n=\"dash.pdca.criteria\">ⓘ 집계 기준 자세히</summary>
           <div class=\"subtext\" style=\"margin-top:6px\" data-i18n-html=\"dash.compliance.sub\">※ 상단 카드의 <strong>📋 전체 점검 / Pass / Fail / Warning / Pass Rate</strong>는 <strong>통제 점검(control_checks)</strong> 결과만 집계합니다. <strong>🔧 미조치 합계</strong>와 <strong>🔴 기한초과</strong>는 통제 점검 + Trivy 취약점(critical/high) + Alert(critical/high, 7일) 미조치 항목을 통합 집계합니다.</div>
         </details>
+      </section>
+
+      <!-- 📚 통제 카탈로그 트리 (ISMS-P 101 × ISO, admin·security 전용) — 이행 상태 편집 -->
+      <section class=\"card\" id=\"control_tree_card\">
+        <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+          <h2 style=\"margin:0\" data-i18n=\"dash.ctl.title\">📚 통제 카탈로그 (ISMS-P × ISO 27001)</h2>
+          <span id=\"control_tree_coverage\" style=\"font-size:12px;color:#94a3b8\"></span>
+        </div>
+        <div class=\"subtext\" data-i18n=\"dash.ctl.sub_compliance\">ISMS-P 101개 인증기준 트리. 항목을 클릭하면 이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 편집할 수 있고, 재시작 후에도 유지됩니다.</div>
+        <div id=\"control_tree_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
       </section>
 
       <!-- PDCA Summary Cards -->
@@ -4714,11 +4715,9 @@ def render_user_dashboard_html(
       const impCell = imp
         ? `<span style=\"color:${_MINE_IMP_COLOR[imp]||'#94a3b8'};font-weight:700\">${escapeHtml(imp)}</span>`
         : '<span style=\"color:#475569\">-</span>';
-      const cat = (h.category || '').trim() || '-';
       return `<tr ondblclick=\"openHostDetail('${escapeHtml(h.hostname)}')\" style=\"cursor:pointer\" title=\"${tt('dash.mine.dblclick','더블클릭하면 상세·조치현황')}\">
         <td style=\"padding:7px 8px;text-align:left\"><strong>${escapeHtml(h.hostname)}</strong> ${typeBadge}</td>
         <td style=\"padding:7px 8px;text-align:left\">${impCell}</td>
-        <td style=\"padding:7px 8px;text-align:left;color:#cbd5e1\">${escapeHtml(cat)}</td>
         <td style=\"padding:7px 8px;text-align:left\"><span class=\"badge ${statusCls}\">${escapeHtml(h.status || '-')}</span></td>
         <td style=\"padding:7px 8px;text-align:left;color:#94a3b8;font-family:monospace;font-size:12px\">${escapeHtml(h.primary_ip || '-')}</td>
       </tr>`;
@@ -4732,9 +4731,8 @@ def render_user_dashboard_html(
       return `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
         <thead><tr style=\"background:#0f2035\">
           <th style=\"padding:8px;text-align:left;color:#e2e8f0\">${tt('dash.dyn.lbl.hostname','호스트명')}</th>
-          <th style=\"padding:8px;color:#93c5fd\">${tt('dash.mine.importance','중요도')}</th>
-          <th style=\"padding:8px;text-align:left;color:#93c5fd\">${tt('dash.mine.category','분류')}</th>
-          <th style=\"padding:8px;color:#93c5fd\">${tt('dash.dyn.lbl.status','상태')}</th>
+          <th style=\"padding:8px;text-align:left;color:#93c5fd\">${tt('dash.mine.importance','중요도')}</th>
+          <th style=\"padding:8px;text-align:left;color:#93c5fd\">${tt('dash.dyn.lbl.status','상태')}</th>
           <th style=\"padding:8px;text-align:left;color:#93c5fd\">IP</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -6301,6 +6299,13 @@ def render_user_dashboard_html(
       if (show) { loadEvidenceGaps(); loadControlTree(); }
     }
     const _CTL_SOURCE_COLOR = { zabbix:'#38bdf8', trivy:'#f59e0b', wazuh:'#a78bfa', fleet:'#34d399', loki:'#f472b6', mori:'#94a3b8' };
+    // M2-7: 통제 이행 상태 색상/배지
+    const _CTL_STATUS_COLOR = { '이행':'#16a34a', '부분이행':'#d97706', '미이행':'#dc2626', '해당없음':'#64748b', '미정':'#475569' };
+    const _CTL_STATUSES = ['미정','이행','부분이행','미이행','해당없음'];
+    function _ctlStatusBadge(s) {
+      const c = _CTL_STATUS_COLOR[s] || '#475569';
+      return `<span style=\"background:${c}22;color:${c};border:1px solid ${c};padding:0 6px;border-radius:5px;font-size:10px;margin-left:5px;font-weight:700\">${escapeHtml(s)}</span>`;
+    }
     async function loadControlTree() {
       const box = document.getElementById('control_tree_box');
       if (!box) return;
@@ -6315,15 +6320,18 @@ def render_user_dashboard_html(
           covEl.textContent = `lite ${cov.lite.pct}% (${cov.lite.covered}/${cov.lite.total}) · full ${cov.full.pct}% (${cov.full.covered}/${cov.full.total})`;
         }
         const fwLabel = { 'isms-p': 'ISMS-P', 'iso27001': 'ISO 27001:2022' };
+        const smap = data.status_map || {};
         const badge = (s) => { const c=_CTL_SOURCE_COLOR[s]||'#64748b'; return `<span style=\"background:${c}22;color:${c};border:1px solid ${c}55;padding:0 6px;border-radius:5px;font-size:10px;margin-left:3px\">${escapeHtml(s)}</span>`; };
         const ctrlRow = (c) => {
           const title = (lang==='en' ? c.title_en : c.title_ko) || c.title_ko || c.title_en || '';
           const dim = c.mapped ? '' : 'opacity:0.5;';
           const srcs = (c.evidence_sources||[]).map(badge).join('');
           const enc = encodeURIComponent(c.id);
-          const clickable = c.mapped ? 'cursor:pointer' : '';
-          const pdf = `<a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" title=\"${tt('dash.ctl.pdf','증적 팩 PDF')}\" style=\"margin-left:6px;text-decoration:none;font-size:11px\">📄</a>`;
-          return `<div style=\"padding:3px 0;${dim}\"><span onclick=\"toggleControlDetail('${enc}', this)\" style=\"${clickable}\"><span style=\"color:#64748b;font-size:11px\">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${srcs}</span>${pdf}<div class=\"ctl-detail\" style=\"display:none;margin:4px 0 8px 16px;padding:6px 10px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;font-size:12px\"></div></div>`;
+          const clickable = 'cursor:pointer';  // M2-7: 상태 편집 위해 전 항목 클릭 가능
+          const st = smap[c.id];
+          const stBadge = (st && st.status && st.status !== '미정') ? _ctlStatusBadge(st.status) : '';
+          const pdf = c.mapped ? `<a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" title=\"${tt('dash.ctl.pdf','증적 팩 PDF')}\" style=\"margin-left:6px;text-decoration:none;font-size:11px\">📄</a>` : '';
+          return `<div style=\"padding:3px 0;${dim}\"><span onclick=\"toggleControlDetail('${enc}', this)\" style=\"${clickable}\"><span style=\"color:#64748b;font-size:11px\">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${stBadge}${srcs}</span>${pdf}<div class=\"ctl-detail\" style=\"display:none;margin:4px 0 8px 16px;padding:6px 10px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;font-size:12px\"></div></div>`;
         };
         let html = '';
         (data.tree || []).forEach(fw => {
@@ -6379,11 +6387,60 @@ def render_user_dashboard_html(
           h += `<div style=\"font-weight:700;color:#f59e0b;margin:6px 0 2px\">${tt('dash.ctl.def','관련 결함')}</div>`;
           h += d.defects.map(x => { const gc=(typeof x.gap_count==='number')?` · ${tt('dash.ctl.gap','현재 공백')} ${x.gap_count}`:''; return `<div style=\"color:#cbd5e1\">⚠ ${escapeHtml((lang==='en'?x.title_en:x.title_ko)||'')}${escapeHtml(gc)}</div>`; }).join('');
         }
-        h += `<div style=\"margin-top:6px\"><a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" style=\"color:#38bdf8;text-decoration:none\">📄 ${tt('dash.ctl.pdf','증적 팩 PDF')}</a></div>`;
+        // M2-7: 이행 상태 편집 폼 (admin·security) — 저장 시 영속 + audit-log
+        h += _ctlStatusForm(enc, d.runtime_status || {});
+        if (d.mapped_to !== undefined || (d.evidence_live||[]).length) {
+          h += `<div style=\"margin-top:6px\"><a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" style=\"color:#38bdf8;text-decoration:none\">📄 ${tt('dash.ctl.pdf','증적 팩 PDF')}</a></div>`;
+        }
         box.innerHTML = h || `<span class=\"empty\">—</span>`;
       } catch(e) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.err','통제 카탈로그를 불러오지 못했습니다.')}</span>`; }
     }
     window.toggleControlDetail = toggleControlDetail;
+
+    /* M2-7: 통제 이행 상태 편집 폼 (admin·security 전용). id=enc(URI-encoded control id) */
+    function _ctlStatusForm(enc, rs) {
+      if (!_canViewEvidence()) {
+        const badge = rs.status ? _ctlStatusBadge(rs.status) : '';
+        return `<div style=\"margin-top:8px;padding-top:6px;border-top:1px solid #1e293b;color:#94a3b8\">${tt('dash.ctl.status','이행 상태')}: ${badge || tt('dash.ctl.status_undecided','미정')}</div>`;
+      }
+      const inp = 'background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:5px;padding:4px 7px;font-size:12px';
+      const opts = _CTL_STATUSES.map(s => `<option value=\"${s}\"${(rs.status||'미정')===s?' selected':''}>${s}</option>`).join('');
+      const upd = rs.updated_at ? `<span style=\"color:#64748b;font-size:11px;margin-left:8px\">${tt('dash.ctl.updated','수정')}: ${escapeHtml(String(rs.updated_at).slice(0,10))} · ${escapeHtml(rs.updated_by||'')}</span>` : '';
+      return `<div style=\"margin-top:8px;padding-top:8px;border-top:1px solid #1e293b\">
+        <div style=\"font-weight:700;color:#a3e635;margin-bottom:6px\">✍️ ${tt('dash.ctl.status_edit','이행 상태 편집')}${upd}</div>
+        <div style=\"display:flex;gap:8px;flex-wrap:wrap;align-items:center\">
+          <select id=\"cst_status_${enc}\" style=\"${inp}\">${opts}</select>
+          <input id=\"cst_owner_${enc}\" placeholder=\"${tt('dash.ctl.owner','담당자')}\" value=\"${escapeHtml(rs.owner||'')}\" style=\"${inp};width:110px\" />
+          <input type=\"date\" id=\"cst_due_${enc}\" value=\"${escapeHtml(rs.due_date||'')}\" title=\"${tt('dash.ctl.due','조치 기한')}\" style=\"${inp}\" />
+        </div>
+        <input id=\"cst_plan_${enc}\" placeholder=\"${tt('dash.ctl.plan','개선계획')}\" value=\"${escapeHtml(rs.improvement_plan||'')}\" style=\"${inp};width:100%;box-sizing:border-box;margin-top:6px\" />
+        <input id=\"cst_exc_${enc}\" placeholder=\"${tt('dash.ctl.exc','예외 사유')}\" value=\"${escapeHtml(rs.exception_reason||'')}\" style=\"${inp};width:100%;box-sizing:border-box;margin-top:6px\" />
+        <div style=\"margin-top:6px;display:flex;align-items:center;gap:8px\">
+          <button onclick=\"saveControlStatus('${enc}', this)\" class=\"secondary\" style=\"width:auto;padding:4px 14px;font-size:12px\">${tt('dash.ctl.save','저장')}</button>
+          <span id=\"cst_msg_${enc}\" style=\"font-size:11px;color:#64748b\"></span>
+        </div>
+      </div>`;
+    }
+
+    async function saveControlStatus(enc, btn) {
+      const g = (p) => document.getElementById('cst_' + p + '_' + enc);
+      const msg = g('msg');
+      const body = {
+        status: g('status').value,
+        owner: g('owner').value.trim(),
+        improvement_plan: g('plan').value.trim(),
+        exception_reason: g('exc').value.trim(),
+        due_date: g('due').value,
+      };
+      try {
+        const res = await fetch('/controls/status/' + enc, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!res.ok) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color = '#f87171'; } return; }
+        if (msg) { msg.textContent = tt('dash.ctl.saved','✓ 저장됨 (재시작 후에도 유지)'); msg.style.color = '#4ade80'; }
+        loadControlTree();  // 트리 상태 배지 갱신
+      } catch (e) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color = '#f87171'; } }
+    }
+    window.saveControlStatus = saveControlStatus;
     window._applyEvidenceGating = _applyEvidenceGating;
     async function loadEvidenceGaps() {
       const box = document.getElementById('evidence_gap_box');
