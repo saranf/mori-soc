@@ -2969,11 +2969,12 @@ def render_user_dashboard_html(
             <h2 style=\"margin:0\" data-i18n=\"dash.risk.matrix_title\">🎯 위험성 평가 매트릭스</h2>
             <div style=\"display:flex;align-items:center;gap:10px\">
               <span id=\"risk_matrix_assessed\" style=\"font-size:12px;color:#94a3b8\"></span>
-              <button id=\"risk_matrix_toggle\" onclick=\"toggleRiskMatrix()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" data-i18n=\"dash.risk.collapse_hide\">▲ 접기</button>
+              <button id=\"risk_matrix_toggle\" onclick=\"toggleRiskMatrix()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" data-i18n=\"dash.risk.collapse_show\">▼ 펼치기</button>
             </div>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.risk.matrix_sub\">위험도 = 영향도(자산 중요도) × 발생가능성(심각도+보정). 미평가 항목은 자동 제안 등급으로 집계됩니다.</div>
-          <div id=\"risk_matrix_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+          <div id=\"risk_doa_ctl\" style=\"margin-top:8px\"></div>
+          <div id=\"risk_matrix_box\" style=\"margin-top:10px;display:none\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
@@ -3474,6 +3475,17 @@ def render_user_dashboard_html(
         <button onclick=\"closeRiskBucketModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
       </div>
       <div id=\"risk_bucket_modal_body\"></div>
+    </div>
+  </div>
+
+  <!-- ⭐ 내 서버 호스트 상세 모달 (행 더블클릭) -->
+  <div id=\"host_detail_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
+    <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px 28px;width:640px;max-width:95vw;max-height:85vh;overflow-y:auto\">
+      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px\">
+        <h3 id=\"host_detail_title\" style=\"color:#a3e635;margin:0\">🖥️ 호스트 상세</h3>
+        <button onclick=\"closeHostDetail()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+      </div>
+      <div id=\"host_detail_body\" style=\"color:#e2e8f0;font-size:13px\"></div>
     </div>
   </div>
 
@@ -4690,22 +4702,117 @@ def render_user_dashboard_html(
     }
     window.renderMyServers = renderMyServers;
 
-    /* 내 서버 렌더 헬퍼: fleet/zabbix 컬럼이 달라 각각의 테이블 렌더러로 그려 합칩니다. */
+    /* D: 내 서버 간소화 테이블 — 호스트명·중요도·분류·상태·IP만. 행 더블클릭 → 상세 모달.
+       통제/리스크/이력 등 상세는 상세 모달로 이동(대시보드 최소화). */
+    const _MINE_IMP_COLOR = { '상':'#fca5a5', '중':'#fde68a', '하':'#86efac' };
+    function _mineRow(h, kind) {
+      const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
+      const typeBadge = kind === 'fleet'
+        ? `<span style=\"background:#0d2137;color:#6ee7b7;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700\">🖥️ PC</span>`
+        : `<span style=\"background:#0d2137;color:#7dd3fc;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700\">🖧 ${tt('dash.mine.server','서버')}</span>`;
+      const imp = (h.importance || '').trim();
+      const impCell = imp
+        ? `<span style=\"color:${_MINE_IMP_COLOR[imp]||'#94a3b8'};font-weight:700\">${escapeHtml(imp)}</span>`
+        : '<span style=\"color:#475569\">-</span>';
+      const cat = (h.category || '').trim() || '-';
+      return `<tr ondblclick=\"openHostDetail('${escapeHtml(h.hostname)}')\" style=\"cursor:pointer\" title=\"${tt('dash.mine.dblclick','더블클릭하면 상세·조치현황')}\">
+        <td style=\"padding:7px 8px\"><strong>${escapeHtml(h.hostname)}</strong> ${typeBadge}</td>
+        <td style=\"padding:7px 8px;text-align:center\">${impCell}</td>
+        <td style=\"padding:7px 8px;color:#cbd5e1\">${escapeHtml(cat)}</td>
+        <td style=\"padding:7px 8px;text-align:center\"><span class=\"badge ${statusCls}\">${escapeHtml(h.status || '-')}</span></td>
+        <td style=\"padding:7px 8px;color:#94a3b8;font-family:monospace;font-size:12px\">${escapeHtml(h.primary_ip || '-')}</td>
+      </tr>`;
+    }
     function _renderMineTables(fleetHosts, zabbixHosts) {
-      let html = '';
-      if (fleetHosts.length) {
-        html += `<div class=\"subtext\" style=\"margin:4px 0\">🖥️ ${tt('dash.assets.tab.fleet','PC 자산 (Fleet)')} (${fleetHosts.length})</div>`;
-        const wrap = document.createElement('div');
-        renderFleetTable(fleetHosts, wrap);
-        html += wrap.innerHTML;
+      const rows = [
+        ...zabbixHosts.map(h => _mineRow(h, 'zabbix')),
+        ...fleetHosts.map(h => _mineRow(h, 'fleet')),
+      ].join('');
+      if (!rows) return '';
+      return `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
+        <thead><tr style=\"background:#0f2035\">
+          <th style=\"padding:8px;text-align:left;color:#e2e8f0\">${tt('dash.dyn.lbl.hostname','호스트명')}</th>
+          <th style=\"padding:8px;color:#93c5fd\">${tt('dash.mine.importance','중요도')}</th>
+          <th style=\"padding:8px;text-align:left;color:#93c5fd\">${tt('dash.mine.category','분류')}</th>
+          <th style=\"padding:8px;color:#93c5fd\">${tt('dash.dyn.lbl.status','상태')}</th>
+          <th style=\"padding:8px;text-align:left;color:#93c5fd\">IP</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style=\"font-size:11px;color:#64748b;margin-top:4px\">💡 ${tt('dash.mine.hint','행을 더블클릭하면 상세 정보와 조치현황(예외 만료·기한 초과·기타)을 볼 수 있습니다.')}</div>`;
+    }
+
+    /* ⭐ 호스트 상세 모달: 캐시의 전체 필드 + 미조치 3버킷(E, /dashboard/host-remediation) */
+    function _hostFromCache(hostname) {
+      const all = [...(_assetCache.zabbix || []), ...(_assetCache.fleet || [])];
+      return all.find(h => h.hostname === hostname) || null;
+    }
+    function _kv(label, value) {
+      return `<div style=\"display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid #1e293b\">
+        <span style=\"color:#94a3b8\">${label}</span><span style=\"color:#e2e8f0;text-align:right\">${value}</span></div>`;
+    }
+    async function openHostDetail(hostname) {
+      const modal = document.getElementById('host_detail_modal');
+      const titleEl = document.getElementById('host_detail_title');
+      const bodyEl = document.getElementById('host_detail_body');
+      if (!modal || !bodyEl) return;
+      const h = _hostFromCache(hostname) || { hostname };
+      if (titleEl) titleEl.textContent = `🖥️ ${hostname}`;
+      const imp = (h.importance || '').trim();
+      const impStr = imp ? `<span style=\"color:${_MINE_IMP_COLOR[imp]||'#94a3b8'};font-weight:700\">${escapeHtml(imp)}</span>` : '-';
+      const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
+      const excStr = h.exception_until
+        ? `${escapeHtml(String(h.exception_until).slice(0,10))}${h.exception_reason ? ' · ' + escapeHtml(h.exception_reason) : ''}`
+        : '-';
+      const meta = `<div style=\"background:#0b1322;border:1px solid #1e293b;border-radius:8px;padding:10px 14px;margin-bottom:14px\">
+        ${_kv(tt('dash.mine.importance','중요도'), impStr)}
+        ${_kv(tt('dash.mine.category','분류'), escapeHtml((h.category||'').trim()||'-'))}
+        ${_kv(tt('dash.dyn.lbl.status','상태'), `<span class=\\\"badge ${h.status==='online'?'online':h.status==='offline'?'offline':'unknown'}\\\">${escapeHtml(h.status||'-')}</span>`)}
+        ${_kv('IP', `<span style=\\\"font-family:monospace\\\">${escapeHtml(h.primary_ip||'-')}</span>`)}
+        ${_kv(tt('dash.dyn.lbl.owner_team','담당자 / 팀'), escapeHtml(ownerLabel))}
+        ${h.risk_score!=null?_kv(tt('dash.dyn.lbl.risk','리스크'), escapeHtml(String(h.risk_score))):''}
+        ${_kv(tt('dash.host.exception','예외'), excStr)}
+        ${h.last_seen_at?_kv(tt('dash.dyn.lbl.last_seen','마지막 확인'), escapeHtml(formatTime(h.last_seen_at))):''}
+      </div>`;
+      bodyEl.innerHTML = meta + `<div id=\"host_detail_remed\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>`;
+      modal.style.display = 'flex';
+      // E: 미조치 3버킷
+      const remedEl = document.getElementById('host_detail_remed');
+      try {
+        const res = await fetch(`/dashboard/host-remediation/${encodeURIComponent(hostname)}`);
+        if (!res.ok) { remedEl.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix','오류: ')}HTTP ${res.status}</span>`; return; }
+        const d = await res.json();
+        remedEl.innerHTML = _renderRemediation(d);
+      } catch (e) {
+        remedEl.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`;
       }
-      if (zabbixHosts.length) {
-        html += `<div class=\"subtext\" style=\"margin:12px 0 4px\">🖧 ${tt('dash.assets.tab.zabbix','서버 자산 (Zabbix)')} (${zabbixHosts.length})</div>`;
-        const wrap = document.createElement('div');
-        renderZabbixTable(zabbixHosts, wrap);
-        html += wrap.innerHTML;
-      }
-      return html;
+    }
+    window.openHostDetail = openHostDetail;
+    function closeHostDetail() { const m = document.getElementById('host_detail_modal'); if (m) m.style.display = 'none'; }
+    window.closeHostDetail = closeHostDetail;
+
+    function _remedBucket(title, color, emoji, bucket) {
+      const b = bucket || { count: 0, items: [] };
+      const items = (b.items || []).map(it => `<div style=\"display:flex;justify-content:space-between;gap:10px;padding:4px 8px;border-bottom:1px solid #0f1e33;font-size:12px\">
+        <span style=\"color:#cbd5e1\">${escapeHtml(it.label||it.id)}</span>
+        <span style=\"color:${it.severity==='critical'?'#fca5a5':'#fdba74'};text-transform:uppercase;font-size:10px\">${escapeHtml(it.severity||'')}${it.exception_until?` · ~${escapeHtml(String(it.exception_until).slice(0,10))}`:''}${it.plan_target_date?` · D:${escapeHtml(String(it.plan_target_date).slice(0,10))}`:''}</span>
+      </div>`).join('');
+      return `<div style=\"flex:1;min-width:170px;border:1px solid ${color}55;border-radius:8px;overflow:hidden\">
+        <div style=\"background:${color}18;padding:6px 10px;display:flex;justify-content:space-between;align-items:center\">
+          <span style=\"font-size:12px;font-weight:700;color:${color}\">${emoji} ${title}</span>
+          <strong style=\"color:${color};font-size:15px\">${b.count||0}</strong></div>
+        <div style=\"max-height:150px;overflow-y:auto\">${items || `<div style=\\\"padding:8px 10px;color:#475569;font-size:12px\\\">${tt('dash.host.remed_none','없음')}</div>`}</div>
+      </div>`;
+    }
+    function _renderRemediation(d) {
+      const bk = d.buckets || {};
+      const head = `<div style=\"font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:8px\">🔧 ${tt('dash.host.remed_title','조치현황 (미조치 {n}건)').replace('{n}', d.total||0)}</div>`;
+      if (!d.total) return head + `<div class=\"empty\" style=\"padding:12px;color:#4ade80\">✅ ${tt('dash.host.remed_clear','미조치 항목이 없습니다.')}</div>`;
+      return head + `<div style=\"display:flex;gap:10px;flex-wrap:wrap\">
+        ${_remedBucket(tt('dash.host.bucket_exc','예외 만료'), '#f87171', '⏰', bk.exception_expired)}
+        ${_remedBucket(tt('dash.host.bucket_overdue','조치기한 초과'), '#fb923c', '🔴', bk.overdue)}
+        ${_remedBucket(tt('dash.host.bucket_other','기타 위험'), '#facc15', '⚠️', bk.other)}
+      </div>`;
     }
 
     const FLEET_URL = '__FLEET_UI_URL__';
@@ -5112,10 +5219,15 @@ def render_user_dashboard_html(
     const RISK_LEVEL_COLORS = { '매우높음':'#dc2626', '높음':'#ea580c', '중간':'#d97706', '낮음':'#16a34a' };
     let _riskSummary = { items: [], map: {}, matrix: [[0,0,0],[0,0,0],[0,0,0]], by_level: {}, total: 0, assessed: 0 };
     let _riskModalVulnId = null;
+    let _riskDoa = 4;  // 위험 수용 기준(DoA) 점수 1~9 — /settings/risk 에서 로드
 
-    function _riskBadge(level, small) {
+    // 점수 중심 배지: 큰 숫자로 'N점' + 등급 라벨(보조). score 생략 시 등급만.
+    function _riskBadge(level, small, score) {
       const c = RISK_LEVEL_COLORS[level] || '#64748b';
-      return `<span style=\"display:inline-block;background:${c}22;border:1px solid ${c};color:${c};font-weight:700;border-radius:6px;padding:${small?'1px 7px':'2px 10px'};font-size:${small?'11px':'12px'}\">${escapeHtml(level||'-')}</span>`;
+      const scorePart = (score != null && score !== '')
+        ? `<strong style=\"font-size:${small?'12px':'14px'}\">${escapeHtml(String(score))}${tt('dash.risk.pt','점')}</strong> · `
+        : '';
+      return `<span style=\"display:inline-flex;align-items:center;gap:2px;background:${c}22;border:1px solid ${c};color:${c};font-weight:700;border-radius:6px;padding:${small?'1px 7px':'2px 10px'};font-size:${small?'11px':'12px'}\">${scorePart}${escapeHtml(level||'-')}</span>`;
     }
     window._riskBadge = _riskBadge;
 
@@ -5136,7 +5248,59 @@ def render_user_dashboard_html(
     }
     window.loadRiskMatrix = loadRiskMatrix;
 
-    let _riskMatrixOpen = true;
+    // ── B: DoA(수용가능 위험 기준) 로드/저장 ──────────────────────────────────
+    async function loadRiskDoa() {
+      try {
+        const res = await fetch('/settings/risk');
+        if (!res.ok) return;
+        const d = await res.json();
+        if (d.doa != null) _riskDoa = d.doa;
+        _renderDoaCtl();
+      } catch (e) { /* best-effort */ }
+    }
+    window.loadRiskDoa = loadRiskDoa;
+
+    function _renderDoaCtl() {
+      const el = document.getElementById('risk_doa_ctl');
+      if (!el) return;
+      const canEdit = (_currentUserRole === 'admin');
+      const label = tt('dash.risk.doa_label','위험 수용 기준(DoA)');
+      const help = tt('dash.risk.doa_help','이 점수(1~9) 이하 위험은 기본 수용가능으로 분류됩니다.');
+      if (canEdit) {
+        let opts = '';
+        for (let i = 1; i <= 9; i++) opts += `<option value=\"${i}\"${i===_riskDoa?' selected':''}>${i}${tt('dash.risk.pt','점')}</option>`;
+        el.innerHTML = `<div style=\"display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#0b1322;border:1px solid #1e293b;border-radius:8px;padding:8px 12px\">
+          <span style=\"font-size:12px;color:#a3e635;font-weight:700\">🟢 ${label}</span>
+          <select id=\"doa_input\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:4px 8px;font-size:13px\">${opts}</select>
+          <button onclick=\"saveRiskDoa()\" class=\"secondary\" style=\"width:auto;padding:4px 12px;font-size:12px\">${tt('dash.risk.doa_save','저장')}</button>
+          <span id=\"doa_status\" style=\"font-size:11px;color:#64748b\"></span>
+          <span style=\"font-size:11px;color:#64748b;flex-basis:100%\">${help}</span>
+        </div>`;
+      } else {
+        el.innerHTML = `<div style=\"font-size:12px;color:#94a3b8\">🟢 ${label}: <strong style=\"color:#4ade80\">${_riskDoa}${tt('dash.risk.pt','점')}</strong> ${tt('dash.risk.doa_readonly','이하 기본 수용')}</div>`;
+      }
+    }
+
+    async function saveRiskDoa() {
+      const sel = document.getElementById('doa_input');
+      const status = document.getElementById('doa_status');
+      if (!sel) return;
+      const val = parseInt(sel.value, 10);
+      try {
+        const res = await fetch('/settings/risk', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ doa: val }),
+        });
+        if (!res.ok) { if (status) status.textContent = tt('dash.risk.doa_err','저장 실패'); return; }
+        const d = await res.json();
+        _riskDoa = d.doa;
+        if (status) { status.textContent = tt('dash.risk.doa_ok','✓ 저장됨'); status.style.color = '#4ade80'; }
+        loadRiskMatrix();  // 매트릭스 수용 셀 갱신
+      } catch (e) { if (status) status.textContent = tt('dash.risk.doa_err','저장 실패'); }
+    }
+    window.saveRiskDoa = saveRiskDoa;
+
+    let _riskMatrixOpen = false;  // C: 기본 접힘 — 대시보드 최소화, '펼치기'로 상세 노출
     function toggleRiskMatrix() {
       _riskMatrixOpen = !_riskMatrixOpen;
       const box = document.getElementById('risk_matrix_box');
@@ -5150,11 +5314,11 @@ def render_user_dashboard_html(
     function _riskBucketRows(items) {
       if (!items.length) return `<div class=\"empty\" style=\"color:#64748b;padding:16px\">${tt('dash.dyn.empty.vulns','취약점이 없습니다.')}</div>`;
       const rows = items.map(it => `<tr>
-        <td style=\"padding:6px 8px\">${_riskBadge(it.level, true)}</td>
+        <td style=\"padding:6px 8px\">${_riskBadge(it.level, true, it.score)}</td>
         <td style=\"padding:6px 8px\"><strong style=\"color:#7dd3fc\">${escapeHtml(it.cve)}</strong></td>
         <td style=\"padding:6px 8px;color:#94a3b8;font-size:12px\">${escapeHtml(it.hostname)}</td>
         <td style=\"padding:6px 8px;text-align:center\"><span style=\"color:${it.severity==='critical'?'#fca5a5':'#fdba74'};text-transform:uppercase;font-size:11px\">${escapeHtml(it.severity)}</span></td>
-        <td style=\"padding:6px 8px;text-align:center;font-size:11px;color:#64748b\">${it.assessed?tt('dash.risk.assessed','평가됨'):tt('dash.risk.badge_unassessed','미평가')}</td>
+        <td style=\"padding:6px 8px;text-align:center;font-size:11px;color:#64748b\">${it.doa_accept?`<span style=\"background:#16a34a22;border:1px solid #16a34a;color:#4ade80;border-radius:5px;padding:1px 6px;font-weight:700\">${tt('dash.risk.doa_accept','기본수용')}</span>`:(it.assessed?tt('dash.risk.assessed','평가됨'):tt('dash.risk.badge_unassessed','미평가'))}</td>
         <td style=\"padding:6px 8px;text-align:center\">${_canAssessRisk()?`<button onclick=\"closeRiskBucketModal();openRiskModal('${escapeHtml(it.vuln_id)}')\" style=\"font-size:10px;padding:2px 8px;background:#2a1852;border:1px solid #4c1d95;border-radius:4px;color:#c4b5fd;cursor:pointer\">${tt('dash.risk.btn','🎯 평가')}</button>`:''}</td>
       </tr>`).join('');
       return `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"background:#0f2035\">
@@ -5180,7 +5344,12 @@ def render_user_dashboard_html(
     function renderRiskMatrix(data) {
       const box = document.getElementById('risk_matrix_box');
       const assessedEl = document.getElementById('risk_matrix_assessed');
-      if (assessedEl) assessedEl.textContent = tt('dash.risk.assessed_of','{a}/{t} 평가 완료').replace('{a}', data.assessed||0).replace('{t}', data.total||0);
+      if (data.doa != null) _riskDoa = data.doa;
+      if (assessedEl) {
+        const acc = (data.accepted != null)
+          ? ` · ${tt('dash.risk.accepted','기본수용')} ${data.accepted}` : '';
+        assessedEl.textContent = tt('dash.risk.assessed_of','{a}/{t} 평가 완료').replace('{a}', data.assessed||0).replace('{t}', data.total||0) + acc;
+      }
       const m = data.matrix || [[0,0,0],[0,0,0],[0,0,0]];
       const impactByRow = [3,2,1], likeByCol = [1,2,3];
       const impLabel = {3:'상',2:'중',1:'하'}, likeLabel = {1:'하',2:'중',3:'상'};
@@ -5190,24 +5359,29 @@ def render_user_dashboard_html(
         let rowCells = `<td style=\"padding:6px 8px;color:#94a3b8;font-size:12px;text-align:right;white-space:nowrap\">${impLabel[impactByRow[r]]}</td>`;
         for (let c=0;c<3;c++){
           const imp = impactByRow[r], lk = likeByCol[c];
-          const lvl = _levelForScore(imp*lk);
+          const cellScore = imp*lk;
+          const lvl = _levelForScore(cellScore);
           const col = RISK_LEVEL_COLORS[lvl];
           const n = (m[r] && m[r][c]) || 0;
+          const accepted = cellScore <= _riskDoa;  // DoA 이하 = 기본 수용 셀
           const click = n ? `onclick=\"openRiskCellModal(${imp},${lk})\"` : '';
-          rowCells += `<td style=\"padding:0\"><div ${click} style=\"margin:3px;border-radius:6px;background:${col}${n?'33':'12'};border:1px solid ${col}${n?'':'44'};width:58px;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;${n?'cursor:pointer':''}\">
+          const accRing = accepted ? 'box-shadow:inset 0 0 0 2px #16a34a99;' : '';
+          rowCells += `<td style=\"padding:0\"><div ${click} title=\"${tt('dash.risk.score','위험점수')} ${cellScore}\" style=\"margin:3px;border-radius:6px;background:${col}${n?'33':'12'};border:1px solid ${col}${n?'':'44'};${accRing}width:60px;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;${n?'cursor:pointer':''}\">
+            <div style=\"font-size:9px;color:${col}cc;font-weight:700\">${cellScore}${tt('dash.risk.pt','점')}</div>
             <div style=\"font-size:18px;font-weight:800;color:${n?col:'#334155'}\">${n}</div>
-            <div style=\"font-size:9px;color:${col}aa\">${lvl}</div></div></td>`;
+            <div style=\"font-size:8px;color:${accepted?'#4ade80':col+'aa'}\">${accepted?tt('dash.risk.doa_accept','기본수용'):lvl}</div></div></td>`;
         }
         cells += `<tr>${rowCells}</tr>`;
       }
       const order = ['매우높음','높음','중간','낮음'];
       const chips = order.map(lv => { const n=(data.by_level&&data.by_level[lv])||0; return `<span onclick=\"${n?`openRiskLevelModal('${lv}')`:''}\" style=\"display:inline-flex;align-items:center;gap:5px;margin:0 8px 8px 0;font-size:12px;padding:4px 10px;border:1px solid ${RISK_LEVEL_COLORS[lv]}44;border-radius:8px;background:${RISK_LEVEL_COLORS[lv]}12;${n?'cursor:pointer':'opacity:.5'}\"><span style=\"width:10px;height:10px;border-radius:2px;background:${RISK_LEVEL_COLORS[lv]};display:inline-block\"></span>${lv} <strong style=\"color:${RISK_LEVEL_COLORS[lv]}\">${n}</strong></span>`; }).join('');
+      const doaNote = `<div style=\"margin-top:8px;font-size:11px;color:#94a3b8\">🟢 ${tt('dash.risk.doa_note','DoA 기준: {n}점 이하는 기본 수용가능').replace('{n}', _riskDoa)}</div>`;
       box.innerHTML = `<div style=\"display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start\">
         <div>
           <table style=\"border-collapse:collapse\">${header}${cells}</table>
           <div style=\"text-align:center;color:#64748b;font-size:11px;margin-top:4px\">${tt('dash.risk.likelihood','발생가능성')} →　　↑ ${tt('dash.risk.impact','영향도')}</div>
         </div>
-        <div style=\"flex:1;min-width:220px\"><div>${chips}</div></div>
+        <div style=\"flex:1;min-width:220px\"><div>${chips}</div>${doaNote}</div>
       </div>`;
     }
 
@@ -5506,6 +5680,7 @@ def render_user_dashboard_html(
         document.getElementById('trivy_high').textContent = data.trivy?.high ?? '-';
         _trivyFiltered = _assetCache.trivy;
         renderTrivyTable(_assetCache.trivy, document.getElementById('trivy_table'));
+        loadRiskDoa();
         loadRiskMatrix();
         // Reset search counts
         _updateSearchCount('fleet', _assetCache.fleet.length, _assetCache.fleet.length);

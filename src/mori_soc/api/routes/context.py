@@ -57,6 +57,8 @@ class RouteContext:
     # risk_register: vuln_id -> 위험성 평가 레코드 (R-2)
     risk_register: dict[str, dict[str, Any]] = field(default_factory=dict)
     user_profiles: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # settings: 조직 단위 운영 설정 key -> value string (예: risk_doa)
+    settings: dict[str, str] = field(default_factory=dict)
     guides: dict[str, dict[str, Any]] = field(default_factory=dict)
     user_dashboard_prefs: dict[str, dict[str, Any]] = field(default_factory=dict)
 
@@ -88,6 +90,7 @@ class RouteContext:
     persist_triage: Optional[Callable[[str], None]] = None
     persist_incident: Optional[Callable[[str], None]] = None
     persist_risk_assessment: Optional[Callable[[str], None]] = None
+    persist_setting: Optional[Callable[..., None]] = None
 
 
 __all__ = ["RouteContext"]

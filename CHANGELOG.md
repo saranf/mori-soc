@@ -4,6 +4,30 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.9.0-alpha.1] — 2026-07-08 — Risk UX 점수화 + DoA 수용기준 + 내 서버 조치현황
+
+피드백 반영: 위험을 라벨(Critical/High) 대신 **점수**로, 대시보드는 최소화, 내 담당
+서버는 간소화 + 더블클릭 상세로.
+
+### Added
+- **위험 수용 기준(DoA)** — 조직 단위 단일 임계 점수(1~9). admin이 위험 매트릭스
+  카드에서 입력하면 그 점수 **이하 위험은 "기본 수용가능"으로 자동 분류**된다.
+  경량 key-value 설정 저장소(`schema/008_settings.sql`, `ui_settings`) +
+  `GET/PUT /settings/risk`(쓰기는 admin 전용) + StateRepository `load_settings`/
+  `save_setting` 로 영속화. `/vulnerabilities/risk-summary` 응답에 `doa`·`accepted`·
+  항목별 `doa_accept` 추가.
+- **내 서버 조치현황 버킷** (`GET /dashboard/host-remediation/{hostname}`) —
+  한 호스트의 미조치 항목을 **예외 만료 / 조치기한 초과 / 기타 위험** 3버킷으로 분류
+  (활성 예외는 수용된 것으로 제외). '내 담당 서버' 행 더블클릭 상세 모달에 표시.
+
+### Changed
+- **위험 표기를 점수 중심으로** — 위험 매트릭스 셀·버킷 목록·배지가 `N점`을 전면에,
+  등급 라벨은 보조로. DoA 이하 셀은 🟢 '기본수용'으로 음영 표시.
+- **대시보드 최소화** — 위험 매트릭스 카드 **기본 접힘**('펼치기'로 상세 노출).
+- **'내 담당 서버' 테이블 간소화** — 컬럼을 `호스트명·중요도·분류·상태·IP`로 축소
+  (통제·리스크·이력 컬럼 제거). 상세·조치현황은 **행 더블클릭 → 상세 모달**로 이동.
+- KO/EN i18n 키(`dash.risk.doa_*`, `dash.mine.*`, `dash.host.*`) 추가.
+
 ## [v0.8.0-alpha.1] — 2026-07-07 — Control Catalog (Phase 2 skeleton) + Evidence-Gap Dashboard
 
 ### Added

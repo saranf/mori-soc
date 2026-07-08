@@ -287,5 +287,23 @@ class PostgresStateRepository(StateRepository):
                  Jsonb(envelope) if Jsonb is not None else envelope, record.get("received_at")),
             )
 
+    # ── settings (org-wide key-value) ──────────────────────────────────────────
+    def load_settings(self) -> dict[str, str]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("SELECT key, value FROM ui_settings")
+            return {r[0]: (r[1] or "") for r in cur.fetchall()}
+
+    def save_setting(self, key: str, value: str, updated_by: str = "") -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO ui_settings (key, value, updated_by, updated_at)
+                VALUES (%s, %s, %s, now())
+                ON CONFLICT (key) DO UPDATE SET
+                    value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()
+                """,
+                (key, value, updated_by or None),
+            )
+
 
 __all__ = ["PostgresStateRepository", "PSYCOPG_AVAILABLE"]

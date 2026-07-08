@@ -15,6 +15,7 @@ services:
       - ./schema/005_alert_resolved.sql:/docker-entrypoint-initdb.d/005_alert_resolved.sql:ro
       - ./schema/006_evidence_events.sql:/docker-entrypoint-initdb.d/006_evidence_events.sql:ro
       - ./schema/007_controls.sql:/docker-entrypoint-initdb.d/007_controls.sql:ro
+      - ./schema/008_settings.sql:/docker-entrypoint-initdb.d/008_settings.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s

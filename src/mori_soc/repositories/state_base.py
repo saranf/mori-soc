@@ -92,5 +92,16 @@ class StateRepository(ABC):
         """Upsert one evidence event (idempotent on ``event_id``)."""
         raise NotImplementedError
 
+    # ── settings: org-wide key -> value string (e.g. risk_doa) ─────────────────
+    @abstractmethod
+    def load_settings(self) -> dict[str, str]:
+        """All persisted org settings as a flat ``{key: value}`` map."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_setting(self, key: str, value: str, updated_by: str = "") -> None:
+        """Upsert one org setting (idempotent on ``key``)."""
+        raise NotImplementedError
+
 
 __all__ = ["StateRepository"]

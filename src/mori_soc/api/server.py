@@ -220,6 +220,8 @@ def create_app(
     risk_register: dict[str, dict[str, Any]] = {}
     # User profiles: username -> {display_name, department, assigned_servers: [hostname...], updated_at}
     user_profiles: dict[str, dict[str, Any]] = {}
+    # Org settings: key -> value string (e.g. risk_doa = "4")
+    settings: dict[str, str] = {}
 
     # ── Warm caches from the persistence backend (M2-1.0d) ────────────────────
     # Cache-aside: load persisted operational state once at boot so the dicts
@@ -233,6 +235,7 @@ def create_app(
     vuln_actions.update(state_repo.load_vuln_actions())
     risk_register.update(state_repo.load_risk_register())
     user_profiles.update(state_repo.load_user_profiles())
+    settings.update(state_repo.load_settings())
 
     # ── Demo seed (in-memory) ────────────────────────────────────────────────
     # triage_store / asset_owners / user_profiles 는 런타임 인메모리 저장소라 SQL 시드로
@@ -876,6 +879,7 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
         vuln_actions=vuln_actions,
         risk_register=risk_register,
         user_profiles=user_profiles,
+        settings=settings,
         guides=guides,
         user_dashboard_prefs=user_dashboard_prefs,
         admin_dashboard_preferences=admin_dashboard_preferences,
@@ -911,6 +915,9 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
     def _persist_incident(incident_id: str) -> None:
         state_repo.save_incident(incident_id, incidents[incident_id])
 
+    def _persist_setting(key: str, updated_by: str = "") -> None:
+        state_repo.save_setting(key, settings.get(key, ""), updated_by)
+
     ctx.persist_user_profile = _persist_user_profile
     ctx.persist_asset_owner = _persist_asset_owner
     ctx.delete_asset_owner = _delete_asset_owner
@@ -919,6 +926,7 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
     ctx.persist_risk_assessment = _persist_risk_assessment
     ctx.persist_triage = _persist_triage
     ctx.persist_incident = _persist_incident
+    ctx.persist_setting = _persist_setting
 
     def get_query_service() -> QueryService:
         if service is not None:
@@ -974,6 +982,10 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
     # ── Slack Webhooks ───────────────────────────────────────────────────────────
     from mori_soc.api.routes.webhooks import register_webhooks
     register_webhooks(ctx)
+
+    # ── Org settings (위험 DoA 기준 등) ──────────────────────────────────────────
+    from mori_soc.api.routes.settings import register_settings
+    register_settings(ctx)
 
     # ── Incidents ────────────────────────────────────────────────────────────────
     from mori_soc.api.routes.incidents import register_incidents

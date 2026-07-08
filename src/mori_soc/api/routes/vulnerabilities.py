@@ -17,6 +17,7 @@ from fastapi import HTTPException, Request
 
 from mori_soc.api.payloads import _isoformat
 from mori_soc.api.routes.context import RouteContext
+from mori_soc.api.routes.settings import read_risk_doa
 from mori_soc.services.asset_classifier import classify_server_as_dict
 from mori_soc.services.risk_assessment import assess_risk, grade_from_axes
 
@@ -291,10 +292,12 @@ def register_vulnerabilities(ctx: RouteContext) -> None:
         store_ = get_query_service().store
         host_by_id = {h.host_id: h.hostname for h in store_.hosts}
         src = source.strip().lower()
+        doa = read_risk_doa(ctx.settings)
         matrix = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
         by_level = {"매우높음": 0, "높음": 0, "중간": 0, "낮음": 0}
         items: list[dict[str, Any]] = []
         assessed_count = 0
+        accepted_count = 0
         for v in store_.vulnerabilities:
             if src and (getattr(v, "source", "") != src):
                 continue
@@ -316,17 +319,23 @@ def register_vulnerabilities(ctx: RouteContext) -> None:
                 treatment, assessed = "", False
             matrix[3 - impact][likelihood - 1] += 1
             by_level[level] = by_level.get(level, 0) + 1
+            # DoA 자동 수용: 점수 ≤ DoA 이고 '조치(mitigate)'로 명시되지 않은 항목.
+            # 명시적 accept/transfer/avoid 는 이미 수용/이관/회피이므로 수용 집계에 포함.
+            doa_accept = score <= doa and treatment != "mitigate"
+            if doa_accept:
+                accepted_count += 1
             items.append({
                 "vuln_id": v.vuln_id, "cve": getattr(v, "cve", None) or v.vuln_id,
                 "hostname": hostname, "source": getattr(v, "source", ""),
                 "severity": getattr(v, "severity", "info"),
                 "impact": impact, "likelihood": likelihood, "score": score, "level": level,
-                "treatment": treatment, "assessed": assessed,
+                "treatment": treatment, "assessed": assessed, "doa_accept": doa_accept,
             })
         items.sort(key=lambda x: (-x["score"], x["cve"]))
         return {
             "matrix": matrix, "by_level": by_level, "items": items,
             "total": len(items), "assessed": assessed_count,
+            "doa": doa, "accepted": accepted_count,
         }
 
 

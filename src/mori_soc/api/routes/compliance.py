@@ -7,7 +7,7 @@ unpacking preamble (binding shared stores + the ``get_query_service`` helper fro
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import HTTPException, Request
@@ -28,6 +28,7 @@ def register_compliance(ctx: RouteContext) -> None:
     app = ctx.app
     get_query_service = ctx.get_query_service
     vuln_actions = ctx.vuln_actions
+    asset_owners = ctx.asset_owners
     triage_store = ctx.triage_store
     sessions = ctx.sessions
 
@@ -35,6 +36,71 @@ def register_compliance(ctx: RouteContext) -> None:
         token = request.cookies.get("mori_session", "")
         sess = sessions.get(token) if sessions else None
         return sess.get("role") if sess else None
+
+    def _parse_date(value: Any) -> "date | None":
+        try:
+            return date.fromisoformat(str(value)[:10])
+        except (TypeError, ValueError):
+            return None
+
+    @app.get("/dashboard/host-remediation/{hostname}", tags=["Compliance"])
+    def host_remediation(hostname: str) -> dict[str, Any]:
+        """'내 담당 서버' 상세창용 — 한 호스트의 미조치 항목을 3버킷으로 분류.
+
+        예외 만료 / 조치기한 초과 / 기타 위험. 심사관이 서버 더블클릭 → 조치현황을
+        바로 볼 수 있도록 통제·분류 컬럼 대신 '지금 뭘 해야 하나'를 요약한다.
+        활성 예외(만료 전)는 수용된 것으로 보고 미조치에서 제외한다.
+        """
+        store_ = get_query_service().store
+        host = next((h for h in store_.hosts if h.hostname == hostname), None)
+        if host is None:
+            host = next((h for h in store_.hosts if h.host_id == hostname), None)
+        if host is None:
+            raise HTTPException(status_code=404, detail=f"host not found: {hostname}")
+        today = datetime.now(tz=timezone.utc).date()
+        owner = asset_owners.get(host.hostname, {}) or {}
+        buckets: dict[str, list[dict[str, Any]]] = {
+            "exception_expired": [], "overdue": [], "other": [],
+        }
+        for v in store_.vulnerabilities:
+            if v.host_id != host.host_id or v.resolved_at is not None:
+                continue
+            if getattr(v, "severity", "info") not in ("critical", "high"):
+                continue
+            action = vuln_actions.get(v.vuln_id, {}) or {}
+            exc_raw = str(action.get("exception_until", "") or owner.get("exception_until", "") or "")
+            exc_until = _parse_date(exc_raw)
+            plan_due = _parse_date(action.get("plan_target_date", ""))
+            item = {
+                "kind": "vuln", "id": v.vuln_id, "label": getattr(v, "cve", None) or v.vuln_id,
+                "severity": getattr(v, "severity", "info"),
+                "exception_until": exc_raw, "plan_target_date": str(action.get("plan_target_date", "") or ""),
+            }
+            if exc_until is not None and exc_until < today:
+                buckets["exception_expired"].append(item)
+            elif exc_until is not None and exc_until >= today:
+                continue  # 활성 예외 → 수용됨, 미조치 아님
+            elif plan_due is not None and plan_due < today:
+                buckets["overdue"].append(item)
+            else:
+                buckets["other"].append(item)
+        for a in store_.alerts:
+            if a.host_id != host.host_id or a.resolved_at is not None:
+                continue
+            if getattr(a, "severity", "info") not in ("critical", "high"):
+                continue
+            buckets["other"].append({
+                "kind": "alert", "id": a.alert_id,
+                "label": getattr(a, "rule_name", None) or (a.message or "")[:60],
+                "severity": getattr(a, "severity", "info"),
+                "exception_until": "", "plan_target_date": "",
+            })
+        out = {k: {"count": len(v), "items": v[:20]} for k, v in buckets.items()}
+        return {
+            "hostname": host.hostname,
+            "buckets": out,
+            "total": sum(len(v) for v in buckets.values()),
+        }
 
     @app.get("/compliance/pdca", tags=["Compliance"])
     def compliance_pdca_summary() -> dict[str, Any]:
