@@ -37,19 +37,26 @@ def register_pages(ctx: RouteContext) -> None:
     def index() -> Any:
         return RedirectResponse(url="/ui", status_code=307)
 
+    # 대시보드/콘솔 HTML 은 자주 바뀌므로 브라우저 캐시로 인한 stale 렌더를 막는다.
+    _NO_STORE = {"Cache-Control": "no-store, max-age=0"}
+
     @app.get("/ui", include_in_schema=False, response_class=HTMLResponse)
-    def ui() -> str:
-        return render_user_dashboard_html(
+    def ui() -> Any:
+        html = render_user_dashboard_html(
             docs_url=ctx.admin_dashboard_preferences["docs_url"],
             fleet_ui_url=FLEET_UI_URL,
             zabbix_ui_url=ZABBIX_UI_URL,
             wazuh_ui_url=WAZUH_UI_URL,
             grafana_ui_url=GRAFANA_UI_URL,
         )
+        return HTMLResponse(content=html, headers=_NO_STORE)
 
     @app.get("/admin", include_in_schema=False, response_class=HTMLResponse)
-    def admin() -> str:
-        return render_query_console_html(ctx.admin_dashboard_preferences["docs_url"])
+    def admin() -> Any:
+        return HTMLResponse(
+            content=render_query_console_html(ctx.admin_dashboard_preferences["docs_url"]),
+            headers=_NO_STORE,
+        )
 
     @app.get("/health")
     def health() -> dict[str, Any]:
