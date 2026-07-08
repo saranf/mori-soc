@@ -1715,6 +1715,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       if (tab === 'logs') { loadAuditLog(); loadUserActivityLog(); }
       if (tab === 'remediation') { loadAdminVulnActions(); loadAdminActionPlans(); }
       if (tab === 'overview') { loadAdminPhase2Health(); loadAdminSourceFreshness(); }
+      if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); loadLdapUsers(); }
     }
 
     // i18n: refresh the active admin tab's dynamic content when the language changes
