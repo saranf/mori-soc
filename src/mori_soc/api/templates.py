@@ -4716,11 +4716,11 @@ def render_user_dashboard_html(
         : '<span style=\"color:#475569\">-</span>';
       const cat = (h.category || '').trim() || '-';
       return `<tr ondblclick=\"openHostDetail('${escapeHtml(h.hostname)}')\" style=\"cursor:pointer\" title=\"${tt('dash.mine.dblclick','더블클릭하면 상세·조치현황')}\">
-        <td style=\"padding:7px 8px\"><strong>${escapeHtml(h.hostname)}</strong> ${typeBadge}</td>
-        <td style=\"padding:7px 8px;text-align:center\">${impCell}</td>
-        <td style=\"padding:7px 8px;color:#cbd5e1\">${escapeHtml(cat)}</td>
-        <td style=\"padding:7px 8px;text-align:center\"><span class=\"badge ${statusCls}\">${escapeHtml(h.status || '-')}</span></td>
-        <td style=\"padding:7px 8px;color:#94a3b8;font-family:monospace;font-size:12px\">${escapeHtml(h.primary_ip || '-')}</td>
+        <td style=\"padding:7px 8px;text-align:left\"><strong>${escapeHtml(h.hostname)}</strong> ${typeBadge}</td>
+        <td style=\"padding:7px 8px;text-align:left\">${impCell}</td>
+        <td style=\"padding:7px 8px;text-align:left;color:#cbd5e1\">${escapeHtml(cat)}</td>
+        <td style=\"padding:7px 8px;text-align:left\"><span class=\"badge ${statusCls}\">${escapeHtml(h.status || '-')}</span></td>
+        <td style=\"padding:7px 8px;text-align:left;color:#94a3b8;font-family:monospace;font-size:12px\">${escapeHtml(h.primary_ip || '-')}</td>
       </tr>`;
     }
     function _renderMineTables(fleetHosts, zabbixHosts) {
@@ -4825,6 +4825,18 @@ def render_user_dashboard_html(
       const found = allHosts.find(h => h.hostname === hostname);
       if (!found) return '-';
       return [found.owner, found.team].filter(Boolean).join(' / ') || '-';
+    }
+    /* hostname → 자산 중요도(상/중/하) 조회 (Zabbix/Fleet 캐시에서) */
+    function _importanceForHost(hostname) {
+      const allHosts = [...(_assetCache.zabbix || []), ...(_assetCache.fleet || [])];
+      const found = allHosts.find(h => h.hostname === hostname);
+      return found ? (found.importance || '').trim() : '';
+    }
+    /* 호스트 위험점수(1~9) = 영향도(중요도) × 발생가능성(최고 심각도). 위험성 평가 매트릭스와 동일 로직. */
+    function _hostRiskScore(r) {
+      const imp = { '상':3, '중':2, '하':1 }[_importanceForHost(r.hostname)] || 2;
+      const lk = (r.critical > 0 || r.high > 0) ? 3 : (r.medium > 0) ? 2 : (r.low > 0) ? 1 : 0;
+      return imp * lk;
     }
     /* hostname → 담당자/팀/예외 전체 데이터 */
     function _getOwnerData(hostname) {
@@ -4950,13 +4962,15 @@ def render_user_dashboard_html(
         const totalCell = r.total > 0
           ? `<button onclick=\"openVulnListModal('${escapeHtml(r.host_id)}')\" title=\"${tt('dash.dyn.view_vuln_detail','취약점 상세 보기')}\" style=\"background:#1e3a5f;border:1px solid #334155;color:#7dd3fc;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:13px;font-weight:700\">${r.total} ${tt('dash.dyn.cases_unit','건 ↗')}</button>`
           : `<span style=\"color:#64748b\">${r.total}</span>`;
+        const _rscore = _hostRiskScore(r);
+        const riskCell = _rscore
+          ? _riskBadge(_levelForScore(_rscore), true, _rscore)
+          : '<span style=\"color:#475569\">-</span>';
         return `<tr>
           <td><strong>${escapeHtml(r.hostname)}</strong><br><span style=\"color:#64748b;font-size:11px\">${escapeHtml(r.host_id)}</span></td>
           <td style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</td>
           <td style=\"color:${sevColor.critical};font-weight:700;text-align:center\">${r.critical}</td>
-          <td style=\"color:${sevColor.high};font-weight:700;text-align:center\">${r.high}</td>
-          <td style=\"color:${sevColor.medium};text-align:center\">${r.medium}</td>
-          <td style=\"color:${sevColor.low};text-align:center\">${r.low}</td>
+          <td style=\"text-align:center\">${riskCell}</td>
           <td style=\"text-align:center\">${totalCell}</td>
           <td style=\"font-size:12px;color:#94a3b8\">${escapeHtml(r.latest_cve || '-')}</td>
           <td style=\"font-size:12px;color:#64748b\">${escapeHtml(formatTime(r.latest_detected_at))}</td>
@@ -4970,9 +4984,7 @@ def render_user_dashboard_html(
           <th style=\"padding:8px;color:#fdba74\">${tt('dash.dyn.lbl.host','호스트')}</th>
           <th style=\"padding:8px;color:#a3e635\">${tt('dash.dyn.lbl.owner','담당자')}</th>
           <th style=\"padding:8px;color:#fca5a5\">Critical</th>
-          <th style=\"padding:8px;color:#fdba74\">High</th>
-          <th style=\"padding:8px;color:#fde68a\">Medium</th>
-          <th style=\"padding:8px;color:#86efac\">Low</th>
+          <th style=\"padding:8px;color:#c4b5fd\">${tt('dash.dyn.lbl.risk_score','위험점수')}</th>
           <th style=\"padding:8px;color:#93c5fd\">${tt('dash.dyn.lbl.total','합계')}</th>
           <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.latest_cve','최근 CVE')}</th>
           <th style=\"padding:8px;color:#64748b\">${tt('dash.dyn.lbl.detected_date','탐지일')}</th>
