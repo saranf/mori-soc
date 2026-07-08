@@ -63,7 +63,7 @@ class QueryRequestBuilderTests(unittest.TestCase):
 
     def test_render_query_console_html_contains_expected_admin_features(self) -> None:
         html = render_query_console_html()
-        self.assertIn("MORI Security Dashboard", html)
+        self.assertIn("MORI — 관리자 콘솔", html)
         self.assertIn("http://mori.rmstudio.co.kr:37854/", html)
         self.assertIn("/query", html)
         self.assertIn("/query?format=csv", html)
