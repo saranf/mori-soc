@@ -195,6 +195,57 @@ def register_sources(ctx: RouteContext) -> None:
                 "entities_saved": report.entities_saved, "artifact": payload.get("ArtifactName"),
                 "host_id": resolved_host or payload.get("ArtifactName")}
 
+    # ── Wazuh 경보 HTTP 인제스트 (Wazuh integrator → MORI Alert Triage) ──────────
+    @app.post("/ingest/wazuh", tags=["Sources"])
+    def ingest_wazuh(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """Wazuh 경보(alert)를 push → 정규화 → PostgreSQL alerts 적재 → Alert Triage.
+
+        Wazuh 의 integrator/custom integration 이 보내는 alert JSON 을 받는다.
+        본문은 단일 alert 객체 또는 ``{"alerts": [...]}`` 배치 모두 허용(각 alert 는
+        ``rule`` 을 포함해야 함). 인증/백엔드 조건은 /ingest/trivy 와 동일.
+        """
+        import json as _json, os as _os
+
+        _require_ingest_auth(request)
+
+        db = _os.getenv("MORI_DATABASE_URL", "").strip()
+        if not db:
+            raise HTTPException(status_code=503, detail="ingest requires MORI_DATABASE_URL (postgres backend)")
+        if isinstance(payload, dict) and isinstance(payload.get("alerts"), list):
+            alerts = payload["alerts"]
+        elif isinstance(payload, dict):
+            alerts = [payload]
+        else:
+            raise HTTPException(status_code=400, detail="body must be a Wazuh alert object or {alerts:[...]}")
+        alert_lines = [_json.dumps(a) for a in alerts if isinstance(a, dict) and a.get("rule")]
+        if not alert_lines:
+            raise HTTPException(status_code=400, detail="no valid Wazuh alerts (each needs a 'rule')")
+
+        from mori_soc.collectors import WazuhAlertCollector
+        from mori_soc.models import SourceSync
+        from mori_soc.repositories import PostgresRepository
+        from mori_soc.services import CollectorIngestionService, EnvelopeEntityMapper
+
+        repo = PostgresRepository(db)
+        try:
+            report = CollectorIngestionService(EnvelopeEntityMapper(), repo).ingest_collector(
+                WazuhAlertCollector(alert_lines=alert_lines)
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Wazuh ingest failed: {exc}") from exc
+
+        now = datetime.now(tz=timezone.utc)
+        try:
+            repo.save(SourceSync(source="wazuh", status="success", last_sync_at=now, last_success_at=now,
+                                 message=f"http ingest: {report.records_collected} alerts",
+                                 records_collected=report.records_collected,
+                                 envelopes_normalized=report.envelopes_normalized,
+                                 entities_saved=report.entities_saved))
+        except Exception:
+            pass
+        return {"ok": True, "records_collected": report.records_collected,
+                "entities_saved": report.entities_saved}
+
     # ── CSOP 증적(evidence) HTTP 인제스트 — 조치 전/후 diff envelope 수신함 ────────
     @app.post("/ingest/evidence", tags=["Sources"])
     def ingest_evidence(payload: dict[str, Any], request: Request) -> dict[str, Any]:
