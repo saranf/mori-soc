@@ -6808,18 +6808,20 @@ def render_user_dashboard_html(
           const meta = [r.collected_at, r.collected_by].filter(Boolean).map(escapeHtml).join(' · ');
           const ref = (r.reference && !isAuto) ? ` <a href=\"${escapeHtml(r.reference)}\" target=\"_blank\" style=\"color:#38bdf8\">↗</a>` : '';
           const del = canEdit ? `<span onclick=\"deleteEvidenceRecord('${enc}','${escapeHtml(r.id)}')\" style=\"cursor:pointer;color:#f87171;margin-left:6px\">×</span>` : '';
-          // 긴 자동 스냅샷 본문은 기본 접힘(▾), 짧은 수기 증적은 인라인 표시
+          // 자동 스냅샷: 한 줄 요약(집계) 인라인 + 전체 본문은 ▾상세로 접힘 / 수기 증적: 짧으니 그대로
           let bodyToggle = '', body = '';
           if (r.body) {
             const bid = 'evbody_' + enc + '_' + idx;
             if (isAuto) {
-              bodyToggle = ` <span onclick=\"const b=document.getElementById('${bid}');b.style.display=b.style.display==='none'?'block':'none'\" style=\"cursor:pointer;color:#64748b;font-size:11px\">▾${tt('dash.ctl.ev_body','내용')}</span>`;
-              body = `<div id=\"${bid}\" style=\"display:none;color:#94a3b8;font-size:11px;margin-left:12px;white-space:pre-wrap\">${escapeHtml(r.body)}</div>`;
+              const summ = _evSummary(r.body);
+              bodyToggle = ` <span onclick=\"_toggleBody('${bid}',this)\" data-lbl=\"${tt('dash.ctl.ev_detail','상세')}\" style=\"cursor:pointer;color:#38bdf8;font-size:11px;white-space:nowrap\">▾ ${tt('dash.ctl.ev_detail','상세')}</span>`;
+              body = (summ ? `<div style=\"color:#7dd3fc;font-size:11px;margin-left:12px;margin-top:1px\">${summ}</div>` : '')
+                   + `<div id=\"${bid}\" style=\"display:none;color:#94a3b8;font-size:11px;margin:4px 0 2px 12px;white-space:pre-wrap;padding:7px 9px;background:#0f172a;border:1px solid #1e293b;border-radius:6px\">${escapeHtml(r.body)}</div>`;
             } else {
               body = `<div style=\"color:#94a3b8;font-size:11px;margin-left:12px;white-space:pre-wrap\">${escapeHtml(r.body)}</div>`;
             }
           }
-          return `<div style=\"color:#cbd5e1;padding:2px 0\">• <b>${escapeHtml(r.title)}</b>${autoBadge}${meta?` <span style=\"color:#64748b;font-size:11px\">(${meta})</span>`:''}${ref}${bodyToggle}${del}${body}</div>`;
+          return `<div style=\"color:#cbd5e1;padding:3px 0;border-top:${idx?'1px solid #0f172a':'none'}\">• <b>${escapeHtml(r.title)}</b>${autoBadge}${meta?` <span style=\"color:#64748b;font-size:11px\">(${meta})</span>`:''}${ref}${bodyToggle}${del}${body}</div>`;
         };
         h += records.slice(0, SHOW).map((r, i) => rowHtml(r, i)).join('');
         const rest = records.slice(SHOW);
@@ -6878,6 +6880,20 @@ def render_user_dashboard_html(
                                     : ('▾ ' + tt('dash.ctl.ev_more','더보기') + ' (' + box.children.length + ')');
     }
     window._toggleEvMore = _toggleEvMore;
+    // 자동 스냅샷 본문에서 '[라벨] 요약' 집계줄만 뽑아 한 줄 요약으로 (호스트 목록 등 상세는 접힘)
+    function _evSummary(body) {
+      const parts = String(body || '').split('\\n')
+        .filter(l => /^\\s*\[.+?\]/.test(l)).map(l => l.trim());
+      return parts.length ? escapeHtml(parts.join('   ·   ')) : '';
+    }
+    function _toggleBody(id, el) {
+      const b = document.getElementById(id);
+      if (!b) return;
+      const open = b.style.display === 'none';
+      b.style.display = open ? 'block' : 'none';
+      if (el) el.innerHTML = (open ? '▴ ' : '▾ ') + (el.dataset.lbl || '상세');
+    }
+    window._toggleBody = _toggleBody;
     // ── 정기 증적 스냅샷 설정 (admin) ──────────────────────────────────────────
     async function loadSnapshotConfig() {
       try {
