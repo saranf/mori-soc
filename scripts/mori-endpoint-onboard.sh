@@ -16,8 +16,12 @@
 #   curl -fsSL https://raw.githubusercontent.com/saranf/mori-soc/main/scripts/mori-endpoint-onboard.sh -o mori-onboard.sh
 #   sudo -E MORI_ZABBIX_SERVER=... MORI_HOSTNAME=... bash mori-onboard.sh
 #
+# 실행하면 어떤 구성요소(Zabbix Agent / Fleet / Trivy)를 설치할지 대화형으로 물어봅니다.
+# 파이프(curl|bash)나 -y 로 실행하면 기본값 자동(Zabbix:on, Fleet:URL있을때, Trivy:on).
+#
 # 옵션:
 #   -h, --help     도움말
+#   -y, --yes      대화형 질문 생략(기본값 자동) — 자동화/파이프용
 #   --check        사전 점검만(설치 안 함): OS/패키지매니저, root, Zabbix 연결
 #   --skip-zabbix  Zabbix Agent 건너뛰기        (env: MORI_SKIP_ZABBIX=1)
 #   --skip-fleet   Fleet 에이전트 건너뛰기       (env: MORI_SKIP_FLEET=1)
@@ -45,12 +49,14 @@ SKIP_ZABBIX="${MORI_SKIP_ZABBIX:-0}"
 SKIP_FLEET="${MORI_SKIP_FLEET:-0}"
 SKIP_TRIVY="${MORI_SKIP_TRIVY:-0}"
 CHECK_ONLY=0
+ASSUME_YES="${MORI_YES:-0}"
 
 # ── 인자 파싱 ────────────────────────────────────────────────────────────────
 while [ $# -gt 0 ]; do
   case "$1" in
-    -h|--help) sed -n '3,33p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '3,38p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     --check) CHECK_ONLY=1 ;;
+    -y|--yes|--non-interactive) ASSUME_YES=1 ;;
     --skip-zabbix) SKIP_ZABBIX=1 ;;
     --skip-fleet) SKIP_FLEET=1 ;;
     --skip-trivy) SKIP_TRIVY=1 ;;
@@ -64,6 +70,24 @@ log()  { printf "${c_cyan}▶${c_rst} %s\n" "$*"; }
 ok()   { printf "${c_grn}✅${c_rst} %s\n" "$*"; }
 warn() { printf "${c_yel}⚠️ ${c_rst} %s\n" "$*"; }
 err()  { printf "${c_red}✖${c_rst} %s\n" "$*"; }
+
+# confirm "질문" "Y|N"(기본값) → 0(yes)/1(no). 비대화(TTY 아님/-y)면 기본값 사용.
+confirm() {
+  local q="$1" def="${2:-Y}" ans
+  if [ "$ASSUME_YES" = "1" ] || [ ! -t 0 ]; then
+    [ "$def" = "Y" ] && return 0 || return 1
+  fi
+  local hint="[Y/n]"; [ "$def" = "N" ] && hint="[y/N]"
+  printf "  ❓ %s %s " "$q" "$hint"; read -r ans </dev/tty || ans=""
+  ans="${ans:-$def}"
+  case "$ans" in [Yy]*) return 0 ;; *) return 1 ;; esac
+}
+# ask_val "라벨" "현재값" → 비어있고 대화형이면 입력받아 echo, 아니면 현재값 echo
+ask_val() {
+  local label="$1" cur="$2" v
+  if [ -n "$cur" ] || [ "$ASSUME_YES" = "1" ] || [ ! -t 0 ]; then echo "$cur"; return; fi
+  printf "     ↳ %s: " "$label"; read -r v </dev/tty || v=""; echo "$v"
+}
 
 SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo"
 
@@ -107,6 +131,37 @@ if [ "$CHECK_ONLY" -eq 1 ]; then
   exit $((1 - PRECHECK_OK))
 fi
 [ "$PRECHECK_OK" -eq 1 ] || { err "사전 점검 실패 — 중단"; exit 1; }
+
+# ── 설치할 구성요소 선택 (대화형; -y/파이프면 기본값 자동) ─────────────────────
+echo ""
+log "설치할 구성요소 선택"
+[ "$ASSUME_YES" = "1" ] || [ -t 0 ] || warn "비대화(파이프) 실행 — 기본값 사용 (Zabbix:on, Fleet:URL있을때만, Trivy:on). 원하면 -y 또는 env로 지정"
+
+if [ "$SKIP_ZABBIX" != "1" ]; then
+  if confirm "Zabbix Agent 2 설치? (인프라 문제 → Alert Triage)" "Y"; then
+    SKIP_ZABBIX=0; ZBX_SERVER="$(ask_val "Zabbix Server 주소(host/IP)" "$ZBX_SERVER")"
+  else SKIP_ZABBIX=1; fi
+fi
+
+if [ "$SKIP_FLEET" != "1" ]; then
+  FLEET_DEF="N"; [ -n "$FLEET_URL" ] && FLEET_DEF="Y"
+  if confirm "Fleet 에이전트 설치? (osquery 자산/구성 점검)" "$FLEET_DEF"; then
+    SKIP_FLEET=0
+    FLEET_URL="$(ask_val "Fleet 서버 URL (예: https://fleet:1337)" "$FLEET_URL")"
+    FLEET_SECRET="$(ask_val "Fleet enroll secret" "$FLEET_SECRET")"
+  else SKIP_FLEET=1; fi
+fi
+
+if [ "$SKIP_TRIVY" != "1" ]; then
+  if confirm "Trivy 설치 + 취약점 스캔? (→ MORI 취약점/위험성 평가)" "Y"; then SKIP_TRIVY=0
+  else SKIP_TRIVY=1; fi
+fi
+
+_onoff() { [ "$1" = "1" ] && printf "off" || printf "on"; }
+ok "선택 → Zabbix=$(_onoff "$SKIP_ZABBIX")  Fleet=$(_onoff "$SKIP_FLEET")  Trivy=$(_onoff "$SKIP_TRIVY")"
+if [ "$SKIP_ZABBIX" = "1" ] && [ "$SKIP_FLEET" = "1" ] && [ "$SKIP_TRIVY" = "1" ]; then
+  warn "선택된 구성요소 없음 — 종료"; exit 0
+fi
 
 # ── 1) Zabbix Agent 2 ───────────────────────────────────────────────────────
 if [ "$SKIP_ZABBIX" != "1" ]; then

@@ -8,6 +8,8 @@ from mori_soc.services.control_catalog import (
     build_control_detail,
     build_tree,
     control_evidence_csv,
+    evidence_document_csv,
+    evidence_document_pdf,
     merge_edits,
 )
 
@@ -97,6 +99,40 @@ class EvidenceCsvTests(unittest.TestCase):
         ]
         d = build_control_detail("2.11.2", catalog=_BASE, evidence_records=records)
         self.assertEqual([r["title"] for r in d["evidence_records"]], ["new", "old"])
+
+
+class EvidenceDocumentTests(unittest.TestCase):
+    def _doc(self):
+        return {
+            "control": {"id": "2.1.3", "title_ko": "정보자산 관리", "title_en": "Asset mgmt",
+                        "framework": "isms-p", "intent_ko": "최신 유지"},
+            "status": "미정", "generated_at": "2026-07-09T06:00:00+00:00", "collector": "admin",
+            "inventory": [{"hostname": "db-primary", "ip": "10.10.2.10", "status": "online", "source": "zabbix"},
+                          {"hostname": "dev-mac", "ip": "10.10.10.50", "status": "online", "source": "fleet"}],
+            "live": [{"label": "trivy", "summary": "미조치 취약점 5건"}],
+            "records": [{"collected_at": "2026-07-09", "kind": "자동", "title": "실증적 자동 스냅샷",
+                         "collected_by": "admin", "reference": "auto", "body": "긴 본문"}],
+        }
+
+    def test_csv_has_inventory_and_records_sections(self) -> None:
+        csv_text = evidence_document_csv(self._doc())
+        self.assertIn("[자산 인벤토리]", csv_text)
+        self.assertIn("db-primary", csv_text)
+        self.assertIn("10.10.2.10", csv_text)
+        self.assertIn("[문서화된 증적]", csv_text)
+        self.assertIn("실증적 자동 스냅샷", csv_text)
+
+    def test_csv_empty_inventory_note(self) -> None:
+        doc = self._doc(); doc["inventory"] = []; doc["records"] = []
+        csv_text = evidence_document_csv(doc)
+        self.assertIn("수집된 자산 없음", csv_text)
+        self.assertIn("문서화된 증적 없음", csv_text)
+
+    def test_pdf_bytes_produced(self) -> None:
+        pdf = evidence_document_pdf(self._doc())
+        self.assertIsInstance(pdf, bytes)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+        self.assertGreater(len(pdf), 1000)
 
 
 if __name__ == "__main__":

@@ -50,7 +50,7 @@ It sits **read-only on top of your existing** **Zabbix · FleetDM · Wazuh · Tr
 |---|---|---|
 | 📊 | **Unified operations UI** | Dashboard · Alert Triage · Incidents · Assets/Vulns · Compliance PDCA on one screen (`/ui`) |
 | 🎯 | **Risk assessment** | Per-CVE 3×3 matrix = impact (asset criticality) × likelihood → **score (1–9)** + treatment decision, residual risk, DoA auto-classify (admin·security) |
-| 📚 | **Control catalog** | ISMS-P 101 + ISO 27001:2022 93 = **194 controls** (KO/EN) tree + editable/persisted status + **admin direct edit (add/edit/delete)** + **regulation-text NLP import** (Claude/heuristic) + **documented manual evidence + ⚡detailed live-evidence snapshot (scheduled/bulk)** + evidence pack **CSV/PDF download** |
+| 📚 | **Control catalog** | ISMS-P 101 + ISO 27001:2022 93 = **194 controls** (KO/EN) tree + editable/persisted status + **admin direct edit (add/edit/delete)** + **regulation-text NLP import** (Claude/heuristic) + **documented manual evidence + ⚡detailed live-evidence snapshot (scheduled/bulk)** + **evidence document** (asset-inventory tables) **CSV/PDF** |
 | 🧑‍💻 | **Account governance** | Server/PC local accounts (osquery) × LDAP × approval ledger → detects leavers, unregistered privilege, unapproved sudo, dormant · IP team/purpose CSV export (defaults to admin·security, admin configures view roles) |
 | 🧾 | **Automatic evidence** | Asset owner/criticality, CVE remediation/exception, risk assessment, triage & incident changes accrued as _who/when/what_ → **6 CSV/PDF reports** |
 | 🔐 | **Role-based views** | Risk & controls are admin·security only; infra/help-desk see **only their own servers' remediation rate** |
@@ -133,9 +133,10 @@ clause-level heuristic otherwise). Per control you can **document manual evidenc
 **⚡ "Auto-capture live evidence"** to snapshot the current live aggregation into a **dated detailed
 evidence record** (control intent, status + the actual **live host list** — hostname·IP·status). Set a
 **scheduled snapshot** (off/daily/weekly/monthly) and MORI bulk-snapshots all controls when due **on
-boot / on view**, plus a **"⚡ Snapshot all now"** manual run. Download the evidence pack — live +
-documented, merged — as **CSV or PDF**. Editing & scheduling are admin-only; evidence documentation
-is admin·security.
+boot / on view**, plus a **"⚡ Snapshot all now"** manual run. Download the **evidence document** as
+**CSV or PDF** — not a catalog pack but clean tables: **asset inventory** (hostname·IP·status·source,
+full) + **documented evidence** (on-screen shows 3 with "show more"; the download is always complete).
+Editing & scheduling are admin-only; evidence documentation is admin·security.
 
 ### 5) Account governance (access review)
 <!-- 📸 SCREENSHOT GUIDE ④

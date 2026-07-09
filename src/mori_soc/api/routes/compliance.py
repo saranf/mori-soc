@@ -60,6 +60,47 @@ def register_compliance(ctx: RouteContext) -> None:
     def _evidence_for(control_id: str) -> list[dict[str, Any]]:
         return [r for r in (ctx.control_evidence or {}).values() if r.get("control_id") == control_id]
 
+    def _evidence_document(control_id: str, user: str) -> dict[str, Any] | None:
+        """다운로드용 '증적 문서' 구조 — 통제 팩이 아니라 증적(자산 인벤토리 + 문서화 증적)만.
+
+        fleet/zabbix 는 실제 호스트 인벤토리 표로, 그 외 소스는 짧은 요약으로. 수기·자동 증적
+        레코드는 일자·유형·제목·수집자·참조 표로. (매핑·결함은 증적이 아니라 제외)
+        """
+        control = next((c for c in _merged_catalog().get("controls", []) if c.get("id") == control_id), None)
+        if control is None:
+            return None
+        srcs = control.get("evidence_sources") or []
+        host_lists = _evidence_host_lists()
+        inventory: list[dict[str, str]] = []
+        for src in ("fleet", "zabbix"):
+            if src in srcs:
+                for r in host_lists.get(src, []):
+                    inventory.append({"hostname": r.get("hostname", ""), "ip": r.get("ip", ""),
+                                      "status": r.get("status", ""), "source": src})
+        metrics = _source_metrics(limit=200)
+        live: list[dict[str, str]] = []
+        for src in srcs:
+            if src in ("fleet", "zabbix"):
+                continue  # 이미 인벤토리 표로 나옴
+            summ = (metrics.get(src) or {}).get("summary_ko") or ""
+            if summ:
+                live.append({"label": src, "summary": summ})
+        records = []
+        for r in sorted(_evidence_for(control_id),
+                        key=lambda x: str(x.get("collected_at") or x.get("created_at") or ""), reverse=True):
+            records.append({"collected_at": r.get("collected_at", ""),
+                            "kind": "자동" if r.get("source") == "auto" else "수기",
+                            "title": r.get("title", ""), "collected_by": r.get("collected_by", ""),
+                            "reference": r.get("reference", ""), "body": r.get("body", "")})
+        return {
+            "control": {"id": control.get("id"), "title_ko": control.get("title_ko", ""),
+                        "title_en": control.get("title_en", ""), "framework": control.get("framework", ""),
+                        "intent_ko": control.get("intent_ko", "")},
+            "status": ctx.control_status.get(control_id, {}).get("status") or "미정",
+            "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+            "collector": user or "", "inventory": inventory, "live": live, "records": records,
+        }
+
     def _control_status_default(control_id: str) -> dict[str, Any]:
         return {
             "control_id": control_id, "status": "미정", "owner": "",
@@ -406,33 +447,34 @@ def register_compliance(ctx: RouteContext) -> None:
 
     @app.get("/controls/detail/{control_id}/evidence.pdf", tags=["Compliance"])
     def control_evidence_pdf_route(control_id: str, request: Request) -> Any:
-        """통제 증적 팩 PDF(1클릭 export). admin·security 전용."""
+        """증적 문서 PDF — 자산 인벤토리 + 문서화 증적을 표로. admin·security 전용."""
         if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
             raise HTTPException(status_code=403, detail="control evidence PDF requires admin or security role")
-        from mori_soc.services.control_catalog import control_evidence_pdf
+        from mori_soc.services.control_catalog import evidence_document_pdf
+        user = ctx.get_session_username(request) if ctx.get_session_username else ""
+        doc = _evidence_document(control_id, user or "")
+        if doc is None:
+            raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
         try:
-            pdf = control_evidence_pdf(control_id, gaps=_live_gaps(), metrics=_source_metrics(),
-                                       catalog=_merged_catalog(), evidence_records=_evidence_for(control_id))
+            pdf = evidence_document_pdf(doc)
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
-        if pdf is None:
-            raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
         safe = control_id.replace("/", "_")
         return StreamingResponse(iter([pdf]), media_type="application/pdf",
                                  headers={"Content-Disposition": f'attachment; filename="mori-evidence-{safe}.pdf"'})
 
     @app.get("/controls/detail/{control_id}/evidence.csv", tags=["Compliance"])
     def control_evidence_csv_route(control_id: str, request: Request) -> Any:
-        """통제 증적 팩 CSV(라이브 + 수기 증적 합본). admin·security 전용."""
+        """증적 문서 CSV — 자산 인벤토리 표 + 문서화 증적 표. admin·security 전용."""
         if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
             raise HTTPException(status_code=403, detail="control evidence CSV requires admin or security role")
-        from mori_soc.services.control_catalog import control_evidence_csv
-        csv_text = control_evidence_csv(control_id, gaps=_live_gaps(), metrics=_source_metrics(),
-                                        catalog=_merged_catalog(), evidence_records=_evidence_for(control_id))
-        if csv_text is None:
+        from mori_soc.services.control_catalog import evidence_document_csv
+        user = ctx.get_session_username(request) if ctx.get_session_username else ""
+        doc = _evidence_document(control_id, user or "")
+        if doc is None:
             raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
         safe = control_id.replace("/", "_")
-        return StreamingResponse(iter(["﻿" + csv_text]), media_type="text/csv",
+        return StreamingResponse(iter(["﻿" + evidence_document_csv(doc)]), media_type="text/csv",
                                  headers={"Content-Disposition": f'attachment; filename="mori-evidence-{safe}.csv"'})
 
     # ── M2-8: 카탈로그 정본 편집 (admin 전용) ─────────────────────────────────────

@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.17.3-alpha.1] — 2026-07-09 — 증적 문서 다운로드(표) + 증적 목록 접기
+
+### Changed
+- **증적 다운로드를 '통제 팩' → '증적 문서'로 재설계** — 취지·매핑 등이 섞인 팩 대신,
+  **증적만** 깔끔한 표로: **자산 인벤토리 표**(호스트명·IP·상태·소스, 실제 호스트 전부) +
+  **문서화된 증적 표**(일자·유형·제목·수집자·참조). CSV는 섹션형(엑셀 2표), PDF는 스타일 테이블.
+  `evidence_document_csv/pdf`. 화면 접기와 무관하게 **다운로드는 항상 전체**.
+- **증적 목록 UI 접기** — 통제 상세의 수기·자동 증적이 많아도 **처음 3건만** 보이고 나머지는
+  **"더보기 (N)"**, 긴 자동 스냅샷 본문은 **▾내용** 으로 접힘. (다운로드 문서는 전체 유지)
+
 ## [v0.17.2-alpha.1] — 2026-07-09 — 증적 스냅샷 상세화 + 정기 자동 스냅샷(admin 설정)
 
 ### Added

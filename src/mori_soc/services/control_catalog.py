@@ -346,6 +346,131 @@ def control_evidence_csv(control_id: str, gaps: dict[str, Any] | None = None,
     return buf.getvalue()
 
 
+# ── 증적 문서 (evidence document) — 통제 팩이 아니라 '증적'만 예쁘게 ──────────────
+# doc 구조: {control:{id,title_ko,title_en,framework,intent_ko}, status, generated_at,
+#           collector, inventory:[{hostname,ip,status,source}], live:[{label,summary}],
+#           records:[{collected_at,kind,title,collected_by,reference,body}]}
+
+def evidence_document_csv(doc: dict[str, Any]) -> str:
+    """증적 문서 CSV — 자산 인벤토리 표 + 문서화된 증적 표(엑셀에서 두 표로 읽힘)."""
+    import csv as csv_mod
+    c = doc.get("control", {})
+    buf = io.StringIO()
+    w = csv_mod.writer(buf)
+    w.writerow(["# 통제", c.get("id", ""), c.get("title_ko", "")])
+    w.writerow(["# 프레임워크", c.get("framework", ""), f"이행상태: {doc.get('status', '')}"])
+    w.writerow(["# 생성", (doc.get("generated_at") or "")[:19], f"수집자: {doc.get('collector', '')}"])
+    w.writerow([])
+    w.writerow(["[자산 인벤토리]"])
+    w.writerow(["호스트명", "IP", "상태", "소스"])
+    for h in doc.get("inventory", []):
+        w.writerow([h.get("hostname", ""), h.get("ip", ""), h.get("status", ""), h.get("source", "")])
+    if not doc.get("inventory"):
+        w.writerow(["(수집된 자산 없음)"])
+    if doc.get("live"):
+        w.writerow([])
+        w.writerow(["[기타 실증적]"])
+        w.writerow(["소스", "요약"])
+        for e in doc["live"]:
+            w.writerow([e.get("label", ""), e.get("summary", "")])
+    w.writerow([])
+    w.writerow(["[문서화된 증적]"])
+    w.writerow(["일자", "유형", "제목", "수집자", "참조", "내용"])
+    for r in doc.get("records", []):
+        w.writerow([r.get("collected_at", ""), r.get("kind", ""), r.get("title", ""),
+                    r.get("collected_by", ""), r.get("reference", ""), r.get("body", "")])
+    if not doc.get("records"):
+        w.writerow(["(문서화된 증적 없음)"])
+    return buf.getvalue()
+
+
+def evidence_document_pdf(doc: dict[str, Any]) -> bytes:
+    """증적 문서 PDF — 자산 인벤토리·문서화 증적을 표로 깔끔하게. reportlab 필요."""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("reportlab not installed; PDF output unavailable") from exc
+    from mori_soc.services.reports import _get_pdf_font
+
+    c = doc.get("control", {})
+    font = _get_pdf_font()
+    styles = getSampleStyleSheet()
+    h1 = ParagraphStyle("h1", parent=styles["Title"], fontName=font, fontSize=15, leading=19, spaceAfter=2)
+    h2 = ParagraphStyle("h2", parent=styles["Heading2"], fontName=font, fontSize=11.5, leading=15, spaceBefore=12, spaceAfter=5)
+    body = ParagraphStyle("body", parent=styles["Normal"], fontName=font, fontSize=9.5, leading=13)
+    small = ParagraphStyle("small", parent=styles["Normal"], fontName=font, fontSize=8, leading=11, textColor=colors.grey)
+    cell = ParagraphStyle("cell", parent=styles["Normal"], fontName=font, fontSize=8.5, leading=11)
+
+    def esc(s: Any) -> str:
+        return str(s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    def _table(headers: list[str], rows: list[list[Any]], widths: list[float]) -> Table:
+        data = [[Paragraph(f"<b>{esc(x)}</b>", cell) for x in headers]]
+        data += [[Paragraph(esc(x), cell) for x in r] for r in rows]
+        t = Table(data, colWidths=widths, repeatRows=1)
+        t.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e293b")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f1f5f9")]),
+            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        return t
+
+    buf = io.BytesIO()
+    docp = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
+                             topMargin=16 * mm, bottomMargin=14 * mm,
+                             title=f"MORI Evidence {c.get('id')}")
+    fw = "ISMS-P 2023" if c.get("framework") == "isms-p" else ("ISO 27001:2022" if c.get("framework") == "iso27001" else str(c.get("framework", "")))
+    story: list[Any] = []
+    story.append(Paragraph(f"증적 문서 · [{esc(c.get('id'))}] {esc(c.get('title_ko'))}", h1))
+    sub = " · ".join(x for x in [esc(c.get("title_en")), fw] if x)
+    story.append(Paragraph(sub, small))
+    meta = " · ".join(x for x in [f"생성 {esc((doc.get('generated_at') or '')[:19])}",
+             f"수집자 {esc(doc.get('collector'))}" if doc.get("collector") else "",
+             f"이행상태 {esc(doc.get('status'))}"] if x)
+    story.append(Paragraph(meta, small))
+    if c.get("intent_ko"):
+        story.append(Spacer(1, 3 * mm))
+        story.append(Paragraph(esc(c.get("intent_ko")), body))
+
+    story.append(Paragraph("자산 인벤토리 (실증적)", h2))
+    inv = doc.get("inventory", [])
+    if inv:
+        rows = [[h.get("hostname", ""), h.get("ip", ""), h.get("status", ""), h.get("source", "")] for h in inv]
+        story.append(_table(["호스트명", "IP", "상태", "소스"], rows,
+                            [70 * mm, 40 * mm, 30 * mm, 28 * mm]))
+        story.append(Paragraph(f"총 {len(inv)}건 · 수집 시점 자동 현행화 자산", small))
+    else:
+        story.append(Paragraph("(수집된 자산 인벤토리 없음)", small))
+
+    if doc.get("live"):
+        story.append(Paragraph("기타 실증적", h2))
+        for e in doc["live"]:
+            story.append(Paragraph(f"• [{esc(e.get('label'))}] {esc(e.get('summary'))}", body))
+
+    story.append(Paragraph("문서화된 증적", h2))
+    recs = doc.get("records", [])
+    if recs:
+        rows = [[r.get("collected_at", ""), r.get("kind", ""), r.get("title", ""),
+                 r.get("collected_by", ""), r.get("reference", "")] for r in recs]
+        story.append(_table(["일자", "유형", "제목", "수집자", "참조"], rows,
+                            [22 * mm, 16 * mm, 66 * mm, 24 * mm, 40 * mm]))
+    else:
+        story.append(Paragraph("(문서화된 증적 없음)", small))
+
+    story.append(Spacer(1, 8 * mm))
+    story.append(Paragraph("MORI SOC 증적 문서 — 감사 대응 증적", small))
+    docp.build(story)
+    return buf.getvalue()
+
+
 def sync_catalog_to_db(dsn: str) -> dict[str, int]:
     """카탈로그를 schema/007 테이블로 upsert. psycopg 필요. 반환: 반영 건수."""
     import psycopg
@@ -412,4 +537,5 @@ def sync_catalog_to_db(dsn: str) -> dict[str, int]:
 
 
 __all__ = ["load_catalog", "merge_edits", "build_tree", "build_control_detail",
-           "control_evidence_pdf", "control_evidence_csv", "sync_catalog_to_db"]
+           "control_evidence_pdf", "control_evidence_csv",
+           "evidence_document_pdf", "evidence_document_csv", "sync_catalog_to_db"]

@@ -6800,15 +6800,32 @@ def render_user_dashboard_html(
       const canEdit = _canViewEvidence();
       let h = `<div style=\"margin-top:8px;padding-top:6px;border-top:1px solid #1e293b\"><div style=\"font-weight:700;color:#fbbf24;margin-bottom:4px\">📎 ${tt('dash.ctl.ev_title','수기 증적')}</div>`;
       if (records.length) {
-        h += records.map(r => {
+        const SHOW = 3;
+        const rowHtml = (r, idx) => {
           const isAuto = r.source === 'auto';
           const autoBadge = isAuto ? ` <span style=\"background:#0e7490;color:#a5f3fc;padding:0 5px;border-radius:4px;font-size:10px\">⚡${tt('dash.ctl.ev_auto','자동')}</span>` : '';
           const meta = [r.collected_at, r.collected_by].filter(Boolean).map(escapeHtml).join(' · ');
           const ref = (r.reference && !isAuto) ? ` <a href=\"${escapeHtml(r.reference)}\" target=\"_blank\" style=\"color:#38bdf8\">↗</a>` : '';
           const del = canEdit ? `<span onclick=\"deleteEvidenceRecord('${enc}','${escapeHtml(r.id)}')\" style=\"cursor:pointer;color:#f87171;margin-left:6px\">×</span>` : '';
-          const body = r.body ? `<div style=\"color:#94a3b8;font-size:11px;margin-left:12px;white-space:pre-wrap\">${escapeHtml(r.body)}</div>` : '';
-          return `<div style=\"color:#cbd5e1;padding:2px 0\">• <b>${escapeHtml(r.title)}</b>${autoBadge}${meta?` <span style=\"color:#64748b;font-size:11px\">(${meta})</span>`:''}${ref}${del}${body}</div>`;
-        }).join('');
+          // 긴 자동 스냅샷 본문은 기본 접힘(▾), 짧은 수기 증적은 인라인 표시
+          let bodyToggle = '', body = '';
+          if (r.body) {
+            const bid = 'evbody_' + enc + '_' + idx;
+            if (isAuto) {
+              bodyToggle = ` <span onclick=\"const b=document.getElementById('${bid}');b.style.display=b.style.display==='none'?'block':'none'\" style=\"cursor:pointer;color:#64748b;font-size:11px\">▾${tt('dash.ctl.ev_body','내용')}</span>`;
+              body = `<div id=\"${bid}\" style=\"display:none;color:#94a3b8;font-size:11px;margin-left:12px;white-space:pre-wrap\">${escapeHtml(r.body)}</div>`;
+            } else {
+              body = `<div style=\"color:#94a3b8;font-size:11px;margin-left:12px;white-space:pre-wrap\">${escapeHtml(r.body)}</div>`;
+            }
+          }
+          return `<div style=\"color:#cbd5e1;padding:2px 0\">• <b>${escapeHtml(r.title)}</b>${autoBadge}${meta?` <span style=\"color:#64748b;font-size:11px\">(${meta})</span>`:''}${ref}${bodyToggle}${del}${body}</div>`;
+        };
+        h += records.slice(0, SHOW).map((r, i) => rowHtml(r, i)).join('');
+        const rest = records.slice(SHOW);
+        if (rest.length) {
+          h += `<div id=\"evmore_${enc}\" style=\"display:none\">${rest.map((r, i) => rowHtml(r, i + SHOW)).join('')}</div>`;
+          h += `<div id=\"evmoretog_${enc}\" onclick=\"_toggleEvMore('${enc}')\" style=\"cursor:pointer;color:#38bdf8;font-size:12px;margin-top:3px\">▾ ${tt('dash.ctl.ev_more','더보기')} (${rest.length})</div>`;
+        }
       } else {
         h += `<div style=\"color:#64748b\">${tt('dash.ctl.ev_none','문서화된 수기 증적이 없습니다.')}</div>`;
       }
@@ -6850,6 +6867,16 @@ def render_user_dashboard_html(
       } catch(e) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } }
     }
     window.autoEvidence = autoEvidence;
+    function _toggleEvMore(enc) {
+      const box = document.getElementById('evmore_' + enc);
+      const tog = document.getElementById('evmoretog_' + enc);
+      if (!box) return;
+      const open = box.style.display === 'none';
+      box.style.display = open ? 'block' : 'none';
+      if (tog) tog.innerHTML = open ? ('▴ ' + tt('dash.ctl.ev_less','접기'))
+                                    : ('▾ ' + tt('dash.ctl.ev_more','더보기') + ' (' + box.children.length + ')');
+    }
+    window._toggleEvMore = _toggleEvMore;
     // ── 정기 증적 스냅샷 설정 (admin) ──────────────────────────────────────────
     async function loadSnapshotConfig() {
       try {
