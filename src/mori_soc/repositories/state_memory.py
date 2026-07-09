@@ -27,6 +27,8 @@ class InMemoryStateRepository(StateRepository):
         self._evidence_events: dict[str, dict[str, Any]] = {}
         self._settings: dict[str, str] = {}
         self._control_status: dict[str, dict[str, Any]] = {}
+        self._host_accounts: dict[str, list[dict[str, Any]]] = {}
+        self._account_approvals: dict[str, dict[str, Any]] = {}
 
     # ── user_profiles ──────────────────────────────────────────────────────────
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:
@@ -105,6 +107,23 @@ class InMemoryStateRepository(StateRepository):
 
     def save_control_status(self, control_id: str, record: dict[str, Any]) -> None:
         self._control_status[control_id] = copy.deepcopy(record)
+
+    # ── host_accounts ────────────────────────────────────────────────────────────
+    def load_host_accounts(self) -> dict[str, list[dict[str, Any]]]:
+        return copy.deepcopy(self._host_accounts)
+
+    def save_host_accounts(self, host_key: str, accounts: list[dict[str, Any]]) -> None:
+        self._host_accounts[host_key] = copy.deepcopy(accounts)
+
+    # ── account_approvals ────────────────────────────────────────────────────────
+    def load_account_approvals(self) -> dict[str, dict[str, Any]]:
+        return copy.deepcopy(self._account_approvals)
+
+    def save_account_approval(self, approval_id: str, record: dict[str, Any]) -> None:
+        self._account_approvals[approval_id] = copy.deepcopy(record)
+
+    def delete_account_approval(self, approval_id: str) -> None:
+        self._account_approvals.pop(approval_id, None)
 
 
 __all__ = ["InMemoryStateRepository"]

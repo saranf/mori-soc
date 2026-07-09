@@ -61,6 +61,10 @@ class RouteContext:
     settings: dict[str, str] = field(default_factory=dict)
     # control_status: control_id -> 런타임 이행 상태 레코드 (M2-7)
     control_status: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # host_accounts: host_key -> 로컬 계정 목록 (osquery push 인벤토리)
+    host_accounts: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    # account_approvals: id -> 승인 대장 레코드 (allow-list)
+    account_approvals: dict[str, dict[str, Any]] = field(default_factory=dict)
     guides: dict[str, dict[str, Any]] = field(default_factory=dict)
     user_dashboard_prefs: dict[str, dict[str, Any]] = field(default_factory=dict)
 
@@ -94,6 +98,9 @@ class RouteContext:
     persist_risk_assessment: Optional[Callable[[str], None]] = None
     persist_setting: Optional[Callable[..., None]] = None
     persist_control_status: Optional[Callable[[str], None]] = None
+    persist_host_accounts: Optional[Callable[[str], None]] = None
+    persist_account_approval: Optional[Callable[[str], None]] = None
+    delete_account_approval: Optional[Callable[[str], None]] = None
 
 
 __all__ = ["RouteContext"]

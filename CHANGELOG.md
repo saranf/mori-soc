@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.14.0-alpha.1] — 2026-07-09 — 계정 거버넌스 (접근권한 검토 · 서버/PC × LDAP)
+
+서버·PC **로컬 계정**을 수집(osquery)해 **LDAP 디렉터리 × 승인 대장**과 대조 →
+퇴사자 잔존·미등록 특권·미승인 sudo·휴면 계정을 자동 검출. ISMS-P 2.5.1/2.5.5/2.5.6,
+ISO 27001:2022 A.5.16/A.5.18/A.8.2 접근권한 검토 증적.
+
+### Added
+- **계정 인벤토리 인제스트** (`POST /ingest/accounts`, 토큰 인증) — osquery(Fleet) 스케줄
+  쿼리 결과(`users`/`sudoers`/`logged_in_users`/`shadow`)를 호스트별로 push. 특권(uid 0·
+  sudo·wheel/admin 그룹) 자동 산출. `schema/010`(`host_accounts`) 영속.
+- **교차검증 서비스** (`services/account_recon.py`) — 로컬 계정 × 디렉터리 × 승인 대장 대조:
+  **퇴사자 잔존**(디렉터리 비활성 매칭) · **미등록 특권**(디렉터리에 없는 특권) · **미승인
+  sudo** · **휴면**(로그인 90일↑, 설정 `accounts_dormant_days`).
+- **승인 대장**(`account_approvals`) — 허용 계정/sudo 등록(전역·호스트 범위). 등록된 건 이상
+  검출에서 제외(예외 승인 근거=증적). `GET/POST/DELETE /accounts/approvals` (admin·security).
+- **🔑 계정 탭** (admin·security 전용) — 거버넌스 finding 카드 4종 + 통합 계정 목록(서버/PC,
+  필터: 유형·이상·특권) + **IP 리스트** + 승인 대장 관리 + **CSV 증적 export**(`/accounts/overview.csv`).
+- **호스트 상세 계정 섹션** — '내 담당 서버' 상세 모달에 그 호스트의 로컬 계정·이상 표시(admin·security).
+
 ## [v0.13.0-alpha.1] — 2026-07-08 — 관리자 콘솔 정리 (중복 제거 · 진입점 · 톤 통일)
 
 ### Changed

@@ -114,5 +114,32 @@ class StateRepository(ABC):
         """Upsert one control-status record (idempotent on ``control_id``)."""
         raise NotImplementedError
 
+    # ── host_accounts: host_key -> list of local accounts (osquery push) ───────
+    @abstractmethod
+    def load_host_accounts(self) -> dict[str, list[dict[str, Any]]]:
+        """All host account inventories keyed by host_key."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_host_accounts(self, host_key: str, accounts: list[dict[str, Any]]) -> None:
+        """Replace a host's full account set (idempotent per host_key)."""
+        raise NotImplementedError
+
+    # ── account_approvals: id -> approval record (allow-list) ──────────────────
+    @abstractmethod
+    def load_account_approvals(self) -> dict[str, dict[str, Any]]:
+        """All account-approval records keyed by id."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_account_approval(self, approval_id: str, record: dict[str, Any]) -> None:
+        """Upsert one approval record (idempotent on ``id``)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_account_approval(self, approval_id: str) -> None:
+        """Remove one approval record."""
+        raise NotImplementedError
+
 
 __all__ = ["StateRepository"]

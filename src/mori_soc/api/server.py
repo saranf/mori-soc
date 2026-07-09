@@ -224,6 +224,10 @@ def create_app(
     settings: dict[str, str] = {}
     # Control status (M2-7): control_id -> {status, owner, exception_reason, improvement_plan, due_date, ...}
     control_status: dict[str, dict[str, Any]] = {}
+    # Host account inventory (osquery push): host_key -> [account, ...]
+    host_accounts: dict[str, list[dict[str, Any]]] = {}
+    # Account approvals (allow-list): id -> {scope, host_key, username, kind, reason, approver, expires}
+    account_approvals: dict[str, dict[str, Any]] = {}
 
     # ── Warm caches from the persistence backend (M2-1.0d) ────────────────────
     # Cache-aside: load persisted operational state once at boot so the dicts
@@ -239,6 +243,8 @@ def create_app(
     user_profiles.update(state_repo.load_user_profiles())
     settings.update(state_repo.load_settings())
     control_status.update(state_repo.load_control_status())
+    host_accounts.update(state_repo.load_host_accounts())
+    account_approvals.update(state_repo.load_account_approvals())
     # LDAP 가입 승인으로 만든 계정의 역할을 복원(비밀번호는 LDAP이 검증하므로 role만).
     for _skey, _sval in settings.items():
         if _skey.startswith("ldaprole:") and _sval:  # 빈 값(삭제됨)은 건너뜀
@@ -889,6 +895,8 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
         user_profiles=user_profiles,
         settings=settings,
         control_status=control_status,
+        host_accounts=host_accounts,
+        account_approvals=account_approvals,
         guides=guides,
         user_dashboard_prefs=user_dashboard_prefs,
         admin_dashboard_preferences=admin_dashboard_preferences,
@@ -930,6 +938,15 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
     def _persist_control_status(control_id: str) -> None:
         state_repo.save_control_status(control_id, control_status[control_id])
 
+    def _persist_host_accounts(host_key: str) -> None:
+        state_repo.save_host_accounts(host_key, host_accounts.get(host_key, []))
+
+    def _persist_account_approval(approval_id: str) -> None:
+        state_repo.save_account_approval(approval_id, account_approvals[approval_id])
+
+    def _delete_account_approval(approval_id: str) -> None:
+        state_repo.delete_account_approval(approval_id)
+
     ctx.persist_user_profile = _persist_user_profile
     ctx.persist_asset_owner = _persist_asset_owner
     ctx.delete_asset_owner = _delete_asset_owner
@@ -940,6 +957,9 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
     ctx.persist_incident = _persist_incident
     ctx.persist_setting = _persist_setting
     ctx.persist_control_status = _persist_control_status
+    ctx.persist_host_accounts = _persist_host_accounts
+    ctx.persist_account_approval = _persist_account_approval
+    ctx.delete_account_approval = _delete_account_approval
 
     def get_query_service() -> QueryService:
         if service is not None:
@@ -1003,6 +1023,10 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
     # ── LDAP 사용자 관리 (admin 전용, LDAP 활성 시) ──────────────────────────────
     from mori_soc.api.routes.ldap_admin import register_ldap_admin
     register_ldap_admin(ctx)
+
+    # ── 계정 거버넌스 (서버/PC 로컬 계정 × LDAP × 승인대장) ──────────────────────
+    from mori_soc.api.routes.accounts_gov import register_accounts_gov
+    register_accounts_gov(ctx)
 
     # ── Incidents ────────────────────────────────────────────────────────────────
     from mori_soc.api.routes.incidents import register_incidents

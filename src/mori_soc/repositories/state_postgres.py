@@ -343,5 +343,82 @@ class PostgresStateRepository(StateRepository):
                  due, record.get("updated_by") or None),
             )
 
+    # ── host_accounts (osquery push 인벤토리) ───────────────────────────────────
+    def load_host_accounts(self) -> dict[str, list[dict[str, Any]]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT host_key, username, host_type, uid, gid, shell, home, groups, "
+                "is_privileged, is_sudo, disabled, last_login, pwd_last_change, source, collected_at "
+                "FROM host_accounts"
+            )
+            out: dict[str, list[dict[str, Any]]] = {}
+            for r in cur.fetchall():
+                out.setdefault(r[0], []).append({
+                    "username": r[1], "host_type": r[2], "uid": r[3], "gid": r[4],
+                    "shell": r[5], "home": r[6], "groups": r[7] or [],
+                    "is_privileged": bool(r[8]), "is_sudo": bool(r[9]), "disabled": bool(r[10]),
+                    "last_login": r[11].isoformat() if r[11] else None,
+                    "pwd_last_change": r[12].isoformat() if r[12] else None,
+                    "source": r[13], "collected_at": r[14].isoformat() if r[14] else None,
+                })
+            return out
+
+    def save_host_accounts(self, host_key: str, accounts: list[dict[str, Any]]) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM host_accounts WHERE host_key = %s", (host_key,))
+            for a in accounts:
+                cur.execute(
+                    """
+                    INSERT INTO host_accounts (host_key, username, host_type, uid, gid, shell, home,
+                        groups, is_privileged, is_sudo, disabled, last_login, pwd_last_change, source, collected_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, now())
+                    ON CONFLICT (host_key, username) DO UPDATE SET
+                        host_type=EXCLUDED.host_type, uid=EXCLUDED.uid, gid=EXCLUDED.gid,
+                        shell=EXCLUDED.shell, home=EXCLUDED.home, groups=EXCLUDED.groups,
+                        is_privileged=EXCLUDED.is_privileged, is_sudo=EXCLUDED.is_sudo,
+                        disabled=EXCLUDED.disabled, last_login=EXCLUDED.last_login,
+                        pwd_last_change=EXCLUDED.pwd_last_change, source=EXCLUDED.source, collected_at=now()
+                    """,
+                    (host_key, a.get("username", ""), a.get("host_type", "server"),
+                     a.get("uid"), a.get("gid"), a.get("shell"), a.get("home"),
+                     Jsonb(a.get("groups") or []) if Jsonb is not None else (a.get("groups") or []),
+                     bool(a.get("is_privileged")), bool(a.get("is_sudo")), bool(a.get("disabled")),
+                     a.get("last_login") or None, a.get("pwd_last_change") or None, a.get("source", "osquery")),
+                )
+
+    # ── account_approvals (승인 대장) ───────────────────────────────────────────
+    def load_account_approvals(self) -> dict[str, dict[str, Any]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, scope, host_key, username, kind, reason, approver, expires, created_at "
+                "FROM account_approvals"
+            )
+            return {r[0]: {
+                "id": r[0], "scope": r[1], "host_key": r[2] or "", "username": r[3],
+                "kind": r[4], "reason": r[5] or "", "approver": r[6] or "",
+                "expires": r[7].isoformat() if r[7] else "",
+                "created_at": r[8].isoformat() if r[8] else None,
+            } for r in cur.fetchall()}
+
+    def save_account_approval(self, approval_id: str, record: dict[str, Any]) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO account_approvals (id, scope, host_key, username, kind, reason, approver, expires, created_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, now())
+                ON CONFLICT (id) DO UPDATE SET
+                    scope=EXCLUDED.scope, host_key=EXCLUDED.host_key, username=EXCLUDED.username,
+                    kind=EXCLUDED.kind, reason=EXCLUDED.reason, approver=EXCLUDED.approver, expires=EXCLUDED.expires
+                """,
+                (approval_id, record.get("scope", "global"), record.get("host_key") or None,
+                 record.get("username", ""), record.get("kind", "account"),
+                 record.get("reason") or None, record.get("approver") or None,
+                 record.get("expires") or None),
+            )
+
+    def delete_account_approval(self, approval_id: str) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM account_approvals WHERE id = %s", (approval_id,))
+
 
 __all__ = ["PostgresStateRepository", "PSYCOPG_AVAILABLE"]

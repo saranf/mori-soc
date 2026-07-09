@@ -2809,6 +2809,7 @@ def render_user_dashboard_html(
       <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\" data-i18n=\"dash.tab.incidents\">📋 인시던트</button>
       <button data-tab=\"assets\" onclick=\"switchTab('assets')\" data-i18n=\"dash.tab.assets\">📡 자산 현황</button>
       <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\" data-i18n=\"dash.tab.compliance\">✅ Compliance PDCA</button>
+      <button id=\"tab_btn_accounts\" data-tab=\"accounts\" onclick=\"switchTab('accounts')\" data-i18n=\"dash.tab.accounts\" style=\"display:none\">🔑 계정</button>
       <button data-tab=\"guides\" onclick=\"switchTab('guides')\" data-i18n=\"dash.tab.guides\">📖 가이드 &amp; 기준</button>
     </nav>
 
@@ -3167,6 +3168,53 @@ def render_user_dashboard_html(
           <div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.crosscheck_loading\">⏳ 교차 검증 데이터를 불러오는 중…</div>
         </div>
       </section>
+    </div>
+
+    <!-- ── Tab: 계정 거버넌스 (admin·security 전용) ──────────────────────── -->
+    <div class=\"tab-panel\" id=\"tab_accounts\">
+      <section class=\"card\">
+        <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+          <h2 style=\"margin:0\" data-i18n=\"dash.acc.title\">🔑 계정 거버넌스 (접근권한 검토)</h2>
+          <div style=\"display:flex;gap:8px;align-items:center\">
+            <span id=\"acc_summary\" style=\"font-size:12px;color:#94a3b8\"></span>
+            <a href=\"/accounts/overview.csv\" download class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px;text-decoration:none\" data-i18n=\"dash.acc.csv\">📥 CSV</a>
+          </div>
+        </div>
+        <div class=\"subtext\" data-i18n=\"dash.acc.sub\">서버·PC 로컬 계정(osquery) × LDAP 디렉터리 × 승인 대장을 대조해 이상 계정을 찾습니다. ISMS-P 2.5.1·2.5.5·2.5.6 접근권한 검토 증적. osquery push: POST /ingest/accounts</div>
+        <div class=\"metrics\" id=\"acc_finding_cards\" style=\"margin-top:12px\"></div>
+      </section>
+
+      <section class=\"card\">
+        <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+          <h2 style=\"margin:0\" data-i18n=\"dash.acc.list_title\">계정 목록 (서버 · PC)</h2>
+          <div style=\"display:flex;gap:6px;flex-wrap:wrap;align-items:center\">
+            <input id=\"acc_search\" placeholder=\"계정/호스트 검색…\" data-i18n-placeholder=\"dash.acc.search_ph\" oninput=\"renderAccounts()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 10px;font-size:13px;width:180px\" />
+            <select id=\"acc_filter_type\" onchange=\"renderAccounts()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:13px\"><option value=\"\" data-i18n=\"dash.acc.f.alltype\">전체 유형</option><option value=\"server\" data-i18n=\"dash.acc.f.server\">서버</option><option value=\"pc\" data-i18n=\"dash.acc.f.pc\">PC</option></select>
+            <select id=\"acc_filter_finding\" onchange=\"renderAccounts()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:13px\"><option value=\"\" data-i18n=\"dash.acc.f.allfind\">전체</option><option value=\"flagged\" data-i18n=\"dash.acc.f.flagged\">이상만</option><option value=\"leaver\">퇴사자 잔존</option><option value=\"orphan_priv\">미등록 특권</option><option value=\"unapproved_sudo\">미승인 sudo</option><option value=\"dormant\">휴면</option><option value=\"privileged\" data-i18n=\"dash.acc.f.priv\">특권만</option></select>
+          </div>
+        </div>
+        <div class=\"table-wrap\" id=\"acc_table\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+      </section>
+
+      <div class=\"layout\">
+        <section class=\"card\">
+          <h2 data-i18n=\"dash.acc.approve_title\">✅ 승인 대장 (허용 계정 · sudo)</h2>
+          <div class=\"subtext\" data-i18n=\"dash.acc.approve_sub\">여기에 등록된 계정/sudo는 이상으로 잡지 않습니다. 예외 승인 근거 자체가 증적입니다.</div>
+          <div style=\"display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0\">
+            <input id=\"acc_appr_user\" placeholder=\"username\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 10px;font-size:13px;width:120px\" />
+            <select id=\"acc_appr_kind\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:13px\"><option value=\"account\">account</option><option value=\"sudo\">sudo</option></select>
+            <input id=\"acc_appr_host\" placeholder=\"host(비우면 전역)\" data-i18n-placeholder=\"dash.acc.appr_host_ph\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 10px;font-size:13px;width:130px\" />
+            <input id=\"acc_appr_reason\" placeholder=\"승인 사유\" data-i18n-placeholder=\"dash.acc.appr_reason_ph\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 10px;font-size:13px;flex:1;min-width:120px\" />
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:13px\" onclick=\"addAccApproval()\" data-i18n=\"dash.acc.appr_add\">+ 승인</button>
+          </div>
+          <div id=\"acc_approvals\" class=\"table-wrap\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+        </section>
+        <section class=\"card\">
+          <h2 data-i18n=\"dash.acc.ip_title\">🌐 IP 리스트</h2>
+          <div class=\"subtext\" data-i18n=\"dash.acc.ip_sub\">수집된 호스트의 IP·상태입니다.</div>
+          <div class=\"table-wrap\" id=\"acc_ip_list\" style=\"margin-top:8px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+        </section>
+      </div>
     </div>
 
     <!-- ── Tab: 가이드 & 기준 ────────────────────────────────────────── -->
@@ -3710,6 +3758,7 @@ def render_user_dashboard_html(
       if (tabName === 'incidents') loadIncidents();
       if (tabName === 'assets') loadAssets();
       if (tabName === 'compliance') loadCompliance();
+      if (tabName === 'accounts') loadAccountsGov();
       if (tabName === 'guides') {
         buildGuideSubTabs();
         if (currentGuideId) switchGuideTab(currentGuideId);
@@ -4876,7 +4925,8 @@ def render_user_dashboard_html(
         ${_kv(tt('dash.host.exception','예외'), excStr)}
         ${h.last_seen_at?_kv(tt('dash.dyn.lbl.last_seen','마지막 확인'), escapeHtml(formatTime(h.last_seen_at))):''}
       </div>`;
-      bodyEl.innerHTML = _hostDeepLinks(h, kind) + meta + `<div id=\"host_detail_remed\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>`;
+      const acctSlot = _canViewEvidence() ? `<div id=\"host_detail_acct\" style=\"margin-top:14px\"></div>` : '';
+      bodyEl.innerHTML = _hostDeepLinks(h, kind) + meta + `<div id=\"host_detail_remed\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>` + acctSlot;
       modal.style.display = 'flex';
       // E: 미조치 3버킷
       const remedEl = document.getElementById('host_detail_remed');
@@ -4887,6 +4937,22 @@ def render_user_dashboard_html(
         remedEl.innerHTML = _renderRemediation(d);
       } catch (e) {
         remedEl.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`;
+      }
+      // 호스트 계정 섹션 (admin·security 전용)
+      if (_canViewEvidence()) {
+        const acctEl = document.getElementById('host_detail_acct');
+        try {
+          const ar = await fetch(`/accounts/host/${encodeURIComponent(hostname)}`);
+          if (ar.ok) {
+            const ad = await ar.json();
+            if (!ad.count) {
+              acctEl.innerHTML = `<div style=\"font-weight:700;color:#e2e8f0;margin-bottom:6px\">🔑 ${tt('dash.acc.host_title','로컬 계정')}</div><div class=\"empty\" style=\"color:#64748b\">${tt('dash.acc.host_none','수집된 계정 없음 (osquery push 필요)')}</div>`;
+            } else {
+              acctEl.innerHTML = `<div style=\"font-weight:700;color:#e2e8f0;margin-bottom:6px\">🔑 ${tt('dash.acc.host_title','로컬 계정')} (${ad.count}${ad.flagged?` · ⚠ ${ad.flagged}`:''})</div>` +
+                `<div style=\"max-height:180px;overflow-y:auto\">${ad.accounts.map(a => `<div style=\"display:flex;justify-content:space-between;gap:8px;padding:3px 6px;border-bottom:1px solid #0f1e33;font-size:12px\"><span style=\"font-family:monospace\">${escapeHtml(a.username)}${a.is_privileged?` <span style=\"color:#fca5a5\">●${a.is_sudo?'sudo':''}</span>`:''}</span><span>${a.findings.map(_accFindBadge).join('')||(a.in_directory?'✅':'')}</span></div>`).join('')}</div>`;
+            }
+          }
+        } catch (e) { /* best-effort */ }
       }
     }
     window.openHostDetail = openHostDetail;
@@ -6431,6 +6497,8 @@ def render_user_dashboard_html(
         const el = document.getElementById(id);
         if (el) el.style.display = show ? '' : 'none';
       });
+      // 계정 거버넌스 탭(admin·security 전용) 노출
+      document.querySelectorAll('[data-tab="accounts"]').forEach(btn => btn.style.display = show ? '' : 'none');
       if (show) { loadEvidenceGaps(); loadControlTree(); }
     }
     const _CTL_SOURCE_COLOR = { zabbix:'#38bdf8', trivy:'#f59e0b', wazuh:'#a78bfa', fleet:'#34d399', loki:'#f472b6', mori:'#94a3b8' };
@@ -6577,6 +6645,102 @@ def render_user_dashboard_html(
     }
     window.saveControlStatus = saveControlStatus;
     window._applyEvidenceGating = _applyEvidenceGating;
+
+    // ── 계정 거버넌스 (admin·security) ─────────────────────────────────────────
+    let _accData = { accounts: [], counts: {}, summary: {}, ip_list: [], dormant_days: 90 };
+    let _accApprovals = [];
+    const _ACC_FIND = { leaver:['퇴사자 잔존','#f87171','🚨'], orphan_priv:['미등록 특권','#fb923c','🛡️'], unapproved_sudo:['미승인 sudo','#facc15','⚡'], dormant:['휴면','#a78bfa','💤'] };
+    async function loadAccountsGov() {
+      const tableEl = document.getElementById('acc_table');
+      if (!tableEl) return;
+      tableEl.innerHTML = `<span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span>`;
+      try {
+        const [ovRes, apRes] = await Promise.all([fetch('/accounts/overview'), fetch('/accounts/approvals')]);
+        if (!ovRes.ok) { tableEl.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix','오류: ')}HTTP ${ovRes.status}</span>`; return; }
+        _accData = await ovRes.json();
+        _accApprovals = apRes.ok ? ((await apRes.json()).approvals || []) : [];
+        const s = _accData.summary || {};
+        const sumEl = document.getElementById('acc_summary');
+        if (sumEl) sumEl.textContent = `${tt('dash.acc.hosts','호스트')} ${s.hosts||0} · ${tt('dash.acc.accounts','계정')} ${s.accounts||0} · ${tt('dash.acc.priv','특권')} ${s.privileged||0} · ${tt('dash.acc.dir','디렉터리')} ${s.directory||0}`;
+        const c = _accData.counts || {};
+        const cardsEl = document.getElementById('acc_finding_cards');
+        cardsEl.innerHTML = Object.keys(_ACC_FIND).map(k => { const [lbl,col,em] = _ACC_FIND[k]; const v = c[k]||0; return `<section class=\"card metric-card\" onclick=\"document.getElementById('acc_filter_finding').value='${k}';renderAccounts()\" style=\"padding:14px;cursor:pointer\"><div class=\"metric-label\">${em} ${tt('dash.acc.find.'+k, lbl)}</div><div class=\"metric-value\" style=\"color:${v?col:'#475569'}\">${v}</div></section>`; }).join('');
+        renderAccounts(); renderAccApprovals(); renderAccIpList();
+      } catch(e) { tableEl.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`; }
+    }
+    window.loadAccountsGov = loadAccountsGov;
+
+    function _accFindBadge(f) { const c = (_ACC_FIND[f]||['',''])[1] || '#94a3b8'; return `<span style=\"background:${c}22;border:1px solid ${c};color:${c};border-radius:5px;padding:1px 6px;font-size:10px;margin-right:3px\">${tt('dash.acc.find.'+f, (_ACC_FIND[f]||[f])[0])}</span>`; }
+    function renderAccounts() {
+      const tableEl = document.getElementById('acc_table'); if (!tableEl) return;
+      const q = (document.getElementById('acc_search')?.value||'').trim().toLowerCase();
+      const ft = document.getElementById('acc_filter_type')?.value||'';
+      const ff = document.getElementById('acc_filter_finding')?.value||'';
+      const rows = (_accData.accounts||[]).filter(a => {
+        if (q && !(a.username.toLowerCase().includes(q) || a.host_key.toLowerCase().includes(q))) return false;
+        if (ft && a.host_type !== ft) return false;
+        if (ff === 'flagged' && !a.findings.length) return false;
+        if (ff === 'privileged' && !a.is_privileged) return false;
+        if (ff && !['flagged','privileged'].includes(ff) && !a.findings.includes(ff)) return false;
+        return true;
+      });
+      if (!rows.length) { tableEl.innerHTML = `<div class=\"empty\">${tt('dash.acc.none','해당 계정이 없습니다. (osquery push 전이거나 필터)')}</div>`; return; }
+      const dd = _accData.dormant_days||90;
+      tableEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\"><thead><tr style=\"background:#0f2035\">
+        <th style=\"padding:8px;text-align:left\">${tt('dash.acc.col.host','호스트')}</th><th style=\"padding:8px;text-align:left\">${tt('dash.acc.col.user','계정')}</th><th style=\"padding:8px\">UID</th><th style=\"padding:8px\">${tt('dash.acc.col.priv','특권')}</th><th style=\"padding:8px\">${tt('dash.acc.col.dir','디렉터리')}</th><th style=\"padding:8px\">${tt('dash.acc.col.login','최근 로그인')}</th><th style=\"padding:8px;text-align:left\">${tt('dash.acc.col.find','이상')}</th></tr></thead><tbody>
+        ${rows.map(a => `<tr>
+          <td style=\"padding:6px 8px\"><strong>${escapeHtml(a.host_key)}</strong> <span style=\"color:#64748b;font-size:11px\">${a.host_type==='pc'?'🖥️PC':'🖧'+tt('dash.mine.server','서버')}</span></td>
+          <td style=\"padding:6px 8px;font-family:monospace\">${escapeHtml(a.username)}${a.disabled?' <span style=\"color:#64748b\">(disabled)</span>':''}</td>
+          <td style=\"padding:6px 8px;text-align:center;color:#94a3b8\">${escapeHtml(a.uid||'-')}</td>
+          <td style=\"padding:6px 8px;text-align:center\">${a.is_privileged?`<span style=\"color:#fca5a5\">●${a.is_sudo?' sudo':''}</span>`:'-'}</td>
+          <td style=\"padding:6px 8px;text-align:center\">${a.in_directory?'✅':'—'}</td>
+          <td style=\"padding:6px 8px;text-align:center;color:${(a.login_age_days!=null&&a.login_age_days>dd)?'#a78bfa':'#94a3b8'};font-size:12px\">${a.login_age_days!=null?a.login_age_days+'d':(a.last_login?'-':'never')}</td>
+          <td style=\"padding:6px 8px\">${a.findings.map(_accFindBadge).join('')||'<span style=\"color:#4ade80\">✓</span>'}</td>
+        </tr>`).join('')}</tbody></table>`;
+    }
+    window.renderAccounts = renderAccounts;
+
+    function renderAccApprovals() {
+      const el = document.getElementById('acc_approvals'); if (!el) return;
+      if (!_accApprovals.length) { el.innerHTML = `<span class=\"empty\">${tt('dash.acc.appr_none','등록된 승인이 없습니다.')}</span>`; return; }
+      el.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><tbody>${_accApprovals.map(a => `<tr style=\"border-bottom:1px solid #1e293b\">
+        <td style=\"padding:5px 6px;font-family:monospace;color:#7dd3fc\">${escapeHtml(a.username)}</td>
+        <td style=\"padding:5px 6px\"><span style=\"background:${a.kind==='sudo'?'#facc1522':'#1e3a5f'};color:${a.kind==='sudo'?'#facc15':'#93c5fd'};padding:1px 6px;border-radius:4px\">${escapeHtml(a.kind)}</span></td>
+        <td style=\"padding:5px 6px;color:#94a3b8\">${a.scope==='host'?escapeHtml(a.host_key):tt('dash.acc.global','전역')}</td>
+        <td style=\"padding:5px 6px;color:#cbd5e1\">${escapeHtml(a.reason||'')}</td>
+        <td style=\"padding:5px 6px;text-align:right\"><button class=\"danger\" style=\"width:auto;padding:2px 8px;font-size:11px\" onclick=\"deleteAccApproval('${escapeHtml(a.id)}')\">${tt('dash.acc.appr_del','삭제')}</button></td>
+      </tr>`).join('')}</tbody></table>`;
+    }
+    async function addAccApproval() {
+      const g = id => document.getElementById(id);
+      const username = g('acc_appr_user').value.trim();
+      if (!username) return;
+      const host = g('acc_appr_host').value.trim();
+      const body = { username, kind: g('acc_appr_kind').value, reason: g('acc_appr_reason').value.trim() };
+      if (host) { body.scope = 'host'; body.host_key = host; }
+      try {
+        const res = await fetch('/accounts/approvals', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        ['acc_appr_user','acc_appr_host','acc_appr_reason'].forEach(i => g(i).value='');
+        await loadAccountsGov();
+      } catch(e) { alert(tt('dash.dyn.error_prefix','오류: ') + e.message); }
+    }
+    window.addAccApproval = addAccApproval;
+    async function deleteAccApproval(id) {
+      try {
+        const res = await fetch('/accounts/approvals/' + encodeURIComponent(id), { method:'DELETE' });
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        await loadAccountsGov();
+      } catch(e) { alert(tt('dash.dyn.error_prefix','오류: ') + e.message); }
+    }
+    window.deleteAccApproval = deleteAccApproval;
+
+    function renderAccIpList() {
+      const el = document.getElementById('acc_ip_list'); if (!el) return;
+      const rows = _accData.ip_list || [];
+      if (!rows.length) { el.innerHTML = `<span class=\"empty\">${tt('dash.acc.ip_none','호스트 없음')}</span>`; return; }
+      el.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"background:#0f2035\"><th style=\"padding:6px;text-align:left\">${tt('dash.dyn.lbl.hostname','호스트명')}</th><th style=\"padding:6px;text-align:left\">IP</th><th style=\"padding:6px\">${tt('dash.dyn.lbl.status','상태')}</th></tr></thead><tbody>${rows.map(h => `<tr><td style=\"padding:5px 6px\"><strong>${escapeHtml(h.hostname)}</strong></td><td style=\"padding:5px 6px;font-family:monospace;color:#94a3b8\">${escapeHtml(h.primary_ip||'-')}</td><td style=\"padding:5px 6px;text-align:center\"><span class=\"badge ${h.status==='online'?'online':h.status==='offline'?'offline':'unknown'}\">${escapeHtml(h.status||'-')}</span></td></tr>`).join('')}</tbody></table>`;
+    }
     async function loadEvidenceGaps() {
       const box = document.getElementById('evidence_gap_box');
       if (!box) return;
