@@ -4,6 +4,20 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.17.2-alpha.1] — 2026-07-09 — 증적 스냅샷 상세화 + 정기 자동 스냅샷(admin 설정)
+
+### Added
+- **정기 증적 스냅샷 (admin 설정 — off/daily/weekly/monthly)** — 통제 카탈로그 관리 바에서
+  주기·범위(증적 있는 통제만/전 통제)를 admin이 자유롭게 설정. **부팅 시** 도래 여부를 확인해
+  일괄 스냅샷(재기동으로 월간 트리거 커버) + **열람 시 lazy 트리거**(장기 무재기동 서버 대응).
+  **"⚡ 지금 일괄 스냅샷"** 수동 실행 버튼도 제공. `GET/POST /controls/evidence-snapshot/config`,
+  `POST /controls/evidence-snapshot/run` (admin). `evidence_snapshot_schedule|scope|last_run` 영속.
+
+### Changed
+- **자동 스냅샷 상세화** — 러프 요약 → **상세값 캡처**: 통제 취지·증적 힌트·이행상태 + 라이브
+  증적 **전 엔티티**(상위 8 제한 해제, `_source_metrics(limit)`) + 크로스매핑 + 관련 결함(공백 수)
+  까지 구조화된 본문으로 저장. 단건/일괄 스냅샷 공통.
+
 ## [v0.17.1-alpha.1] — 2026-07-09 — 실증적 자동 증적 스냅샷
 
 ### Added

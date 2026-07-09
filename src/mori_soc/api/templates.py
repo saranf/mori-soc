@@ -3187,9 +3187,23 @@ def render_user_dashboard_html(
             <span id=\"control_tree_coverage\" style=\"font-size:12px;color:#94a3b8\"></span>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.ctl.sub_compliance\">ISMS-P 101개 인증기준 트리. 항목을 클릭하면 이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 편집할 수 있고, 재시작 후에도 유지됩니다.</div>
-          <div id=\"ctl_admin_bar\" style=\"display:none;gap:8px;flex-wrap:wrap;margin:10px 0\">
+          <div id=\"ctl_admin_bar\" style=\"display:none;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0\">
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openControlEditor()\" data-i18n=\"dash.ctl.add\">➕ 통제 추가</button>
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openNlpImport()\" data-i18n=\"dash.ctl.nlp\">📥 법령 텍스트 임포트(NLP)</button>
+            <span style=\"width:1px;height:20px;background:#334155\"></span>
+            <span style=\"font-size:12px;color:#94a3b8\" data-i18n=\"dash.ctl.snap_sched\">📸 정기 증적 스냅샷</span>
+            <select id=\"snap_schedule\" onchange=\"saveSnapshotConfig()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:12px\">
+              <option value=\"off\" data-i18n=\"dash.ctl.snap_off\">끔</option>
+              <option value=\"daily\" data-i18n=\"dash.ctl.snap_daily\">매일</option>
+              <option value=\"weekly\" data-i18n=\"dash.ctl.snap_weekly\">매주</option>
+              <option value=\"monthly\" data-i18n=\"dash.ctl.snap_monthly\">매월</option>
+            </select>
+            <select id=\"snap_scope\" onchange=\"saveSnapshotConfig()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:12px\">
+              <option value=\"mapped\" data-i18n=\"dash.ctl.snap_mapped\">증적 있는 통제만</option>
+              <option value=\"all\" data-i18n=\"dash.ctl.snap_all\">전 통제</option>
+            </select>
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"runBulkSnapshot()\" data-i18n=\"dash.ctl.snap_now\">⚡ 지금 일괄 스냅샷</button>
+            <span id=\"snap_msg\" style=\"font-size:11px;color:#64748b\"></span>
           </div>
           <div id=\"ctl_editor\" style=\"display:none;margin:8px 0;padding:12px;background:#0f172a;border:1px solid #233046;border-radius:10px\"></div>
           <div id=\"ctl_nlp\" style=\"display:none;margin:8px 0;padding:12px;background:#0f172a;border:1px solid #233046;border-radius:10px\"></div>
@@ -6652,6 +6666,7 @@ def render_user_dashboard_html(
         _ctlCanEdit = !!data.can_edit;
         const abar = document.getElementById('ctl_admin_bar');
         if (abar) abar.style.display = _ctlCanEdit ? 'flex' : 'none';
+        if (_ctlCanEdit) loadSnapshotConfig();
         const badge = (s) => { const c=_CTL_SOURCE_COLOR[s]||'#64748b'; return `<span style=\"background:${c}22;color:${c};border:1px solid ${c}55;padding:0 6px;border-radius:5px;font-size:10px;margin-left:3px\">${escapeHtml(s)}</span>`; };
         const ctrlRow = (c) => {
           const title = (lang==='en' ? c.title_en : c.title_ko) || c.title_ko || c.title_en || '';
@@ -6835,6 +6850,41 @@ def render_user_dashboard_html(
       } catch(e) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } }
     }
     window.autoEvidence = autoEvidence;
+    // ── 정기 증적 스냅샷 설정 (admin) ──────────────────────────────────────────
+    async function loadSnapshotConfig() {
+      try {
+        const res = await fetch('/controls/evidence-snapshot/config');
+        if (!res.ok) return;
+        const d = await res.json();
+        const sch = document.getElementById('snap_schedule'); if (sch) sch.value = d.schedule || 'off';
+        const sc = document.getElementById('snap_scope'); if (sc) sc.value = d.scope || 'mapped';
+        const msg = document.getElementById('snap_msg');
+        if (msg && d.last_run) msg.textContent = `${tt('dash.ctl.snap_last','최근')}: ${escapeHtml(String(d.last_run).slice(0,10))}`;
+      } catch(e) {}
+    }
+    window.loadSnapshotConfig = loadSnapshotConfig;
+    async function saveSnapshotConfig() {
+      const msg = document.getElementById('snap_msg');
+      const schedule = document.getElementById('snap_schedule').value;
+      const scope = document.getElementById('snap_scope').value;
+      try {
+        const res = await fetch('/controls/evidence-snapshot/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({schedule, scope}) });
+        if (msg) { msg.textContent = res.ok ? tt('dash.ctl.saved','✓ 저장됨') : tt('dash.ctl.save_fail','저장 실패'); msg.style.color = res.ok ? '#4ade80' : '#f87171'; }
+      } catch(e) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } }
+    }
+    window.saveSnapshotConfig = saveSnapshotConfig;
+    async function runBulkSnapshot() {
+      const msg = document.getElementById('snap_msg');
+      if (!confirm(tt('dash.ctl.snap_confirm','설정된 범위의 전 통제를 지금 일괄 스냅샷할까요?'))) return;
+      if (msg) { msg.textContent = tt('dash.ctl.snap_running','일괄 스냅샷 중…'); msg.style.color='#94a3b8'; }
+      try {
+        const res = await fetch('/controls/evidence-snapshot/run', { method:'POST' });
+        if (!res.ok) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } return; }
+        const d = await res.json();
+        if (msg) { msg.textContent = `✓ ${d.count}${tt('dash.ctl.snap_done','건 스냅샷됨')}`; msg.style.color='#4ade80'; }
+      } catch(e) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } }
+    }
+    window.runBulkSnapshot = runBulkSnapshot;
     async function deleteEvidenceRecord(enc, id) {
       if (!confirm(tt('dash.ctl.ev_del_confirm','이 수기 증적을 삭제할까요?'))) return;
       try {

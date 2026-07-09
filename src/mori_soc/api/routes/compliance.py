@@ -7,6 +7,7 @@ unpacking preamble (binding shared stores + the ``get_query_service`` helper fro
 """
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
@@ -22,6 +23,8 @@ from mori_soc.services.reports import (
 )
 from mori_soc.api.payloads import build_crosscheck_payload, build_pdca_payload
 from mori_soc.api.routes.context import RouteContext
+
+logger = logging.getLogger("mori_soc.api.compliance")
 
 # M2-7: 통제 이행 상태 허용값 (ISMS-P 자율점검 관점)
 _CONTROL_STATUSES = {"미정", "이행", "부분이행", "미이행", "해당없음"}
@@ -205,6 +208,8 @@ def register_compliance(ctx: RouteContext) -> None:
         """
         if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
             raise HTTPException(status_code=403, detail="control catalog requires admin or security role")
+        # 장기 무재기동 서버도 일정 스냅샷이 돌도록 열람 시 도래 여부 확인(최선노력).
+        _maybe_run_scheduled_snapshot()
         from mori_soc.services.control_catalog import build_tree
         try:
             # M2-8: base + admin/NLP 오버레이 병합본으로 트리 구성.
@@ -253,12 +258,13 @@ def register_compliance(ctx: RouteContext) -> None:
         except Exception:
             return {}
 
-    def _source_metrics() -> dict[str, Any]:
+    def _source_metrics(limit: int = 8) -> dict[str, Any]:
         """증적 소스별 라이브 실데이터 집계 + **호스트↔통제 단위 breakdown**.
 
         각 소스는 전역 요약(summary)에 더해, 어느 자산/엔티티가 그 증적을 갖는지
         상위 목록(breakdown: [{label, value}])을 붙인다 — 통제 상세에서 "어느 자산의
-        그 통제 증적"까지 드릴다운.
+        그 통제 증적"까지 드릴다운. ``limit`` 는 breakdown 상위 개수(자동 스냅샷은 크게 줘서
+        전 엔티티 상세 캡처).
         """
         from collections import defaultdict
         from datetime import timedelta
@@ -274,7 +280,7 @@ def register_compliance(ctx: RouteContext) -> None:
         def _hn(hid: str) -> str:
             return hostnames.get(hid, "") or hid or "(unknown)"
 
-        def _top(rows: list[dict], key: str, n: int = 8) -> tuple[list[dict], int]:
+        def _top(rows: list[dict], key: str, n: int = limit) -> tuple[list[dict], int]:
             rows.sort(key=lambda r: r.get(key, 0), reverse=True)
             return rows[:n], max(0, len(rows) - n)
 
@@ -332,13 +338,13 @@ def register_compliance(ctx: RouteContext) -> None:
         inc_vals = list((ctx.incidents or {}).values())
         inc_sorted = sorted(inc_vals, key=lambda x: str(x.get("updated_at") or x.get("created_at") or ""), reverse=True)
         inc_bd = [{"label": (i.get("title") or i.get("incident_id") or "-"), "value": str(i.get("status") or "")}
-                  for i in inc_sorted[:5]]
+                  for i in inc_sorted[:limit]]
         risk = len(ctx.risk_register or {})
         audit = len(ctx.action_audit_log or [])
         m["mori"] = {"count": len(inc_vals),
                      "summary_ko": f"인시던트 {len(inc_vals)} · 위험평가 {risk} · 감사이벤트 {audit}",
                      "summary_en": f"{len(inc_vals)} incidents · {risk} risk assessments · {audit} audit events",
-                     "breakdown": inc_bd, "more": max(0, len(inc_vals) - 5)}
+                     "breakdown": inc_bd, "more": max(0, len(inc_vals) - limit)}
         return m
 
     @app.get("/controls/detail/{control_id}", tags=["Compliance"])
@@ -555,49 +561,190 @@ def register_compliance(ctx: RouteContext) -> None:
             ctx.log_action(user or "unknown", "CONTROL_EVIDENCE_ADD", f"{control_id}: {title}")
         return rec
 
-    @app.post("/controls/detail/{control_id}/evidence-records/auto", tags=["Compliance"])
-    def auto_evidence_snapshot(control_id: str, request: Request) -> dict[str, Any]:
-        """실증적(현재) 라이브 집계를 날짜 찍힌 증적 레코드로 자동 스냅샷. admin·security.
-
-        휘발성 라이브 증적(Fleet 자산 수·Zabbix 경보·매핑 등)을 그 시점 그대로 캡처해
-        수기 증적처럼 영속화한다. 심사 대비 '이 날 이만큼의 증적이 있었다' 시점 증거.
-        """
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="evidence records require admin or security role")
-        import uuid
-        from mori_soc.services.control_catalog import build_control_detail
-        detail = build_control_detail(control_id, gaps=_live_gaps(), metrics=_source_metrics(),
-                                      catalog=_merged_catalog())
-        if detail is None:
-            raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
-        # 라이브 증적 → 한국어 요약 본문 조립
+    # ── M2-8: 실증적 자동 스냅샷 (상세값 캡처 + 일정 자동화) ───────────────────────
+    def _compose_snapshot_body(detail: dict[str, Any], status: dict[str, Any]) -> str:
+        """통제 detail(+상태)을 상세 증적 본문으로 조립 — 라이브 전 엔티티 + 메타 + 이행상태."""
+        c = detail.get("control", {})
         lines: list[str] = []
+        head = f"[{c.get('id','')}] {c.get('title_ko') or c.get('title_en') or ''}"
+        fw = "ISMS-P" if c.get("framework") == "isms-p" else ("ISO 27001:2022" if c.get("framework") == "iso27001" else str(c.get("framework", "")))
+        lines.append(f"■ 통제: {head} ({fw})")
+        if c.get("intent_ko"):
+            lines.append(f"· 취지: {c.get('intent_ko')}")
+        if c.get("evidence_hint_ko"):
+            lines.append(f"· 증적 힌트: {c.get('evidence_hint_ko')}")
+        st = (status or {}).get("status") or "미정"
+        stmeta = " · ".join(x for x in [f"이행상태: {st}",
+                 f"담당: {status.get('owner')}" if status.get("owner") else "",
+                 f"기한: {status.get('due_date')}" if status.get("due_date") else ""] if x)
+        lines.append(f"· {stmeta}")
+        lines.append("")
+        lines.append("■ 실증적 (수집 시점):")
+        any_ev = False
         for e in detail.get("evidence_live", []):
             summ = e.get("summary_ko") or e.get("summary_en") or ""
             if summ:
-                lines.append(f"[{e.get('label_ko') or e.get('source','')}] {summ}")
-            for row in (e.get("breakdown") or [])[:8]:
-                lines.append(f"  - {row.get('label','')}: {row.get('value','')}")
-        for m in detail.get("mapped_to", []):
-            lines.append(f"↔ {m.get('id','')} {m.get('title_ko') or m.get('title_en') or ''} ({m.get('relation','')})")
-        if not lines:
-            lines.append("현재 수집된 라이브 증적이 없습니다.")
-        user = ctx.get_session_username(request) if ctx.get_session_username else ""
-        today = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+                any_ev = True
+                lines.append(f"  [{e.get('label_ko') or e.get('source','')}] {summ}")
+            for row in (e.get("breakdown") or []):
+                lines.append(f"    - {row.get('label','')}: {row.get('value','')}")
+            if e.get("more"):
+                lines.append(f"    … 외 {e.get('more')}건")
+        if not any_ev:
+            lines.append("  (현재 수집된 라이브 증적 없음)")
+        if detail.get("mapped_to"):
+            lines.append("")
+            lines.append("■ 크로스매핑:")
+            for m in detail["mapped_to"]:
+                lines.append(f"  ↔ {m.get('id','')} {m.get('title_ko') or m.get('title_en') or ''} ({m.get('relation','')})")
+        if detail.get("defects"):
+            lines.append("")
+            lines.append("■ 관련 심사 결함:")
+            for d in detail["defects"]:
+                gc = d.get("gap_count")
+                gc_txt = f" · 현재 공백 {gc}건" if isinstance(gc, int) else ""
+                lines.append(f"  ⚠ [{d.get('severity','')}] {d.get('title_ko') or ''}{gc_txt}")
+        return "\n".join(lines)
+
+    def _snapshot_control(control_id: str, detail: dict[str, Any], user: str, kind: str = "auto") -> dict[str, Any]:
+        """detail 로부터 상세 스냅샷 증적 레코드 생성·영속. kind: auto(수동) | scheduled(일정)."""
+        import uuid
+        status = ctx.control_status.get(control_id, {})
+        now = datetime.now(tz=timezone.utc)
+        today = now.strftime("%Y-%m-%d")
+        label = "실증적 자동 스냅샷" if kind == "auto" else "실증적 정기 스냅샷"
         rec = {
             "id": str(uuid.uuid4()), "control_id": control_id,
-            "title": f"실증적 자동 스냅샷 ({today})",
-            "body": "\n".join(lines),
+            "title": f"{label} ({today})", "body": _compose_snapshot_body(detail, status),
             "collected_by": user or "system", "collected_at": today,
-            "reference": "auto: 라이브 증적 스냅샷", "source": "auto",
-            "created_at": datetime.now(tz=timezone.utc).isoformat(), "created_by": user or "system",
+            "reference": f"auto:{kind} 라이브 증적 스냅샷", "source": "auto",
+            "created_at": now.isoformat(), "created_by": user or "system",
         }
         ctx.control_evidence[rec["id"]] = rec
         if ctx.persist_control_evidence:
             ctx.persist_control_evidence(rec["id"])
-        if ctx.log_action:
-            ctx.log_action(user or "system", "CONTROL_EVIDENCE_AUTO", f"{control_id}: {len(lines)}줄")
         return rec
+
+    @app.post("/controls/detail/{control_id}/evidence-records/auto", tags=["Compliance"])
+    def auto_evidence_snapshot(control_id: str, request: Request) -> dict[str, Any]:
+        """실증적(현재) 라이브 집계를 날짜 찍힌 **상세** 증적 레코드로 자동 스냅샷. admin·security.
+
+        휘발성 라이브 증적(Fleet 자산·Zabbix 경보·계정·매핑 등)을 전 엔티티 상세로 캡처해
+        수기 증적처럼 영속화한다. 심사 대비 '이 날 이만큼의 증적이 있었다' 시점 증거.
+        """
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="evidence records require admin or security role")
+        from mori_soc.services.control_catalog import build_control_detail
+        detail = build_control_detail(control_id, gaps=_live_gaps(), metrics=_source_metrics(limit=200),
+                                      catalog=_merged_catalog())
+        if detail is None:
+            raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
+        user = ctx.get_session_username(request) if ctx.get_session_username else ""
+        rec = _snapshot_control(control_id, detail, user or "", kind="auto")
+        if ctx.log_action:
+            ctx.log_action(user or "system", "CONTROL_EVIDENCE_AUTO", control_id)
+        return rec
+
+    # ── 일정 자동 스냅샷 (admin 설정 — off/daily/weekly/monthly) ───────────────────
+    _SNAP_SCHEDULES = ("off", "daily", "weekly", "monthly")
+    _SNAP_PERIOD_DAYS = {"daily": 1, "weekly": 7, "monthly": 30}
+    _SNAP_SCHED_KEY = "evidence_snapshot_schedule"
+    _SNAP_SCOPE_KEY = "evidence_snapshot_scope"
+    _SNAP_LAST_KEY = "evidence_snapshot_last_run"
+
+    def _snap_cfg() -> tuple[str, str, str]:
+        s = ctx.settings or {}
+        sched = str(s.get(_SNAP_SCHED_KEY, "off")).strip() or "off"
+        if sched not in _SNAP_SCHEDULES:
+            sched = "off"
+        scope = str(s.get(_SNAP_SCOPE_KEY, "mapped")).strip() or "mapped"
+        if scope not in ("mapped", "all"):
+            scope = "mapped"
+        return sched, scope, str(s.get(_SNAP_LAST_KEY, "")).strip()
+
+    def _snap_due(now: datetime) -> bool:
+        sched, _scope, last = _snap_cfg()
+        if sched == "off":
+            return False
+        if not last:
+            return True
+        try:
+            lastdt = datetime.fromisoformat(last.replace("Z", "+00:00"))
+            if lastdt.tzinfo is None:
+                lastdt = lastdt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return True
+        return (now - lastdt).total_seconds() >= _SNAP_PERIOD_DAYS[sched] * 86400
+
+    def _run_bulk_snapshot(user: str, kind: str) -> int:
+        """전 통제(또는 매핑된 통제) 일괄 상세 스냅샷. 반환: 생성 건수."""
+        from mori_soc.services.control_catalog import build_control_detail
+        _sched, scope, _last = _snap_cfg()
+        now = datetime.now(tz=timezone.utc)
+        catalog = _merged_catalog()
+        gaps = _live_gaps()
+        metrics = _source_metrics(limit=200)
+        count = 0
+        for c in catalog.get("controls", []):
+            cid = c.get("id")
+            if not cid:
+                continue
+            if scope == "mapped" and not (c.get("evidence_sources")):
+                continue
+            detail = build_control_detail(cid, gaps=gaps, metrics=metrics, catalog=catalog)
+            if detail is None:
+                continue
+            _snapshot_control(cid, detail, user or "system", kind=kind)
+            count += 1
+        ctx.settings[_SNAP_LAST_KEY] = now.isoformat()
+        if ctx.persist_setting:
+            ctx.persist_setting(_SNAP_LAST_KEY, user or "system")
+        if ctx.log_action:
+            ctx.log_action(user or "system", "EVIDENCE_SNAPSHOT_BULK", f"{kind}: {count}건 ({scope})")
+        return count
+
+    def _maybe_run_scheduled_snapshot() -> None:
+        """부팅/열람 시 일정 도래하면 일괄 스냅샷(최선노력, 실패해도 무시)."""
+        try:
+            if _snap_due(datetime.now(tz=timezone.utc)):
+                n = _run_bulk_snapshot("system", "scheduled")
+                logger.info("[evidence] scheduled snapshot ran: %s controls", n)
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning("[evidence] scheduled snapshot skipped: %s", exc)
+
+    @app.get("/controls/evidence-snapshot/config", tags=["Compliance"])
+    def get_snapshot_config(request: Request) -> dict[str, Any]:
+        """일정 자동 스냅샷 설정 조회. admin 전용."""
+        _require_catalog_admin(request)
+        sched, scope, last = _snap_cfg()
+        return {"schedule": sched, "scope": scope, "last_run": last,
+                "schedules": list(_SNAP_SCHEDULES), "due": _snap_due(datetime.now(tz=timezone.utc))}
+
+    @app.post("/controls/evidence-snapshot/config", tags=["Compliance"])
+    def set_snapshot_config(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """일정 자동 스냅샷 설정 {schedule: off|daily|weekly|monthly, scope: mapped|all}. admin 전용."""
+        actor = _require_catalog_admin(request)
+        sched = str(payload.get("schedule", "")).strip()
+        if sched not in _SNAP_SCHEDULES:
+            raise HTTPException(status_code=400, detail=f"schedule must be one of {list(_SNAP_SCHEDULES)}")
+        scope = str(payload.get("scope", "mapped")).strip()
+        if scope not in ("mapped", "all"):
+            scope = "mapped"
+        ctx.settings[_SNAP_SCHED_KEY] = sched
+        ctx.settings[_SNAP_SCOPE_KEY] = scope
+        if ctx.persist_setting:
+            ctx.persist_setting(_SNAP_SCHED_KEY, actor)
+            ctx.persist_setting(_SNAP_SCOPE_KEY, actor)
+        if ctx.log_action:
+            ctx.log_action(actor, "EVIDENCE_SNAPSHOT_CONFIG", f"{sched} ({scope})")
+        return {"schedule": sched, "scope": scope}
+
+    @app.post("/controls/evidence-snapshot/run", tags=["Compliance"])
+    def run_bulk_snapshot_now(request: Request) -> dict[str, Any]:
+        """지금 전 통제(설정 scope) 일괄 스냅샷 실행. admin 전용."""
+        actor = _require_catalog_admin(request)
+        count = _run_bulk_snapshot(actor, "manual")
+        return {"ok": True, "count": count}
 
     @app.delete("/controls/detail/{control_id}/evidence-records/{evidence_id}", tags=["Compliance"])
     def delete_evidence_record(control_id: str, evidence_id: str, request: Request) -> dict[str, Any]:
@@ -725,6 +872,9 @@ def register_compliance(ctx: RouteContext) -> None:
                 headers={"Content-Disposition": f'attachment; filename="{filename}"'},
             )
         return report
+
+    # 부팅 시 일정 도래하면 일괄 스냅샷(재기동으로 월간 트리거 커버). 실패해도 앱 기동 계속.
+    _maybe_run_scheduled_snapshot()
 
 
 __all__ = ["register_compliance"]
