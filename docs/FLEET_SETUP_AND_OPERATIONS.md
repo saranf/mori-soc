@@ -83,6 +83,15 @@ Fleet UI → **Hosts** 에 단말이 **online** 으로 뜨면 성공. 수 분 �
 
 ### 4-3. 클라이언트에 "쉽게" 설치하는 방법들 (상황별 추천)
 
+> ⚡ **MORI 번들(추천)** — Zabbix Agent + **Fleet 에이전트(fleetd)** + Trivy 를 **한 번에** 설치:
+> ```bash
+> sudo -E MORI_ZABBIX_SERVER=<서버> MORI_HOSTNAME=my-web-01 \
+>      MORI_FLEET_URL=https://<fleet>:1337 MORI_FLEET_SECRET=<enroll-secret> \
+>      bash scripts/mori-endpoint-onboard.sh
+> ```
+> Fleet 부분은 `fleetctl package` 로 설치 패키지를 만들어 자동 설치합니다(내부적으로 fleetctl
+> 자동 설치). Fleet 만 원하면 `--skip-zabbix --skip-trivy`. (`scripts/mori-endpoint-onboard.sh --help`)
+
 | 방법 | 언제 | 방법 |
 |---|---|---|
 | **① Fleet UI 복붙 (가장 쉬움)** | 단말 1~수십 대, 손으로 설치 | Fleet UI → **Hosts → Add hosts** → OS 선택 → **생성된 설치 명령/패키지를 그대로 복사** 해 단말에서 실행. fleet-url·enroll secret 이 이미 박혀 나옴 |
