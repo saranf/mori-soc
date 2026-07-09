@@ -562,8 +562,44 @@ def register_compliance(ctx: RouteContext) -> None:
         return rec
 
     # ── M2-8: 실증적 자동 스냅샷 (상세값 캡처 + 일정 자동화) ───────────────────────
-    def _compose_snapshot_body(detail: dict[str, Any], status: dict[str, Any]) -> str:
-        """통제 detail(+상태)을 상세 증적 본문으로 조립 — 라이브 전 엔티티 + 메타 + 이행상태."""
+    def _evidence_host_lists() -> dict[str, list[dict[str, str]]]:
+        """소스별 실제 호스트 목록(hostname·ip·status) — 스냅샷에 '몇 개'가 아니라 '어떤 호스트'.
+
+        crosscheck 와 동일하게 alias + host_id 접두어(pc-=fleet, server-=zabbix)로 분류.
+        """
+        try:
+            store = get_query_service().store
+        except Exception:
+            return {}
+        fleet_ids: set[str] = set()
+        zbx_ids: set[str] = set()
+        for alias in getattr(store, "host_aliases", []) or []:
+            if getattr(alias, "source", "") == "fleet":
+                fleet_ids.add(alias.host_id)
+            elif getattr(alias, "source", "") == "zabbix":
+                zbx_ids.add(alias.host_id)
+        for h in getattr(store, "hosts", []):
+            hid = getattr(h, "host_id", "")
+            if hid.startswith("pc-") and hid not in fleet_ids and hid not in zbx_ids:
+                fleet_ids.add(hid)
+            elif hid.startswith("server-") and hid not in zbx_ids and hid not in fleet_ids:
+                zbx_ids.add(hid)
+
+        def _real(h: Any) -> bool:
+            # 실제 인벤토리 자산만(스캔 아티팩트·미현행 항목 제외) — IP가 있거나 상태가 확인된 것
+            return bool(getattr(h, "primary_ip", "")) or getattr(h, "status", "") in ("online", "offline")
+
+        def _row(h: Any) -> dict[str, str]:
+            return {"hostname": getattr(h, "hostname", "") or "(unknown)",
+                    "ip": getattr(h, "primary_ip", "") or "-", "status": getattr(h, "status", "") or ""}
+        hosts = [h for h in getattr(store, "hosts", []) if _real(h)]
+        fleet = sorted((_row(h) for h in hosts if getattr(h, "host_id", "") in fleet_ids), key=lambda r: r["hostname"])
+        zbx = sorted((_row(h) for h in hosts if getattr(h, "host_id", "") in zbx_ids), key=lambda r: r["hostname"])
+        return {"fleet": fleet, "zabbix": zbx}
+
+    def _compose_snapshot_body(detail: dict[str, Any], status: dict[str, Any],
+                               host_lists: dict[str, list[dict[str, str]]]) -> str:
+        """통제 detail(+상태)을 상세 증적 본문으로 조립 — 라이브 실호스트 목록 + 메타 + 이행상태."""
         c = detail.get("control", {})
         lines: list[str] = []
         head = f"[{c.get('id','')}] {c.get('title_ko') or c.get('title_en') or ''}"
@@ -586,27 +622,23 @@ def register_compliance(ctx: RouteContext) -> None:
             if summ:
                 any_ev = True
                 lines.append(f"  [{e.get('label_ko') or e.get('source','')}] {summ}")
-            for row in (e.get("breakdown") or []):
-                lines.append(f"    - {row.get('label','')}: {row.get('value','')}")
-            if e.get("more"):
-                lines.append(f"    … 외 {e.get('more')}건")
+            # fleet/zabbix 는 '몇 개'가 아니라 실제 호스트 목록을 직접 나열
+            src_hosts = host_lists.get(e.get("source", ""))
+            if src_hosts:
+                for hrow in src_hosts:
+                    meta = " · ".join(x for x in [hrow.get("ip", ""), hrow.get("status", "")] if x and x != "-")
+                    lines.append(f"    - {hrow['hostname']}" + (f" ({meta})" if meta else ""))
+            else:
+                for row in (e.get("breakdown") or []):
+                    lines.append(f"    - {row.get('label','')}: {row.get('value','')}")
+                if e.get("more"):
+                    lines.append(f"    … 외 {e.get('more')}건")
         if not any_ev:
             lines.append("  (현재 수집된 라이브 증적 없음)")
-        if detail.get("mapped_to"):
-            lines.append("")
-            lines.append("■ 크로스매핑:")
-            for m in detail["mapped_to"]:
-                lines.append(f"  ↔ {m.get('id','')} {m.get('title_ko') or m.get('title_en') or ''} ({m.get('relation','')})")
-        if detail.get("defects"):
-            lines.append("")
-            lines.append("■ 관련 심사 결함:")
-            for d in detail["defects"]:
-                gc = d.get("gap_count")
-                gc_txt = f" · 현재 공백 {gc}건" if isinstance(gc, int) else ""
-                lines.append(f"  ⚠ [{d.get('severity','')}] {d.get('title_ko') or ''}{gc_txt}")
         return "\n".join(lines)
 
-    def _snapshot_control(control_id: str, detail: dict[str, Any], user: str, kind: str = "auto") -> dict[str, Any]:
+    def _snapshot_control(control_id: str, detail: dict[str, Any], user: str,
+                          host_lists: dict[str, list[dict[str, str]]], kind: str = "auto") -> dict[str, Any]:
         """detail 로부터 상세 스냅샷 증적 레코드 생성·영속. kind: auto(수동) | scheduled(일정)."""
         import uuid
         status = ctx.control_status.get(control_id, {})
@@ -615,7 +647,7 @@ def register_compliance(ctx: RouteContext) -> None:
         label = "실증적 자동 스냅샷" if kind == "auto" else "실증적 정기 스냅샷"
         rec = {
             "id": str(uuid.uuid4()), "control_id": control_id,
-            "title": f"{label} ({today})", "body": _compose_snapshot_body(detail, status),
+            "title": f"{label} ({today})", "body": _compose_snapshot_body(detail, status, host_lists),
             "collected_by": user or "system", "collected_at": today,
             "reference": f"auto:{kind} 라이브 증적 스냅샷", "source": "auto",
             "created_at": now.isoformat(), "created_by": user or "system",
@@ -640,7 +672,7 @@ def register_compliance(ctx: RouteContext) -> None:
         if detail is None:
             raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
         user = ctx.get_session_username(request) if ctx.get_session_username else ""
-        rec = _snapshot_control(control_id, detail, user or "", kind="auto")
+        rec = _snapshot_control(control_id, detail, user or "", _evidence_host_lists(), kind="auto")
         if ctx.log_action:
             ctx.log_action(user or "system", "CONTROL_EVIDENCE_AUTO", control_id)
         return rec
@@ -684,6 +716,7 @@ def register_compliance(ctx: RouteContext) -> None:
         catalog = _merged_catalog()
         gaps = _live_gaps()
         metrics = _source_metrics(limit=200)
+        host_lists = _evidence_host_lists()
         count = 0
         for c in catalog.get("controls", []):
             cid = c.get("id")
@@ -694,7 +727,7 @@ def register_compliance(ctx: RouteContext) -> None:
             detail = build_control_detail(cid, gaps=gaps, metrics=metrics, catalog=catalog)
             if detail is None:
                 continue
-            _snapshot_control(cid, detail, user or "system", kind=kind)
+            _snapshot_control(cid, detail, user or "system", host_lists, kind=kind)
             count += 1
         ctx.settings[_SNAP_LAST_KEY] = now.isoformat()
         if ctx.persist_setting:

@@ -131,7 +131,7 @@ Per-host Critical/High counts + per-CVE remediation plan/exception/expiry + chan
 and saved as draft controls (precise structuring via Claude when `MORI_ANTHROPIC_API_KEY` is set,
 clause-level heuristic otherwise). Per control you can **document manual evidence**, or use
 **⚡ "Auto-capture live evidence"** to snapshot the current live aggregation into a **dated detailed
-evidence record** (control intent, status, every entity, mappings and audit defects captured). Set a
+evidence record** (control intent, status + the actual **live host list** — hostname·IP·status). Set a
 **scheduled snapshot** (off/daily/weekly/monthly) and MORI bulk-snapshots all controls when due **on
 boot / on view**, plus a **"⚡ Snapshot all now"** manual run. Download the evidence pack — live +
 documented, merged — as **CSV or PDF**. Editing & scheduling are admin-only; evidence documentation
