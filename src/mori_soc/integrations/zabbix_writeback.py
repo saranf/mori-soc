@@ -1,16 +1,21 @@
-"""Zabbix write-back client (Level 1 — comment-only).
+"""Zabbix write-back client (Level 1 comment-only / Level 2 ack+comment).
 
 MORI 는 기본적으로 read-only 다. 이 클라이언트는 명시적으로 활성화됐을 때에만
-MORI 의 triage 판단을 Zabbix problem event 에 *코멘트로만* 되돌려 쓴다.
+MORI 의 triage 판단을 Zabbix problem event 에 되돌려 쓴다.
 
 핵심 API 는 ``event.acknowledge`` 로, action bitmask 로 동작을 조합한다.
-Level 1 은 "메시지 추가" 비트(=4)만 사용한다. acknowledge / suppress /
-severity change / manual close 는 운영 리스크가 커서 MVP 범위에서 제외한다.
+  * Level 1 (comment_only): "메시지 추가" 비트(=4)만.
+  * Level 2 (ack_comment) : acknowledge(=2) + 메시지 추가(=4) = 6.
+suppress / severity change / manual close 는 운영 리스크가 커서 범위에서 제외한다.
 
 활성화 (기본 모두 비활성):
   MORI_ZABBIX_WRITEBACK_ENABLED   true 일 때만 동작 (default false)
-  MORI_ZABBIX_WRITEBACK_MODE      현재 "comment_only" 만 지원 (default comment_only)
+  MORI_ZABBIX_WRITEBACK_MODE      comment_only | ack_comment (default comment_only)
   MORI_ZABBIX_WRITEBACK_PREFIX    코멘트 접두어 (default "[MORI]")
+
+ack_comment 모드에서 acknowledge 는 triage 가 reviewing/resolved 로 전환될 때만
+일어난다(pending 은 코멘트만). triage payload 의 ``zabbix_ack`` 로 상태와
+무관하게 강제/해제할 수 있다(프론트 "Acknowledge in Zabbix" 버튼용 확장점).
 
 접속 정보는 콜렉터와 동일한 환경변수를 공유한다:
   MORI_ZABBIX_API_URL / MORI_ZABBIX_API_TOKEN /
@@ -27,10 +32,17 @@ from .zabbix_transport import ZabbixApiError, ZabbixTransport
 # event.acknowledge action bitmask (Zabbix API reference):
 #   1 close, 2 acknowledge, 4 add message, 8 change severity,
 #   16 unack, 32 suppress, 64 unsuppress, ...
-# Level 1 write-back only ever sets "add message".
+ACK_ACTION_ACKNOWLEDGE = 2
 ACK_ACTION_ADD_MESSAGE = 4
+# Level 2 acknowledge always carries the [MORI] message alongside the ack.
+ACK_ACTION_ACK_WITH_MESSAGE = ACK_ACTION_ACKNOWLEDGE | ACK_ACTION_ADD_MESSAGE  # 6
 
 MODE_COMMENT_ONLY = "comment_only"
+MODE_ACK_COMMENT = "ack_comment"
+SUPPORTED_MODES = frozenset({MODE_COMMENT_ONLY, MODE_ACK_COMMENT})
+
+# triage 상태가 이 집합으로 전환되면 ack_comment 모드에서 자동 acknowledge.
+ACK_STATUSES = frozenset({"reviewing", "resolved"})
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -73,7 +85,25 @@ class ZabbixWritebackConfig:
     @property
     def is_operational(self) -> bool:
         """True only when write-back should actually fire."""
-        return self.enabled and self.mode == MODE_COMMENT_ONLY and self.has_credentials
+        return self.enabled and self.mode in SUPPORTED_MODES and self.has_credentials
+
+    @property
+    def is_ack_mode(self) -> bool:
+        return self.mode == MODE_ACK_COMMENT
+
+    def should_acknowledge(self, status: str, *, explicit: bool | None = None) -> bool:
+        """Decide whether a triage update should acknowledge the Zabbix event.
+
+        ``explicit`` (from a triage payload's ``zabbix_ack``) overrides the
+        status-driven default when set; otherwise reviewing/resolved acknowledge
+        and everything else stays comment-only. Never acknowledges outside
+        ack_comment mode.
+        """
+        if not self.is_ack_mode:
+            return False
+        if explicit is not None:
+            return explicit
+        return status in ACK_STATUSES
 
 
 class ZabbixWritebackClient:
@@ -84,7 +114,7 @@ class ZabbixWritebackClient:
         self._prefix = prefix
 
     def add_comment(self, event_id: str | int, message: str) -> object:
-        """Append a ``[MORI]``-prefixed message to a Zabbix problem event.
+        """Append a ``[MORI]``-prefixed message to a Zabbix problem event (Level 1).
 
         Only *trigger* problem events can be updated (Zabbix constraint). The
         event id must be present; callers gate on this upstream.
@@ -92,6 +122,18 @@ class ZabbixWritebackClient:
         Raises :class:`ZabbixApiError` on transport/permission failure so the
         caller can record the failure in the MORI audit trail.
         """
+        return self._acknowledge_call(event_id, message, ACK_ACTION_ADD_MESSAGE)
+
+    def acknowledge(self, event_id: str | int, message: str) -> object:
+        """Acknowledge a Zabbix problem event and attach the [MORI] message (Level 2).
+
+        Uses ``event.acknowledge`` with acknowledge+message bits (=6). Acknowledge
+        needs read-write permission on the underlying trigger; a permission
+        failure surfaces as :class:`ZabbixApiError` for the audit trail.
+        """
+        return self._acknowledge_call(event_id, message, ACK_ACTION_ACK_WITH_MESSAGE)
+
+    def _acknowledge_call(self, event_id: str | int, message: str, action: int) -> object:
         event_id_text = str(event_id).strip()
         if not event_id_text:
             raise ZabbixApiError("Zabbix eventid is required for write-back")
@@ -100,7 +142,7 @@ class ZabbixWritebackClient:
             "event.acknowledge",
             {
                 "eventids": event_id_text,
-                "action": ACK_ACTION_ADD_MESSAGE,
+                "action": action,
                 "message": text,
             },
         )
@@ -137,6 +179,10 @@ __all__ = [
     "ZabbixWritebackClient",
     "ZabbixWritebackConfig",
     "build_zabbix_writeback_client",
+    "ACK_ACTION_ACKNOWLEDGE",
     "ACK_ACTION_ADD_MESSAGE",
+    "ACK_ACTION_ACK_WITH_MESSAGE",
     "MODE_COMMENT_ONLY",
+    "MODE_ACK_COMMENT",
+    "ACK_STATUSES",
 ]

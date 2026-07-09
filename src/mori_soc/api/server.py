@@ -1009,8 +1009,17 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
             _zabbix_writeback_config.has_credentials,
         )
 
-    def _zabbix_writeback_comment(alert: Any, triage_entry: dict[str, Any], acting_user: str) -> None:
-        """Push a [MORI] triage comment onto a Zabbix problem event + audit it.
+    def _zabbix_writeback_comment(
+        alert: Any,
+        triage_entry: dict[str, Any],
+        acting_user: str,
+        explicit_ack: bool | None = None,
+    ) -> None:
+        """Write a MORI triage decision back onto a Zabbix problem event + audit it.
+
+        Level 1 (comment_only) adds a [MORI] comment. Level 2 (ack_comment) also
+        acknowledges the event on reviewing/resolved transitions — or whenever a
+        triage payload's ``zabbix_ack`` (``explicit_ack``) forces it.
 
         Silently returns when write-back is disabled or the alert is not a
         Zabbix problem with a usable eventid. Never raises into the caller.
@@ -1027,20 +1036,26 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
         note = str(triage_entry.get("note", "")).strip()
         analyst = str(triage_entry.get("analyst", "")).strip()
         status_label = {"pending": "대기", "reviewing": "검토중", "resolved": "조치예정/완료"}.get(status, status)
-        message = f"Triage → {status_label} / 담당: {analyst or acting_user or 'unknown'}"
+        do_ack = _zabbix_writeback_config.should_acknowledge(status, explicit=explicit_ack)
+        verb = "Acknowledged" if do_ack else "Triage"
+        message = f"{verb} → {status_label} / 담당: {analyst or acting_user or 'unknown'}"
         if note:
             message += f" / {note}"
 
+        action_name = "acknowledge" if do_ack else "add_comment"
         now_iso = _isoformat(datetime.now(tz=timezone.utc))
         outcome = "success"
         error_text = ""
         response: object = None
         try:
-            response = _zabbix_writeback_client.add_comment(event_id, message)
+            if do_ack:
+                response = _zabbix_writeback_client.acknowledge(event_id, message)
+            else:
+                response = _zabbix_writeback_client.add_comment(event_id, message)
         except ZabbixApiError as exc:
             outcome = "error"
             error_text = str(exc)
-            logger.warning("Zabbix write-back failed for event %s: %s", event_id, exc)
+            logger.warning("Zabbix write-back (%s) failed for event %s: %s", action_name, event_id, exc)
         except Exception as exc:  # pragma: no cover - defensive: never break triage
             outcome = "error"
             error_text = str(exc)
@@ -1048,7 +1063,7 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
 
         alert_id = getattr(alert, "alert_id", "") or ""
         host_id = getattr(alert, "host_id", "") or ""
-        seed = f"{alert_id}|{event_id}|{now_iso}|{outcome}"
+        seed = f"{alert_id}|{event_id}|{now_iso}|{action_name}|{outcome}"
         evidence_id = "zbxwb-" + hashlib.sha1(seed.encode("utf-8")).hexdigest()[:16]
         record = {
             "id": evidence_id,
@@ -1059,7 +1074,7 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
             "summary": message,
             "source": "zabbix_writeback",
             "envelope": {
-                "action": "add_comment",
+                "action": action_name,
                 "mode": _zabbix_writeback_config.mode,
                 "prefix": _zabbix_writeback_config.prefix,
                 "mori_alert_id": alert_id,

@@ -69,9 +69,12 @@ def register_alerts(ctx: RouteContext) -> None:
             store = get_query_service().store
             alert_obj = next((a for a in store.alerts if a.alert_id == alert_id), None)
 
-        # Zabbix write-back (Level 1, comment-only) — 활성화 시에만, 실패해도 triage 응답 유지
+        # Zabbix write-back (Level 1 comment / Level 2 ack) — 활성화 시에만, 실패해도 triage 응답 유지.
+        # payload의 zabbix_ack(bool)로 상태와 무관하게 ack 강제/해제(프론트 버튼용). 없으면 상태 기반.
         if alert_obj is not None and _zabbix_writeback_comment is not None:
-            _zabbix_writeback_comment(alert_obj, entry, changed_by)
+            raw_ack = payload.get("zabbix_ack")
+            explicit_ack = bool(raw_ack) if isinstance(raw_ack, bool) else None
+            _zabbix_writeback_comment(alert_obj, entry, changed_by, explicit_ack)
 
         # Slack 알림: reviewing/resolved 전환 시
         if need_slack and alert_obj is not None:

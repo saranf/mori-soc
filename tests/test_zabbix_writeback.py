@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from mori_soc.integrations.zabbix_transport import ZabbixApiError, ZabbixTransport
 from mori_soc.integrations.zabbix_writeback import (
+    ACK_ACTION_ACK_WITH_MESSAGE,
     ACK_ACTION_ADD_MESSAGE,
     ZabbixWritebackClient,
     ZabbixWritebackConfig,
@@ -63,6 +64,24 @@ class ZabbixWritebackClientTests(unittest.TestCase):
         with self.assertRaises(ZabbixApiError):
             client.add_comment("  ", "note")
 
+    def test_acknowledge_uses_ack_plus_message_action(self) -> None:
+        captured = []
+
+        def fake_urlopen(req, timeout=0):
+            del timeout
+            captured.append(req)
+            return _FakeResponse({"jsonrpc": "2.0", "result": {"eventids": ["12345"]}, "id": 1})
+
+        client = ZabbixWritebackClient(_transport(), prefix="[MORI]")
+        with patch("mori_soc.integrations.zabbix_transport.request.urlopen", side_effect=fake_urlopen):
+            client.acknowledge("12345", "검토 착수")
+
+        payload = json.loads(captured[0].data.decode("utf-8"))
+        self.assertEqual(payload["method"], "event.acknowledge")
+        self.assertEqual(payload["params"]["action"], ACK_ACTION_ACK_WITH_MESSAGE)  # 2|4 == 6
+        self.assertEqual(payload["params"]["action"], 6)
+        self.assertEqual(payload["params"]["message"], "[MORI] 검토 착수")
+
     def test_api_error_surfaces_for_audit(self) -> None:
         def fake_urlopen(req, timeout=0):
             del timeout
@@ -115,6 +134,40 @@ class ZabbixWritebackConfigTests(unittest.TestCase):
             cfg = ZabbixWritebackConfig.from_env()
         self.assertFalse(cfg.is_operational)
         self.assertIsNone(build_zabbix_writeback_client(cfg))
+
+    def test_ack_comment_mode_operational(self) -> None:
+        env = {
+            "MORI_ZABBIX_WRITEBACK_ENABLED": "1",
+            "MORI_ZABBIX_WRITEBACK_MODE": "ack_comment",
+            "MORI_ZABBIX_API_URL": "http://zabbix.example/api_jsonrpc.php",
+            "MORI_ZABBIX_API_TOKEN": "api-token",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            cfg = ZabbixWritebackConfig.from_env()
+        self.assertTrue(cfg.is_operational)
+        self.assertTrue(cfg.is_ack_mode)
+        self.assertIsInstance(build_zabbix_writeback_client(cfg), ZabbixWritebackClient)
+
+
+class ShouldAcknowledgeTests(unittest.TestCase):
+    def _cfg(self, mode: str) -> ZabbixWritebackConfig:
+        return ZabbixWritebackConfig(enabled=True, mode=mode, api_url="http://x", token="t")
+
+    def test_comment_only_never_acknowledges(self) -> None:
+        cfg = self._cfg("comment_only")
+        self.assertFalse(cfg.should_acknowledge("resolved"))
+        self.assertFalse(cfg.should_acknowledge("reviewing", explicit=True))  # override ignored off-mode
+
+    def test_ack_mode_status_driven(self) -> None:
+        cfg = self._cfg("ack_comment")
+        self.assertTrue(cfg.should_acknowledge("reviewing"))
+        self.assertTrue(cfg.should_acknowledge("resolved"))
+        self.assertFalse(cfg.should_acknowledge("pending"))
+
+    def test_ack_mode_explicit_override_wins(self) -> None:
+        cfg = self._cfg("ack_comment")
+        self.assertTrue(cfg.should_acknowledge("pending", explicit=True))    # 버튼 강제 ack
+        self.assertFalse(cfg.should_acknowledge("resolved", explicit=False))  # 강제 comment-only
 
 
 if __name__ == "__main__":
