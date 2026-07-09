@@ -14,6 +14,16 @@ class StateRepository(ABC):
     once at boot to warm the cache.
     """
 
+    def apply_schema(self) -> None:
+        """Idempotently ensure the DB schema exists before the boot warm-cache.
+
+        No-op by default (in-memory backends have no schema). SQL-backed repos
+        override this to run ``schema/*.sql`` (all ``CREATE TABLE IF NOT EXISTS``)
+        at every boot, so a DB whose volume predates a newly-added table still
+        gets it — ``docker-entrypoint-initdb.d`` only runs on a *fresh* volume.
+        """
+        return None
+
     # ── user_profiles: username -> record ──────────────────────────────────────
     @abstractmethod
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:

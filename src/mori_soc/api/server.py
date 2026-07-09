@@ -229,6 +229,12 @@ def create_app(
     # Account approvals (allow-list): id -> {scope, host_key, username, kind, reason, approver, expires}
     account_approvals: dict[str, dict[str, Any]] = {}
 
+    # ── Ensure schema before any load_* (self-healing on pre-existing volumes) ─
+    # docker-entrypoint-initdb.d only runs on a *fresh* Postgres volume, so a DB
+    # created before a table was added never gets it and the load_* below crash.
+    # apply_schema() re-runs the idempotent DDL each boot (no-op for in-memory).
+    state_repo.apply_schema()
+
     # ── Warm caches from the persistence backend (M2-1.0d) ────────────────────
     # Cache-aside: load persisted operational state once at boot so the dicts
     # above act as a read cache. The default in-memory backend returns empty,

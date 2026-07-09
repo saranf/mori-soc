@@ -1,8 +1,25 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
 from .state_base import StateRepository
+
+
+def _schema_dir() -> Path | None:
+    """Locate the ``schema/`` directory holding the DDL files.
+
+    Honours ``MORI_SCHEMA_DIR`` if set; otherwise resolves the project root from
+    this module (``.../src/mori_soc/repositories/state_postgres.py`` → parents[3]).
+    Returns ``None`` if no directory is found (schema apply is then skipped).
+    """
+    override = os.getenv("MORI_SCHEMA_DIR", "").strip()
+    if override:
+        p = Path(override)
+        return p if p.is_dir() else None
+    cand = Path(__file__).resolve().parents[3] / "schema"
+    return cand if cand.is_dir() else None
 
 try:
     import psycopg
@@ -34,6 +51,30 @@ class PostgresStateRepository(StateRepository):
 
     def _connect(self):
         return psycopg.connect(self.dsn)
+
+    def apply_schema(self) -> None:
+        """Run every ``schema/*.sql`` in order so the DB is self-healing at boot.
+
+        Postgres' ``docker-entrypoint-initdb.d`` only runs on a *fresh* volume, so
+        a pre-existing volume never receives tables added after it was created —
+        the app then crashes SELECTing a missing table. Every DDL file is
+        ``CREATE TABLE IF NOT EXISTS`` (idempotent), so applying them on each boot
+        closes that gap safely. A per-file error is logged but does not abort boot.
+        """
+        schema_dir = _schema_dir()
+        if schema_dir is None:
+            print("[schema] no schema dir found; skipping auto-apply")
+            return
+        for f in sorted(schema_dir.glob("*.sql")):
+            sql = f.read_text(encoding="utf-8")
+            if not sql.strip():
+                continue
+            try:
+                with self._connect() as conn, conn.cursor() as cur:
+                    cur.execute(sql)
+                print(f"[schema] applied {f.name}")
+            except Exception as exc:  # noqa: BLE001 - report and continue
+                print(f"[schema] FAILED {f.name}: {exc}")
 
     # ── user_profiles ──────────────────────────────────────────────────────────
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:
