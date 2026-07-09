@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from datetime import datetime, timezone
@@ -228,6 +229,9 @@ def create_app(
     host_accounts: dict[str, list[dict[str, Any]]] = {}
     # Account approvals (allow-list): id -> {scope, host_key, username, kind, reason, approver, expires}
     account_approvals: dict[str, dict[str, Any]] = {}
+    # Catalog edits (admin/NLP overlay): control_id -> record; manual evidence: id -> record (M2-8)
+    catalog_edits: dict[str, dict[str, Any]] = {}
+    control_evidence: dict[str, dict[str, Any]] = {}
 
     # ── Ensure schema before any load_* (self-healing on pre-existing volumes) ─
     # docker-entrypoint-initdb.d only runs on a *fresh* Postgres volume, so a DB
@@ -251,6 +255,8 @@ def create_app(
     control_status.update(state_repo.load_control_status())
     host_accounts.update(state_repo.load_host_accounts())
     account_approvals.update(state_repo.load_account_approvals())
+    catalog_edits.update(state_repo.load_catalog_edits())
+    control_evidence.update(state_repo.load_control_evidence())
     # LDAP 가입 승인으로 만든 계정의 역할을 복원(비밀번호는 LDAP이 검증하므로 role만).
     for _skey, _sval in settings.items():
         if _skey.startswith("ldaprole:") and _sval:  # 빈 값(삭제됨)은 건너뜀
@@ -903,6 +909,8 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
         control_status=control_status,
         host_accounts=host_accounts,
         account_approvals=account_approvals,
+        catalog_edits=catalog_edits,
+        control_evidence=control_evidence,
         guides=guides,
         user_dashboard_prefs=user_dashboard_prefs,
         admin_dashboard_preferences=admin_dashboard_preferences,
@@ -953,6 +961,18 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
     def _delete_account_approval(approval_id: str) -> None:
         state_repo.delete_account_approval(approval_id)
 
+    def _persist_catalog_edit(control_id: str) -> None:
+        state_repo.save_catalog_edit(control_id, catalog_edits[control_id])
+
+    def _delete_catalog_edit(control_id: str) -> None:
+        state_repo.delete_catalog_edit(control_id)
+
+    def _persist_control_evidence(evidence_id: str) -> None:
+        state_repo.save_control_evidence(evidence_id, control_evidence[evidence_id])
+
+    def _delete_control_evidence(evidence_id: str) -> None:
+        state_repo.delete_control_evidence(evidence_id)
+
     ctx.persist_user_profile = _persist_user_profile
     ctx.persist_asset_owner = _persist_asset_owner
     ctx.delete_asset_owner = _delete_asset_owner
@@ -966,6 +986,99 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
     ctx.persist_host_accounts = _persist_host_accounts
     ctx.persist_account_approval = _persist_account_approval
     ctx.delete_account_approval = _delete_account_approval
+    ctx.persist_catalog_edit = _persist_catalog_edit
+    ctx.delete_catalog_edit = _delete_catalog_edit
+    ctx.persist_control_evidence = _persist_control_evidence
+    ctx.delete_control_evidence = _delete_control_evidence
+
+    # ── Zabbix write-back (Level 1, comment-only) ─────────────────────────────
+    # Read-only by default. When MORI_ZABBIX_WRITEBACK_ENABLED=true (and creds
+    # are present), a triage update on a *Zabbix* alert also posts a [MORI]
+    # comment onto the underlying problem event. Every attempt — success or
+    # failure — is recorded as an evidence event, so the write-back is auditable
+    # even when Zabbix rejects it (missing permission, resolved event, etc.).
+    from mori_soc.integrations import ZabbixWritebackConfig, build_zabbix_writeback_client
+    from mori_soc.integrations.zabbix_transport import ZabbixApiError
+
+    _zabbix_writeback_config = ZabbixWritebackConfig.from_env()
+    _zabbix_writeback_client = build_zabbix_writeback_client(_zabbix_writeback_config)
+    if _zabbix_writeback_config.enabled and _zabbix_writeback_client is None:
+        logger.warning(
+            "Zabbix write-back enabled but not operational (mode=%s, credentials=%s) — staying read-only",
+            _zabbix_writeback_config.mode,
+            _zabbix_writeback_config.has_credentials,
+        )
+
+    def _zabbix_writeback_comment(alert: Any, triage_entry: dict[str, Any], acting_user: str) -> None:
+        """Push a [MORI] triage comment onto a Zabbix problem event + audit it.
+
+        Silently returns when write-back is disabled or the alert is not a
+        Zabbix problem with a usable eventid. Never raises into the caller.
+        """
+        if _zabbix_writeback_client is None:
+            return
+        if getattr(alert, "source", None) != "zabbix":
+            return
+        event_id = getattr(alert, "source_event_id", None)
+        if not event_id:
+            return
+
+        status = str(triage_entry.get("status", "")).strip()
+        note = str(triage_entry.get("note", "")).strip()
+        analyst = str(triage_entry.get("analyst", "")).strip()
+        status_label = {"pending": "대기", "reviewing": "검토중", "resolved": "조치예정/완료"}.get(status, status)
+        message = f"Triage → {status_label} / 담당: {analyst or acting_user or 'unknown'}"
+        if note:
+            message += f" / {note}"
+
+        now_iso = _isoformat(datetime.now(tz=timezone.utc))
+        outcome = "success"
+        error_text = ""
+        response: object = None
+        try:
+            response = _zabbix_writeback_client.add_comment(event_id, message)
+        except ZabbixApiError as exc:
+            outcome = "error"
+            error_text = str(exc)
+            logger.warning("Zabbix write-back failed for event %s: %s", event_id, exc)
+        except Exception as exc:  # pragma: no cover - defensive: never break triage
+            outcome = "error"
+            error_text = str(exc)
+            logger.exception("Unexpected Zabbix write-back error for event %s", event_id)
+
+        alert_id = getattr(alert, "alert_id", "") or ""
+        host_id = getattr(alert, "host_id", "") or ""
+        seed = f"{alert_id}|{event_id}|{now_iso}|{outcome}"
+        evidence_id = "zbxwb-" + hashlib.sha1(seed.encode("utf-8")).hexdigest()[:16]
+        record = {
+            "id": evidence_id,
+            "host_id": str(host_id),
+            "artifact_name": "",
+            "delta_type": "zabbix_writeback",
+            "cve": "",
+            "summary": message,
+            "source": "zabbix_writeback",
+            "envelope": {
+                "action": "add_comment",
+                "mode": _zabbix_writeback_config.mode,
+                "prefix": _zabbix_writeback_config.prefix,
+                "mori_alert_id": alert_id,
+                "zabbix_eventid": str(event_id),
+                "message": message,
+                "status": outcome,
+                "error": error_text,
+                "response": response,
+                "requested_by": acting_user or "unknown",
+                "requested_at": now_iso,
+            },
+            "received_at": now_iso,
+        }
+        try:
+            state_repo.save_evidence_event(evidence_id, record)
+        except Exception:  # pragma: no cover - audit write must not break triage
+            logger.exception("Failed to persist Zabbix write-back evidence for event %s", event_id)
+
+    ctx.zabbix_writeback_comment = _zabbix_writeback_comment
 
     def get_query_service() -> QueryService:
         if service is not None:

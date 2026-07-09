@@ -29,6 +29,8 @@ class InMemoryStateRepository(StateRepository):
         self._control_status: dict[str, dict[str, Any]] = {}
         self._host_accounts: dict[str, list[dict[str, Any]]] = {}
         self._account_approvals: dict[str, dict[str, Any]] = {}
+        self._catalog_edits: dict[str, dict[str, Any]] = {}
+        self._control_evidence: dict[str, dict[str, Any]] = {}
 
     # ── user_profiles ──────────────────────────────────────────────────────────
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:
@@ -124,6 +126,26 @@ class InMemoryStateRepository(StateRepository):
 
     def delete_account_approval(self, approval_id: str) -> None:
         self._account_approvals.pop(approval_id, None)
+
+    # ── catalog_controls (편집/NLP 오버레이) ──────────────────────────────────────
+    def load_catalog_edits(self) -> dict[str, dict[str, Any]]:
+        return copy.deepcopy(self._catalog_edits)
+
+    def save_catalog_edit(self, control_id: str, record: dict[str, Any]) -> None:
+        self._catalog_edits[control_id] = copy.deepcopy(record)
+
+    def delete_catalog_edit(self, control_id: str) -> None:
+        self._catalog_edits.pop(control_id, None)
+
+    # ── control_evidence (수기 증적 레코드) ───────────────────────────────────────
+    def load_control_evidence(self) -> dict[str, dict[str, Any]]:
+        return copy.deepcopy(self._control_evidence)
+
+    def save_control_evidence(self, evidence_id: str, record: dict[str, Any]) -> None:
+        self._control_evidence[evidence_id] = copy.deepcopy(record)
+
+    def delete_control_evidence(self, evidence_id: str) -> None:
+        self._control_evidence.pop(evidence_id, None)
 
 
 __all__ = ["InMemoryStateRepository"]

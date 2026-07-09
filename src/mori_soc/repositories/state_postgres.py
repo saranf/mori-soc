@@ -461,5 +461,88 @@ class PostgresStateRepository(StateRepository):
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM account_approvals WHERE id = %s", (approval_id,))
 
+    # ── catalog_controls (M2-8 편집/NLP 오버레이) ───────────────────────────────
+    def load_catalog_edits(self) -> dict[str, dict[str, Any]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT control_id, op, framework, version, domain, section, title_ko, title_en, "
+                "intent_ko, intent_en, evidence_hint_ko, evidence_hint_en, evidence_sources, tags, "
+                "status, origin, updated_at, updated_by FROM catalog_controls"
+            )
+            return {r[0]: {
+                "control_id": r[0], "op": r[1], "framework": r[2], "version": r[3],
+                "domain": r[4], "section": r[5], "title_ko": r[6], "title_en": r[7],
+                "intent_ko": r[8], "intent_en": r[9], "evidence_hint_ko": r[10],
+                "evidence_hint_en": r[11], "evidence_sources": r[12] or [], "tags": r[13] or [],
+                "status": r[14], "origin": r[15],
+                "updated_at": r[16].isoformat() if r[16] else None, "updated_by": r[17] or "",
+            } for r in cur.fetchall()}
+
+    def save_catalog_edit(self, control_id: str, record: dict[str, Any]) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO catalog_controls (control_id, op, framework, version, domain, section,
+                    title_ko, title_en, intent_ko, intent_en, evidence_hint_ko, evidence_hint_en,
+                    evidence_sources, tags, status, origin, updated_at, updated_by)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, now(), %s)
+                ON CONFLICT (control_id) DO UPDATE SET
+                    op=EXCLUDED.op, framework=EXCLUDED.framework, version=EXCLUDED.version,
+                    domain=EXCLUDED.domain, section=EXCLUDED.section, title_ko=EXCLUDED.title_ko,
+                    title_en=EXCLUDED.title_en, intent_ko=EXCLUDED.intent_ko, intent_en=EXCLUDED.intent_en,
+                    evidence_hint_ko=EXCLUDED.evidence_hint_ko, evidence_hint_en=EXCLUDED.evidence_hint_en,
+                    evidence_sources=EXCLUDED.evidence_sources, tags=EXCLUDED.tags, status=EXCLUDED.status,
+                    origin=EXCLUDED.origin, updated_at=now(), updated_by=EXCLUDED.updated_by
+                """,
+                (control_id, record.get("op", "upsert"), record.get("framework", ""),
+                 record.get("version", ""), record.get("domain", ""), record.get("section", ""),
+                 record.get("title_ko", ""), record.get("title_en", ""), record.get("intent_ko", ""),
+                 record.get("intent_en", ""), record.get("evidence_hint_ko", ""),
+                 record.get("evidence_hint_en", ""),
+                 Jsonb(record.get("evidence_sources") or []) if Jsonb is not None else (record.get("evidence_sources") or []),
+                 Jsonb(record.get("tags") or []) if Jsonb is not None else (record.get("tags") or []),
+                 record.get("status", "draft"), record.get("origin", "manual"),
+                 record.get("updated_by") or None),
+            )
+
+    def delete_catalog_edit(self, control_id: str) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM catalog_controls WHERE control_id = %s", (control_id,))
+
+    # ── control_evidence (M2-8 수기 증적 레코드) ─────────────────────────────────
+    def load_control_evidence(self) -> dict[str, dict[str, Any]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, control_id, title, body, collected_by, collected_at, reference, "
+                "created_at, created_by FROM control_evidence"
+            )
+            return {r[0]: {
+                "id": r[0], "control_id": r[1], "title": r[2], "body": r[3],
+                "collected_by": r[4], "collected_at": r[5], "reference": r[6],
+                "created_at": r[7].isoformat() if r[7] else None, "created_by": r[8] or "",
+            } for r in cur.fetchall()}
+
+    def save_control_evidence(self, evidence_id: str, record: dict[str, Any]) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO control_evidence (id, control_id, title, body, collected_by,
+                    collected_at, reference, created_at, created_by)
+                VALUES (%s,%s,%s,%s,%s,%s,%s, now(), %s)
+                ON CONFLICT (id) DO UPDATE SET
+                    control_id=EXCLUDED.control_id, title=EXCLUDED.title, body=EXCLUDED.body,
+                    collected_by=EXCLUDED.collected_by, collected_at=EXCLUDED.collected_at,
+                    reference=EXCLUDED.reference, created_by=EXCLUDED.created_by
+                """,
+                (evidence_id, record.get("control_id", ""), record.get("title", ""),
+                 record.get("body", ""), record.get("collected_by", ""),
+                 record.get("collected_at", ""), record.get("reference", ""),
+                 record.get("created_by") or None),
+            )
+
+    def delete_control_evidence(self, evidence_id: str) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM control_evidence WHERE id = %s", (evidence_id,))
+
 
 __all__ = ["PostgresStateRepository", "PSYCOPG_AVAILABLE"]

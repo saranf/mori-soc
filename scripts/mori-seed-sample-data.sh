@@ -65,6 +65,9 @@ fi
 if [ -f "$PROJECT_ROOT/schema/010_accounts.sql" ]; then
   run_sql_file "$PROJECT_ROOT/schema/010_accounts.sql" >/dev/null 2>&1 || true
 fi
+if [ -f "$PROJECT_ROOT/schema/011_catalog_edits.sql" ]; then
+  run_sql_file "$PROJECT_ROOT/schema/011_catalog_edits.sql" >/dev/null 2>&1 || true
+fi
 
 # Fix legacy CHECK constraints (older DBs missing 'trivy' in source whitelists)
 run_sql_lenient "

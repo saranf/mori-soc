@@ -40,6 +40,23 @@ def register_compliance(ctx: RouteContext) -> None:
         sess = sessions.get(token) if sessions else None
         return sess.get("role") if sess else None
 
+    def _require_catalog_admin(request: Request) -> str:
+        """카탈로그 정본 편집(추가/수정/삭제·NLP 임포트)은 admin 전용."""
+        if ctx.auth_enabled and _evidence_role(request) != "admin":
+            raise HTTPException(status_code=403, detail="카탈로그 편집은 admin 전용입니다.")
+        user = ""
+        if ctx.get_session_username:
+            user = ctx.get_session_username(request) or ""
+        return user or "admin"
+
+    def _merged_catalog() -> dict[str, Any]:
+        """base 카탈로그 + admin/NLP 오버레이 병합본."""
+        from mori_soc.services.control_catalog import load_catalog, merge_edits
+        return merge_edits(load_catalog(), ctx.catalog_edits or {})
+
+    def _evidence_for(control_id: str) -> list[dict[str, Any]]:
+        return [r for r in (ctx.control_evidence or {}).values() if r.get("control_id") == control_id]
+
     def _control_status_default(control_id: str) -> dict[str, Any]:
         return {
             "control_id": control_id, "status": "미정", "owner": "",
@@ -190,9 +207,11 @@ def register_compliance(ctx: RouteContext) -> None:
             raise HTTPException(status_code=403, detail="control catalog requires admin or security role")
         from mori_soc.services.control_catalog import build_tree
         try:
-            data = build_tree()
+            # M2-8: base + admin/NLP 오버레이 병합본으로 트리 구성.
+            data = build_tree(_merged_catalog())
             # M2-7: 통제별 런타임 이행 상태(control_status)를 트리에 병기 → 화면에서 상태 뱃지/편집.
             data["status_map"] = {cid: dict(rec) for cid, rec in ctx.control_status.items()}
+            data["can_edit"] = (not ctx.auth_enabled) or (_evidence_role(request) == "admin")
             return data
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"control catalog unavailable: {exc}") from exc
@@ -328,11 +347,13 @@ def register_compliance(ctx: RouteContext) -> None:
         if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
             raise HTTPException(status_code=403, detail="control detail requires admin or security role")
         from mori_soc.services.control_catalog import build_control_detail
-        detail = build_control_detail(control_id, gaps=_live_gaps(), metrics=_source_metrics())
+        detail = build_control_detail(control_id, gaps=_live_gaps(), metrics=_source_metrics(),
+                                      catalog=_merged_catalog(), evidence_records=_evidence_for(control_id))
         if detail is None:
             raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
         # M2-7: 현재 이행 상태(편집 대상)를 상세에 병기.
         detail["runtime_status"] = ctx.control_status.get(control_id, _control_status_default(control_id))
+        detail["can_edit"] = (not ctx.auth_enabled) or (_evidence_role(request) == "admin")
         return detail
 
     @app.put("/controls/status/{control_id}", tags=["Compliance"])
@@ -343,8 +364,7 @@ def register_compliance(ctx: RouteContext) -> None:
         """
         if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
             raise HTTPException(status_code=403, detail="control status edit requires admin or security role")
-        from mori_soc.services.control_catalog import load_catalog
-        valid_ids = {c.get("id") for c in load_catalog().get("controls", [])}
+        valid_ids = {c.get("id") for c in _merged_catalog().get("controls", [])}
         if valid_ids and control_id not in valid_ids:
             raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
         status = str(payload.get("status", "")).strip() or "미정"
@@ -385,7 +405,8 @@ def register_compliance(ctx: RouteContext) -> None:
             raise HTTPException(status_code=403, detail="control evidence PDF requires admin or security role")
         from mori_soc.services.control_catalog import control_evidence_pdf
         try:
-            pdf = control_evidence_pdf(control_id, gaps=_live_gaps(), metrics=_source_metrics())
+            pdf = control_evidence_pdf(control_id, gaps=_live_gaps(), metrics=_source_metrics(),
+                                       catalog=_merged_catalog(), evidence_records=_evidence_for(control_id))
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         if pdf is None:
@@ -393,6 +414,161 @@ def register_compliance(ctx: RouteContext) -> None:
         safe = control_id.replace("/", "_")
         return StreamingResponse(iter([pdf]), media_type="application/pdf",
                                  headers={"Content-Disposition": f'attachment; filename="mori-evidence-{safe}.pdf"'})
+
+    @app.get("/controls/detail/{control_id}/evidence.csv", tags=["Compliance"])
+    def control_evidence_csv_route(control_id: str, request: Request) -> Any:
+        """통제 증적 팩 CSV(라이브 + 수기 증적 합본). admin·security 전용."""
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="control evidence CSV requires admin or security role")
+        from mori_soc.services.control_catalog import control_evidence_csv
+        csv_text = control_evidence_csv(control_id, gaps=_live_gaps(), metrics=_source_metrics(),
+                                        catalog=_merged_catalog(), evidence_records=_evidence_for(control_id))
+        if csv_text is None:
+            raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
+        safe = control_id.replace("/", "_")
+        return StreamingResponse(iter(["﻿" + csv_text]), media_type="text/csv",
+                                 headers={"Content-Disposition": f'attachment; filename="mori-evidence-{safe}.csv"'})
+
+    # ── M2-8: 카탈로그 정본 편집 (admin 전용) ─────────────────────────────────────
+    _CATALOG_FIELDS = ("framework", "version", "domain", "section", "title_ko", "title_en",
+                       "intent_ko", "intent_en", "evidence_hint_ko", "evidence_hint_en")
+
+    def _save_catalog_control(payload: dict[str, Any], actor: str, origin: str = "manual") -> dict[str, Any]:
+        control_id = str(payload.get("id", "")).strip()
+        if not control_id:
+            raise HTTPException(status_code=400, detail="id 가 필요합니다.")
+        title = str(payload.get("title_ko", "")).strip() or str(payload.get("title_en", "")).strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="title_ko(또는 title_en)가 필요합니다.")
+        srcs = payload.get("evidence_sources") or []
+        if isinstance(srcs, str):
+            srcs = [s.strip() for s in srcs.replace(";", ",").split(",") if s.strip()]
+        tags = payload.get("tags") or []
+        if isinstance(tags, str):
+            tags = [t.strip() for t in tags.replace(";", ",").split(",") if t.strip()]
+        rec: dict[str, Any] = {"control_id": control_id, "op": "upsert",
+                               "framework": str(payload.get("framework", "custom")).strip() or "custom",
+                               "evidence_sources": [str(s).strip().lower() for s in srcs],
+                               "tags": [str(t) for t in tags],
+                               "status": str(payload.get("status", "draft")).strip() or "draft",
+                               "origin": origin, "updated_by": actor}
+        for f in _CATALOG_FIELDS:
+            if f in payload:
+                rec[f] = str(payload.get(f) or "").strip()
+        ctx.catalog_edits[control_id] = rec
+        if ctx.persist_catalog_edit:
+            ctx.persist_catalog_edit(control_id)
+        return rec
+
+    @app.post("/controls", tags=["Compliance"])
+    def create_or_edit_control(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """통제 추가/수정(오버레이 upsert). admin 전용. 재싱크에도 유지."""
+        actor = _require_catalog_admin(request)
+        rec = _save_catalog_control(payload, actor)
+        if ctx.log_action:
+            ctx.log_action(actor, "CATALOG_CONTROL_UPSERT", f"{rec['control_id']}: {rec.get('title_ko','')}")
+        return rec
+
+    @app.delete("/controls/{control_id}", tags=["Compliance"])
+    def delete_control(control_id: str, request: Request) -> dict[str, Any]:
+        """통제 삭제. admin 전용. admin이 만든 통제면 오버레이 제거, base 통제면 숨김(op=delete)."""
+        actor = _require_catalog_admin(request)
+        from mori_soc.services.control_catalog import load_catalog
+        base_ids = {c.get("id") for c in load_catalog().get("controls", [])}
+        existing = ctx.catalog_edits.get(control_id)
+        if control_id in base_ids:
+            ctx.catalog_edits[control_id] = {"control_id": control_id, "op": "delete",
+                                             "framework": "", "origin": "manual", "updated_by": actor}
+            if ctx.persist_catalog_edit:
+                ctx.persist_catalog_edit(control_id)
+            action = "hidden"
+        elif existing is not None:
+            ctx.catalog_edits.pop(control_id, None)
+            if ctx.delete_catalog_edit:
+                ctx.delete_catalog_edit(control_id)
+            action = "deleted"
+        else:
+            raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
+        if ctx.log_action:
+            ctx.log_action(actor, "CATALOG_CONTROL_DELETE", f"{control_id} ({action})")
+        return {"ok": True, "id": control_id, "action": action}
+
+    @app.post("/controls/import-nlp", tags=["Compliance"])
+    def import_controls_nlp(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """법령/고시 자연어 텍스트 → 통제 초안 변환 & 저장(draft). admin 전용.
+
+        {text, framework?, id_prefix?}. Claude API 키가 있으면 정확 구조화, 없으면 휴리스틱.
+        결과는 draft 로 저장되어 카탈로그에 바로 뜨고, admin이 검토·수정한다.
+        """
+        actor = _require_catalog_admin(request)
+        from mori_soc.services.catalog_nlp import parse_regulation_text
+        text = str(payload.get("text", "")).strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="text 가 필요합니다.")
+        framework = str(payload.get("framework", "custom")).strip() or "custom"
+        prefix = str(payload.get("id_prefix", "REG")).strip() or "REG"
+        result = parse_regulation_text(text, framework=framework, id_prefix=prefix)
+        saved = []
+        for c in result["controls"]:
+            saved.append(_save_catalog_control(c, actor, origin="nlp"))
+        if ctx.log_action:
+            ctx.log_action(actor, "CATALOG_NLP_IMPORT", f"{result['method']}: {len(saved)}건 ({framework})")
+        return {"method": result["method"], "count": len(saved),
+                "controls": [{"id": c["control_id"], "title_ko": c.get("title_ko", "")} for c in saved]}
+
+    # ── M2-8: 통제별 수기 증적 레코드 (admin·security) ────────────────────────────
+    @app.get("/controls/detail/{control_id}/evidence-records", tags=["Compliance"])
+    def list_evidence_records(control_id: str, request: Request) -> dict[str, Any]:
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="evidence records require admin or security role")
+        rows = sorted(_evidence_for(control_id),
+                      key=lambda r: str(r.get("collected_at") or r.get("created_at") or ""), reverse=True)
+        return {"control_id": control_id, "records": rows, "total": len(rows)}
+
+    @app.post("/controls/detail/{control_id}/evidence-records", tags=["Compliance"])
+    def add_evidence_record(control_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """수기 증적 기록 추가 {title, body?, collected_by?, collected_at?, reference?}. admin·security."""
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="evidence records require admin or security role")
+        import uuid
+        title = str(payload.get("title", "")).strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="title 이 필요합니다.")
+        user = ""
+        if ctx.get_session_username:
+            user = ctx.get_session_username(request) or ""
+        collected_at = str(payload.get("collected_at", "")).strip()
+        if collected_at and _parse_date(collected_at) is None:
+            raise HTTPException(status_code=400, detail="collected_at must be YYYY-MM-DD")
+        rec = {
+            "id": str(uuid.uuid4()), "control_id": control_id, "title": title,
+            "body": str(payload.get("body", "")).strip(),
+            "collected_by": str(payload.get("collected_by", "")).strip() or user,
+            "collected_at": collected_at or datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
+            "reference": str(payload.get("reference", "")).strip(),
+            "created_at": datetime.now(tz=timezone.utc).isoformat(), "created_by": user or "unknown",
+        }
+        ctx.control_evidence[rec["id"]] = rec
+        if ctx.persist_control_evidence:
+            ctx.persist_control_evidence(rec["id"])
+        if ctx.log_action:
+            ctx.log_action(user or "unknown", "CONTROL_EVIDENCE_ADD", f"{control_id}: {title}")
+        return rec
+
+    @app.delete("/controls/detail/{control_id}/evidence-records/{evidence_id}", tags=["Compliance"])
+    def delete_evidence_record(control_id: str, evidence_id: str, request: Request) -> dict[str, Any]:
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="evidence records require admin or security role")
+        rec = ctx.control_evidence.get(evidence_id)
+        if rec is None or rec.get("control_id") != control_id:
+            raise HTTPException(status_code=404, detail="증적 레코드를 찾을 수 없습니다.")
+        ctx.control_evidence.pop(evidence_id, None)
+        if ctx.delete_control_evidence:
+            ctx.delete_control_evidence(evidence_id)
+        user = ctx.get_session_username(request) if ctx.get_session_username else ""
+        if ctx.log_action:
+            ctx.log_action(user or "unknown", "CONTROL_EVIDENCE_DELETE", f"{control_id}: {rec.get('title','')}")
+        return {"ok": True, "id": evidence_id}
 
     @app.get("/compliance/pdca/pending.csv", tags=["Compliance"])
     def compliance_pdca_pending_csv() -> Any:

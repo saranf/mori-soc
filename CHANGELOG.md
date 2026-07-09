@@ -4,6 +4,29 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.17.0-alpha.1] — 2026-07-09 — 통제 카탈로그 편집 · 법령 NLP 임포트 · 수기 증적 문서화
+
+정본 카탈로그를 admin이 직접 편집하고, 법령/고시 텍스트를 통제 초안으로 자동 변환하며,
+통제별 수기 증적을 문서화해 라이브 증적과 합본으로 CSV/PDF 다운로드한다.
+
+### Added
+- **카탈로그 직접 편집 (admin 전용)** — 통제 추가/수정/삭제. base 카탈로그(`controls/*.yaml`)와
+  분리된 오버레이(`schema/011` `catalog_controls`)에 쌓여 카탈로그 재싱크에도 유지. `POST /controls`,
+  `DELETE /controls/{id}`(base 통제는 숨김 op=delete, admin이 만든 통제는 완전 삭제). 트리에서
+  ✏️/🗑️ 인라인 편집, "➕ 통제 추가" 폼. custom/법령 프레임워크도 트리에 렌더.
+- **법령 텍스트 → 통제 NLP 임포트 (하이브리드, admin 전용)** — `POST /controls/import-nlp`.
+  `MORI_ANTHROPIC_API_KEY`(또는 `ANTHROPIC_API_KEY`)가 있으면 **Claude API**로 정밀 구조화,
+  없으면 **조항 단위 오프라인 휴리스틱**으로 초안 생성. 결과는 `status=draft`, `origin=nlp`로
+  저장되어 admin이 검토·수정. 모델은 `MORI_NLP_MODEL`(기본 haiku).
+- **수기 증적 문서화 (admin·security)** — 통제별 증적 레코드(제목·내용·수집자·수집일·참조링크)
+  추가/삭제(`schema/011` `control_evidence`). `GET/POST/DELETE /controls/detail/{id}/evidence-records`.
+- **증적 팩 CSV/PDF 선택 다운로드** — 라이브 증적 + 수기 증적 **합본**을 원하는 포맷으로.
+  신규 `GET /controls/detail/{id}/evidence.csv`(UTF-8 BOM), 기존 PDF에도 수기 증적 섹션 추가.
+
+### Changed
+- 카탈로그 트리/상세/증적 PDF가 base + 오버레이 **병합본**으로 동작(`merge_edits`).
+  `build_tree`가 알려진 프레임워크(ISMS-P·ISO) 뒤에 custom/법령 프레임워크도 렌더.
+
 ## [v0.16.0-alpha.1] — 2026-07-09 — IP 선별 CSV · 계정 열람 역할(admin 조정) · 카탈로그 번역
 
 ### Added

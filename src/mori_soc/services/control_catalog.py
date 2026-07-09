@@ -36,6 +36,44 @@ def load_catalog() -> dict[str, Any]:
     return _cache
 
 
+# M2-8: 정본 카탈로그 편집 필드(오버레이 upsert 레코드가 base 통제를 덮어쓰는 키들).
+_OVERLAY_FIELDS = (
+    "framework", "version", "domain", "section", "title_ko", "title_en",
+    "intent_ko", "intent_en", "evidence_hint_ko", "evidence_hint_en",
+    "evidence_sources", "tags", "status",
+)
+
+
+def merge_edits(catalog: dict[str, Any], edits: dict[str, dict[str, Any]] | None) -> dict[str, Any]:
+    """base 카탈로그 위에 admin 편집/NLP 오버레이(``edits``)를 병합한 새 카탈로그.
+
+    op='delete' 는 base 통제를 숨기고, op='upsert' 는 기존 통제를 덮어쓰거나 새 통제를
+    추가한다. base(``controls/*.yaml``)는 건드리지 않아 재싱크에도 오버레이가 유지된다.
+    """
+    if not edits:
+        return catalog
+    base = list(catalog.get("controls", []))
+    by_id = {c.get("id"): c for c in base}
+    deleted: set[str] = set()
+    for cid, e in edits.items():
+        if not cid:
+            continue
+        if e.get("op") == "delete":
+            deleted.add(cid)
+            continue
+        merged = dict(by_id.get(cid, {}))
+        merged["id"] = cid
+        for f in _OVERLAY_FIELDS:
+            if f in e and e.get(f) not in (None, ""):
+                merged[f] = e.get(f)
+        merged.setdefault("framework", "custom")
+        merged["_origin"] = e.get("origin", "manual")
+        merged["_edited"] = True
+        by_id[cid] = merged
+    controls = [c for cid, c in by_id.items() if cid not in deleted]
+    return {**catalog, "controls": controls}
+
+
 def _coverage(controls: list[dict], sources: set[str]) -> dict[str, Any]:
     total = len(controls)
     covered = sum(1 for c in controls if set(c.get("evidence_sources") or []) & sources)
@@ -72,10 +110,12 @@ def build_tree(catalog: dict[str, Any] | None = None) -> dict[str, Any]:
             parts.append(int(p) if p.isdigit() else p)
         return parts
 
+    # 알려진 프레임워크 먼저, 그 외(custom·법령 임포트 등)는 뒤에 알파벳순으로.
+    known = ("isms-p", "iso27001")
+    ordered = [fw for fw in known if fw in frameworks] + sorted(
+        fw for fw in frameworks if fw not in known)
     tree = []
-    for fw in ("isms-p", "iso27001"):
-        if fw not in frameworks:
-            continue
+    for fw in ordered:
         fnode = frameworks[fw]
         domains = []
         for dnode in fnode["domains"].values():
@@ -108,14 +148,18 @@ _SOURCE_META: dict[str, dict[str, str]] = {
 
 
 def build_control_detail(control_id: str, gaps: dict[str, Any] | None = None,
-                         metrics: dict[str, Any] | None = None) -> dict[str, Any] | None:
-    """한 통제의 증적 상세 — 통제 + 크로스매핑 + 관련 결함 + **라이브 실증적**.
+                         metrics: dict[str, Any] | None = None,
+                         catalog: dict[str, Any] | None = None,
+                         evidence_records: list[dict[str, Any]] | None = None) -> dict[str, Any] | None:
+    """한 통제의 증적 상세 — 통제 + 크로스매핑 + 관련 결함 + **라이브 실증적** + **수기 증적**.
 
     evidence mapper: 통제를 그 증적 소스·매핑·심사 결함으로 연결하고, ``metrics``
     (소스별 실데이터 집계)를 붙여 "매핑됨"을 넘어 "지금 이만큼의 실증적이 있다"를
     보여준다. 결함의 ``mori_signal`` 은 대시보드 evidence-gaps 카운트(gaps)와 이어붙인다.
+    ``catalog`` 를 주면(오버레이 병합본) 그것을, 아니면 base 카탈로그를 쓴다.
+    ``evidence_records`` 는 이 통제에 문서화된 수기 증적 목록.
     """
-    cat = load_catalog()
+    cat = catalog or load_catalog()
     control = next((c for c in cat.get("controls", []) if c.get("id") == control_id), None)
     if control is None:
         return None
@@ -156,15 +200,20 @@ def build_control_detail(control_id: str, gaps: dict[str, Any] | None = None,
             sig = d.get("mori_signal", "")
             defects.append({**d, "gap_count": gap_map.get(sig) if sig else None})
 
+    manual = sorted(evidence_records or [],
+                    key=lambda r: str(r.get("collected_at") or r.get("created_at") or ""), reverse=True)
     return {"control": control, "mapped_to": mapped, "defects": defects,
-            "evidence_live": evidence_live,
+            "evidence_live": evidence_live, "evidence_records": manual,
             "generated_at": datetime.now(tz=timezone.utc).isoformat()}
 
 
 def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
-                         metrics: dict[str, Any] | None = None) -> bytes | None:
+                         metrics: dict[str, Any] | None = None,
+                         catalog: dict[str, Any] | None = None,
+                         evidence_records: list[dict[str, Any]] | None = None) -> bytes | None:
     """통제 증적 팩 PDF (reportlab). 통제 미존재 시 None."""
-    detail = build_control_detail(control_id, gaps=gaps, metrics=metrics)
+    detail = build_control_detail(control_id, gaps=gaps, metrics=metrics,
+                                  catalog=catalog, evidence_records=evidence_records)
     if detail is None:
         return None
     try:
@@ -223,6 +272,17 @@ def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
             if e.get("more"):
                 story.append(Paragraph(f"&nbsp;&nbsp;&nbsp;&nbsp;… +{esc(e.get('more'))}", small))
 
+    if detail.get("evidence_records"):
+        story.append(Paragraph("수기 증적 / Documented evidence", h2))
+        for r in detail["evidence_records"]:
+            head = " · ".join(x for x in [esc(r.get("title")), esc(r.get("collected_at")),
+                                          esc(r.get("collected_by"))] if x)
+            story.append(Paragraph(f"• {head}", body))
+            if r.get("body"):
+                story.append(Paragraph(esc(r.get("body")), small))
+            if r.get("reference"):
+                story.append(Paragraph(f"↳ {esc(r.get('reference'))}", small))
+
     if detail["mapped_to"]:
         story.append(Paragraph("크로스매핑 / Cross-mapping", h2))
         rows = [["ID", "Title", "Relation"]]
@@ -250,6 +310,38 @@ def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
     story.append(Spacer(1, 10 * mm))
     story.append(Paragraph(f"생성 {esc(detail['generated_at'][:19])} · MORI SOC 통제 증적 팩 (draft catalog v1 — 공식 고시 대비 검증 필요)", small))
     doc.build(story)
+    return buf.getvalue()
+
+
+def control_evidence_csv(control_id: str, gaps: dict[str, Any] | None = None,
+                         metrics: dict[str, Any] | None = None,
+                         catalog: dict[str, Any] | None = None,
+                         evidence_records: list[dict[str, Any]] | None = None) -> str | None:
+    """통제 증적 팩 CSV(라이브 증적 + 수기 증적 합본). 통제 미존재 시 None."""
+    detail = build_control_detail(control_id, gaps=gaps, metrics=metrics,
+                                  catalog=catalog, evidence_records=evidence_records)
+    if detail is None:
+        return None
+    import csv as csv_mod
+    c = detail["control"]
+    buf = io.StringIO()
+    w = csv_mod.writer(buf)
+    w.writerow(["control_id", "title_ko", "title_en", "framework", "kind", "label",
+                "detail", "collected_by", "collected_at", "reference"])
+    cid, tko, ten = c.get("id", ""), c.get("title_ko", ""), c.get("title_en", "")
+    fw = c.get("framework", "")
+    for e in detail.get("evidence_live", []):
+        w.writerow([cid, tko, ten, fw, "live", e.get("label_ko") or e.get("source", ""),
+                    e.get("summary_ko") or "", "", "", ""])
+        for row in e.get("breakdown", []) or []:
+            w.writerow([cid, tko, ten, fw, "live-detail", row.get("label", ""),
+                        row.get("value", ""), "", "", ""])
+    for r in detail.get("evidence_records", []):
+        w.writerow([cid, tko, ten, fw, "manual", r.get("title", ""), r.get("body", ""),
+                    r.get("collected_by", ""), r.get("collected_at", ""), r.get("reference", "")])
+    for m in detail.get("mapped_to", []):
+        w.writerow([cid, tko, ten, fw, "mapping", m.get("id", ""),
+                    m.get("title_ko") or m.get("title_en") or "", "", "", m.get("relation", "")])
     return buf.getvalue()
 
 
@@ -318,4 +410,5 @@ def sync_catalog_to_db(dsn: str) -> dict[str, int]:
     return {"controls": len(controls), "mappings": len(mappings), "defects": len(defects)}
 
 
-__all__ = ["load_catalog", "build_tree", "build_control_detail", "control_evidence_pdf", "sync_catalog_to_db"]
+__all__ = ["load_catalog", "merge_edits", "build_tree", "build_control_detail",
+           "control_evidence_pdf", "control_evidence_csv", "sync_catalog_to_db"]

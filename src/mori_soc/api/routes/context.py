@@ -65,6 +65,10 @@ class RouteContext:
     host_accounts: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     # account_approvals: id -> 승인 대장 레코드 (allow-list)
     account_approvals: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # catalog_edits: control_id -> admin 편집/NLP 오버레이 레코드 (M2-8)
+    catalog_edits: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # control_evidence: id -> 수기 증적 레코드 (M2-8)
+    control_evidence: dict[str, dict[str, Any]] = field(default_factory=dict)
     guides: dict[str, dict[str, Any]] = field(default_factory=dict)
     user_dashboard_prefs: dict[str, dict[str, Any]] = field(default_factory=dict)
 
@@ -101,6 +105,17 @@ class RouteContext:
     persist_host_accounts: Optional[Callable[[str], None]] = None
     persist_account_approval: Optional[Callable[[str], None]] = None
     delete_account_approval: Optional[Callable[[str], None]] = None
+    persist_catalog_edit: Optional[Callable[[str], None]] = None
+    delete_catalog_edit: Optional[Callable[[str], None]] = None
+    persist_control_evidence: Optional[Callable[[str], None]] = None
+    delete_control_evidence: Optional[Callable[[str], None]] = None
+
+    # ── Zabbix write-back (Level 1, comment-only) ─────────────────────────────
+    # Optional hook: given the resolved Alert, the persisted triage entry, and
+    # the acting username, push a ``[MORI]`` comment onto the Zabbix problem
+    # event and record the attempt as an evidence event. No-op / absent when
+    # write-back is disabled. Must never raise into the request path.
+    zabbix_writeback_comment: Optional[Callable[..., None]] = None
 
 
 __all__ = ["RouteContext"]

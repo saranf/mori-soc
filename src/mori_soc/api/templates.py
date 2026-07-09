@@ -3187,6 +3187,12 @@ def render_user_dashboard_html(
             <span id=\"control_tree_coverage\" style=\"font-size:12px;color:#94a3b8\"></span>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.ctl.sub_compliance\">ISMS-P 101개 인증기준 트리. 항목을 클릭하면 이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 편집할 수 있고, 재시작 후에도 유지됩니다.</div>
+          <div id=\"ctl_admin_bar\" style=\"display:none;gap:8px;flex-wrap:wrap;margin:10px 0\">
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openControlEditor()\" data-i18n=\"dash.ctl.add\">➕ 통제 추가</button>
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openNlpImport()\" data-i18n=\"dash.ctl.nlp\">📥 법령 텍스트 임포트(NLP)</button>
+          </div>
+          <div id=\"ctl_editor\" style=\"display:none;margin:8px 0;padding:12px;background:#0f172a;border:1px solid #233046;border-radius:10px\"></div>
+          <div id=\"ctl_nlp\" style=\"display:none;margin:8px 0;padding:12px;background:#0f172a;border:1px solid #233046;border-radius:10px\"></div>
           <div id=\"control_tree_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
         <div class=\"layout\" style=\"padding:0 16px 16px\">
@@ -6627,6 +6633,7 @@ def render_user_dashboard_html(
       const c = _CTL_STATUS_COLOR[s] || '#475569';
       return `<span style=\"background:${c}22;color:${c};border:1px solid ${c};padding:0 6px;border-radius:5px;font-size:10px;margin-left:5px;font-weight:700\">${escapeHtml(s)}</span>`;
     }
+    let _ctlCanEdit = false;
     async function loadControlTree() {
       const box = document.getElementById('control_tree_box');
       if (!box) return;
@@ -6640,8 +6647,11 @@ def render_user_dashboard_html(
         if (covEl && cov.lite && cov.full) {
           covEl.textContent = `lite ${cov.lite.pct}% (${cov.lite.covered}/${cov.lite.total}) · full ${cov.full.pct}% (${cov.full.covered}/${cov.full.total})`;
         }
-        const fwLabel = { 'isms-p': 'ISMS-P', 'iso27001': 'ISO 27001:2022' };
+        const fwLabel = { 'isms-p': 'ISMS-P', 'iso27001': 'ISO 27001:2022', 'custom': 'Custom / 법령' };
         const smap = data.status_map || {};
+        _ctlCanEdit = !!data.can_edit;
+        const abar = document.getElementById('ctl_admin_bar');
+        if (abar) abar.style.display = _ctlCanEdit ? 'flex' : 'none';
         const badge = (s) => { const c=_CTL_SOURCE_COLOR[s]||'#64748b'; return `<span style=\"background:${c}22;color:${c};border:1px solid ${c}55;padding:0 6px;border-radius:5px;font-size:10px;margin-left:3px\">${escapeHtml(s)}</span>`; };
         const ctrlRow = (c) => {
           const title = (lang==='en' ? c.title_en : c.title_ko) || c.title_ko || c.title_en || '';
@@ -6652,7 +6662,8 @@ def render_user_dashboard_html(
           const st = smap[c.id];
           const stBadge = (st && st.status && st.status !== '미정') ? _ctlStatusBadge(st.status) : '';
           const pdf = c.mapped ? `<a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" title=\"${tt('dash.ctl.pdf','증적 팩 PDF')}\" style=\"margin-left:6px;text-decoration:none;font-size:11px\">📄</a>` : '';
-          return `<div style=\"padding:3px 0;${dim}\"><span onclick=\"toggleControlDetail('${enc}', this)\" style=\"${clickable}\"><span style=\"color:#64748b;font-size:11px\">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${stBadge}${srcs}</span>${pdf}<div class=\"ctl-detail\" style=\"display:none;margin:4px 0 8px 16px;padding:6px 10px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;font-size:12px\"></div></div>`;
+          const editBtns = _ctlCanEdit ? `<span onclick=\"openControlEditor('${enc}')\" title=\"${tt('dash.ctl.edit','수정')}\" style=\"cursor:pointer;margin-left:6px;font-size:11px\">✏️</span><span onclick=\"deleteControl('${enc}')\" title=\"${tt('dash.ctl.del','삭제')}\" style=\"cursor:pointer;margin-left:3px;font-size:11px\">🗑️</span>` : '';
+          return `<div style=\"padding:3px 0;${dim}\"><span onclick=\"toggleControlDetail('${enc}', this)\" style=\"${clickable}\"><span style=\"color:#64748b;font-size:11px\">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${stBadge}${srcs}</span>${pdf}${editBtns}<div class=\"ctl-detail\" style=\"display:none;margin:4px 0 8px 16px;padding:6px 10px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;font-size:12px\"></div></div>`;
         };
         let html = '';
         (data.tree || []).forEach(fw => {
@@ -6708,11 +6719,16 @@ def render_user_dashboard_html(
           h += `<div style=\"font-weight:700;color:#f59e0b;margin:6px 0 2px\">${tt('dash.ctl.def','관련 결함')}</div>`;
           h += d.defects.map(x => { const gc=(typeof x.gap_count==='number')?` · ${tt('dash.ctl.gap','현재 공백')} ${x.gap_count}`:''; return `<div style=\"color:#cbd5e1\">⚠ ${escapeHtml((lang==='en'?x.title_en:x.title_ko)||'')}${escapeHtml(gc)}</div>`; }).join('');
         }
+        // M2-8: 수기 증적 레코드 (admin·security 문서화)
+        h += _evRecordsHtml(enc, d.evidence_records || []);
         // M2-7: 이행 상태 편집 폼 (admin·security) — 저장 시 영속 + audit-log
         h += _ctlStatusForm(enc, d.runtime_status || {});
-        if (d.mapped_to !== undefined || (d.evidence_live||[]).length) {
-          h += `<div style=\"margin-top:6px\"><a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" style=\"color:#38bdf8;text-decoration:none\">📄 ${tt('dash.ctl.pdf','증적 팩 PDF')}</a></div>`;
-        }
+        // M2-8: 증적 팩 다운로드 — CSV / PDF 선택
+        h += `<div style=\"margin-top:8px;padding-top:6px;border-top:1px solid #1e293b;display:flex;gap:12px;align-items:center;flex-wrap:wrap\">
+          <span style=\"color:#94a3b8\">${tt('dash.ctl.download','증적 팩 다운로드')}:</span>
+          <a href=\"/controls/detail/${enc}/evidence.csv\" style=\"color:#5eead4;text-decoration:none\">📊 CSV</a>
+          <a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" style=\"color:#38bdf8;text-decoration:none\">📄 PDF</a>
+        </div>`;
         box.innerHTML = h || `<span class=\"empty\">—</span>`;
       } catch(e) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.err','통제 카탈로그를 불러오지 못했습니다.')}</span>`; }
     }
@@ -6763,6 +6779,157 @@ def render_user_dashboard_html(
     }
     window.saveControlStatus = saveControlStatus;
     window._applyEvidenceGating = _applyEvidenceGating;
+
+    // ── M2-8: 수기 증적 레코드 (문서화) ────────────────────────────────────────
+    function _evRecordsHtml(enc, records) {
+      const canEdit = _canViewEvidence();
+      let h = `<div style=\"margin-top:8px;padding-top:6px;border-top:1px solid #1e293b\"><div style=\"font-weight:700;color:#fbbf24;margin-bottom:4px\">📎 ${tt('dash.ctl.ev_title','수기 증적')}</div>`;
+      if (records.length) {
+        h += records.map(r => {
+          const meta = [r.collected_at, r.collected_by].filter(Boolean).map(escapeHtml).join(' · ');
+          const ref = r.reference ? ` <a href=\"${escapeHtml(r.reference)}\" target=\"_blank\" style=\"color:#38bdf8\">↗</a>` : '';
+          const del = canEdit ? `<span onclick=\"deleteEvidenceRecord('${enc}','${escapeHtml(r.id)}')\" style=\"cursor:pointer;color:#f87171;margin-left:6px\">×</span>` : '';
+          return `<div style=\"color:#cbd5e1;padding:2px 0\">• <b>${escapeHtml(r.title)}</b>${meta?` <span style=\"color:#64748b;font-size:11px\">(${meta})</span>`:''}${ref}${del}${r.body?`<div style=\"color:#94a3b8;font-size:11px;margin-left:12px\">${escapeHtml(r.body)}</div>`:''}</div>`;
+        }).join('');
+      } else {
+        h += `<div style=\"color:#64748b\">${tt('dash.ctl.ev_none','문서화된 수기 증적이 없습니다.')}</div>`;
+      }
+      if (canEdit) {
+        const inp = 'background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:5px;padding:4px 7px;font-size:12px';
+        h += `<div style=\"margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center\">
+          <input id=\"evr_title_${enc}\" placeholder=\"${tt('dash.ctl.ev_ttl_ph','증적 제목(예: 접근권한 검토 회의록)')}\" style=\"${inp};width:220px\" />
+          <input type=\"date\" id=\"evr_date_${enc}\" style=\"${inp}\" />
+          <input id=\"evr_ref_${enc}\" placeholder=\"${tt('dash.ctl.ev_ref_ph','참조 링크/위치')}\" style=\"${inp};width:160px\" />
+          <button onclick=\"addEvidenceRecord('${enc}')\" class=\"secondary\" style=\"width:auto;padding:4px 12px;font-size:12px\">+ ${tt('dash.ctl.ev_add','기록')}</button>
+        </div>
+        <input id=\"evr_body_${enc}\" placeholder=\"${tt('dash.ctl.ev_body_ph','증적 내용/설명')}\" style=\"${inp};width:100%;box-sizing:border-box;margin-top:6px\" />
+        <span id=\"evr_msg_${enc}\" style=\"font-size:11px;color:#64748b\"></span>`;
+      }
+      return h + `</div>`;
+    }
+    async function addEvidenceRecord(enc) {
+      const g = (p) => document.getElementById('evr_' + p + '_' + enc);
+      const title = g('title').value.trim();
+      const msg = g('msg');
+      if (!title) { if (msg) { msg.textContent = tt('dash.ctl.ev_need_ttl','제목을 입력하세요'); msg.style.color='#f87171'; } return; }
+      const body = { title, body: g('body').value.trim(), collected_at: g('date').value, reference: g('ref').value.trim() };
+      try {
+        const res = await fetch('/controls/detail/' + enc + '/evidence-records', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if (!res.ok) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } return; }
+        _refreshControlDetail(enc);
+      } catch(e) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } }
+    }
+    window.addEvidenceRecord = addEvidenceRecord;
+    async function deleteEvidenceRecord(enc, id) {
+      if (!confirm(tt('dash.ctl.ev_del_confirm','이 수기 증적을 삭제할까요?'))) return;
+      try {
+        const res = await fetch('/controls/detail/' + enc + '/evidence-records/' + encodeURIComponent(id), { method:'DELETE' });
+        if (res.ok) _refreshControlDetail(enc);
+      } catch(e) {}
+    }
+    window.deleteEvidenceRecord = deleteEvidenceRecord;
+    // 상세 패널 재렌더(열린 상태에서 갱신) — 해당 통제의 detail div를 다시 로드
+    function _refreshControlDetail(enc) {
+      const anchor = document.querySelector(`[onclick*=\"toggleControlDetail('${enc}'\"]`);
+      if (!anchor) { return; }
+      const box = anchor.parentElement.querySelector('.ctl-detail');
+      if (box && box.style.display !== 'none') { box.style.display='none'; toggleControlDetail(enc, anchor); }
+    }
+
+    // ── M2-8: 카탈로그 통제 편집/추가 (admin) ──────────────────────────────────
+    async function openControlEditor(enc) {
+      const box = document.getElementById('ctl_editor');
+      document.getElementById('ctl_nlp').style.display = 'none';
+      let c = { id:'', framework:'custom', domain:'', section:'', title_ko:'', title_en:'', intent_ko:'', evidence_hint_ko:'', evidence_sources:[], status:'draft' };
+      const isEdit = !!enc;
+      if (isEdit) {
+        try {
+          const res = await fetch('/controls/detail/' + enc);
+          if (res.ok) { const d = await res.json(); const ctl = d.control||{}; c = { ...c, ...ctl, id: ctl.id||decodeURIComponent(enc), evidence_sources: ctl.evidence_sources||[] }; }
+        } catch(e) {}
+      }
+      const inp = 'background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 9px;font-size:13px';
+      box.innerHTML = `<div style=\"font-weight:700;color:#a3e635;margin-bottom:8px\">${isEdit?tt('dash.ctl.edit_ttl','통제 수정'):tt('dash.ctl.add_ttl','통제 추가')}</div>
+        <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px\">
+          <input id=\"ce_id\" placeholder=\"ID (예: PIPA-5)\" value=\"${escapeHtml(c.id)}\" ${isEdit?'readonly':''} style=\"${inp}\" />
+          <input id=\"ce_framework\" placeholder=\"framework\" value=\"${escapeHtml(c.framework||'custom')}\" style=\"${inp}\" />
+          <input id=\"ce_domain\" placeholder=\"${tt('dash.ctl.f_domain','도메인/영역')}\" value=\"${escapeHtml(c.domain||'')}\" style=\"${inp}\" />
+          <input id=\"ce_section\" placeholder=\"${tt('dash.ctl.f_section','섹션')}\" value=\"${escapeHtml(c.section||'')}\" style=\"${inp}\" />
+        </div>
+        <input id=\"ce_title_ko\" placeholder=\"${tt('dash.ctl.f_title_ko','제목(한글)')}\" value=\"${escapeHtml(c.title_ko||'')}\" style=\"${inp};width:100%;box-sizing:border-box;margin-top:8px\" />
+        <input id=\"ce_title_en\" placeholder=\"${tt('dash.ctl.f_title_en','제목(영문)')}\" value=\"${escapeHtml(c.title_en||'')}\" style=\"${inp};width:100%;box-sizing:border-box;margin-top:8px\" />
+        <textarea id=\"ce_intent_ko\" placeholder=\"${tt('dash.ctl.f_intent','취지/설명')}\" style=\"${inp};width:100%;box-sizing:border-box;margin-top:8px;min-height:54px\">${escapeHtml(c.intent_ko||'')}</textarea>
+        <input id=\"ce_hint\" placeholder=\"${tt('dash.ctl.f_hint','증적 힌트')}\" value=\"${escapeHtml(c.evidence_hint_ko||'')}\" style=\"${inp};width:100%;box-sizing:border-box;margin-top:8px\" />
+        <input id=\"ce_sources\" placeholder=\"${tt('dash.ctl.f_sources','증적 소스(콤마: zabbix,trivy,fleet…)')}\" value=\"${escapeHtml((c.evidence_sources||[]).join(','))}\" style=\"${inp};width:100%;box-sizing:border-box;margin-top:8px\" />
+        <div style=\"margin-top:10px;display:flex;gap:8px;align-items:center\">
+          <button onclick=\"saveControlEdit()\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.save','저장')}</button>
+          <button onclick=\"document.getElementById('ctl_editor').style.display='none'\" class=\"secondary\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.cancel','취소')}</button>
+          <span id=\"ce_msg\" style=\"font-size:12px;color:#64748b\"></span>
+        </div>`;
+      box.style.display = 'block';
+    }
+    window.openControlEditor = openControlEditor;
+    async function saveControlEdit() {
+      const v = (id) => (document.getElementById(id)?.value || '').trim();
+      const msg = document.getElementById('ce_msg');
+      const body = { id: v('ce_id'), framework: v('ce_framework')||'custom', domain: v('ce_domain'),
+        section: v('ce_section'), title_ko: v('ce_title_ko'), title_en: v('ce_title_en'),
+        intent_ko: v('ce_intent_ko'), evidence_hint_ko: v('ce_hint'), evidence_sources: v('ce_sources') };
+      if (!body.id || (!body.title_ko && !body.title_en)) { msg.textContent = tt('dash.ctl.need_id_ttl','ID와 제목은 필수'); msg.style.color='#f87171'; return; }
+      try {
+        const res = await fetch('/controls', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if (!res.ok) { msg.textContent = tt('dash.ctl.save_fail','저장 실패') + ' (' + res.status + ')'; msg.style.color='#f87171'; return; }
+        document.getElementById('ctl_editor').style.display='none';
+        loadControlTree();
+      } catch(e) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; }
+    }
+    window.saveControlEdit = saveControlEdit;
+    async function deleteControl(enc) {
+      if (!confirm(tt('dash.ctl.del_confirm','이 통제를 삭제(또는 숨김)할까요?'))) return;
+      try {
+        const res = await fetch('/controls/' + enc, { method:'DELETE' });
+        if (res.ok) loadControlTree();
+      } catch(e) {}
+    }
+    window.deleteControl = deleteControl;
+
+    // ── M2-8: 법령 텍스트 NLP 임포트 (admin) ───────────────────────────────────
+    function openNlpImport() {
+      const box = document.getElementById('ctl_nlp');
+      document.getElementById('ctl_editor').style.display = 'none';
+      const inp = 'background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 9px;font-size:13px';
+      box.innerHTML = `<div style=\"font-weight:700;color:#38bdf8;margin-bottom:6px\">📥 ${tt('dash.ctl.nlp_ttl','법령/고시 텍스트 → 통제 초안')}</div>
+        <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.ctl.nlp_help','규정 텍스트를 붙여넣으면 통제 초안(draft)으로 변환·저장됩니다. Claude API 키가 있으면 정밀 구조화, 없으면 조항 단위 휴리스틱.')}</div>
+        <div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px\">
+          <input id=\"nlp_framework\" placeholder=\"${tt('dash.ctl.nlp_fw','프레임워크(예: 개인정보보호법)')}\" style=\"${inp};width:220px\" />
+          <input id=\"nlp_prefix\" placeholder=\"ID 접두어(예: PIPA)\" value=\"REG\" style=\"${inp};width:150px\" />
+        </div>
+        <textarea id=\"nlp_text\" placeholder=\"${tt('dash.ctl.nlp_ph','법령/고시 전문을 붙여넣으세요…')}\" style=\"${inp};width:100%;box-sizing:border-box;min-height:120px\"></textarea>
+        <div style=\"margin-top:8px;display:flex;gap:8px;align-items:center\">
+          <button onclick=\"runNlpImport()\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.nlp_run','변환 & 저장')}</button>
+          <button onclick=\"document.getElementById('ctl_nlp').style.display='none'\" class=\"secondary\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.cancel','취소')}</button>
+          <span id=\"nlp_msg\" style=\"font-size:12px;color:#64748b\"></span>
+        </div>`;
+      box.style.display = 'block';
+    }
+    window.openNlpImport = openNlpImport;
+    async function runNlpImport() {
+      const msg = document.getElementById('nlp_msg');
+      const text = document.getElementById('nlp_text').value.trim();
+      if (!text) { msg.textContent = tt('dash.ctl.nlp_need','텍스트를 붙여넣으세요'); msg.style.color='#f87171'; return; }
+      msg.textContent = tt('dash.ctl.nlp_running','변환 중…'); msg.style.color='#94a3b8';
+      try {
+        const res = await fetch('/controls/import-nlp', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ text, framework: document.getElementById('nlp_framework').value.trim()||'custom', id_prefix: document.getElementById('nlp_prefix').value.trim()||'REG' }) });
+        if (!res.ok) { msg.textContent = tt('dash.ctl.save_fail','저장 실패') + ' (' + res.status + ')'; msg.style.color='#f87171'; return; }
+        const d = await res.json();
+        const via = d.method === 'claude' ? 'Claude API' : (d.method === 'heuristic' ? tt('dash.ctl.nlp_heur','휴리스틱') : d.method);
+        msg.textContent = `✓ ${d.count}${tt('dash.ctl.nlp_done','건 저장됨')} (${via})`; msg.style.color='#4ade80';
+        loadControlTree();
+      } catch(e) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; }
+    }
+    window.runNlpImport = runNlpImport;
 
     // ── 계정 거버넌스 (admin·security) ─────────────────────────────────────────
     let _accData = { accounts: [], counts: {}, summary: {}, ip_list: [], dormant_days: 90 };

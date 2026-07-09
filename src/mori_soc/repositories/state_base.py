@@ -151,5 +151,37 @@ class StateRepository(ABC):
         """Remove one approval record."""
         raise NotImplementedError
 
+    # ── catalog_controls: control_id -> admin 편집/NLP 오버레이 (M2-8) ───────────
+    @abstractmethod
+    def load_catalog_edits(self) -> dict[str, dict[str, Any]]:
+        """All catalog-overlay records keyed by control_id."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_catalog_edit(self, control_id: str, record: dict[str, Any]) -> None:
+        """Upsert one catalog-overlay record (idempotent on ``control_id``)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_catalog_edit(self, control_id: str) -> None:
+        """Remove one catalog-overlay record."""
+        raise NotImplementedError
+
+    # ── control_evidence: id -> 수기 증적 레코드 (M2-8) ─────────────────────────
+    @abstractmethod
+    def load_control_evidence(self) -> dict[str, dict[str, Any]]:
+        """All manual evidence records keyed by id."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_control_evidence(self, evidence_id: str, record: dict[str, Any]) -> None:
+        """Upsert one manual evidence record (idempotent on ``id``)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_control_evidence(self, evidence_id: str) -> None:
+        """Remove one manual evidence record."""
+        raise NotImplementedError
+
 
 __all__ = ["StateRepository"]
