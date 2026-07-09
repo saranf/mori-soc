@@ -3184,7 +3184,10 @@ def render_user_dashboard_html(
         <section class=\"card\" id=\"control_tree_card\" style=\"margin:0 16px 12px\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
             <h2 style=\"margin:0\" data-i18n=\"dash.ctl.title\">📚 통제 카탈로그 (ISMS-P × ISO 27001)</h2>
-            <span id=\"control_tree_coverage\" style=\"font-size:12px;color:#94a3b8\"></span>
+            <div style=\"display:flex;align-items:center;gap:10px;flex-wrap:wrap\">
+              <span id=\"control_tree_coverage\" style=\"font-size:12px;color:#94a3b8\"></span>
+              <a href=\"/controls/evidence-bundle.zip\" download style=\"background:#0c2a4a;border:1px solid #1e3a5f;color:#7dd3fc;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none\" data-i18n=\"dash.ctl.zip\">📦 전체 증적 ZIP</a>
+            </div>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.ctl.sub_compliance\">ISMS-P 101개 인증기준 트리. 항목을 클릭하면 이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 편집할 수 있고, 재시작 후에도 유지됩니다.</div>
           <div id=\"ctl_admin_bar\" style=\"display:none;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0\">
