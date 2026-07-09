@@ -111,28 +111,16 @@ docker compose up -d mori-worker      # 재적용
 ![취약점 관리](docs/images/demo-trivy.png)
 
 ### 3) 위험성 평가 매트릭스
-<!-- 📸 스크린샷 가이드 ②
-     대상 : /ui → 위험성 평가 탭 (admin 또는 security 로그인)
-     담을 것 : 3×3 위험 매트릭스(영향도×발생가능성, 셀에 건수) + 위험처리 결정 컬럼
-     저장   : docs/images/02-risk-matrix.png -->
-<!-- ![위험성 평가 매트릭스](docs/images/02-risk-matrix.png) -->
-> 📸 _여기에 **위험성 평가 매트릭스** 스크린샷을 넣으세요 — `docs/images/02-risk-matrix.png`_
+<img width="647" height="367" alt="image" src="https://github.com/user-attachments/assets/a3190b6f-aa5a-4153-b25c-734452f7120f" />
+
 
 ### 4) 통제 카탈로그 (ISMS-P × ISO 27001)
-<!-- 📸 스크린샷 가이드 ③
-     대상 : /ui → 컴플라이언스 탭 → 통제 카탈로그 (admin·security)
-     담을 것 : framework→domain→section 트리 + lite/full 커버리지 % + 한 통제의 이행상태 편집 패널
-     저장   : docs/images/03-controls-catalog.png -->
-<!-- ![통제 카탈로그](docs/images/03-controls-catalog.png) -->
-> 📸 _여기에 **통제 카탈로그 트리 + 커버리지 %** 스크린샷을 넣으세요 — `docs/images/03-controls-catalog.png`_
+<img width="858" height="682" alt="image" src="https://github.com/user-attachments/assets/7b2c7fa3-98ff-4041-8fb5-07bc1592efd2" />
+
 
 ### 5) 계정 거버넌스 (접근권한 검토)
-<!-- 📸 스크린샷 가이드 ④
-     대상 : /ui → 🔑 계정 탭 (admin·security)
-     담을 것 : 통합 계정 목록 + findings(퇴사자 잔존·미승인 sudo 등 배지) + 승인 대장
-     저장   : docs/images/04-accounts.png -->
-<!-- ![계정 거버넌스](docs/images/04-accounts.png) -->
-> 📸 _여기에 **계정 거버넌스(계정 탭)** 스크린샷을 넣으세요 — `docs/images/04-accounts.png`_
+<img width="1287" height="694" alt="image" src="https://github.com/user-attachments/assets/274b5b78-1ee5-439b-9b37-452daa4ba1f4" />
+
 
 계정 탭의 **🌐 IP 리스트**는 **팀·용도(자산 소유자 메타)로 선별** 후 **CSV로 내보내기**를 지원합니다
 (호스트/IP 검색 + 팀·용도 드롭다운 → `hostname,ip,importance,team,category,status`).
@@ -142,12 +130,8 @@ docker compose up -d mori-worker      # 재적용
 (admin은 항상 포함). 저장 후 대상 사용자가 재로그인하면 계정 탭이 보입니다.
 
 ### 6) 어드민 콘솔 (/admin)
-<!-- 📸 스크린샷 가이드 ⑤
-     대상 : /admin 6탭 (관리자 로그인)
-     담을 것 : Overview · Remediation · 자산/Owners · Access Control(RBAC·가입승인·LDAP·계정 열람 역할) · Audit & Logs · Settings 탭 바
-     저장   : docs/images/05-admin-console.png -->
-<!-- ![어드민 콘솔](docs/images/05-admin-console.png) -->
-> 📸 _여기에 **어드민 콘솔 6탭** 스크린샷을 넣으세요 — `docs/images/05-admin-console.png`_
+<img width="1411" height="744" alt="image" src="https://github.com/user-attachments/assets/73bd715d-c610-4271-91e2-653bbbecea3c" />
+
 
 ---
 
