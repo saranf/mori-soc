@@ -5062,7 +5062,7 @@ def render_user_dashboard_html(
         const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>
           <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','','pc','')\"
             style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
-        return `<tr>
+        return `<tr ondblclick=\"openHostDetail('${escapeHtml(h.hostname)}')\" style=\"cursor:pointer\" title=\"${tt('dash.mine.dblclick','더블클릭하면 상세·조치현황')}\">
           <td><strong>${escapeHtml(h.hostname)}</strong>${fleetLink ? '<br>' + fleetLink : ''}</td>
           <td><span style=\"background:#0d2137;color:#6ee7b7;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;\">🖥️ PC</span></td>
           <td>${escapeHtml(h.platform)}</td>
@@ -5107,7 +5107,7 @@ def render_user_dashboard_html(
         const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>
           <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}','server','','','${escapeHtml(h.importance||'')}')\"
             style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
-        return `<tr>
+        return `<tr ondblclick=\"openHostDetail('${escapeHtml(h.hostname)}')\" style=\"cursor:pointer\" title=\"${tt('dash.mine.dblclick','더블클릭하면 상세·조치현황')}\">
           <td><strong>${escapeHtml(h.hostname)}</strong>${zabbixLink ? '<br>' + zabbixLink : ''}</td>
           <td style=\"font-size:12px\">${escapeHtml(h.category || '-')}</td>
           ${showImp ? `<td>${impBadge}</td>` : ''}
