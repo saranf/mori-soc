@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.15.0-alpha.1] — 2026-07-09 — 테이블 페이징 (기본 10 · 10단위 · 최대 100)
+
+### Added
+- **재사용 클라이언트 페이저** (`_pgApply`) — 큰 목록에 **기본 10개 · 10단위 선택(10~100) ·
+  이전/다음 · "N–M / 전체"** 컨트롤 바. `<table><tbody>` 행 또는 카드 목록(직속 자식)을 페이지
+  단위로 표시/숨김(서버 왕복 없이). 10개 이하면 바 숨김. 필터/재렌더와 함께 동작.
+- 적용: **자산 — PC(Fleet)·서버(Zabbix)·취약점(Trivy)**, **계정 목록**, **인시던트**.
+
 ## [v0.14.0-alpha.1] — 2026-07-09 — 계정 거버넌스 (접근권한 검토 · 서버/PC × LDAP)
 
 서버·PC **로컬 계정**을 수집(osquery)해 **LDAP 디렉터리 × 승인 대장**과 대조 →
