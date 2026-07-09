@@ -1095,6 +1095,100 @@ MORI SOC의 CVE별 위험성 평가는 아래 방법론을 따릅니다.
 
     ctx.zabbix_writeback_comment = _zabbix_writeback_comment
 
+    def _zabbix_writeback_suppress(
+        alert: Any,
+        *,
+        until: int,
+        reason: str,
+        acting_user: str,
+        unsuppress: bool = False,
+    ) -> dict[str, Any]:
+        """Suppress/unsuppress a Zabbix problem event for a MORI exception (Level 3).
+
+        Unlike the triage comment hook this is an *explicit* operational action:
+        it returns a structured result (``enabled``/``ok``/``error``) so the
+        calling endpoint can surface success or failure to the operator. Every
+        attempt is recorded as an evidence event. Never raises.
+        """
+        action_name = "unsuppress" if unsuppress else "suppress"
+        if _zabbix_writeback_client is None or not _zabbix_writeback_config.can_suppress:
+            return {"enabled": False, "ok": False, "action": action_name,
+                    "error": "suppress write-back not enabled (MORI_ZABBIX_WRITEBACK_MODE=suppress)"}
+        if getattr(alert, "source", None) != "zabbix":
+            return {"enabled": True, "ok": False, "action": action_name, "error": "not a Zabbix alert"}
+        event_id = getattr(alert, "source_event_id", None)
+        if not event_id:
+            return {"enabled": True, "ok": False, "action": action_name, "error": "alert has no Zabbix eventid"}
+
+        reason_text = str(reason or "").strip()
+        if unsuppress:
+            message = "Exception 철회 → unsuppress"
+        elif until == 0:
+            message = "Exception 승인 → suppress (무기한)"
+        else:
+            message = f"Exception 승인 → suppress (until {_isoformat(datetime.fromtimestamp(until, tz=timezone.utc))})"
+        if reason_text:
+            message += f" / 사유: {reason_text}"
+        message += f" / 요청: {acting_user or 'unknown'}"
+
+        now_iso = _isoformat(datetime.now(tz=timezone.utc))
+        outcome = "success"
+        error_text = ""
+        response: object = None
+        try:
+            if unsuppress:
+                response = _zabbix_writeback_client.unsuppress(event_id, message)
+            else:
+                response = _zabbix_writeback_client.suppress(event_id, message, until=until)
+        except ZabbixApiError as exc:
+            outcome = "error"
+            error_text = str(exc)
+            logger.warning("Zabbix %s failed for event %s: %s", action_name, event_id, exc)
+        except Exception as exc:  # pragma: no cover - defensive
+            outcome = "error"
+            error_text = str(exc)
+            logger.exception("Unexpected Zabbix %s error for event %s", action_name, event_id)
+
+        alert_id = getattr(alert, "alert_id", "") or ""
+        host_id = getattr(alert, "host_id", "") or ""
+        seed = f"{alert_id}|{event_id}|{now_iso}|{action_name}|{outcome}"
+        evidence_id = "zbxwb-" + hashlib.sha1(seed.encode("utf-8")).hexdigest()[:16]
+        record = {
+            "id": evidence_id,
+            "host_id": str(host_id),
+            "artifact_name": "",
+            "delta_type": "zabbix_writeback",
+            "cve": "",
+            "summary": message,
+            "source": "zabbix_writeback",
+            "envelope": {
+                "action": action_name,
+                "mode": _zabbix_writeback_config.mode,
+                "prefix": _zabbix_writeback_config.prefix,
+                "mori_alert_id": alert_id,
+                "zabbix_eventid": str(event_id),
+                "suppress_until": (None if unsuppress else int(until)),
+                "reason": reason_text,
+                "message": message,
+                "status": outcome,
+                "error": error_text,
+                "response": response,
+                "requested_by": acting_user or "unknown",
+                "requested_at": now_iso,
+            },
+            "received_at": now_iso,
+        }
+        try:
+            state_repo.save_evidence_event(evidence_id, record)
+        except Exception:  # pragma: no cover - audit write must not break the action
+            logger.exception("Failed to persist Zabbix %s evidence for event %s", action_name, event_id)
+
+        return {"enabled": True, "ok": outcome == "success", "action": action_name,
+                "error": error_text, "evidence_id": evidence_id,
+                "suppress_until": (None if unsuppress else int(until))}
+
+    ctx.zabbix_writeback_suppress = _zabbix_writeback_suppress
+
     def get_query_service() -> QueryService:
         if service is not None:
             return service

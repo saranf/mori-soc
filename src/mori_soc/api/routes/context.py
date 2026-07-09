@@ -116,6 +116,10 @@ class RouteContext:
     # event and record the attempt as an evidence event. No-op / absent when
     # write-back is disabled. Must never raise into the request path.
     zabbix_writeback_comment: Optional[Callable[..., None]] = None
+    # Explicit Level 3 suppress/unsuppress action; returns a structured result
+    # dict ({enabled, ok, error, ...}) for the calling endpoint. admin·security
+    # gated at the route. None-safe.
+    zabbix_writeback_suppress: Optional[Callable[..., dict]] = None
 
 
 __all__ = ["RouteContext"]

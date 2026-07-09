@@ -5,17 +5,20 @@ MORI 의 triage 판단을 Zabbix problem event 에 되돌려 쓴다.
 
 핵심 API 는 ``event.acknowledge`` 로, action bitmask 로 동작을 조합한다.
   * Level 1 (comment_only): "메시지 추가" 비트(=4)만.
-  * Level 2 (ack_comment) : acknowledge(=2) + 메시지 추가(=4) = 6.
-suppress / severity change / manual close 는 운영 리스크가 커서 범위에서 제외한다.
+  * Level 2 (ack_comment) : acknowledge(=2) + 메시지(=4) = 6.
+  * Level 3 (suppress)    : suppress(=32)/unsuppress(=64) + 메시지, suppress_until.
+severity change / manual close 는 운영 리스크가 커서 범위에서 제외한다.
 
 활성화 (기본 모두 비활성):
   MORI_ZABBIX_WRITEBACK_ENABLED   true 일 때만 동작 (default false)
-  MORI_ZABBIX_WRITEBACK_MODE      comment_only | ack_comment (default comment_only)
+  MORI_ZABBIX_WRITEBACK_MODE      comment_only | ack_comment | suppress (default comment_only)
   MORI_ZABBIX_WRITEBACK_PREFIX    코멘트 접두어 (default "[MORI]")
 
-ack_comment 모드에서 acknowledge 는 triage 가 reviewing/resolved 로 전환될 때만
-일어난다(pending 은 코멘트만). triage payload 의 ``zabbix_ack`` 로 상태와
-무관하게 강제/해제할 수 있다(프론트 "Acknowledge in Zabbix" 버튼용 확장점).
+모드는 상위 호환 레벨이다: ack 가능 모드(ack_comment, suppress)에서 acknowledge 는
+triage 가 reviewing/resolved 로 전환될 때 일어난다(pending 은 코멘트만). triage
+payload 의 ``zabbix_ack`` 로 상태와 무관하게 강제/해제 가능(프론트 버튼 확장점).
+suppress/unsuppress 는 자동 트리거가 아니라 명시적 예외 승인/철회 액션으로만
+호출한다(전용 엔드포인트, admin·security 전용).
 
 접속 정보는 콜렉터와 동일한 환경변수를 공유한다:
   MORI_ZABBIX_API_URL / MORI_ZABBIX_API_TOKEN /
@@ -34,14 +37,24 @@ from .zabbix_transport import ZabbixApiError, ZabbixTransport
 #   16 unack, 32 suppress, 64 unsuppress, ...
 ACK_ACTION_ACKNOWLEDGE = 2
 ACK_ACTION_ADD_MESSAGE = 4
-# Level 2 acknowledge always carries the [MORI] message alongside the ack.
+ACK_ACTION_SUPPRESS = 32
+ACK_ACTION_UNSUPPRESS = 64
+# 각 동작은 항상 [MORI] 메시지를 함께 남겨 감사 추적을 남긴다.
 ACK_ACTION_ACK_WITH_MESSAGE = ACK_ACTION_ACKNOWLEDGE | ACK_ACTION_ADD_MESSAGE  # 6
+ACK_ACTION_SUPPRESS_WITH_MESSAGE = ACK_ACTION_SUPPRESS | ACK_ACTION_ADD_MESSAGE  # 36
+ACK_ACTION_UNSUPPRESS_WITH_MESSAGE = ACK_ACTION_UNSUPPRESS | ACK_ACTION_ADD_MESSAGE  # 68
+
+# suppress_until=0 → 무기한 억제 (Zabbix 규약).
+SUPPRESS_INDEFINITE = 0
 
 MODE_COMMENT_ONLY = "comment_only"
 MODE_ACK_COMMENT = "ack_comment"
-SUPPORTED_MODES = frozenset({MODE_COMMENT_ONLY, MODE_ACK_COMMENT})
+MODE_SUPPRESS = "suppress"
+SUPPORTED_MODES = frozenset({MODE_COMMENT_ONLY, MODE_ACK_COMMENT, MODE_SUPPRESS})
+# ack 가능 모드(억제 모드는 ack 를 포함하는 상위 레벨).
+ACK_MODES = frozenset({MODE_ACK_COMMENT, MODE_SUPPRESS})
 
-# triage 상태가 이 집합으로 전환되면 ack_comment 모드에서 자동 acknowledge.
+# triage 상태가 이 집합으로 전환되면 ack 가능 모드에서 자동 acknowledge.
 ACK_STATUSES = frozenset({"reviewing", "resolved"})
 
 
@@ -89,7 +102,12 @@ class ZabbixWritebackConfig:
 
     @property
     def is_ack_mode(self) -> bool:
-        return self.mode == MODE_ACK_COMMENT
+        return self.mode in ACK_MODES
+
+    @property
+    def can_suppress(self) -> bool:
+        """True only when suppress/unsuppress write-back is unlocked."""
+        return self.enabled and self.mode == MODE_SUPPRESS and self.has_credentials
 
     def should_acknowledge(self, status: str, *, explicit: bool | None = None) -> bool:
         """Decide whether a triage update should acknowledge the Zabbix event.
@@ -133,19 +151,47 @@ class ZabbixWritebackClient:
         """
         return self._acknowledge_call(event_id, message, ACK_ACTION_ACK_WITH_MESSAGE)
 
-    def _acknowledge_call(self, event_id: str | int, message: str, action: int) -> object:
+    def suppress(self, event_id: str | int, message: str, *, until: int = SUPPRESS_INDEFINITE) -> object:
+        """Suppress a Zabbix problem event until *until* + attach [MORI] message (Level 3).
+
+        ``until`` is a Unix timestamp; ``0`` (SUPPRESS_INDEFINITE) suppresses
+        indefinitely. Maps a MORI risk-acceptance / maintenance-window exception
+        onto Zabbix. Needs trigger read-write permission.
+        """
+        return self._acknowledge_call(
+            event_id,
+            message,
+            ACK_ACTION_SUPPRESS_WITH_MESSAGE,
+            extra={"suppress_until": int(until)},
+        )
+
+    def unsuppress(self, event_id: str | int, message: str) -> object:
+        """Lift suppression on a Zabbix problem event + attach [MORI] message (Level 3).
+
+        Used when a MORI exception expires or is withdrawn.
+        """
+        return self._acknowledge_call(event_id, message, ACK_ACTION_UNSUPPRESS_WITH_MESSAGE)
+
+    def _acknowledge_call(
+        self,
+        event_id: str | int,
+        message: str,
+        action: int,
+        *,
+        extra: dict[str, object] | None = None,
+    ) -> object:
         event_id_text = str(event_id).strip()
         if not event_id_text:
             raise ZabbixApiError("Zabbix eventid is required for write-back")
         text = self._decorate(message)
-        return self._transport.call(
-            "event.acknowledge",
-            {
-                "eventids": event_id_text,
-                "action": action,
-                "message": text,
-            },
-        )
+        params: dict[str, object] = {
+            "eventids": event_id_text,
+            "action": action,
+            "message": text,
+        }
+        if extra:
+            params.update(extra)
+        return self._transport.call("event.acknowledge", params)
 
     def _decorate(self, message: str) -> str:
         body = (message or "").strip()
@@ -182,7 +228,13 @@ __all__ = [
     "ACK_ACTION_ACKNOWLEDGE",
     "ACK_ACTION_ADD_MESSAGE",
     "ACK_ACTION_ACK_WITH_MESSAGE",
+    "ACK_ACTION_SUPPRESS",
+    "ACK_ACTION_UNSUPPRESS",
+    "ACK_ACTION_SUPPRESS_WITH_MESSAGE",
+    "ACK_ACTION_UNSUPPRESS_WITH_MESSAGE",
+    "SUPPRESS_INDEFINITE",
     "MODE_COMMENT_ONLY",
     "MODE_ACK_COMMENT",
+    "MODE_SUPPRESS",
     "ACK_STATUSES",
 ]

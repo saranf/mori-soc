@@ -21,9 +21,25 @@ def register_alerts(ctx: RouteContext) -> None:
     get_query_service = ctx.get_query_service
     triage_store = ctx.triage_store
     webhooks = ctx.webhooks
+    sessions = ctx.sessions
     _get_session_username = ctx.get_session_username
     _persist_triage = ctx.persist_triage
     _zabbix_writeback_comment = ctx.zabbix_writeback_comment
+    _zabbix_writeback_suppress = ctx.zabbix_writeback_suppress
+
+    def _find_alert(alert_id: str) -> Any:
+        store = get_query_service().store
+        return next((a for a in store.alerts if a.alert_id == alert_id), None)
+
+    def _require_writeback_actor(request: Request) -> str:
+        """Suppress/unsuppress 는 실운영 억제라 admin·security 전용."""
+        if ctx.auth_enabled:
+            token = request.cookies.get("mori_session", "")
+            sess = sessions.get(token) if sessions else None
+            role = sess.get("role") if sess else None
+            if role not in {"admin", "security"}:
+                raise HTTPException(status_code=403, detail="Zabbix suppress는 admin·security 전용입니다.")
+        return _get_session_username(request) or "unknown"
 
     @app.get("/alerts", tags=["Alerts"])
     def alerts_list() -> dict[str, Any]:
@@ -82,6 +98,46 @@ def register_alerts(ctx: RouteContext) -> None:
             msg = f":mag: [MORI Triage] `{alert_id}` → *{label}*\n*Alert:* {alert_obj.message}\n*담당자:* {entry['analyst'] or 'unknown'}"
             _notify_all_webhooks(webhooks, msg)
         return {"alert_id": alert_id, "triage": entry}
+
+    # ── Zabbix suppress/unsuppress (Level 3) ──────────────────────────────────
+    # 명시적 예외 승인/철회 액션 — triage 와 분리, admin·security 전용.
+    # MORI_ZABBIX_WRITEBACK_MODE=suppress 로 켜졌을 때만 실제 반영된다.
+    def _resolve_suppress_target(alert_id: str, request: Request) -> Any:
+        actor = _require_writeback_actor(request)
+        if _zabbix_writeback_suppress is None:
+            raise HTTPException(status_code=503, detail="Zabbix write-back이 구성되지 않았습니다.")
+        alert_obj = _find_alert(alert_id)
+        if alert_obj is None:
+            raise HTTPException(status_code=404, detail="alert not found")
+        return actor, alert_obj
+
+    def _finish_suppress(alert_id: str, result: dict[str, Any]) -> dict[str, Any]:
+        if not result.get("enabled"):
+            raise HTTPException(status_code=409, detail=result.get("error", "suppress write-back not enabled"))
+        if not result.get("ok"):
+            raise HTTPException(status_code=502, detail=result.get("error", "Zabbix suppress failed"))
+        return {"alert_id": alert_id, **result}
+
+    @app.post("/alerts/{alert_id}/zabbix/suppress", tags=["Alerts"])
+    def alert_zabbix_suppress(alert_id: str, request: Request, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Zabbix problem event 억제(예외 승인). minutes 미지정/0 → 무기한. admin·security."""
+        actor, alert_obj = _resolve_suppress_target(alert_id, request)
+        body = payload or {}
+        minutes = body.get("minutes")
+        until = 0
+        if isinstance(minutes, (int, float)) and not isinstance(minutes, bool) and minutes > 0:
+            until = int(datetime.now(tz=timezone.utc).timestamp()) + int(minutes) * 60
+        reason = str(body.get("reason", "")).strip()
+        result = _zabbix_writeback_suppress(alert_obj, until=until, reason=reason, acting_user=actor)
+        return _finish_suppress(alert_id, result)
+
+    @app.post("/alerts/{alert_id}/zabbix/unsuppress", tags=["Alerts"])
+    def alert_zabbix_unsuppress(alert_id: str, request: Request, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Zabbix problem event 억제 해제(예외 철회). admin·security."""
+        actor, alert_obj = _resolve_suppress_target(alert_id, request)
+        reason = str((payload or {}).get("reason", "")).strip()
+        result = _zabbix_writeback_suppress(alert_obj, until=0, reason=reason, acting_user=actor, unsuppress=True)
+        return _finish_suppress(alert_id, result)
 
 
 __all__ = ["register_alerts"]
