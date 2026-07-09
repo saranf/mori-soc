@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.17.4-alpha.1] — 2026-07-09 — Compliance PDCA 미조치 표 페이징
+
+### Added
+- **Compliance PDCA "미조치 / 기한 초과 항목" 표에 페이징** 적용(`_pgApply`, 기본 10 · 10단위 ·
+  최대 100). 23건처럼 길어질 때 화면이 늘어지지 않도록. (기존 자산/계정/인시던트 표와 동일 페이저)
+
 ## [v0.17.3-alpha.1] — 2026-07-09 — 증적 문서 다운로드(표) + 증적 목록 접기
 
 ### Changed

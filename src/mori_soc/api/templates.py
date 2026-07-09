@@ -6301,6 +6301,7 @@ def render_user_dashboard_html(
                 </tr>`;
               }).join('')
               + '</tbody></table>';
+            _pgApply(pendingEl);  // 미조치/기한초과 표 페이징(기본 10 · 최대 100)
           }
         }
       } catch(e) {
