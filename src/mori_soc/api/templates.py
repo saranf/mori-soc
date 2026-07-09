@@ -554,6 +554,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
 
         <section class=\"card\">
+          <h2 data-i18n=\"admin.h.acct_roles\">🔑 계정 거버넌스 열람 역할</h2>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.acct_roles\">계정 탭·호스트 상세 계정 섹션·/accounts API를 볼 수 있는 역할을 지정합니다. admin은 항상 포함됩니다. 저장 후 다음 로그인부터 적용됩니다.</div>
+          <div id=\"acctrole_list\" style=\"display:flex;flex-wrap:wrap;gap:14px;margin:14px 0\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
+          <div class=\"actions\">
+            <button id=\"save_acctrole\" data-i18n=\"admin.s.btn.save\">저장</button>
+            <button id=\"reload_acctrole\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
+          </div>
+          <div class=\"status-line\" id=\"acctrole_status\"></div>
+        </section>
+
+        <section class=\"card\">
           <h2 data-i18n=\"admin.h.user_tabs\">👤 유저별 대시보드 탭 관리</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.user_tabs\">개별 유저에게 역할 기본값과 다른 탭을 지정합니다. 유저별 설정이 있으면 역할 기본값보다 우선 적용됩니다.</div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
@@ -1715,7 +1726,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       if (tab === 'logs') { loadAuditLog(); loadUserActivityLog(); }
       if (tab === 'remediation') { loadAdminVulnActions(); loadAdminActionPlans(); }
       if (tab === 'overview') { loadAdminPhase2Health(); loadAdminSourceFreshness(); }
-      if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); loadLdapUsers(); }
+      if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); loadLdapUsers(); loadAccountViewRoles(); }
     }
 
     // i18n: refresh the active admin tab's dynamic content when the language changes
@@ -1726,7 +1737,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         switchAdminTab(tab);
         // settings/access 탭은 init 시 1회 렌더되므로 언어 변경 시 직접 재렌더
         if (tab === 'settings') { renderDashboardPreferences(); renderGuideButtons(guideExamplesEl, guideExamples); }
-        if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); loadLdapUsers(); }
+        if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); loadLdapUsers(); loadAccountViewRoles(); }
       } catch (e) { /* best-effort */ }
     };
 
@@ -2043,6 +2054,52 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         }
       });
     }
+
+    // ── 계정 거버넌스 열람 역할 (admin 조정) ───────────────────────────────
+    async function loadAccountViewRoles() {
+      const listEl = document.getElementById('acctrole_list');
+      if (!listEl) return;
+      listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</span>`;
+      try {
+        const res = await fetch('/accounts/view-roles');
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+        const roles = data.roles || ['admin','security'];
+        const locked = data.locked || ['admin'];
+        const all = data.all_roles || ['admin','security','monitor','auditor','helpdesk','user'];
+        listEl.innerHTML = all.map(r => {
+          const isLocked = locked.includes(r);
+          const checked = roles.includes(r) ? 'checked' : '';
+          const dis = isLocked ? 'disabled' : '';
+          const meta = ROLE_PERM_ROLES.find(x => x.key === r);
+          const lbl = r === 'admin' ? tt('admin.dyn.role.admin','관리자 (admin)') : (meta ? tt(meta.labelKey, meta.label) : r);
+          return `<label style=\"display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid #223148;border-radius:8px;background:#0b1220;cursor:${isLocked?'not-allowed':'pointer'};opacity:${isLocked?'0.65':'1'}\">
+            <input type=\"checkbox\" data-acctrole=\"${r}\" ${checked} ${dis} style=\"width:auto;margin:0\" />
+            <span style=\"font-size:13px\">${escapeHtml(lbl)}${isLocked?` <span style=\"color:#64748b;font-size:11px\">${tt('admin.dyn.locked','(항상 포함)')}</span>`:''}</span>
+          </label>`;
+        }).join('');
+      } catch(e) {
+        listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</span>`;
+      }
+    }
+    window.loadAccountViewRoles = loadAccountViewRoles;
+    document.getElementById('reload_acctrole')?.addEventListener('click', loadAccountViewRoles);
+    document.getElementById('save_acctrole')?.addEventListener('click', async () => {
+      const statusEl = document.getElementById('acctrole_status');
+      const roles = [...document.querySelectorAll('#acctrole_list input[type=checkbox]:checked')].map(cb => cb.dataset.acctrole);
+      statusEl.textContent = tt('admin.dyn.saving','저장 중...');
+      try {
+        const res = await fetch('/accounts/view-roles', {
+          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({roles}),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        statusEl.style.color = '#86efac';
+        statusEl.textContent = tt('admin.dyn.acctrole_saved','✅ 저장되었습니다. 대상 사용자 재로그인 후 계정 탭이 보입니다.');
+      } catch(e) {
+        statusEl.style.color = '#fca5a5';
+        statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`;
+      }
+    });
 
     // ── 유저별 탭 권한 관리 ────────────────────────────────────────────────
     async function loadUserTabPermissions() {
@@ -3210,9 +3267,18 @@ def render_user_dashboard_html(
           <div id=\"acc_approvals\" class=\"table-wrap\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
         <section class=\"card\">
-          <h2 data-i18n=\"dash.acc.ip_title\">🌐 IP 리스트</h2>
-          <div class=\"subtext\" data-i18n=\"dash.acc.ip_sub\">수집된 호스트의 IP·상태입니다.</div>
-          <div class=\"table-wrap\" id=\"acc_ip_list\" style=\"margin-top:8px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+          <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+            <h2 style=\"margin:0\" data-i18n=\"dash.acc.ip_title\">🌐 IP 리스트</h2>
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"exportIpCsv()\" data-i18n=\"dash.acc.ip_csv\">📥 선별 CSV</button>
+          </div>
+          <div class=\"subtext\" data-i18n=\"dash.acc.ip_sub\">팀·용도로 IP를 선별해 CSV로 뽑을 수 있습니다.</div>
+          <div style=\"display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0\">
+            <input id=\"ip_search\" placeholder=\"호스트/IP 검색…\" data-i18n-placeholder=\"dash.acc.ip_search_ph\" oninput=\"renderAccIpList()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 10px;font-size:13px;width:150px\" />
+            <select id=\"ip_filter_team\" onchange=\"renderAccIpList()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:13px\"><option value=\"\" data-i18n=\"dash.acc.ip_allteam\">전체 팀</option></select>
+            <select id=\"ip_filter_cat\" onchange=\"renderAccIpList()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:13px\"><option value=\"\" data-i18n=\"dash.acc.ip_allcat\">전체 용도</option></select>
+            <span id=\"ip_count\" style=\"font-size:12px;color:#64748b\"></span>
+          </div>
+          <div class=\"table-wrap\" id=\"acc_ip_list\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
       </div>
     </div>
@@ -3775,7 +3841,10 @@ def render_user_dashboard_html(
         else if (tab === 'incidents') loadIncidents();
         else if (tab === 'assets') loadAssets();
         else if (tab === 'compliance') loadCompliance();
+        else if (tab === 'accounts') loadAccountsGov();
         else if (tab === 'guides') { buildGuideSubTabs(); if (currentGuideId) switchGuideTab(currentGuideId); }
+        // 통제 카탈로그 트리는 언어 전환 시 재렌더해야 한/영이 반영됨 (admin·security)
+        if (typeof _canViewEvidence === 'function' && _canViewEvidence()) loadControlTree();
       } catch (e) { /* re-render best-effort */ }
     };
 
@@ -4964,7 +5033,7 @@ def render_user_dashboard_html(
         ${_kv(tt('dash.host.exception','예외'), excStr)}
         ${h.last_seen_at?_kv(tt('dash.dyn.lbl.last_seen','마지막 확인'), escapeHtml(formatTime(h.last_seen_at))):''}
       </div>`;
-      const acctSlot = _canViewEvidence() ? `<div id=\"host_detail_acct\" style=\"margin-top:14px\"></div>` : '';
+      const acctSlot = _canViewAccounts() ? `<div id=\"host_detail_acct\" style=\"margin-top:14px\"></div>` : '';
       bodyEl.innerHTML = _hostDeepLinks(h, kind) + meta + `<div id=\"host_detail_remed\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>` + acctSlot;
       modal.style.display = 'flex';
       // E: 미조치 3버킷
@@ -4977,8 +5046,8 @@ def render_user_dashboard_html(
       } catch (e) {
         remedEl.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`;
       }
-      // 호스트 계정 섹션 (admin·security 전용)
-      if (_canViewEvidence()) {
+      // 호스트 계정 섹션 (계정 열람 역할 전용, admin 조정 가능)
+      if (_canViewAccounts()) {
         const acctEl = document.getElementById('host_detail_acct');
         try {
           const ar = await fetch(`/accounts/host/${encodeURIComponent(hostname)}`);
@@ -6539,10 +6608,17 @@ def render_user_dashboard_html(
         const el = document.getElementById(id);
         if (el) el.style.display = show ? '' : 'none';
       });
-      // 계정 거버넌스 탭(admin·security 전용) 노출
-      document.querySelectorAll('[data-tab="accounts"]').forEach(btn => btn.style.display = show ? '' : 'none');
       if (show) { loadEvidenceGaps(); loadControlTree(); }
     }
+    // 계정 거버넌스 열람 역할 — 서버(account_view_roles)에서 주입, admin이 조정. 기본 admin·security.
+    let _accountViewRoles = ['admin', 'security'];
+    function _canViewAccounts() { return _accountViewRoles.includes(_currentUserRole); }
+    window._canViewAccounts = _canViewAccounts;
+    function _applyAccountGating() {
+      const show = _canViewAccounts();
+      document.querySelectorAll('[data-tab="accounts"]').forEach(btn => btn.style.display = show ? '' : 'none');
+    }
+    window._applyAccountGating = _applyAccountGating;
     const _CTL_SOURCE_COLOR = { zabbix:'#38bdf8', trivy:'#f59e0b', wazuh:'#a78bfa', fleet:'#34d399', loki:'#f472b6', mori:'#94a3b8' };
     // M2-7: 통제 이행 상태 색상/배지
     const _CTL_STATUS_COLOR = { '이행':'#16a34a', '부분이행':'#d97706', '미이행':'#dc2626', '해당없음':'#64748b', '미정':'#475569' };
@@ -6778,12 +6854,52 @@ def render_user_dashboard_html(
     }
     window.deleteAccApproval = deleteAccApproval;
 
+    function _ipFiltered() {
+      const q = (document.getElementById('ip_search')?.value||'').trim().toLowerCase();
+      const tm = document.getElementById('ip_filter_team')?.value||'';
+      const cat = document.getElementById('ip_filter_cat')?.value||'';
+      return (_accData.ip_list||[]).filter(h => {
+        if (q && !((h.hostname||'').toLowerCase().includes(q) || (h.primary_ip||'').toLowerCase().includes(q))) return false;
+        if (tm && (h.team||'') !== tm) return false;
+        if (cat && (h.category||'') !== cat) return false;
+        return true;
+      });
+    }
     function renderAccIpList() {
       const el = document.getElementById('acc_ip_list'); if (!el) return;
-      const rows = _accData.ip_list || [];
+      const all = _accData.ip_list || [];
+      // 팀/용도 옵션 채우기(최초 1회 유지)
+      const fillSel = (id, vals) => { const s=document.getElementById(id); if(!s) return; const cur=s.value; while(s.options.length>1) s.remove(1); [...new Set(vals.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko')).forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o);}); if(cur) s.value=cur; };
+      fillSel('ip_filter_team', all.map(h=>h.team));
+      fillSel('ip_filter_cat', all.map(h=>h.category));
+      const rows = _ipFiltered();
+      const cnt = document.getElementById('ip_count'); if (cnt) cnt.textContent = `${rows.length}/${all.length}`;
       if (!rows.length) { el.innerHTML = `<span class=\"empty\">${tt('dash.acc.ip_none','호스트 없음')}</span>`; return; }
-      el.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"background:#0f2035\"><th style=\"padding:6px;text-align:left\">${tt('dash.dyn.lbl.hostname','호스트명')}</th><th style=\"padding:6px;text-align:left\">IP</th><th style=\"padding:6px\">${tt('dash.dyn.lbl.status','상태')}</th></tr></thead><tbody>${rows.map(h => `<tr><td style=\"padding:5px 6px\"><strong>${escapeHtml(h.hostname)}</strong></td><td style=\"padding:5px 6px;font-family:monospace;color:#94a3b8\">${escapeHtml(h.primary_ip||'-')}</td><td style=\"padding:5px 6px;text-align:center\"><span class=\"badge ${h.status==='online'?'online':h.status==='offline'?'offline':'unknown'}\">${escapeHtml(h.status||'-')}</span></td></tr>`).join('')}</tbody></table>`;
+      el.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"background:#0f2035\">
+        <th style=\"padding:6px;text-align:left\">${tt('dash.dyn.lbl.hostname','호스트명')}</th>
+        <th style=\"padding:6px;text-align:left\">IP</th>
+        <th style=\"padding:6px;text-align:left\">${tt('dash.mine.importance','중요도')}</th>
+        <th style=\"padding:6px;text-align:left\">${tt('dash.acc.ip_col_team','팀')}</th>
+        <th style=\"padding:6px;text-align:left\">${tt('dash.acc.ip_col_cat','용도')}</th>
+        <th style=\"padding:6px;text-align:left\">${tt('dash.dyn.lbl.status','상태')}</th></tr></thead><tbody>${rows.map(h => `<tr>
+          <td style=\"padding:5px 6px;text-align:left\"><strong>${escapeHtml(h.hostname)}</strong></td>
+          <td style=\"padding:5px 6px;text-align:left;font-family:monospace;color:#94a3b8\">${escapeHtml(h.primary_ip||'-')}</td>
+          <td style=\"padding:5px 6px;text-align:left;color:#cbd5e1\">${escapeHtml(h.importance||'-')}</td>
+          <td style=\"padding:5px 6px;text-align:left;color:#cbd5e1\">${escapeHtml(h.team||'-')}</td>
+          <td style=\"padding:5px 6px;text-align:left;color:#cbd5e1\">${escapeHtml(h.category||'-')}</td>
+          <td style=\"padding:5px 6px;text-align:left\"><span class=\"badge ${h.status==='online'?'online':h.status==='offline'?'offline':'unknown'}\">${escapeHtml(h.status||'-')}</span></td>
+        </tr>`).join('')}</tbody></table>`;
+      _pgApply(el);
     }
+    function exportIpCsv() {
+      const rows = _ipFiltered();
+      const head = ['hostname','ip','importance','team','category','status'];
+      const csv = [head.join(',')].concat(rows.map(h => [h.hostname, h.primary_ip||'', h.importance||'', h.team||'', h.category||'', h.status||''].map(v => `\"${String(v).replaceAll('\"','\"\"')}\"`).join(','))).join('\\n');
+      const blob = new Blob(['\\ufeff'+csv], {type:'text/csv;charset=utf-8'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'mori-ip-list.csv'; a.click(); URL.revokeObjectURL(a.href);
+    }
+    window.exportIpCsv = exportIpCsv;
     async function loadEvidenceGaps() {
       const box = document.getElementById('evidence_gap_box');
       if (!box) return;
@@ -6819,6 +6935,7 @@ def render_user_dashboard_html(
         if (!res.ok) return;
         const me = await res.json();
         _currentUserRole = me.role || 'user';
+        if (Array.isArray(me.account_view_roles) && me.account_view_roles.length) _accountViewRoles = me.account_view_roles;
         _currentProfile = {
           display_name: me.display_name || '',
           department: me.department || '',
@@ -6849,6 +6966,7 @@ def render_user_dashboard_html(
         if (adminLink) adminLink.style.display = (_currentUserRole === 'admin') ? 'block' : 'none';
         _applyRiskGating();
         _applyEvidenceGating();
+        _applyAccountGating();
         if (document.getElementById('security_hero_body')) renderSecurityHero();
       } catch(e) { /* 비로그인 상태에서도 대시보드는 동작 */ }
     }

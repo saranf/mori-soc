@@ -44,6 +44,26 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, list[str]] = {
     "user": ["dashboard", "assets", "guides"],
 }
 
+# 계정 거버넌스(계정 탭·호스트 상세 계정 섹션·/accounts/*) 열람 역할.
+# 기본 admin·security. admin이 ui_settings의 account_view_roles 로 자유롭게 조정.
+_ALL_ROLES = ("admin", "security", "monitor", "auditor", "helpdesk", "user")
+DEFAULT_ACCOUNT_VIEW_ROLES: list[str] = ["admin", "security"]
+
+
+def parse_account_view_roles(settings: dict[str, str] | None) -> list[str]:
+    """``ui_settings['account_view_roles']`` (콤마 구분)를 유효 역할 목록으로 파싱.
+
+    admin은 항상 포함(자기 자신 lock-out 방지). 값이 없으면 기본값.
+    """
+    raw = (settings or {}).get("account_view_roles", "") if settings else ""
+    roles = [r.strip() for r in str(raw).replace(";", ",").split(",") if r.strip()]
+    valid = [r for r in roles if r in _ALL_ROLES]
+    if not valid:
+        return list(DEFAULT_ACCOUNT_VIEW_ROLES)
+    if "admin" not in valid:
+        valid = ["admin", *valid]
+    return valid
+
 
 @dataclass
 class AuthConfig:

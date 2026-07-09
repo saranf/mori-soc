@@ -19,6 +19,7 @@ from fastapi.responses import StreamingResponse
 
 from mori_soc.api.payloads import _isoformat
 from mori_soc.api.routes.context import RouteContext
+from mori_soc.api.auth import _ALL_ROLES, parse_account_view_roles
 from mori_soc.services.account_recon import reconcile, FINDING_KINDS
 
 _PRIV_GROUPS = {"root", "wheel", "sudo", "admin", "adm", "domain admins", "administrators"}
@@ -57,8 +58,15 @@ def register_accounts_gov(ctx: RouteContext) -> None:
         return sess.get("role") if sess else None
 
     def _require_gov(request: Request) -> str:
-        if ctx.auth_enabled and _gov_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="계정 거버넌스는 admin·security 전용입니다.")
+        if ctx.auth_enabled and _gov_role(request) not in parse_account_view_roles(ctx.settings):
+            raise HTTPException(status_code=403, detail="계정 거버넌스 열람 권한이 없습니다. (admin이 역할 조정 가능)")
+        token = request.cookies.get("mori_session", "")
+        sess = sessions.get(token) if sessions else None
+        return (sess.get("username", "") if sess else "") or ""
+
+    def _require_admin(request: Request) -> str:
+        if ctx.auth_enabled and _gov_role(request) != "admin":
+            raise HTTPException(status_code=403, detail="열람 역할 조정은 admin 전용입니다.")
         token = request.cookies.get("mori_session", "")
         sess = sessions.get(token) if sessions else None
         return (sess.get("username", "") if sess else "") or ""
@@ -94,10 +102,14 @@ def register_accounts_gov(ctx: RouteContext) -> None:
             store = ctx.get_query_service().store
         except Exception:
             return []
+        owners = ctx.asset_owners or {}
         rows = []
         for h in getattr(store, "hosts", []) or []:
+            o = owners.get(h.hostname, {}) or {}
             rows.append({"hostname": h.hostname, "primary_ip": getattr(h, "primary_ip", "") or "",
-                         "host_id": h.host_id, "status": getattr(h, "status", "")})
+                         "host_id": h.host_id, "status": getattr(h, "status", ""),
+                         "team": o.get("team", "") or "", "category": o.get("category", "") or "",
+                         "importance": o.get("importance", "") or ""})
         rows.sort(key=lambda r: r["hostname"])
         return rows
 
@@ -204,6 +216,32 @@ def register_accounts_gov(ctx: RouteContext) -> None:
         if ctx.log_action:
             ctx.log_action(actor or "unknown", "ACCOUNT_APPROVAL_DELETE", f"{rec.get('username')} ({rec.get('kind')})")
         return {"ok": True, "id": approval_id}
+
+    # ── 열람 역할 설정 (admin 조정) ────────────────────────────────────────────
+    @app.get("/accounts/view-roles", tags=["Accounts"])
+    def get_view_roles(request: Request) -> dict[str, Any]:
+        """계정 거버넌스 열람 역할 조회. admin 전용."""
+        _require_admin(request)
+        return {"roles": parse_account_view_roles(ctx.settings),
+                "all_roles": list(_ALL_ROLES), "locked": ["admin"]}
+
+    @app.post("/accounts/view-roles", tags=["Accounts"])
+    def set_view_roles(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """계정 거버넌스 열람 역할 설정 {roles:[...]}. admin 항상 포함. admin 전용."""
+        actor = _require_admin(request)
+        raw = payload.get("roles")
+        if not isinstance(raw, list):
+            raise HTTPException(status_code=400, detail="roles 배열이 필요합니다.")
+        roles = [r for r in ("admin", *[str(x).strip() for x in raw]) if r in _ALL_ROLES]
+        # 중복 제거(순서 유지)
+        seen: set[str] = set()
+        roles = [r for r in roles if not (r in seen or seen.add(r))]
+        ctx.settings["account_view_roles"] = ",".join(roles)
+        if ctx.persist_setting:
+            ctx.persist_setting("account_view_roles", actor)
+        if ctx.log_action:
+            ctx.log_action(actor or "admin", "ACCOUNT_VIEW_ROLES_SET", ",".join(roles))
+        return {"roles": roles}
 
     # ── CSV evidence export ───────────────────────────────────────────────────
     @app.get("/accounts/overview.csv", tags=["Accounts"])

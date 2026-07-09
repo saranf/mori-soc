@@ -4,6 +4,28 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.16.0-alpha.1] — 2026-07-09 — IP 선별 CSV · 계정 열람 역할(admin 조정) · 카탈로그 번역
+
+### Added
+- **IP 리스트 팀/용도 선별 + CSV** — 계정 탭 IP 리스트에 **팀·용도(자산 소유자 메타) 컬럼**과
+  **팀·용도 드롭다운 + 호스트/IP 검색** 필터 추가. 필터 적용 결과를 그대로 **CSV로 내보내기**
+  (`hostname,ip,importance,team,category,status`, UTF-8 BOM). `/accounts/overview`의 `ip_list`가
+  `team/category/importance`를 포함하도록 확장.
+- **계정 거버넌스 열람 역할 — admin 조정** — 계정 탭·호스트 상세 계정 섹션·`/accounts/*`를 볼 수
+  있는 역할을 admin이 직접 지정. 기본 **admin·security**, **admin은 항상 포함(lock, 자기 잠금 방지)**.
+  `ui_settings.account_view_roles`에 영속. `GET/POST /accounts/view-roles` (admin 전용),
+  `/auth/me`가 `account_view_roles` 반환 → 클라 게이팅. 어드민 콘솔 **권한 탭 → "🔑 계정 거버넌스
+  열람 역할"** 카드에서 체크박스로 설정.
+
+### Changed
+- 계정 탭·호스트 상세 계정 섹션 게이팅을 **증적 게이팅(admin·security 고정)에서 분리**해
+  설정 가능한 **`account_view_roles`** 기반으로 전환(`_canViewAccounts`).
+
+### Fixed
+- **통제 카탈로그 한↔영 번역** — 언어 토글 시 통제 트리를 새 언어로 재렌더(`onLangChange`에서
+  `loadControlTree` 재호출). 카탈로그는 이미 194개 통제 `title_ko/title_en` 완비.
+- **IP 리스트 상태 컬럼 정렬** — 헤더/셀 좌측 정렬 불일치 수정(전 컬럼 좌측 정렬 통일).
+
 ## [v0.15.0-alpha.1] — 2026-07-09 — 테이블 페이징 (기본 10 · 10단위 · 최대 100)
 
 ### Added

@@ -16,7 +16,7 @@ from typing import Any
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from mori_soc.api.auth import DEFAULT_ROLE_PERMISSIONS, ldap_add_user
+from mori_soc.api.auth import DEFAULT_ROLE_PERMISSIONS, ldap_add_user, parse_account_view_roles
 from mori_soc.api.templates import render_login_html, render_signup_request_html
 from mori_soc.api.payloads import _isoformat
 from mori_soc.api.routes.context import RouteContext
@@ -199,11 +199,13 @@ def register_auth(ctx: RouteContext) -> None:
         """현재 로그인한 사용자 정보 조회."""
         token = request.cookies.get("mori_session", "")
         sess = sessions.get(token)
+        acct_roles = parse_account_view_roles(ctx.settings)
         if not sess:
             return {
                 "username": "anonymous",
                 "role": "user",
                 "allowed_tabs": _DEFAULT_ROLE_PERMISSIONS.get("user", ["dashboard", "assets", "guides"]),
+                "account_view_roles": acct_roles,
                 **_user_profile("anonymous"),
             }
         role = sess.get("role", "user")
@@ -217,6 +219,7 @@ def register_auth(ctx: RouteContext) -> None:
             "username": uname,
             "role": role,
             "allowed_tabs": allowed,
+            "account_view_roles": acct_roles,
             **_user_profile(uname),
         }
 
