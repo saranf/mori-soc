@@ -35,9 +35,13 @@ CREATE TABLE IF NOT EXISTS control_evidence (
     collected_by  TEXT NOT NULL DEFAULT '',
     collected_at  TEXT NOT NULL DEFAULT '',   -- YYYY-MM-DD (수집/작성일)
     reference     TEXT NOT NULL DEFAULT '',    -- 링크/문서 위치
+    source        TEXT NOT NULL DEFAULT 'manual',  -- manual | auto (실증적 스냅샷 자동 생성)
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_by    TEXT
 );
+
+-- 기존 볼륨(011 이전 생성)에도 source 컬럼을 자가 치유로 추가.
+ALTER TABLE control_evidence ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual';
 
 CREATE INDEX IF NOT EXISTS idx_control_evidence_control ON control_evidence (control_id);
 

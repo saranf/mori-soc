@@ -514,12 +514,13 @@ class PostgresStateRepository(StateRepository):
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 "SELECT id, control_id, title, body, collected_by, collected_at, reference, "
-                "created_at, created_by FROM control_evidence"
+                "created_at, created_by, source FROM control_evidence"
             )
             return {r[0]: {
                 "id": r[0], "control_id": r[1], "title": r[2], "body": r[3],
                 "collected_by": r[4], "collected_at": r[5], "reference": r[6],
                 "created_at": r[7].isoformat() if r[7] else None, "created_by": r[8] or "",
+                "source": r[9] or "manual",
             } for r in cur.fetchall()}
 
     def save_control_evidence(self, evidence_id: str, record: dict[str, Any]) -> None:
@@ -527,17 +528,17 @@ class PostgresStateRepository(StateRepository):
             cur.execute(
                 """
                 INSERT INTO control_evidence (id, control_id, title, body, collected_by,
-                    collected_at, reference, created_at, created_by)
-                VALUES (%s,%s,%s,%s,%s,%s,%s, now(), %s)
+                    collected_at, reference, source, created_at, created_by)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, now(), %s)
                 ON CONFLICT (id) DO UPDATE SET
                     control_id=EXCLUDED.control_id, title=EXCLUDED.title, body=EXCLUDED.body,
                     collected_by=EXCLUDED.collected_by, collected_at=EXCLUDED.collected_at,
-                    reference=EXCLUDED.reference, created_by=EXCLUDED.created_by
+                    reference=EXCLUDED.reference, source=EXCLUDED.source, created_by=EXCLUDED.created_by
                 """,
                 (evidence_id, record.get("control_id", ""), record.get("title", ""),
                  record.get("body", ""), record.get("collected_by", ""),
                  record.get("collected_at", ""), record.get("reference", ""),
-                 record.get("created_by") or None),
+                 record.get("source", "manual"), record.get("created_by") or None),
             )
 
     def delete_control_evidence(self, evidence_id: str) -> None:

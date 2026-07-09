@@ -545,7 +545,7 @@ def register_compliance(ctx: RouteContext) -> None:
             "body": str(payload.get("body", "")).strip(),
             "collected_by": str(payload.get("collected_by", "")).strip() or user,
             "collected_at": collected_at or datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
-            "reference": str(payload.get("reference", "")).strip(),
+            "reference": str(payload.get("reference", "")).strip(), "source": "manual",
             "created_at": datetime.now(tz=timezone.utc).isoformat(), "created_by": user or "unknown",
         }
         ctx.control_evidence[rec["id"]] = rec
@@ -553,6 +553,50 @@ def register_compliance(ctx: RouteContext) -> None:
             ctx.persist_control_evidence(rec["id"])
         if ctx.log_action:
             ctx.log_action(user or "unknown", "CONTROL_EVIDENCE_ADD", f"{control_id}: {title}")
+        return rec
+
+    @app.post("/controls/detail/{control_id}/evidence-records/auto", tags=["Compliance"])
+    def auto_evidence_snapshot(control_id: str, request: Request) -> dict[str, Any]:
+        """실증적(현재) 라이브 집계를 날짜 찍힌 증적 레코드로 자동 스냅샷. admin·security.
+
+        휘발성 라이브 증적(Fleet 자산 수·Zabbix 경보·매핑 등)을 그 시점 그대로 캡처해
+        수기 증적처럼 영속화한다. 심사 대비 '이 날 이만큼의 증적이 있었다' 시점 증거.
+        """
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="evidence records require admin or security role")
+        import uuid
+        from mori_soc.services.control_catalog import build_control_detail
+        detail = build_control_detail(control_id, gaps=_live_gaps(), metrics=_source_metrics(),
+                                      catalog=_merged_catalog())
+        if detail is None:
+            raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
+        # 라이브 증적 → 한국어 요약 본문 조립
+        lines: list[str] = []
+        for e in detail.get("evidence_live", []):
+            summ = e.get("summary_ko") or e.get("summary_en") or ""
+            if summ:
+                lines.append(f"[{e.get('label_ko') or e.get('source','')}] {summ}")
+            for row in (e.get("breakdown") or [])[:8]:
+                lines.append(f"  - {row.get('label','')}: {row.get('value','')}")
+        for m in detail.get("mapped_to", []):
+            lines.append(f"↔ {m.get('id','')} {m.get('title_ko') or m.get('title_en') or ''} ({m.get('relation','')})")
+        if not lines:
+            lines.append("현재 수집된 라이브 증적이 없습니다.")
+        user = ctx.get_session_username(request) if ctx.get_session_username else ""
+        today = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+        rec = {
+            "id": str(uuid.uuid4()), "control_id": control_id,
+            "title": f"실증적 자동 스냅샷 ({today})",
+            "body": "\n".join(lines),
+            "collected_by": user or "system", "collected_at": today,
+            "reference": "auto: 라이브 증적 스냅샷", "source": "auto",
+            "created_at": datetime.now(tz=timezone.utc).isoformat(), "created_by": user or "system",
+        }
+        ctx.control_evidence[rec["id"]] = rec
+        if ctx.persist_control_evidence:
+            ctx.persist_control_evidence(rec["id"])
+        if ctx.log_action:
+            ctx.log_action(user or "system", "CONTROL_EVIDENCE_AUTO", f"{control_id}: {len(lines)}줄")
         return rec
 
     @app.delete("/controls/detail/{control_id}/evidence-records/{evidence_id}", tags=["Compliance"])

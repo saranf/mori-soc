@@ -50,7 +50,7 @@ It sits **read-only on top of your existing** **Zabbix · FleetDM · Wazuh · Tr
 |---|---|---|
 | 📊 | **Unified operations UI** | Dashboard · Alert Triage · Incidents · Assets/Vulns · Compliance PDCA on one screen (`/ui`) |
 | 🎯 | **Risk assessment** | Per-CVE 3×3 matrix = impact (asset criticality) × likelihood → **score (1–9)** + treatment decision, residual risk, DoA auto-classify (admin·security) |
-| 📚 | **Control catalog** | ISMS-P 101 + ISO 27001:2022 93 = **194 controls** (KO/EN) tree + editable/persisted status + **admin direct edit (add/edit/delete)** + **regulation-text NLP import** (Claude/heuristic) + **documented manual evidence** + evidence pack **CSV/PDF download** |
+| 📚 | **Control catalog** | ISMS-P 101 + ISO 27001:2022 93 = **194 controls** (KO/EN) tree + editable/persisted status + **admin direct edit (add/edit/delete)** + **regulation-text NLP import** (Claude/heuristic) + **documented manual evidence + ⚡auto live-evidence snapshot** + evidence pack **CSV/PDF download** |
 | 🧑‍💻 | **Account governance** | Server/PC local accounts (osquery) × LDAP × approval ledger → detects leavers, unregistered privilege, unapproved sudo, dormant · IP team/purpose CSV export (defaults to admin·security, admin configures view roles) |
 | 🧾 | **Automatic evidence** | Asset owner/criticality, CVE remediation/exception, risk assessment, triage & incident changes accrued as _who/when/what_ → **6 CSV/PDF reports** |
 | 🔐 | **Role-based views** | Risk & controls are admin·security only; infra/help-desk see **only their own servers' remediation rate** |
@@ -129,9 +129,11 @@ Per-host Critical/High counts + per-CVE remediation plan/exception/expiry + chan
 **Admins edit the catalog directly** — ✏️edit/🗑️delete controls inline, "➕ Add control", and
 **"📥 Import regulation text (NLP)"**: paste CISA / privacy-law / notice text and it's auto-converted
 and saved as draft controls (precise structuring via Claude when `MORI_ANTHROPIC_API_KEY` is set,
-clause-level heuristic otherwise). Per control you can **document manual evidence** (title, body,
-collector, date, reference) and download the evidence pack — live + documented evidence merged — as
-**CSV or PDF**. Editing is admin-only; evidence documentation is admin·security.
+clause-level heuristic otherwise). Per control you can **document manual evidence**, or use
+**⚡ "Auto-capture live evidence"** to snapshot the current live aggregation (Fleet asset count,
+Zabbix alerts/monitoring, mappings) into a **dated evidence record with one click**. Download the
+evidence pack — live + documented, merged — as **CSV or PDF**. Editing is admin-only; evidence
+documentation is admin·security.
 
 ### 5) Account governance (access review)
 <!-- 📸 SCREENSHOT GUIDE ④

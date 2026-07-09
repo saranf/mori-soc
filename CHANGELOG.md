@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.17.1-alpha.1] — 2026-07-09 — 실증적 자동 증적 스냅샷
+
+### Added
+- **실증적 자동 기록 (⚡ 원클릭 스냅샷)** — 통제 상세의 휘발성 라이브 집계(Fleet 자산 수·Zabbix
+  경보/모니터링·크로스매핑 등)를 **날짜 찍힌 증적 레코드로 자동 생성**. 수기 타이핑 없이
+  "이 날 이만큼의 증적이 있었다" 시점 증거를 박제. `POST /controls/detail/{id}/evidence-records/auto`
+  (admin·security). 증적 레코드에 `source`(manual|auto) 구분 추가(`schema/011` 자가치유 ALTER),
+  UI에 ⚡자동 배지, CSV `kind=auto` 로 표기.
+
 ## [v0.17.0-alpha.1] — 2026-07-09 — 통제 카탈로그 편집 · 법령 NLP 임포트 · 수기 증적 문서화
 
 정본 카탈로그를 admin이 직접 편집하고, 법령/고시 텍스트를 통제 초안으로 자동 변환하며,

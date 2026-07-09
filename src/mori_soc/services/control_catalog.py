@@ -337,7 +337,8 @@ def control_evidence_csv(control_id: str, gaps: dict[str, Any] | None = None,
             w.writerow([cid, tko, ten, fw, "live-detail", row.get("label", ""),
                         row.get("value", ""), "", "", ""])
     for r in detail.get("evidence_records", []):
-        w.writerow([cid, tko, ten, fw, "manual", r.get("title", ""), r.get("body", ""),
+        kind = "auto" if r.get("source") == "auto" else "manual"
+        w.writerow([cid, tko, ten, fw, kind, r.get("title", ""), r.get("body", ""),
                     r.get("collected_by", ""), r.get("collected_at", ""), r.get("reference", "")])
     for m in detail.get("mapped_to", []):
         w.writerow([cid, tko, ten, fw, "mapping", m.get("id", ""),

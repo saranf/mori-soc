@@ -6786,17 +6786,21 @@ def render_user_dashboard_html(
       let h = `<div style=\"margin-top:8px;padding-top:6px;border-top:1px solid #1e293b\"><div style=\"font-weight:700;color:#fbbf24;margin-bottom:4px\">📎 ${tt('dash.ctl.ev_title','수기 증적')}</div>`;
       if (records.length) {
         h += records.map(r => {
+          const isAuto = r.source === 'auto';
+          const autoBadge = isAuto ? ` <span style=\"background:#0e7490;color:#a5f3fc;padding:0 5px;border-radius:4px;font-size:10px\">⚡${tt('dash.ctl.ev_auto','자동')}</span>` : '';
           const meta = [r.collected_at, r.collected_by].filter(Boolean).map(escapeHtml).join(' · ');
-          const ref = r.reference ? ` <a href=\"${escapeHtml(r.reference)}\" target=\"_blank\" style=\"color:#38bdf8\">↗</a>` : '';
+          const ref = (r.reference && !isAuto) ? ` <a href=\"${escapeHtml(r.reference)}\" target=\"_blank\" style=\"color:#38bdf8\">↗</a>` : '';
           const del = canEdit ? `<span onclick=\"deleteEvidenceRecord('${enc}','${escapeHtml(r.id)}')\" style=\"cursor:pointer;color:#f87171;margin-left:6px\">×</span>` : '';
-          return `<div style=\"color:#cbd5e1;padding:2px 0\">• <b>${escapeHtml(r.title)}</b>${meta?` <span style=\"color:#64748b;font-size:11px\">(${meta})</span>`:''}${ref}${del}${r.body?`<div style=\"color:#94a3b8;font-size:11px;margin-left:12px\">${escapeHtml(r.body)}</div>`:''}</div>`;
+          const body = r.body ? `<div style=\"color:#94a3b8;font-size:11px;margin-left:12px;white-space:pre-wrap\">${escapeHtml(r.body)}</div>` : '';
+          return `<div style=\"color:#cbd5e1;padding:2px 0\">• <b>${escapeHtml(r.title)}</b>${autoBadge}${meta?` <span style=\"color:#64748b;font-size:11px\">(${meta})</span>`:''}${ref}${del}${body}</div>`;
         }).join('');
       } else {
         h += `<div style=\"color:#64748b\">${tt('dash.ctl.ev_none','문서화된 수기 증적이 없습니다.')}</div>`;
       }
       if (canEdit) {
         const inp = 'background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:5px;padding:4px 7px;font-size:12px';
-        h += `<div style=\"margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center\">
+        h += `<div style=\"margin-top:6px\"><button onclick=\"autoEvidence('${enc}')\" class=\"secondary\" style=\"width:auto;padding:4px 12px;font-size:12px\" title=\"${tt('dash.ctl.ev_auto_tip','현재 실증적(라이브 집계)을 날짜 찍힌 증적으로 자동 생성')}\">⚡ ${tt('dash.ctl.ev_auto_btn','실증적 자동 기록')}</button> <span id=\"evr_auto_msg_${enc}\" style=\"font-size:11px;color:#64748b\"></span></div>
+        <div style=\"margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center\">
           <input id=\"evr_title_${enc}\" placeholder=\"${tt('dash.ctl.ev_ttl_ph','증적 제목(예: 접근권한 검토 회의록)')}\" style=\"${inp};width:220px\" />
           <input type=\"date\" id=\"evr_date_${enc}\" style=\"${inp}\" />
           <input id=\"evr_ref_${enc}\" placeholder=\"${tt('dash.ctl.ev_ref_ph','참조 링크/위치')}\" style=\"${inp};width:160px\" />
@@ -6821,6 +6825,16 @@ def render_user_dashboard_html(
       } catch(e) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } }
     }
     window.addEvidenceRecord = addEvidenceRecord;
+    async function autoEvidence(enc) {
+      const msg = document.getElementById('evr_auto_msg_' + enc);
+      if (msg) { msg.textContent = tt('dash.ctl.ev_auto_run','스냅샷 생성 중…'); msg.style.color='#94a3b8'; }
+      try {
+        const res = await fetch('/controls/detail/' + enc + '/evidence-records/auto', { method:'POST' });
+        if (!res.ok) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } return; }
+        _refreshControlDetail(enc);
+      } catch(e) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } }
+    }
+    window.autoEvidence = autoEvidence;
     async function deleteEvidenceRecord(enc, id) {
       if (!confirm(tt('dash.ctl.ev_del_confirm','이 수기 증적을 삭제할까요?'))) return;
       try {
