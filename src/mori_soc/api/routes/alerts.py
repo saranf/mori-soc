@@ -23,6 +23,7 @@ def register_alerts(ctx: RouteContext) -> None:
     webhooks = ctx.webhooks
     _get_session_username = ctx.get_session_username
     _persist_triage = ctx.persist_triage
+    _zabbix_writeback_comment = ctx.zabbix_writeback_comment
 
     @app.get("/alerts", tags=["Alerts"])
     def alerts_list() -> dict[str, Any]:
@@ -59,14 +60,24 @@ def register_alerts(ctx: RouteContext) -> None:
             "changed_at": entry["updated_at"],
         })
         _persist_triage(alert_id)
-        # Slack 알림: reviewing/resolved 전환 시
-        if status in {"reviewing", "resolved"} and webhooks:
+
+        # Alert 객체는 Zabbix write-back(모든 상태)과 Slack 알림(reviewing/resolved)이
+        # 공유한다 — 둘 중 하나라도 필요하면 한 번만 조회한다.
+        need_slack = status in {"reviewing", "resolved"} and bool(webhooks)
+        alert_obj = None
+        if _zabbix_writeback_comment is not None or need_slack:
             store = get_query_service().store
             alert_obj = next((a for a in store.alerts if a.alert_id == alert_id), None)
-            if alert_obj:
-                label = {"reviewing": "검토중", "resolved": "조치예정/완료"}.get(status, status)
-                msg = f":mag: [MORI Triage] `{alert_id}` → *{label}*\n*Alert:* {alert_obj.message}\n*담당자:* {entry['analyst'] or 'unknown'}"
-                _notify_all_webhooks(webhooks, msg)
+
+        # Zabbix write-back (Level 1, comment-only) — 활성화 시에만, 실패해도 triage 응답 유지
+        if alert_obj is not None and _zabbix_writeback_comment is not None:
+            _zabbix_writeback_comment(alert_obj, entry, changed_by)
+
+        # Slack 알림: reviewing/resolved 전환 시
+        if need_slack and alert_obj is not None:
+            label = {"reviewing": "검토중", "resolved": "조치예정/완료"}.get(status, status)
+            msg = f":mag: [MORI Triage] `{alert_id}` → *{label}*\n*Alert:* {alert_obj.message}\n*담당자:* {entry['analyst'] or 'unknown'}"
+            _notify_all_webhooks(webhooks, msg)
         return {"alert_id": alert_id, "triage": entry}
 
 
