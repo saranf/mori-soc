@@ -136,7 +136,9 @@ evidence record** (control intent, status + the actual **live host list** — ho
 boot / on view**, plus a **"⚡ Snapshot all now"** manual run. Download the **evidence document** as
 **CSV or PDF** — not a catalog pack but clean tables: **asset inventory** (hostname·IP·status·source,
 full) + **documented evidence** (on-screen shows 3 with "show more"; the download is always complete).
-Editing & scheduling are admin-only; evidence documentation is admin·security.
+A top **"📦 All evidence ZIP"** bundles every control's evidence **into one ZIP by folder**
+(framework/control) with an `INDEX.csv`. Editing & scheduling are admin-only; evidence
+documentation & ZIP are admin·security.
 
 ### 5) Account governance (access review)
 <!-- 📸 SCREENSHOT GUIDE ④

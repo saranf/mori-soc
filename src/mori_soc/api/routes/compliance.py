@@ -60,24 +60,30 @@ def register_compliance(ctx: RouteContext) -> None:
     def _evidence_for(control_id: str) -> list[dict[str, Any]]:
         return [r for r in (ctx.control_evidence or {}).values() if r.get("control_id") == control_id]
 
-    def _evidence_document(control_id: str, user: str) -> dict[str, Any] | None:
+    def _evidence_document(control_id: str, user: str, host_lists: dict | None = None,
+                           metrics: dict | None = None,
+                           catalog: dict | None = None) -> dict[str, Any] | None:
         """다운로드용 '증적 문서' 구조 — 통제 팩이 아니라 증적(자산 인벤토리 + 문서화 증적)만.
 
         fleet/zabbix 는 실제 호스트 인벤토리 표로, 그 외 소스는 짧은 요약으로. 수기·자동 증적
         레코드는 일자·유형·제목·수집자·참조 표로. (매핑·결함은 증적이 아니라 제외)
+        ``host_lists``/``metrics``/``catalog`` 를 주면 재계산 생략(ZIP 일괄 생성용).
         """
-        control = next((c for c in _merged_catalog().get("controls", []) if c.get("id") == control_id), None)
+        cat = catalog or _merged_catalog()
+        control = next((c for c in cat.get("controls", []) if c.get("id") == control_id), None)
         if control is None:
             return None
         srcs = control.get("evidence_sources") or []
-        host_lists = _evidence_host_lists()
+        if host_lists is None:
+            host_lists = _evidence_host_lists()
         inventory: list[dict[str, str]] = []
         for src in ("fleet", "zabbix"):
             if src in srcs:
                 for r in host_lists.get(src, []):
                     inventory.append({"hostname": r.get("hostname", ""), "ip": r.get("ip", ""),
                                       "status": r.get("status", ""), "source": src})
-        metrics = _source_metrics(limit=200)
+        if metrics is None:
+            metrics = _source_metrics(limit=200)
         live: list[dict[str, str]] = []
         for src in srcs:
             if src in ("fleet", "zabbix"):
@@ -476,6 +482,70 @@ def register_compliance(ctx: RouteContext) -> None:
         safe = control_id.replace("/", "_")
         return StreamingResponse(iter(["﻿" + evidence_document_csv(doc)]), media_type="text/csv",
                                  headers={"Content-Disposition": f'attachment; filename="mori-evidence-{safe}.csv"'})
+
+    def _fw_label(fw: str) -> str:
+        return {"isms-p": "ISMS-P", "iso27001": "ISO27001"}.get(fw, fw or "기타")
+
+    def _safe_name(s: str, n: int = 60) -> str:
+        s = str(s or "").strip()
+        for ch in '/\\:*?"<>|\n\r\t':
+            s = s.replace(ch, "_")
+        return (s[:n] or "_").strip()
+
+    @app.get("/controls/evidence-bundle.zip", tags=["Compliance"])
+    def evidence_bundle_zip(request: Request, scope: str = "mapped") -> Any:
+        """전 통제 증적 문서를 폴더별(프레임워크/통제)로 담은 ZIP 한방 다운로드. admin·security.
+
+        scope=mapped(기본): 증적 소스가 있거나 문서화 증적이 있는 통제만. scope=all: 전 통제.
+        각 통제 폴더에 evidence.pdf + evidence.csv, 루트에 INDEX.csv.
+        """
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="evidence bundle requires admin or security role")
+        import csv as csv_mod
+        import io as io_mod
+        import zipfile
+        from mori_soc.services.control_catalog import evidence_document_csv, evidence_document_pdf
+        user = ctx.get_session_username(request) if ctx.get_session_username else ""
+        catalog = _merged_catalog()
+        host_lists = _evidence_host_lists()
+        metrics = _source_metrics(limit=200)
+        ev_by_control: dict[str, int] = {}
+        for r in (ctx.control_evidence or {}).values():
+            ev_by_control[r.get("control_id", "")] = ev_by_control.get(r.get("control_id", ""), 0) + 1
+        want_all = str(scope).strip() == "all"
+        buf = io_mod.BytesIO()
+        index_rows = [["control_id", "title_ko", "framework", "assets", "records"]]
+        n = 0
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+            for c in catalog.get("controls", []):
+                cid = c.get("id")
+                if not cid:
+                    continue
+                has_ev = bool(c.get("evidence_sources"))
+                has_rec = ev_by_control.get(cid, 0) > 0
+                if not want_all and not (has_ev or has_rec):
+                    continue
+                doc = _evidence_document(cid, user or "", host_lists=host_lists,
+                                         metrics=metrics, catalog=catalog)
+                if doc is None:
+                    continue
+                folder = f"{_safe_name(_fw_label(c.get('framework')), 20)}/{_safe_name(cid, 24)}_{_safe_name(c.get('title_ko') or c.get('title_en'), 40)}"
+                try:
+                    z.writestr(f"{folder}/evidence.pdf", evidence_document_pdf(doc))
+                except RuntimeError:
+                    pass  # reportlab 미설치 시 PDF 생략(CSV는 유지)
+                z.writestr(f"{folder}/evidence.csv", "﻿" + evidence_document_csv(doc))
+                index_rows.append([cid, c.get("title_ko", ""), _fw_label(c.get("framework")),
+                                   len(doc["inventory"]), len(doc["records"])])
+                n += 1
+            sio = io_mod.StringIO()
+            csv_mod.writer(sio).writerows(index_rows)
+            z.writestr("INDEX.csv", "﻿" + sio.getvalue())
+        if ctx.log_action:
+            ctx.log_action(user or "system", "EVIDENCE_BUNDLE_ZIP", f"{scope}: {n}건")
+        ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d")
+        return StreamingResponse(iter([buf.getvalue()]), media_type="application/zip",
+                                 headers={"Content-Disposition": f'attachment; filename="mori-evidence-bundle-{ts}.zip"'})
 
     # ── M2-8: 카탈로그 정본 편집 (admin 전용) ─────────────────────────────────────
     _CATALOG_FIELDS = ("framework", "version", "domain", "section", "title_ko", "title_en",

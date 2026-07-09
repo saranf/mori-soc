@@ -4,7 +4,14 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
-## [v0.17.4-alpha.1] — 2026-07-09 — Compliance PDCA 미조치 표 페이징
+## [v0.17.5-alpha.1] — 2026-07-09 — 전체 증적 한방에 ZIP 다운로드
+
+### Added
+- **📦 전체 증적 ZIP** — 통제 카탈로그 상단 버튼 하나로 전 통제의 증적 문서를 **폴더별로 묶어
+  ZIP** 다운로드. `{프레임워크}/{통제ID}_{제목}/evidence.pdf`+`evidence.csv` 구조 + 루트 `INDEX.csv`
+  (통제·자산수·증적수 목록). `GET /controls/evidence-bundle.zip?scope=mapped|all` (admin·security).
+  기본 scope=mapped(증적 소스 또는 문서화 증적이 있는 통제만), scope=all은 전 통제. 파일명 UTF-8.
+  (개별 통제 상세에서 PDF/CSV 단건 다운로드는 그대로.)
 
 ### Added
 - **Compliance PDCA "미조치 / 기한 초과 항목" 표에 페이징** 적용(`_pgApply`, 기본 10 · 10단위 ·
