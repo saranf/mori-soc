@@ -53,57 +53,23 @@ def register_sources(ctx: RouteContext) -> None:
 
     # ── Fleet 전용 API ───────────────────────────────────────────────────────
     @app.get("/fleet/hosts", tags=["Fleet"])
-    def fleet_hosts_get(format: str = "json") -> Any:
-        """Fleet(PC 자산) 전용 호스트 목록 API."""
+    def fleet_hosts_get() -> Any:
+        """Fleet(PC 자산) 전용 호스트 목록 API (JSON). CSV 는 /assets?format=csv 로 일원화."""
         try:
             payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans, vuln_actions=vuln_actions)
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"fleet hosts unavailable: {exc}") from exc
-        fleet_data = payload.get("fleet", {})
-        if format == "csv":
-            import io, csv as csv_mod
-            buf = io.StringIO()
-            hosts = fleet_data.get("hosts", [])
-            if hosts:
-                _fleet_header_map = {"hostname": "호스트명", "asset_type": "자산유형", "platform": "플랫폼", "primary_ip": "IP주소", "status": "상태", "risk_score": "위험점수", "last_seen_at": "최종확인일시", "owner": "담당자", "team": "팀"}
-                fieldnames = list(_fleet_header_map.keys())
-                writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
-                writer.writerow(_fleet_header_map)
-                writer.writerows(hosts)
-            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            return StreamingResponse(
-                iter([buf.getvalue()]),
-                media_type="text/csv; charset=utf-8",
-                headers={"Content-Disposition": f'attachment; filename="mori-fleet-hosts-{timestamp}.csv"'},
-            )
-        return {"source": "fleet", **fleet_data}
+        return {"source": "fleet", **payload.get("fleet", {})}
 
     # ── Zabbix 전용 API ──────────────────────────────────────────────────────
     @app.get("/zabbix/hosts", tags=["Zabbix"])
-    def zabbix_hosts_get(format: str = "json") -> Any:
-        """Zabbix(서버 자산) 전용 호스트 목록 API."""
+    def zabbix_hosts_get() -> Any:
+        """Zabbix(서버 자산) 전용 호스트 목록 API (JSON). CSV 는 /assets?format=csv 로 일원화."""
         try:
             payload = build_assets_payload(get_query_service(), owners=asset_owners, plans=action_plans, vuln_actions=vuln_actions)
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"zabbix hosts unavailable: {exc}") from exc
-        zabbix_data = payload.get("zabbix", {})
-        if format == "csv":
-            import io, csv as csv_mod
-            buf = io.StringIO()
-            hosts = zabbix_data.get("hosts", [])
-            if hosts:
-                _zabbix_header_map = {"hostname": "호스트명", "category": "분류", "importance": "중요도", "primary_ip": "IP주소", "status": "상태", "latest_metric": "최근메트릭", "latest_value": "최근값", "owner": "담당자", "team": "팀"}
-                fieldnames = list(_zabbix_header_map.keys())
-                writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
-                writer.writerow(_zabbix_header_map)
-                writer.writerows(hosts)
-            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            return StreamingResponse(
-                iter([buf.getvalue()]),
-                media_type="text/csv; charset=utf-8",
-                headers={"Content-Disposition": f'attachment; filename="mori-zabbix-hosts-{timestamp}.csv"'},
-            )
-        return {"source": "zabbix", **zabbix_data}
+        return {"source": "zabbix", **payload.get("zabbix", {})}
 
     # ── Trivy 전용 API ───────────────────────────────────────────────────────
     @app.get("/trivy/vulnerabilities", tags=["Trivy"])

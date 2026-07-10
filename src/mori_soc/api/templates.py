@@ -71,6 +71,7 @@ DEFAULT_USER_DASHBOARD_PREFERENCES = {
     "sections": {
         "security_hero": True,
         "infra_status": True,
+        "fleet_status": True,
         "source_coverage": False,
         "latest_status": False,
         "risk_summary": True,
