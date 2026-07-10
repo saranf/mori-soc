@@ -4962,15 +4962,19 @@ def render_user_dashboard_html(
       const imp = (h.importance || '').trim();
       const impStr = imp ? `<span style=\"color:${_MINE_IMP_COLOR[imp]||'#94a3b8'};font-weight:700\">${escapeHtml(imp)}</span>` : '-';
       const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
+      const _at = kind === 'zabbix' ? 'server' : 'pc';
       const excStr = h.exception_until
         ? `${escapeHtml(String(h.exception_until).slice(0,10))}${h.exception_reason ? ' · ' + escapeHtml(h.exception_reason) : ''}`
         : '-';
+      const ownerCell = `${escapeHtml(ownerLabel)} <button onclick=\"openOwnerModal('${escapeHtml(hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}','${_at}','','','${escapeHtml(h.importance||'')}')\" style=\"margin-left:8px;padding:2px 8px;font-size:11px;border-radius:4px;background:#334155;color:#38bdf8;border:1px solid #475569;cursor:pointer\">${tt('dash.dyn.edit_btn','수정')}</button>`;
       const meta = `<div style=\"background:#0b1220;border:1px solid #1e293b;border-radius:8px;padding:10px 14px;margin-bottom:14px\">
+        ${_kv(tt('dash.dyn.lbl.type','유형'), _at==='server' ? tt('dash.host.kind_server','서버') : 'PC')}
+        ${_kv(tt('dash.dyn.lbl.platform','플랫폼'), escapeHtml((h.platform||'').trim()||'-'))}
         ${_kv(tt('dash.mine.importance','중요도'), impStr)}
         ${_kv(tt('dash.mine.category','분류'), escapeHtml((h.category||'').trim()||'-'))}
         ${_kv(tt('dash.dyn.lbl.status','상태'), `<span class=\\\"badge ${h.status==='online'?'online':h.status==='offline'?'offline':'unknown'}\\\">${escapeHtml(h.status||'-')}</span>`)}
         ${_kv('IP', `<span style=\\\"font-family:monospace\\\">${escapeHtml(h.primary_ip||'-')}</span>`)}
-        ${_kv(tt('dash.dyn.lbl.owner_team','담당자 / 팀'), escapeHtml(ownerLabel))}
+        ${_kv(tt('dash.dyn.lbl.owner_team','담당자 / 팀'), ownerCell)}
         ${h.risk_score!=null?_kv(tt('dash.dyn.lbl.risk','리스크'), escapeHtml(String(h.risk_score))):''}
         ${_kv(tt('dash.host.exception','예외'), excStr)}
         ${h.last_seen_at?_kv(tt('dash.dyn.lbl.last_seen','마지막 확인'), escapeHtml(formatTime(h.last_seen_at))):''}
@@ -5070,29 +5074,21 @@ def render_user_dashboard_html(
         const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
         const fleetLink = FLEET_URL ? `<a href=\"${escapeHtml(FLEET_URL)}/hosts?query=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#6ee7b7;font-size:12px;\">Fleet</a>` : '';
         const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
-        const ownerStr = `<span style=\"color:#4ade80;font-size:12px\">${escapeHtml(ownerLabel)}</span>
-          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','','pc','')\"
-            style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#334155;color:#38bdf8;border:1px solid #334155;cursor:pointer;\"></button>`;
+        const ownerStr = `<span style=\"color:#4ade80;font-size:12px\">${escapeHtml(ownerLabel)}</span>`;
         return `<tr ondblclick=\"openHostDetail('${escapeHtml(h.hostname)}')\" style=\"cursor:pointer\" title=\"${tt('dash.mine.dblclick','더블클릭하면 상세·조치현황')}\">
           <td><strong>${escapeHtml(h.hostname)}</strong>${fleetLink ? '<br>' + fleetLink : ''}</td>
-          <td><span style=\"background:#0d2137;color:#6ee7b7;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;\">PC</span></td>
           <td>${escapeHtml(h.platform)}</td>
           <td>${escapeHtml(h.primary_ip)}</td>
           <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
-          <td>${escapeHtml(h.risk_score)}</td>
-          <td>${escapeHtml(formatTime(h.last_seen_at))}</td>
           <td>${ownerStr}</td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
         <thead><tr style=\"background:#0f172a;\">
           <th style=\"padding:8px;color:#6ee7b7\">${tt('dash.dyn.lbl.hostname','호스트명')}</th>
-          <th style=\"padding:8px;color:#6ee7b7\">${tt('dash.dyn.lbl.type','유형')}</th>
           <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.platform','플랫폼')}</th>
           <th style=\"padding:8px;color:#38bdf8\">IP</th>
           <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.status','상태')}</th>
-          <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.risk','리스크')}</th>
-          <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.last_seen','마지막 확인')}</th>
           <th style=\"padding:8px;color:#4ade80\">${tt('dash.dyn.lbl.owner_team','담당자 / 팀')}</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -5113,9 +5109,7 @@ def render_user_dashboard_html(
         const metricStr = h.latest_metric ? `${escapeHtml(h.latest_metric)}: ${escapeHtml(h.latest_value || '-')}` : '-';
         const impBadge = h.importance ? `<span style=\"background:#1e293b;color:${impColor[h.importance]||'#94a3b8'};padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700\">${escapeHtml(impLabel[h.importance]||h.importance)}</span>` : '-';
         const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
-        const ownerStr = `<span style=\"color:#4ade80;font-size:12px\">${escapeHtml(ownerLabel)}</span>
-          <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}','server','','','${escapeHtml(h.importance||'')}')\"
-            style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#334155;color:#38bdf8;border:1px solid #334155;cursor:pointer;\"></button>`;
+        const ownerStr = `<span style=\"color:#4ade80;font-size:12px\">${escapeHtml(ownerLabel)}</span>`;
         return `<tr ondblclick=\"openHostDetail('${escapeHtml(h.hostname)}')\" style=\"cursor:pointer\" title=\"${tt('dash.mine.dblclick','더블클릭하면 상세·조치현황')}\">
           <td><strong>${escapeHtml(h.hostname)}</strong>${zabbixLink ? '<br>' + zabbixLink : ''}</td>
           <td style=\"font-size:12px\">${escapeHtml(h.category || '-')}</td>
