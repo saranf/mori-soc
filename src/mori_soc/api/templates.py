@@ -3673,17 +3673,6 @@ def render_user_dashboard_html(
     </div>
   </div>
 
-  <!-- 감사 이력 모달 -->
-  <div id=\"audit_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
-    <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:28px 32px;width:600px;max-width:95vw;max-height:80vh;overflow-y:auto\">
-      <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
-        <h3 id=\"audit_modal_title\" style=\"color:#4ade80;margin:0\" data-i18n=\"dash.modal.audit_title\">변경 이력</h3>
-        <button onclick=\"closeAuditModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
-      </div>
-      <div id=\"audit_modal_body\" style=\"color:#e2e8f0;font-size:13px\" data-i18n=\"dash.modal.loading\">로딩 중...</div>
-    </div>
-  </div>
-
   <!-- ── 하단 탭 바 (모바일 전용) ────────────────────────────────────────── -->
   <nav class=\"bottom-nav\" id=\"bottom_nav\">
     <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\">
@@ -3778,8 +3767,6 @@ def render_user_dashboard_html(
     window.openPlanModal     = openPlanModal;
     window.closePlanModal    = closePlanModal;
     window.closeOwnerModal   = closeOwnerModal;
-    window.openAuditModal    = openAuditModal;
-    window.closeAuditModal   = closeAuditModal;
     window.loadTriage        = loadTriage;
     window.loadIncidents     = loadIncidents;
     window.loadAssets        = loadAssets;
@@ -5095,7 +5082,6 @@ def render_user_dashboard_html(
           <td>${escapeHtml(h.risk_score)}</td>
           <td>${escapeHtml(formatTime(h.last_seen_at))}</td>
           <td>${ownerStr}</td>
-          <td><button onclick=\"openAuditModal('${escapeHtml(h.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e293b;border:1px solid #334155;border-radius:4px;color:#94a3b8;cursor:pointer\">${tt('dash.dyn.history_btn','이력')}</button></td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
@@ -5108,7 +5094,6 @@ def render_user_dashboard_html(
           <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.risk','리스크')}</th>
           <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.last_seen','마지막 확인')}</th>
           <th style=\"padding:8px;color:#4ade80\">${tt('dash.dyn.lbl.owner_team','담당자 / 팀')}</th>
-          <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.history','이력')}</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
@@ -5141,7 +5126,6 @@ def render_user_dashboard_html(
           <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
           <td style=\"font-size:12px;color:#94a3b8\">${metricStr}</td>
           <td>${ownerStr}</td>
-          <td><button onclick=\"openAuditModal('${escapeHtml(h.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e293b;border:1px solid #334155;border-radius:4px;color:#94a3b8;cursor:pointer\">${tt('dash.dyn.history_btn','이력')}</button></td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
@@ -5155,7 +5139,6 @@ def render_user_dashboard_html(
           <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.status','상태')}</th>
           <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.latest_metric','최근 메트릭')}</th>
           <th style=\"padding:8px;color:#4ade80\">${tt('dash.dyn.lbl.owner_team','담당자 / 팀')}</th>
-          <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.history','이력')}</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
@@ -5210,7 +5193,6 @@ def render_user_dashboard_html(
           <td style=\"font-size:12px;color:#64748b\">${escapeHtml(formatTime(r.latest_detected_at))}</td>
           <td style=\"min-width:130px\">${planCell}</td>
           <td style=\"min-width:110px\">${exCell}</td>
-          <td style=\"text-align:center\"><button onclick=\"openAuditModal('${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:2px 6px;background:#1e293b;border:1px solid #334155;border-radius:3px;color:#94a3b8;cursor:pointer\" title=\"${tt('dash.dyn.edit_history','수정 이력')}\"></button></td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
@@ -5224,7 +5206,6 @@ def render_user_dashboard_html(
           <th style=\"padding:8px;color:#64748b\">${tt('dash.dyn.lbl.detected_date','탐지일')}</th>
           <th style=\"padding:8px;color:#4ade80\">${tt('dash.dyn.lbl.action_plan','조치 계획')}</th>
           <th style=\"padding:8px;color:#fbbf24\">${tt('dash.dyn.lbl.action_exception','조치 예외')}</th>
-          <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.history','이력')}</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
       </table>`;
@@ -5730,39 +5711,6 @@ def render_user_dashboard_html(
       switchAssetTab('mine');
     }
     window.shortcutMyServers = shortcutMyServers;
-
-    /* ── 감사 이력 모달 ──────────────────────────────────────────────────── */
-    async function openAuditModal(hostname) {
-      document.getElementById('audit_modal_title').textContent = `${tt('dash.dyn.audit_title_prefix','변경 이력 ')}${hostname}`;
-      document.getElementById('audit_modal_body').innerHTML = '<span style=\"color:#94a3b8\">' + tt('dash.dyn.loading','로딩 중...') + '</span>';
-      document.getElementById('audit_modal').style.display = 'flex';
-      try {
-        const res = await fetch(`/admin/audit-log?hostname=${encodeURIComponent(hostname)}`);
-        const data = await res.json();
-        const logs = data.audit_log || [];
-        if (!logs.length) {
-          document.getElementById('audit_modal_body').innerHTML = '<div style=\"color:#64748b;text-align:center;padding:20px\">' + tt('dash.dyn.no_audit_history','변경 이력이 없습니다.') + '</div>';
-          return;
-        }
-        const fieldLabels = {owner:tt('dash.dyn.lbl.owner','담당자'), team:tt('dash.dyn.field.team','팀'), category:tt('dash.dyn.field.category','분류'), importance:tt('dash.dyn.field.importance','중요도'), exception_until:tt('dash.dyn.field.exception_until','예외기한'), exception_reason:tt('dash.dyn.field.exception_reason','예외사유')};
-        const rows = logs.map(l => `<div style=\"border-bottom:1px solid #1e293b;padding:10px 0\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center\">
-            <span style=\"color:#38bdf8;font-weight:700\">${escapeHtml(fieldLabels[l.field]||l.field)}</span>
-            <span style=\"color:#64748b;font-size:11px\">${escapeHtml(l.changed_at||'')}</span>
-          </div>
-          <div style=\"font-size:12px;margin-top:4px\">
-            <span style=\"color:#f87171\">${escapeHtml(l.old_value||tt('dash.dyn.no_value','(없음)'))}</span>
-            <span style=\"color:#64748b\"> → </span>
-            <span style=\"color:#4ade80\">${escapeHtml(l.new_value||tt('dash.dyn.no_value','(없음)'))}</span>
-          </div>
-          <div style=\"font-size:11px;color:#94a3b8;margin-top:2px\">${tt('dash.dyn.editor_prefix','수정자: ')}${escapeHtml(l.changed_by||'unknown')}</div>
-        </div>`).join('');
-        document.getElementById('audit_modal_body').innerHTML = rows;
-      } catch(e) {
-        document.getElementById('audit_modal_body').innerHTML = `<div style=\"color:#f87171\">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</div>`;
-      }
-    }
-    function closeAuditModal() { document.getElementById('audit_modal').style.display = 'none'; }
 
     /* ── 담당자/카테고리 편집 모달 ──────────────────────────────────────── */
     function openOwnerModal(hostname, owner, team, category, assetType, exceptionUntil, exceptionReason, importance) {
