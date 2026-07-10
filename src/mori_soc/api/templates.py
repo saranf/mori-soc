@@ -1750,7 +1750,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       document.querySelectorAll('[data-atab="' + tab + '"]').forEach(btn => btn.classList.add('active'));
       window.scrollTo({ top: 0, behavior: 'smooth' });
       // 탭별 lazy 로더 dispatch (Phase 2)
-      if (tab === 'logs') { loadAuditLog(); loadUserActivityLog(); }
+      if (tab === 'logs') { loadUnifiedLog(); loadAuditLog(); loadUserActivityLog(); }
       if (tab === 'remediation') { loadAdminVulnActions(); loadAdminActionPlans(); }
       if (tab === 'overview') { loadAdminPhase2Health(); loadAdminSourceFreshness(); }
       if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); loadLdapUsers(); loadAccountViewRoles(); }
@@ -2006,6 +2006,71 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     if (document.getElementById('audit_search_btn')) {
       document.getElementById('audit_search_btn')?.addEventListener('click', loadAuditLog);
     }
+
+    // ── 통합 이력 로그 (모든 이력 소스 병합 + 검색) ───────────────────────────
+    const ulogListEl = document.getElementById('ulog_list');
+    const ulogStatusEl = document.getElementById('ulog_status');
+    // 분류 → [표시 라벨 i18n키·기본, 색상]
+    const ULOG_CAT = {
+      login: ['admin.dyn.cat.login', '로그인', '#38bdf8'],
+      action: ['admin.dyn.cat.action', '행동', '#a78bfa'],
+      asset: ['admin.dyn.cat.asset', '자산', '#fbbf24'],
+      vuln: ['admin.dyn.cat.vuln', '취약점', '#f87171'],
+      triage: ['admin.dyn.cat.triage', '트리아지', '#34d399'],
+      incident: ['admin.dyn.cat.incident', '인시던트', '#fb923c'],
+      evidence: ['admin.dyn.cat.evidence', '증적', '#22d3ee'],
+      account: ['admin.dyn.cat.account', '계정', '#c084fc'],
+      control_evidence: ['admin.dyn.cat.control_evidence', '통제증적', '#4ade80'],
+    };
+    async function loadUnifiedLog() {
+      if (!ulogListEl) return;
+      ulogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.loading','로딩 중…')}</span>`;
+      const q = (document.getElementById('ulog_q')?.value || '').trim();
+      const category = document.getElementById('ulog_category')?.value || '';
+      const df = document.getElementById('ulog_from')?.value || '';
+      const dt = document.getElementById('ulog_to')?.value || '';
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (category) params.set('category', category);
+      if (df) params.set('date_from', df);
+      if (dt) params.set('date_to', dt);
+      let url = '/admin/logs';
+      if (params.toString()) url += '?' + params.toString();
+      try {
+        const res = await fetch(url);
+        if (!res.ok) { ulogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.load_fail','로드 실패')}</span>`; return; }
+        const data = await res.json();
+        const logs = data.logs || [];
+        if (!logs.length) { ulogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.none_log','이력 없음')}</span>`; return; }
+        ulogListEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="background:#0f172a;">
+            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.time','시각')}</th>
+            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.category','분류')}</th>
+            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.actor','행위자')}</th>
+            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.action','액션')}</th>
+            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.target','대상')}</th>
+            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.detail','상세')}</th>
+          </tr></thead>
+          <tbody>
+          ${logs.map(l => { const c = ULOG_CAT[l.category] || ['', l.category, '#94a3b8']; return `<tr style="border-bottom:1px solid #1e293b;">
+            <td style="padding:7px 8px;color:#64748b;white-space:nowrap">${escapeHtml(formatTime(l.ts))}</td>
+            <td style="padding:7px 8px;font-weight:600;color:${c[2]}">${escapeHtml(tt(c[0], c[1]))}</td>
+            <td style="padding:7px 8px;color:#e2e8f0">${escapeHtml(l.actor || '-')}</td>
+            <td style="padding:7px 8px;color:#fbbf24">${escapeHtml(l.action || '-')}</td>
+            <td style="padding:7px 8px;color:#94a3b8">${escapeHtml(l.target || '-')}</td>
+            <td style="padding:7px 8px;color:#cbd5e1">${escapeHtml(l.detail || '-')}</td>
+          </tr>`; }).join('')}
+          </tbody></table>`;
+        _pgApply(ulogListEl);
+        if (ulogStatusEl) ulogStatusEl.textContent = `${tt('admin.dyn.col.total','총')} ${data.total}${tt('admin.dyn.count_suffix','건')}`;
+      } catch(e) {
+        ulogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`;
+      }
+    }
+    document.getElementById('ulog_reload')?.addEventListener('click', loadUnifiedLog);
+    document.getElementById('ulog_search_btn')?.addEventListener('click', loadUnifiedLog);
+    document.getElementById('ulog_category')?.addEventListener('change', loadUnifiedLog);
+    document.getElementById('ulog_q')?.addEventListener('keydown', e => { if (e.key === 'Enter') loadUnifiedLog(); });
 
     // ── Role Permissions ─────────────────────────────────────────────────────
     const ROLE_PERM_TABS = [
@@ -2606,7 +2671,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const _ADMIN_TAB_BY_ROLE = {
       admin:    ['overview','compliance','triage','remediation','assets','access','logs','settings'],
       monitor:  ['overview','compliance','triage','assets'],
-      security: ['overview','compliance','triage','remediation','assets','access'],
+      security: ['overview','compliance','triage','remediation','assets','access','logs'],
       auditor:  ['overview','compliance','logs'],
       helpdesk: ['overview','assets'],
       user:     ['overview'],
