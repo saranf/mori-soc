@@ -290,7 +290,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 <body>
   <div class=\"wrap\">
     <header class=\"topbar\">
-      <span class=\"brand\">MORI 콘솔</span>
+      <span class=\"brand\" data-i18n=\"admin.brand\">MORI 콘솔</span>
       <nav class=\"tabs-nav\" id=\"admin_tabs_nav\">
         <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\" data-i18n=\"admin.tab.overview\">Overview</button>
         <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\" data-i18n=\"admin.tab.remediation\">Remediation</button>

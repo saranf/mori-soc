@@ -1610,6 +1610,7 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
 
 _ADMIN_I18N: dict[str, dict[str, str]] = {
     "ko": {
+        "admin.brand": "MORI 콘솔",
         "admin.doctitle": "MORI 관리자 콘솔",
         "admin.hero.title": "MORI 점검·통제 운영 콘솔",
         "admin.hero.intro": "통제 항목 점검 결과를 관리하고, 수집 데이터를 교차 검증하며, 사용자 대시보드 노출 범위를 제어하는 관리자 운영 콘솔입니다.",
@@ -2012,6 +2013,7 @@ _ADMIN_I18N: dict[str, dict[str, str]] = {
         "admin.s.dlg.overview_copy": "선택한 카드의 상세 목록입니다.",
     },
     "en": {
+        "admin.brand": "MORI Console",
         "admin.doctitle": "MORI Admin Console",
         "admin.hero.title": "MORI Controls·Operations Console",
         "admin.hero.intro": "Operator console for managing control-check results, cross-verifying collected data, and controlling user dashboard exposure scope.",
