@@ -605,43 +605,6 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div id=\"ulog_list\" class=\"list\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
           <div class=\"status-line\" id=\"ulog_status\"></div>
         </section>
-
-        <section class=\"card\">
-          <h2 data-i18n=\"admin.h.asset_audit\">자산 변경 이력</h2>
-          <div class=\"subtext\" data-i18n=\"admin.s.sub.asset_audit\">사용자가 수정한 담당자·카테고리 변경 이력입니다. 최신 순으로 표시됩니다.</div>
-          <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
-            <input id=\"audit_filter_hostname\" class=\"inp-sm\" placeholder=\"호스트명으로 검색\" data-i18n-placeholder=\"admin.s.ph.audit_host\" style=\"width:180px\" />
-            <select id=\"audit_filter_field\" class=\"inp-sm\">
-              <option value=\"\" data-i18n=\"admin.s.opt.all_items\">전체 항목</option>
-              <option value=\"owner\" data-i18n=\"admin.s.opt.owner\">담당자</option>
-              <option value=\"category\" data-i18n=\"admin.s.opt.category\">카테고리</option>
-            </select>
-            <button id=\"audit_search_btn\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.search\">검색</button>
-            <button id=\"reload_audit_log\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
-          </div>
-          <div id=\"audit_log_list\" class=\"list\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
-          <div class=\"status-line\" id=\"audit_log_status\"></div>
-        </section>
-
-        <section class=\"card\">
-          <h2 data-i18n=\"admin.h.user_activity\">사용자 행동 로그</h2>
-          <div class=\"subtext\" data-i18n=\"admin.s.sub.user_activity\">로그인·로그아웃·탭 전환·쿼리 실행 등 모든 사용자 행동이 기록됩니다.</div>
-          <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
-            <input id=\"userlog_filter_user\" class=\"inp-sm\" placeholder=\"사용자명으로 검색\" data-i18n-placeholder=\"admin.s.ph.userlog_user\" style=\"width:180px\" />
-            <select id=\"userlog_filter_action\" class=\"inp-sm\">
-              <option value=\"\" data-i18n=\"admin.s.opt.all_actions\">전체 액션</option>
-              <option value=\"LOGIN\">LOGIN</option>
-              <option value=\"LOGIN_FAIL\">LOGIN_FAIL</option>
-              <option value=\"LOGOUT\">LOGOUT</option>
-              <option value=\"TAB_SWITCH\">TAB_SWITCH</option>
-              <option value=\"QUERY\">QUERY</option>
-              <option value=\"INTERPRET\">INTERPRET</option>
-            </select>
-            <button id=\"userlog_search_btn\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.search\">검색</button>
-            <button id=\"reload_userlog\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
-          </div>
-          <div id=\"userlog_list\" class=\"list\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
-        </section>
       </div>
     </div>
   </div>
@@ -1750,7 +1713,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       document.querySelectorAll('[data-atab="' + tab + '"]').forEach(btn => btn.classList.add('active'));
       window.scrollTo({ top: 0, behavior: 'smooth' });
       // 탭별 lazy 로더 dispatch (Phase 2)
-      if (tab === 'logs') { loadUnifiedLog(); loadAuditLog(); loadUserActivityLog(); }
+      if (tab === 'logs') { loadUnifiedLog(); }
       if (tab === 'remediation') { loadAdminVulnActions(); loadAdminActionPlans(); }
       if (tab === 'overview') { loadAdminPhase2Health(); loadAdminSourceFreshness(); }
       if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); loadLdapUsers(); loadAccountViewRoles(); }
@@ -1954,58 +1917,6 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     document.getElementById('reload_ldap_users')?.addEventListener('click', loadLdapUsers);
 
-    // ── Asset Audit Log ────────────────────────────────────────────────────
-    const auditLogListEl = document.getElementById('audit_log_list');
-    const auditLogStatusEl = document.getElementById('audit_log_status');
-
-    async function loadAuditLog() {
-      if (!auditLogListEl) return;
-      auditLogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.loading','로딩 중…')}</span>`;
-      const hostname = (document.getElementById('audit_filter_hostname')?.value || '').trim();
-      const field = document.getElementById('audit_filter_field')?.value || '';
-      let url = '/admin/audit-log';
-      const params = new URLSearchParams();
-      if (hostname) params.set('hostname', hostname);
-      if (field) params.set('field', field);
-      if (params.toString()) url += '?' + params.toString();
-      try {
-        const res = await fetch(url);
-        if (!res.ok) { auditLogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.load_fail','로드 실패')}</span>`; return; }
-        const data = await res.json();
-        const logs = data.audit_log || [];
-        if (!logs.length) { auditLogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.none_audit','변경 이력 없음')}</span>`; return; }
-        const FIELD_LABEL = { owner: tt('admin.dyn.field.owner','담당자'), category: tt('admin.dyn.field.category','카테고리') };
-        auditLogListEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead><tr style="background:#0f172a;">
-            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.time','시각')}</th>
-            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.host','호스트')}</th>
-            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.field','항목')}</th>
-            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.old_value','이전 값')}</th>
-            <th style="padding:8px;color:#4ade80;text-align:left">${tt('admin.dyn.col.new_value','변경 값')}</th>
-            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.changed_by','변경자')}</th>
-          </tr></thead>
-          <tbody>
-          ${logs.map(l => `<tr style="border-bottom:1px solid #1e293b;">
-            <td style="padding:7px 8px;color:#64748b;white-space:nowrap">${escapeHtml(formatTime(l.changed_at))}</td>
-            <td style="padding:7px 8px;color:#e2e8f0;font-weight:600">${escapeHtml(l.hostname)}</td>
-            <td style="padding:7px 8px;color:#fbbf24">${escapeHtml(FIELD_LABEL[l.field] || l.field)}</td>
-            <td style="padding:7px 8px;color:#94a3b8">${escapeHtml(l.old_value || '-')}</td>
-            <td style="padding:7px 8px;color:#4ade80">${escapeHtml(l.new_value || '-')}</td>
-            <td style="padding:7px 8px;color:#38bdf8">${escapeHtml(l.changed_by)}</td>
-          </tr>`).join('')}
-          </tbody></table>`;
-        if (auditLogStatusEl) auditLogStatusEl.textContent = `${tt('admin.dyn.col.total','총')} ${data.total}${tt('admin.dyn.count_suffix','건')}`;
-      } catch(e) {
-        auditLogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`;
-      }
-    }
-
-    if (document.getElementById('reload_audit_log')) {
-      document.getElementById('reload_audit_log')?.addEventListener('click', loadAuditLog);
-    }
-    if (document.getElementById('audit_search_btn')) {
-      document.getElementById('audit_search_btn')?.addEventListener('click', loadAuditLog);
-    }
 
     // ── 통합 이력 로그 (모든 이력 소스 병합 + 검색) ───────────────────────────
     const ulogListEl = document.getElementById('ulog_list');
@@ -2280,60 +2191,6 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       document.getElementById('reload_usertab')?.addEventListener('click', loadUserTabPermissions);
     }
 
-    // ── 사용자 행동 로그 ──────────────────────────────────────────────────
-    async function loadUserActivityLog(filterUser, filterAction) {
-      const listEl = document.getElementById('userlog_list');
-      if (!listEl) return;
-      listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</span>`;
-      try {
-        let url = '/admin/action-audit-log?limit=500';
-        if (filterUser) url += `&username=${encodeURIComponent(filterUser)}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(res.status);
-        const data = await res.json();
-        let logs = data.logs || [];
-        if (filterAction) logs = logs.filter(e => e.action === filterAction);
-        if (!logs.length) { listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.none_userlog','로그 없음')}</span>`; return; }
-        const ACTION_COLOR = {
-          LOGIN:'#4ade80', LOGIN_FAIL:'#f87171', LOGOUT:'#94a3b8',
-          TAB_SWITCH:'#38bdf8', QUERY:'#fbbf24', INTERPRET:'#38bdf8', UNKNOWN:'#cbd5e1',
-        };
-        listEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
-          <thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155\">
-            <th style=\"text-align:left;padding:6px 10px;white-space:nowrap\">${tt('admin.dyn.col.time','시각')}</th>
-            <th style=\"text-align:left;padding:6px 10px\">${tt('admin.dyn.col.user','사용자')}</th>
-            <th style=\"text-align:left;padding:6px 10px\">${tt('admin.dyn.col.action','액션')}</th>
-            <th style=\"text-align:left;padding:6px 10px\">${tt('admin.dyn.col.detail','상세')}</th>
-          </tr></thead>
-          <tbody>${logs.map(e => {
-            const col = ACTION_COLOR[e.action] || ACTION_COLOR.UNKNOWN;
-            return `<tr style=\"border-bottom:1px solid #1e293b\">
-              <td style=\"padding:5px 10px;color:#64748b;white-space:nowrap\">${escapeHtml(e.ts)}</td>
-              <td style=\"padding:5px 10px;color:#f1f5f9;font-weight:600\">${escapeHtml(e.username)}</td>
-              <td style=\"padding:5px 10px\"><span style=\"color:${col};font-weight:700\">${escapeHtml(e.action)}</span></td>
-              <td style=\"padding:5px 10px;color:#94a3b8\">${escapeHtml(e.detail||'')}</td>
-            </tr>`;
-          }).join('')}</tbody>
-        </table>`;
-      } catch(e) {
-        listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</span>`;
-      }
-    }
-
-    if (document.getElementById('reload_userlog')) {
-      document.getElementById('reload_userlog')?.addEventListener('click', () => {
-        const u = (document.getElementById('userlog_filter_user')||{}).value||'';
-        const a = (document.getElementById('userlog_filter_action')||{}).value||'';
-        loadUserActivityLog(u, a);
-      });
-    }
-    if (document.getElementById('userlog_search_btn')) {
-      document.getElementById('userlog_search_btn')?.addEventListener('click', () => {
-        const u = (document.getElementById('userlog_filter_user')||{}).value||'';
-        const a = (document.getElementById('userlog_filter_action')||{}).value||'';
-        loadUserActivityLog(u, a);
-      });
-    }
 
     // ── Phase 2: Overview · Compliance · Triage · Remediation 로더 ───────────
     const STATUS_BADGE = {
@@ -2818,6 +2675,17 @@ def render_user_dashboard_html(
     .tabs-nav { display: flex; gap: 0; border-bottom: 1px solid #1e293b; margin-bottom: 12px; overflow-x: auto; }
     .tabs-nav button { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 16px; color: #94a3b8; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: -1px; border-radius: 0; white-space: nowrap; }
     .tabs-nav button.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+    /* 토스식 슬림 상단바: 브랜드 + 탭 + 액션 한 줄, 큰 타이틀 없음 */
+    .topbar { display: flex; align-items: flex-end; gap: 18px; border-bottom: 1px solid #1e293b; margin-bottom: 16px; }
+    .topbar .brand { font-size: 18px; font-weight: 800; letter-spacing: -0.03em; color: #f1f5f9; padding-bottom: 10px; white-space: nowrap; }
+    .topbar .tabs-nav { flex: 1 1 auto; border-bottom: none; margin-bottom: 0; }
+    .topbar .top-actions { padding-bottom: 8px; align-items: center; flex: 0 0 auto; }
+    .topbar .portal-link { color: #94a3b8; text-decoration: none; font-size: 12px; padding: 6px 11px; border: 1px solid #334155; border-radius: 999px; background: #0f172a; white-space: nowrap; }
+    .topbar .portal-link:hover { color: #cbd5e1; border-color: #38bdf8; }
+    @media (max-width: 900px) {
+      .topbar { flex-wrap: wrap; align-items: center; gap: 10px; }
+      .topbar .tabs-nav { order: 3; flex-basis: 100%; }
+    }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
     .result-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
@@ -2927,18 +2795,22 @@ def render_user_dashboard_html(
 </head>
 <body>
   <div class=\"wrap\">
-    <section class=\"hero\">
-      <div>
-        <h1 data-i18n=\"dash.hero.title\">MORI 보안 점검 현황</h1>
-        <p data-i18n=\"dash.hero.intro\">ISMS-P / ISO 27001 통제 항목 기준으로 자산·경보·취약점 현황을 한눈에 확인하고, 증적 데이터를 내보낼 수 있는 대시보드입니다.</p>
-        <div class=\"links\">
-          <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"dash.links.docs\">운영 문서 / 포털</a>
-        </div>
-      </div>
+    <header class=\"topbar\">
+      <span class=\"brand\">MORI</span>
+      <nav class=\"tabs-nav\">
+        <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\" data-i18n=\"dash.tab.dashboard\">대시보드</button>
+        <button data-tab=\"triage\" onclick=\"switchTab('triage')\" data-i18n=\"dash.tab.triage\">Alert Triage</button>
+        <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\" data-i18n=\"dash.tab.incidents\">인시던트</button>
+        <button data-tab=\"assets\" onclick=\"switchTab('assets')\" data-i18n=\"dash.tab.assets\">자산 현황</button>
+        <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\" data-i18n=\"dash.tab.compliance\">Compliance PDCA</button>
+        <button id=\"tab_btn_accounts\" data-tab=\"accounts\" onclick=\"switchTab('accounts')\" data-i18n=\"dash.tab.accounts\" style=\"display:none\">계정</button>
+        <button data-tab=\"guides\" onclick=\"switchTab('guides')\" data-i18n=\"dash.tab.guides\">가이드 &amp; 기준</button>
+      </nav>
       <div class=\"top-actions\">
-        <button id=\"refresh_dashboard\" type=\"button\" data-i18n=\"dash.actions.refresh\">새로고침</button>
+        <a class=\"portal-link\" href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"dash.links.docs\">운영 문서 / 포털</a>
+        <button id=\"refresh_dashboard\" type=\"button\" class=\"secondary\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"dash.actions.refresh\">새로고침</button>
         <div class=\"account-wrap\" style=\"position:relative\">
-          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" style=\"background:#0f172a;border:1px solid #334155;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer\"><span id=\"ui_user_badge\" data-i18n=\"dash.account.title\">계정</span></button>
+          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" style=\"width:auto;background:#0f172a;border:1px solid #334155;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer\"><span id=\"ui_user_badge\" data-i18n=\"dash.account.title\">계정</span></button>
           <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
             <button type=\"button\" onclick=\"openProfileModal()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.edit_profile\">프로필 편집</button>
             <button type=\"button\" onclick=\"shortcutMyServers()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.my_servers\">내 서버</button>
@@ -2951,17 +2823,7 @@ def render_user_dashboard_html(
           </div>
         </div>
       </div>
-    </section>
-
-    <nav class=\"tabs-nav\">
-      <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\" data-i18n=\"dash.tab.dashboard\">대시보드</button>
-      <button data-tab=\"triage\" onclick=\"switchTab('triage')\" data-i18n=\"dash.tab.triage\">Alert Triage</button>
-      <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\" data-i18n=\"dash.tab.incidents\">인시던트</button>
-      <button data-tab=\"assets\" onclick=\"switchTab('assets')\" data-i18n=\"dash.tab.assets\">자산 현황</button>
-      <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\" data-i18n=\"dash.tab.compliance\">Compliance PDCA</button>
-      <button id=\"tab_btn_accounts\" data-tab=\"accounts\" onclick=\"switchTab('accounts')\" data-i18n=\"dash.tab.accounts\" style=\"display:none\">계정</button>
-      <button data-tab=\"guides\" onclick=\"switchTab('guides')\" data-i18n=\"dash.tab.guides\">가이드 &amp; 기준</button>
-    </nav>
+    </header>
 
     <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
     <div class=\"tab-panel active\" id=\"tab_dashboard\">
@@ -3467,9 +3329,6 @@ def render_user_dashboard_html(
           <form method=\"dialog\"><button class=\"secondary\" data-i18n=\"dash.f.cancel\">취소</button></form>
         </div>
         <div class=\"status-line\" id=\"triage_modal_status_line\"></div>
-        <hr style=\"border-color:#334155;margin:12px 0\" />
-        <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#38bdf8\" data-i18n=\"dash.modal.history_title\">상태 변경 히스토리</div>
-        <div id=\"triage_modal_history\" style=\"max-height:200px;overflow-y:auto\"><div style=\"color:#64748b;font-size:13px\" data-i18n=\"dash.modal.no_history\">변경 이력 없음</div></div>
       </div>
     </div>
   </dialog>
@@ -3494,9 +3353,6 @@ def render_user_dashboard_html(
         <div class=\"row\"><label data-i18n=\"dash.f.handler\">조치자</label><input id=\"incident_modal_edit_handler\" placeholder=\"비워두면 변경 없음\" data-i18n-placeholder=\"dash.ph.no_change\" /></div>
         <div class=\"row\"><label data-i18n=\"dash.f.changed_by\">변경자(작성)</label><input id=\"incident_modal_status_analyst\" placeholder=\"예: alice (미입력 시 로그인 사용자)\" data-i18n-placeholder=\"dash.ph.alice_login\" /></div>
         <button id=\"incident_modal_update_status\" style=\"margin-bottom:12px\" data-i18n=\"dash.f.save_change\">변경 저장</button>
-        <hr style=\"border-color:#334155;margin:12px 0\" />
-        <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#38bdf8\" data-i18n=\"dash.modal.history_title\">상태 변경 히스토리</div>
-        <div id=\"incident_modal_history\" style=\"margin-bottom:12px\"></div>
         <hr style=\"border-color:#334155;margin:12px 0\" />
         <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#4ade80\" data-i18n=\"dash.modal.notes_title\">조사 노트</div>
         <div id=\"incident_modal_notes\" style=\"margin-bottom:12px\"></div>
@@ -4696,25 +4552,6 @@ def render_user_dashboard_html(
       const actorEl = document.getElementById('triage_modal_actor');
       if (actorEl) actorEl.value = '';
       triageModalStatusLineEl.textContent = '';
-      // Render triage history
-      const cached = triageDataCache[alertId] || {};
-      const history = cached.history || [];
-      const historyEl = document.getElementById('triage_modal_history');
-      if (historyEl) {
-        historyEl.innerHTML = history.length
-          ? [...history].reverse().map(h => {
-              const fromLabel = triageLabel(h.from_status);
-              const toLabel = triageLabel(h.to_status);
-              const arrow = `${fromLabel} → <strong>${toLabel}</strong>`;
-              const noteText = h.note ? `<div style=\"color:#cbd5e1;margin-top:2px;font-size:11px\">${escapeHtml(h.note)}</div>` : '';
-              const actorText = h.changed_by ? ` &nbsp;·&nbsp; <span style=\"color:#fbbf24\">${tt('dash.dyn.lbl.changed_by', '변경자')}: ${escapeHtml(h.changed_by)}</span>` : '';
-              return `<div style=\"background:#0c1827;border-left:3px solid #334155;padding:7px 12px;margin-bottom:5px;border-radius:4px;font-size:12px\">
-                <div style=\"color:#64748b\">${escapeHtml(formatTime(h.changed_at))} &nbsp;·&nbsp; ${tt('dash.dyn.lbl.analyst', '분석관')}: ${escapeHtml(h.analyst || '-')}${actorText}</div>
-                <div style=\"color:#e2e8f0;margin-top:2px\">${arrow}</div>${noteText}
-              </div>`;
-            }).join('')
-          : `<div style=\"color:#64748b;font-size:13px\">${tt('dash.dyn.no_history', '변경 이력 없음')}</div>`;
-      }
       if (typeof triageModalEl.showModal === 'function') triageModalEl.showModal();
       else triageModalEl.setAttribute('open', 'open');
     }
@@ -4826,27 +4663,6 @@ def render_user_dashboard_html(
         const handlerLine = (inc.handler && inc.handler !== inc.analyst) ? `<br><strong style="color:#fbbf24">${tt('dash.dyn.lbl.handler', '조치자')}:</strong> ${escapeHtml(inc.handler)}` : '';
         document.getElementById('incident_modal_info').innerHTML = `<span style="color:#64748b">ID: ${escapeHtml(inc.incident_id)}</span><br>${tt('dash.dyn.created_label', '생성')}: ${escapeHtml(formatTime(inc.created_at))} &nbsp;|&nbsp; ${tt('dash.dyn.updated_label', '수정')}: ${escapeHtml(formatTime(inc.updated_at))}${statusUpdatedLine}${hostLine}${analystLine}${handlerLine}`;
         document.getElementById('incident_modal_status').value = inc.status;
-        // 상태 / 담당자 / 조치자 변경 히스토리
-        const history = inc.history || [];
-        const statusLabels = { open: 'open', investigating: 'investigating', resolved: 'resolved', closed: 'closed', created: tt('dash.dyn.inc_status_created', '생성됨') };
-        document.getElementById('incident_modal_history').innerHTML = history.length
-          ? [...history].reverse().map(h => {
-              let arrow;
-              if (h.event === 'created') {
-                arrow = `<span style=\"color:#94a3b8\">${tt('dash.dyn.created_label', '생성')}:</span> <strong>${statusLabels[h.to_status] || h.to_status}</strong>`;
-              } else if (h.event === 'analyst_changed') {
-                arrow = `<span style=\"color:#4ade80\">${tt('dash.dyn.col.owner', '담당자')}:</span> ${escapeHtml(h.from_analyst || '-')} → <strong>${escapeHtml(h.to_analyst || '-')}</strong>`;
-              } else if (h.event === 'handler_changed') {
-                arrow = `<span style=\"color:#fbbf24\">${tt('dash.dyn.lbl.handler', '조치자')}:</span> ${escapeHtml(h.from_handler || '-')} → <strong>${escapeHtml(h.to_handler || '-')}</strong>`;
-              } else {
-                arrow = `${statusLabels[h.from_status] || h.from_status} → <strong>${statusLabels[h.to_status] || h.to_status}</strong>`;
-              }
-              return `<div style=\"background:#0c1827;border-left:3px solid #334155;padding:7px 12px;margin-bottom:5px;border-radius:4px;font-size:12px\">
-                <div style=\"color:#64748b\">${escapeHtml(formatTime(h.changed_at))} &nbsp;·&nbsp; ${escapeHtml(h.analyst || '-')}</div>
-                <div style=\"color:#e2e8f0;margin-top:2px\">${arrow}</div>
-              </div>`;
-            }).join('')
-          : `<div style=\"color:#64748b;font-size:13px\">${tt('dash.dyn.no_history', '변경 이력 없음')}</div>`;
         // 조사 노트
         const notes = inc.notes || [];
         document.getElementById('incident_modal_notes').innerHTML = notes.length

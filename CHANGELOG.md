@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.18.3-alpha.1] — 2026-07-09 — 대시보드 헤더 → 토스식 슬림 상단바 (타이틀 제거)
+
+### Changed
+- **대시보드 큰 타이틀/인트로 제거** — "MORI 보안 점검 현황" 히어로(제목·소개문·환영문)를 없애고,
+  토스증권처럼 **브랜드 + 탭 + 우측 액션(포털·새로고침·계정)** 을 한 줄 슬림 상단바(`.topbar`)로 통합.
+  스크롤 없이 KPI·데이터가 바로 보임. 사용자명은 우측 계정 버튼에 표시. (모바일은 하단 탭 유지)
+
 ## [v0.18.2-alpha.1] — 2026-07-09 — 상단 여백 축소 (토스식 컴팩트 헤더)
 
 ### Changed
