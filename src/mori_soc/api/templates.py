@@ -2806,7 +2806,7 @@ def render_user_dashboard_html(
   <div class=\"wrap\">
     <header class=\"topbar\">
       <span class=\"brand\">MORI</span>
-      <nav class=\"tabs-nav\">
+      <nav class=\"tabs-nav\" id=\"main_tabs_nav\">
         <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\" data-i18n=\"dash.tab.dashboard\">대시보드</button>
         <button data-tab=\"triage\" onclick=\"switchTab('triage')\" data-i18n=\"dash.tab.triage\">Alert Triage</button>
         <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\" data-i18n=\"dash.tab.incidents\">인시던트</button>
@@ -7262,6 +7262,57 @@ def render_user_dashboard_html(
       } catch(e) { box.innerHTML = `<div class=\"empty\">${tt('dash.gap.err','증적 공백을 불러오지 못했습니다.')}</div>`; }
     }
     window.loadEvidenceGaps = loadEvidenceGaps;
+    function _tabOrderKey() { return 'mori_tab_order_' + (((document.getElementById('ui_user_badge')||{}).textContent || 'anon').trim() || 'anon'); }
+    function _saveTabOrder() {
+      const nav = document.getElementById('main_tabs_nav');
+      if (!nav) return;
+      const order = [...nav.querySelectorAll('button[data-tab]')].map(b => b.dataset.tab);
+      try { localStorage.setItem(_tabOrderKey(), JSON.stringify(order)); } catch (e) {}
+    }
+    function _applyTabOrder() {
+      const nav = document.getElementById('main_tabs_nav');
+      if (!nav) return;
+      let order = null;
+      try { order = JSON.parse(localStorage.getItem(_tabOrderKey()) || 'null'); } catch (e) {}
+      if (!Array.isArray(order)) return;
+      // 저장된 순서대로 재배치. 목록에 없는(새로 추가된) 탭은 뒤에 그대로 남음.
+      order.forEach(tab => {
+        const btn = nav.querySelector(`button[data-tab=\"${tab}\"]`);
+        if (btn) nav.appendChild(btn);
+      });
+    }
+    function _initTabReorder() {
+      const nav = document.getElementById('main_tabs_nav');
+      if (!nav || nav._reorderInit) return;
+      nav._reorderInit = true;
+      let dragEl = null;
+      nav.querySelectorAll('button[data-tab]').forEach(btn => {
+        btn.setAttribute('draggable', 'true');
+        btn.style.cursor = 'grab';
+      });
+      nav.addEventListener('dragstart', e => {
+        const b = e.target.closest('button[data-tab]');
+        if (!b) return;
+        dragEl = b; b.style.opacity = '0.4';
+        if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      });
+      nav.addEventListener('dragend', () => {
+        if (dragEl) dragEl.style.opacity = '';
+        dragEl = null;
+        _saveTabOrder();
+      });
+      nav.addEventListener('dragover', e => {
+        if (!dragEl) return;
+        e.preventDefault();
+        const target = e.target.closest('button[data-tab]');
+        if (!target || target === dragEl) return;
+        const rect = target.getBoundingClientRect();
+        const before = (e.clientX - rect.left) < rect.width / 2;
+        nav.insertBefore(dragEl, before ? target : target.nextSibling);
+      });
+    }
+    window._initTabReorder = _initTabReorder;
+
     async function applyRoleBasedTabs() {
       try {
         const res = await fetch('/auth/me');
@@ -7300,6 +7351,8 @@ def render_user_dashboard_html(
         _applyRiskGating();
         _applyEvidenceGating();
         _applyAccountGating();
+        _initTabReorder();   // 상단 메뉴 드래그 정렬 활성화
+        _applyTabOrder();    // 사용자별 저장된 순서 복원
         if (document.getElementById('security_hero_body')) renderSecurityHero();
       } catch(e) { /* 비로그인 상태에서도 대시보드는 동작 */ }
     }
