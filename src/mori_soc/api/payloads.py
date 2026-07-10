@@ -154,35 +154,38 @@ def build_pdca_payload(
     checked = total - status_counts["not_checked"] - status_counts["not_applicable"]
     pass_rate = round(status_counts["pass"] / checked * 100, 1) if checked > 0 else 0.0
 
-    # Control category 별 집계 — 통제 카탈로그의 '섹션명'으로 그룹핑해 카탈로그 트리와 매칭시킴.
-    # (기존엔 control_id 프리픽스 "2.5"만 써서 이름 없음·문자열정렬로 카탈로그와 불일치)
+    # Control category 별 집계 — 카탈로그 트리와 '통제 개수'로 매칭. (핵심)
+    # 트리는 통제 개수(매핑됨/전체)를 세는데 표는 점검 '건수'를 세서 합계가 안 맞았다.
+    # → 카탈로그 통제를 기준 유니버스로 잡고, 통제별로 점검 상태를 1건으로 집계하면
+    #   섹션·도메인 total 이 트리의 분모(예: 2.보호대책 64)와 정확히 일치한다.
     from mori_soc.services.control_catalog import load_catalog
     _catalog = load_catalog()
-    _sec_of: dict[str, str] = {}
-    _fw_of: dict[str, str] = {}
-    _dom_of: dict[str, str] = {}
-    for cc in _catalog.get("controls", []):
-        cid = str(cc.get("id", ""))
-        _sec_of[cid] = cc.get("section") or cc.get("domain") or cid.rsplit(".", 1)[0]
-        _fw_of[cid] = cc.get("framework", "")
-        _dom_of[cid] = cc.get("domain") or _sec_of[cid]
 
-    def _cat_of(control_id: str) -> str:
-        sec = _sec_of.get(control_id)
-        if sec:
-            return sec
-        parts = control_id.rsplit(".", 1)
-        return parts[0] if len(parts) > 1 else control_id
+    # control_id → 그 통제에 달린 점검 상태들
+    _statuses_of: dict[str, list[str]] = {}
+    for c in checks:
+        _statuses_of.setdefault(c.control_id, []).append(c.status)
+
+    def _agg_status(sts: list[str]) -> str:
+        # 통제 1개의 대표 상태: 실패 > 경고 > 통과 > 미적용 > 미점검 우선순위
+        if not sts:
+            return "not_checked"
+        for s in ("fail", "warning", "pass", "not_applicable"):
+            if s in sts:
+                return s
+        return "not_checked"
 
     by_category: dict[str, dict[str, int]] = {}
     cat_fw: dict[str, str] = {}
     cat_dom: dict[str, str] = {}
-    for c in checks:
-        cat = _cat_of(c.control_id)
-        cat_fw.setdefault(cat, _fw_of.get(c.control_id, ""))
-        cat_dom.setdefault(cat, _dom_of.get(c.control_id, cat))
-        bucket = by_category.setdefault(cat, {"pass": 0, "fail": 0, "warning": 0, "not_applicable": 0, "not_checked": 0, "total": 0})
-        bucket[c.status] = bucket.get(c.status, 0) + 1
+    for cc in _catalog.get("controls", []):
+        cid = str(cc.get("id", ""))
+        sec = cc.get("section") or cc.get("domain") or (cid.rsplit(".", 1)[0] if "." in cid else cid)
+        dom = cc.get("domain") or sec
+        cat_fw.setdefault(sec, cc.get("framework", ""))
+        cat_dom.setdefault(sec, dom)
+        bucket = by_category.setdefault(sec, {"pass": 0, "fail": 0, "warning": 0, "not_applicable": 0, "not_checked": 0, "total": 0})
+        bucket[_agg_status(_statuses_of.get(cid, []))] += 1
         bucket["total"] += 1
 
     def _sort_key(cat: str):

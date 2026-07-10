@@ -663,19 +663,26 @@ class BuildPdcaPayloadTests(unittest.TestCase):
         self.assertEqual(pdca["act"], 1)    # pass
 
     def test_categories_grouped_by_catalog_section(self) -> None:
-        # 카탈로그의 섹션/도메인명으로 그룹핑 (A.8.x → "A.8 Technological controls").
+        # 카탈로그 섹션명으로 그룹핑 + '통제 개수' 기준(트리 분모와 일치).
+        # A.8.x 는 "A.8 Technological controls" 섹션. 통제당 1건으로 집계, 나머지는 미점검.
         checks = [
             self._make_check("c1", "A.8.1", "pass"),
             self._make_check("c2", "A.8.2", "fail"),
-            self._make_check("c3", "A.9.1", "pass"),
+            self._make_check("c3", "A.8.1", "warning"),  # 같은 통제 두 번째 점검 → fail>warning>pass 우선순위상 A.8.1은 warning
         ]
         store = InMemoryQueryStore(control_checks=checks)
         payload = build_pdca_payload(QueryService(store))
         a8 = next(c for c in payload["categories"] if c["category"].startswith("A.8"))
-        self.assertEqual(a8["pass"], 1)
+        # 통제 기준 집계: A.8.1=warning, A.8.2=fail, 그 외 A.8 통제는 미점검.
         self.assertEqual(a8["fail"], 1)
-        a9 = next(c for c in payload["categories"] if c["category"].startswith("A.9"))
-        self.assertEqual(a9["pass"], 1)
+        self.assertEqual(a8["warning"], 1)
+        self.assertEqual(a8["pass"], 0)
+        # total 은 카탈로그의 A.8 통제 개수(점검 건수 아님) → 미점검이 대부분.
+        self.assertEqual(a8["total"], a8["pass"] + a8["fail"] + a8["warning"]
+                         + a8["not_checked"] + a8["not_applicable"])
+        self.assertGreater(a8["not_checked"], 0)
+        self.assertEqual(a8["framework"], "iso27001")
+        self.assertTrue(a8["domain"].startswith("A.8"))
 
     def test_pending_remediations_includes_fail_and_warning(self) -> None:
         from datetime import timedelta
