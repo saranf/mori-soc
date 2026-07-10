@@ -2336,6 +2336,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         el.innerHTML = `<table class=\"result-table\">
           <thead><tr><th>Source</th><th>Status</th><th style=\"text-align:right\">${tt('admin.dyn.col.host','호스트')}</th><th>Lag</th><th>SLA</th><th style=\"text-align:right\">${tt('admin.dyn.col.collected','수집')}</th><th>${tt('admin.dyn.col.message','메시지')}</th></tr></thead>
           <tbody>${rows.map(fmt).join('')}</tbody></table>`;
+          _pgApply(el);
       } catch (e) {
         el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</div>`;
       }
@@ -2381,6 +2382,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <td style=\"color:#111827\">${c.not_applicable||0}</td>
               <td style=\"color:#111827\">${c.not_checked||0}</td>
             </tr>`).join('')}</tbody></table>`;
+            _pgApply(catEl);
         }
         const pending = data.pending_remediations || [];
         if (!pending.length) {
@@ -2397,6 +2399,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <td style=\"${p.overdue?'color:#dc2626;font-weight:700':''}\">${p.overdue?'':''}${escapeHtml(p.remediation_due_at?formatTime(p.remediation_due_at):'-')}</td>
               <td style=\"color:#111827;font-size:12px\">${escapeHtml(p.note||'')}</td>
             </tr>`).join('')}${pending.length>100?`<tr><td colspan=\"7\" style=\"color:#111827;text-align:center;padding:8px\">… ${pending.length-100}${tt('admin.dyn.more_rows_suffix','건 더 (CSV 다운로드 권장)')}</td></tr>`:''}</tbody></table>`;
+            _pgApply(pendingEl);
         }
       } catch (e) {
         cardsEl.innerHTML = `<div class=\"metric-card card\"><span class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</span></div>`;
@@ -2442,6 +2445,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <td style=\"color:#111827;font-size:12px\">${escapeHtml(formatTime(a.observed_at))}</td>
             </tr>`;
           }).join('')}</tbody></table>`;
+          _pgApply(el);
       } catch (e) {
         el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</div>`;
       }
@@ -2476,6 +2480,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <td style=\"color:#111827;font-size:12px\">${escapeHtml(formatTime(i.created_at))}</td>
             <td style=\"color:#111827;font-size:12px\">${escapeHtml(formatTime(i.status_updated_at))}</td>
           </tr>`).join('')}</tbody></table>`;
+          _pgApply(el);
       } catch (e) {
         el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</div>`;
       }
@@ -2518,6 +2523,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <td style=\"font-size:12px\">${excTxt}</td>
             </tr>`;
           }).join('')}${flatRows.length>150?`<tr><td colspan=\"6\" style=\"color:#111827;text-align:center;padding:8px\">… ${flatRows.length-150}${tt('admin.dyn.more_rows_short','건 더')}</td></tr>`:''}</tbody></table>`;
+          _pgApply(el);
       } catch (e) {
         el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</div>`;
       }
@@ -2564,6 +2570,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <td style=\"color:#111827\">${escapeHtml((r.plan.text||'').substring(0,200))}${(r.plan.text||'').length>200?'…':''}</td>
             <td style=\"color:#111827;font-size:12px\">${escapeHtml(formatTime(r.plan.updated_at)||'-')} · ${escapeHtml(r.plan.updated_by||'-')}</td>
           </tr>`).join('')}</tbody></table>`;
+          _pgApply(el);
       } catch (e) {
         el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</div>`;
       }
@@ -4371,6 +4378,7 @@ def render_user_dashboard_html(
               <td>${escapeHtml(formatTime(item.last_seen_at))}</td>
             </tr>`).join('')}</tbody>
         </table>`;
+        _pgApply(latestStatusEl);
     }
 
     function renderRiskSummary(items) {
@@ -4391,6 +4399,7 @@ def render_user_dashboard_html(
               <td>${escapeHtml(item.vuln_count)} (C:${escapeHtml(item.critical_vuln_count)} / H:${escapeHtml(item.high_vuln_count)})</td>
             </tr>`).join('')}</tbody>
         </table>`;
+        _pgApply(riskSummaryEl);
     }
 
     function renderRecentActivity(items) {
@@ -5453,6 +5462,7 @@ def render_user_dashboard_html(
       document.getElementById('vuln_list_modal_subtitle').textContent =
         `Critical ${row.critical} · High ${row.high} · Medium ${row.medium} · Low ${row.low}`;
       document.getElementById('vuln_list_modal_body').innerHTML = _renderVulnListBody(row);
+      _pgApply(document.getElementById('vuln_list_modal_body'));
       document.getElementById('vuln_list_modal').style.display = 'flex';
     }
     function closeVulnListModal() { document.getElementById('vuln_list_modal').style.display = 'none'; }
@@ -5833,6 +5843,7 @@ def render_user_dashboard_html(
         if (listModal && listModal.style.display === 'flex' && _vulnActionHostId != null) {
           const row = (_assetCache.trivy || []).find(r => r.host_id === _vulnActionHostId);
           if (row) document.getElementById('vuln_list_modal_body').innerHTML = _renderVulnListBody(row);
+          _pgApply(document.getElementById('vuln_list_modal_body'));
         }
         setTimeout(closeRiskModal, 700);
       } catch(e) {
