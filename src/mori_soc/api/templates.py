@@ -736,6 +736,44 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         .replaceAll("'", '&#39;');
     }
 
+    // ── 재사용 클라이언트 페이저 기본 10, 10단위 선택(최대 100), 이전/다음 ──────
+    // container 안의 <table><tbody> 행을 페이지 단위로 표시/숨김 + 하단 컨트롤 바 추가.
+    // 렌더 함수 끝에서 _pgApply(container) 만 호출하면 됨(행 빌더는 그대로).
+    const _pg = {};  // key(container.id) -> {size, page, container}
+    function _pgApply(container) {
+      if (!container) return;
+      let key = container.id || container.dataset.pgKey;
+      if (!key) { key = 'pg' + Math.random().toString(36).slice(2); container.dataset.pgKey = key; }
+      const bar = container.querySelector(':scope > .pgbar'); if (bar) bar.remove();
+      const table = container.querySelector(':scope > table') || container.querySelector('table');
+      const tbody = table && table.querySelector('tbody');
+      // 테이블이면 tbody 행, 아니면 컨테이너 직속 자식(카드 목록)을 페이지 단위로.
+      const rows = tbody ? Array.from(tbody.rows)
+                         : Array.from(container.children).filter(c => !c.classList.contains('pgbar'));
+      if (!rows.length) return;
+      const total = rows.length;
+      const st = _pg[key] || (_pg[key] = { size: 10, page: 1 });
+      st.container = container;
+      const pages = Math.max(1, Math.ceil(total / st.size));
+      st.page = Math.min(Math.max(1, st.page), pages);
+      const start = (st.page - 1) * st.size, end = start + st.size;
+      rows.forEach((r, i) => { r.style.display = (i >= start && i < end) ? '' : 'none'; });
+      if (total <= 10) return;  // 10개 이하는 전부 표시(바 숨김)
+      const sizes = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+      const el = document.createElement('div');
+      el.className = 'pgbar';
+      el.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:8px;font-size:12px;color:#111827;flex-wrap:wrap';
+      el.innerHTML = `<span>${start + 1}–${Math.min(end, total)} / ${total}</span>` +
+        `<select onchange=\"_pgSize('${key}',this.value)\" style=\"background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:3px 6px;font-size:12px\">${sizes.map(s => `<option value=\"${s}\"${s === st.size ? ' selected' : ''}>${s}</option>`).join('')}</select>` +
+        `<button class=\"secondary\" style=\"width:auto;padding:2px 9px;font-size:12px\" onclick=\"_pgGo('${key}',-1)\" ${st.page <= 1 ? 'disabled' : ''}>이전</button>` +
+        `<span>${st.page}/${pages}</span>` +
+        `<button class=\"secondary\" style=\"width:auto;padding:2px 9px;font-size:12px\" onclick=\"_pgGo('${key}',1)\" ${st.page >= pages ? 'disabled' : ''}>다음</button>`;
+      container.appendChild(el);
+    }
+    window._pgApply = _pgApply;
+    window._pgSize = function(key, v) { const st = _pg[key]; if (!st) return; st.size = parseInt(v, 10) || 10; st.page = 1; _pgApply(st.container); };
+    window._pgGo = function(key, d) { const st = _pg[key]; if (!st) return; st.page += d; _pgApply(st.container); };
+
     function logUserAction(action, detail) {
       fetch('/admin/action-audit-log', {
         method: 'POST',
