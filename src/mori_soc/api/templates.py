@@ -2885,6 +2885,15 @@ def render_user_dashboard_html(
             <div id=\"infra_status_body\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.status.loading\">로딩 중…</span></div>
           </section>
           <!-- PC 자산 현황 (Fleet: 전체/온라인/오프라인) — 자산 탭에서 이동 -->
+          <!-- 증적 공백 / 오늘의 작업 큐 (admin·security 전용) -->
+          <section class=\"card\" id=\"evidence_gap_card\">
+            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+              <h2 style=\"margin:0\" data-i18n=\"dash.gap.title\">오늘의 작업 큐 (증적 공백)</h2>
+              <span id=\"evidence_gap_ts\" style=\"font-size:12px;color:#4b5563\"></span>
+            </div>
+            <div class=\"subtext\" data-i18n=\"dash.gap.sub\">아직 증적이 안 남은 미조치 항목이에요. 카드를 누르면 해당 탭으로 가요.</div>
+            <div id=\"evidence_gap_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+          </section>
           <section class=\"card\" id=\"fleet_status_section\">
             <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
               <h2 style=\"margin:0\" data-i18n=\"dash.fleet.title\">PC 자산 현황</h2>
@@ -3079,15 +3088,6 @@ def render_user_dashboard_html(
 
       <!-- Trivy Vulnerability Section -->
       <div id=\"assets_trivy_section\" class=\"hidden\">
-        <!-- 증적 공백 / 오늘의 작업 큐 (admin·security 전용) -->
-        <section class=\"card\" id=\"evidence_gap_card\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-            <h2 style=\"margin:0\" data-i18n=\"dash.gap.title\">오늘의 작업 큐 (증적 공백)</h2>
-            <span id=\"evidence_gap_ts\" style=\"font-size:12px;color:#4b5563\"></span>
-          </div>
-          <div class=\"subtext\" data-i18n=\"dash.gap.sub\">아직 증적이 안 남은 미조치 항목이에요. 카드를 누르면 해당 탭으로 가요.</div>
-          <div id=\"evidence_gap_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
-        </section>
         <!-- 위험성 평가 매트릭스 (R-4) — 더블클릭 시 팝업 (카드 요약은 여기, 매트릭스는 모달) -->
         <section class=\"card\" id=\"risk_matrix_card\" ondblclick=\"openRiskMatrixModal()\" style=\"cursor:pointer\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
@@ -5045,6 +5045,9 @@ def render_user_dashboard_html(
         ${_kv(tt('dash.dyn.lbl.platform','플랫폼'), escapeHtml((h.platform||'').trim()||'-'))}
         ${_kv(tt('dash.mine.importance','중요도'), impStr)}
         ${_kv(tt('dash.mine.category','분류'), escapeHtml((h.category||'').trim()||'-'))}
+        ${h.isms_control?_kv(tt('dash.dyn.lbl.isms_control','ISMS-P 통제'), `<span style=\\"color:#2563eb\\">${escapeHtml(h.isms_control)}</span>`):''}
+        ${h.iso27001_control?_kv('ISO 27001', `<span style=\\"color:#2563eb\\">${escapeHtml(h.iso27001_control)}</span>`):''}
+        ${h.latest_metric?_kv(tt('dash.dyn.lbl.latest_metric','최근 메트릭'), escapeHtml(h.latest_metric)+': '+escapeHtml(h.latest_value||'-')):''}
         ${_kv(tt('dash.dyn.lbl.status','상태'), `<span class=\\\"badge ${h.status==='online'?'online':h.status==='offline'?'offline':'unknown'}\\\">${escapeHtml(h.status||'-')}</span>`)}
         ${_kv('IP', `<span style=\\\"font-family:monospace\\\">${escapeHtml(h.primary_ip||'-')}</span>`)}
         ${_kv(tt('dash.dyn.lbl.owner_team','담당자 / 팀'), ownerCell)}
@@ -5186,12 +5189,8 @@ def render_user_dashboard_html(
         return `<tr ondblclick=\"openHostDetail('${escapeHtml(h.hostname)}')\" style=\"cursor:pointer\" title=\"${tt('dash.mine.dblclick','더블클릭하면 상세·조치현황')}\">
           <td><strong>${escapeHtml(h.hostname)}</strong>${zabbixLink ? '<br>' + zabbixLink : ''}</td>
           <td style=\"font-size:12px\">${escapeHtml(h.category || '-')}</td>
-          ${showImp ? `<td>${impBadge}</td>` : ''}
-          ${showIsms ? `<td style=\"font-size:11px;color:#2563eb\">${escapeHtml(h.isms_control || '-')}</td>` : ''}
-          ${showIso ? `<td style=\"font-size:11px;color:#2563eb\">${escapeHtml(h.iso27001_control || '-')}</td>` : ''}
           <td>${escapeHtml(h.primary_ip)}</td>
           <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
-          <td style=\"font-size:12px;color:#4b5563\">${metricStr}</td>
           <td>${ownerStr}</td>
         </tr>`;
       }).join('');
@@ -5199,12 +5198,8 @@ def render_user_dashboard_html(
         <thead><tr style=\"background:#f9fafb;\">
           <th style=\"padding:8px;color:#2563eb\">${tt('dash.dyn.lbl.hostname','호스트명')}</th>
           <th style=\"padding:8px;color:#2563eb\">${tt('dash.dyn.lbl.category','분류')}</th>
-          ${showImp ? '<th style=\"padding:8px;color:#a16207\">' + tt('dash.dyn.lbl.importance','중요도') + '</th>' : ''}
-          ${showIsms ? '<th style=\"padding:8px;color:#2563eb\">' + tt('dash.dyn.lbl.isms_control','ISMS-P 통제') + '</th>' : ''}
-          ${showIso ? '<th style=\"padding:8px;color:#2563eb\">ISO 27001</th>' : ''}
           <th style=\"padding:8px;color:#2563eb\">IP</th>
           <th style=\"padding:8px;color:#2563eb\">${tt('dash.dyn.lbl.status','상태')}</th>
-          <th style=\"padding:8px;color:#4b5563\">${tt('dash.dyn.lbl.latest_metric','최근 메트릭')}</th>
           <th style=\"padding:8px;color:#16a34a\">${tt('dash.dyn.lbl.owner_team','담당자 / 팀')}</th>
         </tr></thead>
         <tbody>${rows}</tbody>
