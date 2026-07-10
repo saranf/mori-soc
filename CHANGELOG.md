@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.18.2-alpha.1] — 2026-07-09 — 상단 여백 축소 (토스식 컴팩트 헤더)
+
+### Changed
+- **상단 크롬 세로 공간 축소** — 스크롤 없이 데이터가 보이도록 히어로/탭을 컴팩트하게:
+  히어로 제목 30→22px, 상단 패딩 28→16, 히어로/탭 하단 여백 축소, 포털 링크·환영문 소형화,
+  탭 버튼 패딩·글자 축소, KPI 타일 패딩 24→16. (콘텐츠 카드 여백은 유지)
+
 ## [v0.18.1-alpha.1] — 2026-07-09 — 글리프·특수문자 정리 + 카드/여백 단순화 + 자연스러운 카피
 
 ### Changed

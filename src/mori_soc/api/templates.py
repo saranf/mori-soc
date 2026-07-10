@@ -118,18 +118,18 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0b1220; color: #e5e7eb; }
-    .wrap { max-width: 1440px; margin: 0 auto; padding: 28px 20px 48px; }
-    .hero { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
-    .hero h1 { margin: 0 0 8px; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
-    .hero p { margin: 0; color: #94a3b8; max-width: 860px; line-height: 1.5; }
-    .links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
-    .links a { color: #cfe3ff; text-decoration: none; border: 1px solid #334155; padding: 8px 12px; border-radius: 999px; background: #0f172a; }
+    .wrap { max-width: 1440px; margin: 0 auto; padding: 16px 20px 48px; }
+    .hero { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 10px; }
+    .hero h1 { margin: 0 0 3px; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+    .hero p { margin: 0; color: #94a3b8; max-width: 860px; line-height: 1.4; font-size: 13px; }
+    .links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .links a { color: #94a3b8; text-decoration: none; border: 1px solid #334155; padding: 5px 11px; border-radius: 999px; background: #0f172a; font-size: 12px; }
     .top-actions { display: flex; gap: 10px; flex-wrap: wrap; }
     .layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(340px, 420px); gap: 20px; align-items: start; }
     .stack { display: grid; gap: 20px; }
     .metrics { display: grid; gap: 12px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
     .card { background: #111827; border: 1px solid #1c2636; border-radius: 20px; padding: 24px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
-    .metric-card { cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
+    .metric-card { cursor: pointer; padding: 16px 18px; transition: transform 0.15s ease, border-color 0.15s ease; }
     .metric-card:hover { transform: translateY(-1px); border-color: #38bdf8; }
     .metric-card:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
     .metric-label { color: #94a3b8; font-size: 13px; margin-bottom: 8px; }
@@ -580,6 +580,32 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <!-- ── Tab: Audit·Logs (자산 변경 이력 + 사용자 행동 로그 통합) ─── -->
     <div class=\"atab-panel\" id=\"atab_logs\">
       <div class=\"stack\">
+        <section class=\"card\">
+          <h2 data-i18n=\"admin.h.unified_log\">통합 이력 로그</h2>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.unified_log\">로그인·자산·취약점·트리아지·인시던트·증적·계정·통제 등 모든 변경 이력을 한곳에서 검색합니다.</div>
+          <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
+            <input id=\"ulog_q\" class=\"inp-sm\" placeholder=\"행위자·대상·내용 검색\" data-i18n-placeholder=\"admin.s.ph.ulog_q\" style=\"width:220px\" />
+            <select id=\"ulog_category\" class=\"inp-sm\">
+              <option value=\"\" data-i18n=\"admin.s.opt.all_cat\">전체 분류</option>
+              <option value=\"login\" data-i18n=\"admin.s.opt.cat_login\">로그인</option>
+              <option value=\"action\" data-i18n=\"admin.s.opt.cat_action\">사용자 행동</option>
+              <option value=\"asset\" data-i18n=\"admin.s.opt.cat_asset\">자산 변경</option>
+              <option value=\"vuln\" data-i18n=\"admin.s.opt.cat_vuln\">취약점 조치</option>
+              <option value=\"triage\" data-i18n=\"admin.s.opt.cat_triage\">트리아지</option>
+              <option value=\"incident\" data-i18n=\"admin.s.opt.cat_incident\">인시던트</option>
+              <option value=\"evidence\" data-i18n=\"admin.s.opt.cat_evidence\">증적</option>
+              <option value=\"account\" data-i18n=\"admin.s.opt.cat_account\">계정 승인</option>
+              <option value=\"control_evidence\" data-i18n=\"admin.s.opt.cat_control_evidence\">통제 증적</option>
+            </select>
+            <input id=\"ulog_from\" class=\"inp-sm\" type=\"date\" title=\"시작일\" data-i18n-title=\"admin.s.ph.ulog_from\" style=\"width:150px\" />
+            <input id=\"ulog_to\" class=\"inp-sm\" type=\"date\" title=\"종료일\" data-i18n-title=\"admin.s.ph.ulog_to\" style=\"width:150px\" />
+            <button id=\"ulog_search_btn\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.search\">검색</button>
+            <button id=\"ulog_reload\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
+          </div>
+          <div id=\"ulog_list\" class=\"list\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
+          <div class=\"status-line\" id=\"ulog_status\"></div>
+        </section>
+
         <section class=\"card\">
           <h2 data-i18n=\"admin.h.asset_audit\">자산 변경 이력</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.asset_audit\">사용자가 수정한 담당자·카테고리 변경 이력입니다. 최신 순으로 표시됩니다.</div>
@@ -2677,7 +2703,7 @@ def render_user_dashboard_html(
     .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 20px 48px; }
     .hero { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
     .hero h1 { margin: 0 0 8px; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
-    .hero p { margin: 0; color: #94a3b8; max-width: 860px; line-height: 1.5; }
+    .hero p { margin: 0; color: #94a3b8; max-width: 860px; line-height: 1.4; font-size: 13px; }
     .links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
     .links a, .top-actions button { display: inline-flex; align-items: center; justify-content: center; color: #cfe3ff; text-decoration: none; border: 1px solid #334155; padding: 8px 12px; border-radius: 999px; background: #0f172a; }
     .top-actions { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -2685,7 +2711,7 @@ def render_user_dashboard_html(
     .layout { display: grid; gap: 16px; }
     .stack { display: grid; gap: 16px; }
     .card { background: #111827; border: 1px solid #1c2636; border-radius: 20px; padding: 24px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
-    .metric-card { cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
+    .metric-card { cursor: pointer; padding: 16px 18px; transition: transform 0.15s ease, border-color 0.15s ease; }
     .metric-card:hover { transform: translateY(-1px); border-color: #38bdf8; }
     .metric-card:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
     .metric-label { color: #94a3b8; font-size: 13px; margin-bottom: 8px; }
@@ -2724,8 +2750,8 @@ def render_user_dashboard_html(
     button { cursor: pointer; padding: 8px 16px; border-radius: 999px; border: 1px solid #334155; background: #1d4ed8; color: #fff; font-size: 14px; font-weight: 600; }
     button.secondary { background: #0f172a; color: #cfe3ff; }
     button.ghost { background: transparent; color: #94a3b8; }
-    .tabs-nav { display: flex; gap: 0; border-bottom: 1px solid #1e293b; margin-bottom: 20px; overflow-x: auto; }
-    .tabs-nav button { background: none; border: none; border-bottom: 2px solid transparent; padding: 10px 22px; color: #94a3b8; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: -1px; border-radius: 0; white-space: nowrap; }
+    .tabs-nav { display: flex; gap: 0; border-bottom: 1px solid #1e293b; margin-bottom: 12px; overflow-x: auto; }
+    .tabs-nav button { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 16px; color: #94a3b8; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: -1px; border-radius: 0; white-space: nowrap; }
     .tabs-nav button.active { color: #38bdf8; border-bottom-color: #38bdf8; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
