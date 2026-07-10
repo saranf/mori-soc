@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.18.7-alpha.1] — 2026-07-09 — Trivy 표 정리: Critical·최근CVE 컬럼 제거 + 담당자 이동 + 행 더블클릭
+
+### Changed
+- **메인 취약점 표에서 Critical·최근 CVE 컬럼 제거** — 두 정보는 상세 팝업(Critical 소계·CVE 목록)에
+  이미 있어 표를 간결화(호스트·위험점수·합계·담당자·탐지일).
+- **담당자 컬럼을 탐지일 바로 앞으로 이동.**
+- **호스트 행 더블클릭 → 취약점 상세 팝업**(기존 합계 버튼 클릭도 유지).
+
 ## [v0.18.6-alpha.1] — 2026-07-09 — Trivy: 호스트별 조치계획/예외 → 팝업 일괄 설정
 
 ### Changed

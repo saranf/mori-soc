@@ -5219,24 +5219,20 @@ def render_user_dashboard_html(
         const riskCell = _rscore
           ? _riskBadge(_levelForScore(_rscore), true, _rscore)
           : '<span style=\"color:#475569\">-</span>';
-        return `<tr>
+        return `<tr ondblclick=\"openVulnListModal(\'${escapeHtml(r.host_id)}\')\" style=\"cursor:pointer\" title=\"${tt('dash.dyn.dblclick_vuln','더블클릭하면 취약점 상세')}\">
           <td><strong>${escapeHtml(r.hostname)}</strong><br><span style=\"color:#64748b;font-size:11px\">${escapeHtml(r.host_id)}</span></td>
-          <td style=\"color:#4ade80;font-size:12px\">${escapeHtml(ownerLabel)}</td>
-          <td style=\"color:${sevColor.critical};font-weight:700;text-align:center\">${r.critical}</td>
           <td style=\"text-align:center\">${riskCell}</td>
           <td style=\"text-align:center\">${totalCell}</td>
-          <td style=\"font-size:12px;color:#94a3b8\">${escapeHtml(r.latest_cve || '-')}</td>
+          <td style=\"color:#4ade80;font-size:12px\">${escapeHtml(ownerLabel)}</td>
           <td style=\"font-size:12px;color:#64748b\">${escapeHtml(formatTime(r.latest_detected_at))}</td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
         <thead><tr style=\"background:#0f172a;\">
           <th style=\"padding:8px;color:#fbbf24\">${tt('dash.dyn.lbl.host','호스트')}</th>
-          <th style=\"padding:8px;color:#4ade80\">${tt('dash.dyn.lbl.owner','담당자')}</th>
-          <th style=\"padding:8px;color:#f87171\">Critical</th>
           <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.risk_score','위험점수')}</th>
           <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.total','합계')}</th>
-          <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.latest_cve','최근 CVE')}</th>
+          <th style=\"padding:8px;color:#4ade80\">${tt('dash.dyn.lbl.owner','담당자')}</th>
           <th style=\"padding:8px;color:#64748b\">${tt('dash.dyn.lbl.detected_date','탐지일')}</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
