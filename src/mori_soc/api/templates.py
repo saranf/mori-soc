@@ -3302,14 +3302,6 @@ def render_user_dashboard_html(
         </div>
       </section>
 
-      <!-- ── 교차 검증 (Cross-verification) ─────────────────────────── -->
-      <section class=\"card\" style=\"margin-top:20px\">
-        <h2 data-i18n=\"dash.card.crosscheck\">소스 간 교차 검증</h2>
-        <div class=\"subtext\" data-i18n=\"dash.card.crosscheck.sub\">서로 다른 수집 소스의 데이터를 교차 비교하여 누락·불일치를 확인합니다.</div>
-        <div id=\"crosscheck_area\" style=\"margin-top:16px\">
-          <div class=\"empty\" style=\"padding:16px;color:#111827\" data-i18n=\"dash.status.crosscheck_loading\">교차 검증 데이터를 불러오는 중…</div>
-        </div>
-      </section>
     </div>
 
     <!-- ── Tab: 계정 거버넌스 (admin·security 전용) ──────────────────────── -->
@@ -6337,9 +6329,8 @@ def render_user_dashboard_html(
       } catch(e) {
         if (cardsEl) cardsEl.innerHTML = '<div class=\"empty\" style=\"color:#dc2626;padding:16px\">' + tt('dash.dyn.pdca.load_fail','Compliance 데이터를 불러올 수 없습니다.') + '</div>';
       }
-      // Load report download cards·crosscheck
+      // Load report download cards
       loadReportCards();
-      loadCrosscheck();
     }
 
     async function loadReportCards() {
@@ -6443,120 +6434,6 @@ def render_user_dashboard_html(
         filename: 'incidents.csv',
         url: '/incidents?' + params.toString(),
       });
-    }
-
-    let _crosscheckData = null;
-
-    function _renderCrosscheckHostTable(rows) {
-      if (!rows || !rows.length) {
-        return '<div class=\"empty\" style=\"padding:12px;color:#111827\">' + tt('dash.dyn.cc.no_assets','해당 자산이 없습니다.') + '</div>';
-      }
-      const head = '<thead><tr><th style=\"text-align:left;padding:6px 8px;border-bottom:1px solid #e5e7eb;color:#111827;font-size:12px\">' + tt('dash.dyn.lbl.hostname','호스트명') + '</th><th style=\"text-align:left;padding:6px 8px;border-bottom:1px solid #e5e7eb;color:#111827;font-size:12px\">' + tt('dash.dyn.cc.host_id','호스트 ID') + '</th><th style=\"text-align:left;padding:6px 8px;border-bottom:1px solid #e5e7eb;color:#111827;font-size:12px\">' + tt('dash.dyn.cc.source','소스') + '</th></tr></thead>';
-      const body = rows.map(r => {
-        const sources = (r.sources && r.sources.length) ? r.sources.join(', ') : '<span style=\"color:#dc2626\">' + tt('dash.dyn.cc.none','없음') + '</span>';
-        return `<tr><td style=\"padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:13px\">${escapeHtml(r.hostname || '-')}</td><td style=\"padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#111827\">${escapeHtml(r.host_id || '-')}</td><td style=\"padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:12px\">${sources}</td></tr>`;
-      }).join('');
-      return `<table style=\"width:100%;border-collapse:collapse\">${head}<tbody>${body}</tbody></table>`;
-    }
-
-    function showCrosscheckHosts(kind) {
-      if (!_crosscheckData) return;
-      const chk = (_crosscheckData.checks || []).find(c => c.id === 'source_coverage');
-      if (!chk) return;
-      let title = '', desc = '', rows = [];
-      if (kind === 'total') {
-        title = tt('dash.dyn.cc.total_title','전체 자산') + ' (' + chk.total_hosts + tt('dash.dyn.cc.unit','대') + ')';
-        desc = tt('dash.dyn.cc.total_desc','현재 hosts 테이블에 등록된 모든 자산입니다. 각 행의 \"소스\" 컬럼은 host_aliases 에 매핑된 수집 소스를 보여줍니다.');
-        rows = chk.all_hosts || [];
-      } else if (kind === 'covered') {
-        title = tt('dash.dyn.cc.covered_title','소스 커버됨') + ' (' + chk.covered_hosts + tt('dash.dyn.cc.unit','대') + ')';
-        desc = tt('dash.dyn.cc.covered_desc','Fleet / Zabbix / Trivy / Wazuh 중 최소 1개 소스에서 관측된 자산입니다.');
-        rows = chk.covered || [];
-      } else if (kind === 'uncovered') {
-        title = tt('dash.dyn.cc.uncovered_title','미관측 자산') + ' (' + chk.uncovered_hosts + tt('dash.dyn.cc.unit','대') + ')';
-        desc = tt('dash.dyn.cc.uncovered_desc','어떤 수집 소스에도 매핑되어 있지 않은 자산입니다. host_aliases 등록 또는 정리가 필요합니다.');
-        rows = chk.uncovered || [];
-      }
-      openOverviewModal(title, desc, _renderCrosscheckHostTable(rows));
-    }
-
-    async function loadCrosscheck() {
-      const area = document.getElementById('crosscheck_area');
-      if (!area) return;
-      try {
-        const res = await fetch('/compliance/crosscheck');
-        if (!res.ok) throw new Error(res.status);
-        const data = await res.json();
-        _crosscheckData = data;
-        const checks = data.checks || [];
-        area.innerHTML = checks.map(chk => {
-          let detail = '';
-          if (chk.id === 'zabbix_vs_fleet') {
-            const bar1W = Math.max(5, Math.round(chk.zabbix_count / Math.max(chk.zabbix_count + chk.fleet_count, 1) * 100));
-            detail = `
-              <div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0\">
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#2563eb\">${chk.zabbix_count}</div><div style=\"font-size:11px;color:#111827\">Zabbix</div></div>
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#16a34a\">${chk.both_count}</div><div style=\"font-size:11px;color:#111827\">${tt('dash.dyn.cc.both','양쪽 모두')}</div></div>
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#ea580c\">${chk.fleet_count}</div><div style=\"font-size:11px;color:#111827\">Fleet</div></div>
-              </div>
-              ${chk.zabbix_only_count > 0 ? '<div style=\"font-size:12px;color:#dc2626;margin:4px 0\">' + tt('dash.dyn.cc.zabbix_only','Zabbix에만 있는 자산: ') + chk.zabbix_only_count + tt('dash.dyn.cc.unit','대') + '</div>' : ''}
-              ${chk.fleet_only_count > 0 ? '<div style=\"font-size:12px;color:#ea580c;margin:4px 0\">' + tt('dash.dyn.cc.fleet_only','Fleet에만 있는 자산: ') + chk.fleet_only_count + tt('dash.dyn.cc.unit','대') + '</div>' : ''}
-            `;
-          } else if (chk.id === 'source_coverage') {
-            const covPct = chk.total_hosts > 0 ? (chk.covered_hosts / chk.total_hosts * 100).toFixed(1) : '0.0';
-            // 클릭 가능한 숫자 카드 3개: 전체 / 커버됨 / 미관측
-            detail = `
-              <div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0\">
-                <div role=\"button\" tabindex=\"0\" onclick=\"showCrosscheckHosts('total')\" style=\"text-align:center;cursor:pointer;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 6px;transition:border-color .15s\" onmouseover=\"this.style.borderColor='#2563eb'\" onmouseout=\"this.style.borderColor='#e5e7eb'\">
-                  <div style=\"font-size:22px;font-weight:800;color:#2563eb\">${chk.total_hosts}</div>
-                  <div style=\"font-size:11px;color:#111827;text-decoration:underline;text-decoration-style:dotted\">${tt('dash.dyn.cc.total_title','전체 자산')}</div>
-                </div>
-                <div role=\"button\" tabindex=\"0\" onclick=\"showCrosscheckHosts('covered')\" style=\"text-align:center;cursor:pointer;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 6px;transition:border-color .15s\" onmouseover=\"this.style.borderColor='#16a34a'\" onmouseout=\"this.style.borderColor='#e5e7eb'\">
-                  <div style=\"font-size:22px;font-weight:800;color:#16a34a\">${chk.covered_hosts}</div>
-                  <div style=\"font-size:11px;color:#111827;text-decoration:underline;text-decoration-style:dotted\">${tt('dash.dyn.cc.covered_title','소스 커버됨')}</div>
-                </div>
-                <div role=\"button\" tabindex=\"0\" onclick=\"showCrosscheckHosts('uncovered')\" style=\"text-align:center;cursor:pointer;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 6px;transition:border-color .15s\" onmouseover=\"this.style.borderColor='#dc2626'\" onmouseout=\"this.style.borderColor='#e5e7eb'\">
-                  <div style=\"font-size:22px;font-weight:800;color:${chk.uncovered_hosts > 0 ? '#dc2626' : '#111827'}\">${chk.uncovered_hosts}</div>
-                  <div style=\"font-size:11px;color:#111827;text-decoration:underline;text-decoration-style:dotted\">${tt('dash.dyn.cc.uncovered','미관측')}</div>
-                </div>
-              </div>
-              <div style=\"margin:12px 0\">
-                <div style=\"display:flex;justify-content:space-between;font-size:12px;color:#111827;margin-bottom:4px\">
-                  <span>${tt('dash.dyn.cc.coverage','커버리지')}</span><span>${covPct}% (${chk.covered_hosts}/${chk.total_hosts})</span>
-                </div>
-                <div style=\"background:#f9fafb;border-radius:6px;height:14px;overflow:hidden\">
-                  <div style=\"background:#16a34a;width:${covPct}%;height:100%;border-radius:6px;transition:width .5s\"></div>
-                </div>
-              </div>
-              <div style=\"font-size:11px;color:#111827;margin-top:8px\">${tt('dash.dyn.cc.click_hint','숫자를 클릭하면 해당 자산 목록을 볼 수 있습니다.')}</div>
-            `;
-          } else if (chk.id === 'vuln_vs_observation') {
-            detail = `
-              <div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0\">
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#dc2626\">${chk.vuln_hosts}</div><div style=\"font-size:11px;color:#111827\">${tt('dash.dyn.cc.vuln_hosts','취약점 자산')}</div></div>
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#16a34a\">${chk.recent_obs_hosts}</div><div style=\"font-size:11px;color:#111827\">${tt('dash.dyn.cc.recent_obs','최근 관측')}</div></div>
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#ea580c\">${chk.vuln_no_observation_count}</div><div style=\"font-size:11px;color:#111827\">${tt('dash.dyn.cc.no_obs','관측 없음')}</div></div>
-              </div>
-              ${chk.vuln_no_observation_count > 0 ? '<div style=\"font-size:12px;color:#dc2626\">' + tt('dash.dyn.cc.vuln_no_obs','취약점이 있으나 최근 30일간 관측 없는 자산: ') + chk.vuln_no_observation_count + tt('dash.dyn.cc.unit','대') + '</div>' : '<div style=\"font-size:12px;color:#16a34a\">' + tt('dash.dyn.cc.all_vuln_obs','모든 취약점 자산이 최근 관측됨') + '</div>'}
-            `;
-          } else if (chk.id === 'ldap_summary') {
-            detail = `
-              <div style=\"display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0\">
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#2563eb\">${chk.total_accounts}</div><div style=\"font-size:11px;color:#111827\">${tt('dash.dyn.cc.total_accounts','전체 계정')}</div></div>
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#ea580c\">${chk.privileged_accounts}</div><div style=\"font-size:11px;color:#111827\">${tt('dash.dyn.cc.privileged_accounts','특권 계정')}</div></div>
-              </div>
-              <div style=\"font-size:12px;color:#111827\">${tt('dash.dyn.cc.ldap_summary','권한 바인딩: {b}건 · 그룹 멤버십: {g}건').replace('{b}',chk.total_privilege_bindings).replace('{g}',chk.total_group_memberships)}</div>
-            `;
-          }
-          return `<div style=\"background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:12px\">
-            <div style=\"font-size:15px;font-weight:700;color:#111827;margin-bottom:4px\">${escapeHtml(chk.title)}</div>
-            <div style=\"font-size:12px;color:#111827\">${escapeHtml(chk.description)}</div>
-            ${detail}
-          </div>`;
-        }).join('');
-      } catch(e) {
-        area.innerHTML = `<div class=\"empty\" style=\"color:#dc2626\">${tt('dash.dyn.crosscheck_fail','교차 검증 데이터를 불러올 수 없습니다.')}</div>`;
-      }
     }
 
     function _metricCard(label, value, color, sub, big) {
