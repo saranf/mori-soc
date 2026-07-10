@@ -3891,7 +3891,14 @@ def render_user_dashboard_html(
       const activeBtn = document.querySelector('.tabs-nav button.active');
       const tab = activeBtn ? activeBtn.dataset.tab : 'dashboard';
       try {
-        if (tab === 'dashboard') loadDashboard();
+        if (tab === 'dashboard') {
+          loadDashboard();
+          // 대시보드 위젯은 별도 로더로 그려지므로 언어 전환 시 함께 재렌더
+          try { renderSecurityHero(); } catch (e) {}
+          try { renderInfraStatus(); } catch (e) {}
+          if (typeof _canViewEvidence === 'function' && _canViewEvidence()) { try { loadEvidenceGaps(); } catch (e) {} }
+          if (typeof _canViewAccounts === 'function' && _canViewAccounts()) { try { loadAccountsGov(); } catch (e) {} }
+        }
         else if (tab === 'triage') loadTriage();
         else if (tab === 'incidents') loadIncidents();
         else if (tab === 'assets') loadAssets();
