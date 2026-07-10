@@ -3299,7 +3299,7 @@ def render_user_dashboard_html(
           <h2 style=\"margin:0\" data-i18n=\"dash.acc.title\">계정 거버넌스 (접근권한 검토)</h2>
           <div style=\"display:flex;gap:8px;align-items:center\">
             <span id=\"acc_summary\" style=\"font-size:12px;color:#111827\"></span>
-            <a href=\"/accounts/overview.csv\" download class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px;text-decoration:none\" data-i18n=\"dash.acc.csv\">CSV</a>
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openCsvPreview({title:tt('dash.acc.csv_preview_title','계정 거버넌스 CSV 미리보기'),filename:'mori-accounts-overview.csv',url:'/accounts/overview.csv'})\" data-i18n=\"dash.acc.csv\">CSV</button>
           </div>
         </div>
         <div class=\"subtext\" data-i18n=\"dash.acc.sub\">서버·PC의 로컬 계정을 LDAP·승인 대장과 대조해 이상 계정을 찾아요. ISMS-P 2.5.1·2.5.5·2.5.6 접근권한 검토 증적이에요.</div>
@@ -7128,13 +7128,11 @@ def render_user_dashboard_html(
       if (!rows.length) { tableEl.innerHTML = `<div class=\"empty\">${tt('dash.acc.none','해당 계정이 없습니다. (osquery push 전이거나 필터)')}</div>`; return; }
       const dd = _accData.dormant_days||90;
       tableEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\"><thead><tr style=\"background:#f9fafb\">
-        <th style=\"padding:8px;text-align:left\">${tt('dash.acc.col.host','호스트')}</th><th style=\"padding:8px;text-align:left\">${tt('dash.acc.col.user','계정')}</th><th style=\"padding:8px\">UID</th><th style=\"padding:8px\">${tt('dash.acc.col.priv','특권')}</th><th style=\"padding:8px\">${tt('dash.acc.col.dir','디렉터리')}</th><th style=\"padding:8px\">${tt('dash.acc.col.login','최근 로그인')}</th><th style=\"padding:8px;text-align:left\">${tt('dash.acc.col.find','이상')}</th></tr></thead><tbody>
+        <th style=\"padding:8px;text-align:left\">${tt('dash.acc.col.host','호스트')}</th><th style=\"padding:8px;text-align:left\">${tt('dash.acc.col.user','계정')}</th><th style=\"padding:8px\">${tt('dash.acc.col.priv','특권')}</th><th style=\"padding:8px\">${tt('dash.acc.col.login','최근 로그인')}</th><th style=\"padding:8px;text-align:left\">${tt('dash.acc.col.find','이상')}</th></tr></thead><tbody>
         ${rows.map(a => `<tr>
           <td style=\"padding:6px 8px\"><strong>${escapeHtml(a.host_key)}</strong> <span style=\"color:#111827;font-size:11px\">${a.host_type==='pc'?'PC':''+tt('dash.mine.server','서버')}</span></td>
           <td style=\"padding:6px 8px;font-family:monospace\">${escapeHtml(a.username)}${a.disabled?' <span style=\"color:#111827\">(disabled)</span>':''}</td>
-          <td style=\"padding:6px 8px;text-align:center;color:#111827\">${escapeHtml(a.uid||'-')}</td>
           <td style=\"padding:6px 8px;text-align:center\">${a.is_privileged?`<span style=\"color:#dc2626\">●${a.is_sudo?' sudo':''}</span>`:'-'}</td>
-          <td style=\"padding:6px 8px;text-align:center\">${a.in_directory?'':''}</td>
           <td style=\"padding:6px 8px;text-align:center;color:${(a.login_age_days!=null&&a.login_age_days>dd)?'#2563eb':'#111827'};font-size:12px\">${a.login_age_days!=null?a.login_age_days+'d':(a.last_login?'-':'never')}</td>
           <td style=\"padding:6px 8px\">${a.findings.map(_accFindBadge).join('')||'<span style=\"color:#16a34a\"></span>'}</td>
         </tr>`).join('')}</tbody></table>`;
@@ -7201,13 +7199,11 @@ def render_user_dashboard_html(
       el.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"background:#f9fafb\">
         <th style=\"padding:6px;text-align:left\">${tt('dash.dyn.lbl.hostname','호스트명')}</th>
         <th style=\"padding:6px;text-align:left\">IP</th>
-        <th style=\"padding:6px;text-align:left\">${tt('dash.mine.importance','중요도')}</th>
         <th style=\"padding:6px;text-align:left\">${tt('dash.acc.ip_col_team','팀')}</th>
         <th style=\"padding:6px;text-align:left\">${tt('dash.acc.ip_col_cat','용도')}</th>
         <th style=\"padding:6px;text-align:left\">${tt('dash.dyn.lbl.status','상태')}</th></tr></thead><tbody>${rows.map(h => `<tr>
           <td style=\"padding:5px 6px;text-align:left\"><strong>${escapeHtml(h.hostname)}</strong></td>
           <td style=\"padding:5px 6px;text-align:left;font-family:monospace;color:#111827\">${escapeHtml(h.primary_ip||'-')}</td>
-          <td style=\"padding:5px 6px;text-align:left;color:#111827\">${escapeHtml(h.importance||'-')}</td>
           <td style=\"padding:5px 6px;text-align:left;color:#111827\">${escapeHtml(h.team||'-')}</td>
           <td style=\"padding:5px 6px;text-align:left;color:#111827\">${escapeHtml(h.category||'-')}</td>
           <td style=\"padding:5px 6px;text-align:left\"><span class=\"badge ${h.status==='online'?'online':h.status==='offline'?'offline':'unknown'}\">${escapeHtml(h.status||'-')}</span></td>
@@ -7272,12 +7268,12 @@ def render_user_dashboard_html(
 
     function exportIpCsv() {
       const rows = _ipFiltered();
-      const head = ['hostname','ip','importance','team','category','status'];
-      const csv = [head.join(',')].concat(rows.map(h => [h.hostname, h.primary_ip||'', h.importance||'', h.team||'', h.category||'', h.status||''].map(v => `\"${String(v).replaceAll('\"','\"\"')}\"`).join(','))).join('\\n');
+      const head = ['hostname','ip','team','category','status'];
+      const csv = [head.join(',')].concat(rows.map(h => [h.hostname, h.primary_ip||'', h.team||'', h.category||'', h.status||''].map(v => `\"${String(v).replaceAll('\"','\"\"')}\"`).join(','))).join('\\n');
       openCsvPreview({
-          title: tt('dash.modal.assets_csv_preview_title','자산 CSV 미리보기'),
-          filename: `mori-trivy-filtered-${new Date().toISOString().slice(0,10)}.csv`,
-          text: csvRows.join('\\n'),
+          title: tt('dash.modal.ip_csv_preview_title','IP 리스트 CSV 미리보기'),
+          filename: `mori-ip-list-${new Date().toISOString().slice(0,10)}.csv`,
+          text: csv,
         });
     }
     window.exportIpCsv = exportIpCsv;
