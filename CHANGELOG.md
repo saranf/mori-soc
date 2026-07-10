@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.18.1-alpha.1] — 2026-07-09 — 글리프·특수문자 정리 + 카드/여백 단순화 + 자연스러운 카피
+
+### Changed
+- **글리프 제거** — 화살표·캐럿(◀ ▶ ▾ ▴ ↗ ↔)까지 모두 제거. 페이징은 "이전/다음" 텍스트로,
+  토글·딥링크 화살표는 삭제(색·밑줄로 대체).
+- **특수문자 정리** — 필수 표시 별표(`*`), 장식용 `&`, 엠대시(`—`) 제거·정돈(코드 내 연산자·정규식은 미접촉).
+- **토스식 카드/여백** — 카드 그라디언트·강한 그림자 제거 → 단색 표면 + 아주 옅은 그림자,
+  radius 20·padding 24 로 여백↑, 카드 간격 20, 헤더/타이틀 letter-spacing 정돈.
+- **자연스러운 한국어 카피** — 주요 설명문의 번역체·문서투(~됩니다)를 친근한 구어체(~요)로 다듬고
+  전문용어·괄호 설명을 덜어냄. 이모지 제거로 깨졌던 문장("기한 초과는 로 표시…") 복구.
+
 ## [v0.18.0-alpha.1] — 2026-07-09 — 디자인 통일: 단일 액센트 + 이모지 제거
 
 ### Changed

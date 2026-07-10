@@ -114,29 +114,29 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 <head>
   <meta charset=\"utf-8\" />
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-  <title data-i18n-doctitle=\"admin.doctitle\">MORI — 관리자 콘솔</title>
+  <title data-i18n-doctitle=\"admin.doctitle\">MORI 관리자 콘솔</title>
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0b1220; color: #e5e7eb; }
     .wrap { max-width: 1440px; margin: 0 auto; padding: 28px 20px 48px; }
     .hero { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
-    .hero h1 { margin: 0 0 8px; font-size: 32px; }
+    .hero h1 { margin: 0 0 8px; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
     .hero p { margin: 0; color: #94a3b8; max-width: 860px; line-height: 1.5; }
     .links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
     .links a { color: #cfe3ff; text-decoration: none; border: 1px solid #334155; padding: 8px 12px; border-radius: 999px; background: #0f172a; }
     .top-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    .layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(340px, 420px); gap: 16px; align-items: start; }
-    .stack { display: grid; gap: 16px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(340px, 420px); gap: 20px; align-items: start; }
+    .stack { display: grid; gap: 20px; }
     .metrics { display: grid; gap: 12px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
-    .card { background: linear-gradient(180deg, #101827 0%, #0f172a 100%); border: 1px solid #1e293b; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
+    .card { background: #111827; border: 1px solid #1c2636; border-radius: 20px; padding: 24px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
     .metric-card { cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
     .metric-card:hover { transform: translateY(-1px); border-color: #38bdf8; }
     .metric-card:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
     .metric-label { color: #94a3b8; font-size: 13px; margin-bottom: 8px; }
     .metric-value { font-size: 28px; font-weight: 800; }
     .metric-sub { margin-top: 6px; color: #38bdf8; font-size: 13px; }
-    .card h2 { margin: 0 0 12px; font-size: 18px; }
-    .subtext { color: #94a3b8; font-size: 13px; margin-bottom: 12px; }
+    .card h2 { margin: 0 0 14px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+    .subtext { color: #94a3b8; font-size: 13px; margin-bottom: 14px; line-height: 1.55; }
     .table-wrap { overflow: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #1f2937; vertical-align: top; }
@@ -157,7 +157,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     label { font-size: 13px; color: #cbd5e1; }
     input, select, textarea, button { width: 100%; box-sizing: border-box; border-radius: 12px; border: 1px solid #334155; background: #0b1220; color: #e5e7eb; padding: 10px 12px; }
     textarea { resize: vertical; min-height: 120px; font-family: ui-monospace, SFMono-Regular, monospace; }
-    /* 컴팩트 인라인 입력(폼 한 줄에 여러 개) — 베이스 팔레트와 통일 */
+    /* 컴팩트 인라인 입력(폼 한 줄에 여러 개) 베이스 팔레트와 통일 */
     .inp-sm { width: auto; border-radius: 10px; border: 1px solid #334155; background: #0b1220; color: #e5e7eb; padding: 7px 10px; font-size: 13px; }
     .inp-sm:focus { outline: none; border-color: #38bdf8; }
     /* 버튼 계층: primary(저장/실행) / secondary(보조) / ghost(중립) / danger(삭제) */
@@ -277,7 +277,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
   <div class=\"wrap\">
     <section class=\"hero\">
       <div>
-        <h1 data-i18n=\"admin.hero.title\">MORI — 점검·통제 운영 콘솔</h1>
+        <h1 data-i18n=\"admin.hero.title\">MORI 점검·통제 운영 콘솔</h1>
         <p data-i18n=\"admin.hero.intro\">통제 항목 점검 결과를 관리하고, 수집 데이터를 교차 검증하며, 사용자 대시보드 노출 범위를 제어하는 관리자 운영 콘솔입니다.</p>
         <div class=\"links\">
           <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"admin.links.docs\">운영 문서 / 포털</a>
@@ -293,7 +293,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         <button id=\"query_guide\" class=\"ghost\" data-i18n=\"admin.actions.query_guide\">Query Guide</button>
         <button id=\"refresh_dashboard\" class=\"ghost\" data-i18n=\"admin.actions.refresh\">Refresh Dashboard</button>
         <div class=\"account-wrap\" style=\"position:relative\">
-          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" class=\"ghost\" data-i18n=\"admin.actions.account\">계정 ▾</button>
+          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" class=\"ghost\" data-i18n=\"admin.actions.account\">계정</button>
           <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
             <div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\" data-i18n=\"admin.account.language\">언어 / Language</div>
             __I18N_TOGGLE__
@@ -362,7 +362,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <h2 data-i18n=\"admin.h.trivy_remediation\">Trivy 취약점 조치 상태</h2>
           <div class=\"subtext\" data-i18n-html=\"admin.s.sub.trivy\">
             Critical / High 취약점과 등록된 조치 계획(plan) · 예외(exception) 입니다.
-            편집은 <a href=\"/ui#assets\" style=\"color:#38bdf8\">사용자 대시보드 Assets 탭의 취약점 카드 ↗</a>에서 가능합니다.
+            편집은 <a href=\"/ui#assets\" style=\"color:#38bdf8\">사용자 대시보드 Assets 탭의 취약점 카드</a>에서 가능합니다.
           </div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
             <button id=\"admin_reload_vulns\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
@@ -416,7 +416,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"row\"><label data-i18n=\"admin.s.lbl.guide_tabs\">가이드 탭 노출 설정</label><div class=\"toggle-grid\" id=\"user_dashboard_guides\"></div></div>
           <div class=\"actions\">
             <button id=\"save_dashboard_preferences\" class=\"primary\" data-i18n=\"admin.s.btn.save\">저장</button>
-            <a href=\"/ui\" data-i18n=\"admin.s.btn.open_user_ui\">사용자 화면 열기 ↗</a>
+            <a href=\"/ui\" data-i18n=\"admin.s.btn.open_user_ui\">사용자 화면 열기</a>
           </div>
           <div class=\"status-line\" id=\"dashboard_preferences_status\">user dashboard settings loading...</div>
         </section>
@@ -457,10 +457,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"status-line\" id=\"guide_edit_status\"></div>
         </section>
 
-        <!-- ── Dev Tools (자연어 / 구조화 질의 — 접기 기본) ───────────── -->
+        <!-- ── Dev Tools (자연어 / 구조화 질의 접기 기본) ───────────── -->
         <details class=\"card\" style=\"padding:0\">
           <summary style=\"cursor:pointer;padding:18px 22px;font-size:18px;font-weight:700;color:#e2e8f0;list-style:none\">
-            Dev Tools <span style=\"color:#94a3b8;font-weight:400;font-size:13px\" data-i18n=\"admin.s.devtools_tag\">— 자연어 / 구조화 질의 (개발자용)</span>
+            Dev Tools <span style=\"color:#94a3b8;font-weight:400;font-size:13px\" data-i18n=\"admin.s.devtools_tag\"> 자연어 / 구조화 질의 (개발자용)</span>
           </summary>
           <div style=\"padding:0 22px 22px 22px\">
             <div class=\"subtext\" style=\"margin-bottom:12px\" data-i18n-html=\"admin.s.sub.devtools\">관리자가 직접 백엔드 질의를 시험하기 위한 도구입니다. 일반 사용자 화면은 <a href=\"/ui\" style=\"color:#38bdf8\">/ui</a> 를 참고하세요.</div>
@@ -470,7 +470,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             </section>
             <section style=\"margin-bottom:18px\">
               <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.nlq\">Natural Language Query</h3>
-              <div class=\"subtext\"><span data-i18n=\"admin.s.sub.nlq\">자연스럽게 질문하면 의도를 해석해 실행합니다.</span> <a href=\"#\" id=\"query_guide_link\" style=\"color:#38bdf8;\" data-i18n=\"admin.s.link.query_guide\">질의 가이드 ↗</a></div>
+              <div class=\"subtext\"><span data-i18n=\"admin.s.sub.nlq\">자연스럽게 질문하면 의도를 해석해 실행합니다.</span> <a href=\"#\" id=\"query_guide_link\" style=\"color:#38bdf8;\" data-i18n=\"admin.s.link.query_guide\">질의 가이드</a></div>
               <div class=\"row\">
                 <label for=\"nlp_text\" data-i18n=\"admin.s.lbl.question\">질문</label>
                 <textarea id=\"nlp_text\" data-i18n=\"admin.s.nlq_default\">오프라인 호스트 보여줘</textarea>
@@ -577,7 +577,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       </div>
     </div>
 
-    <!-- ── Tab: Audit & Logs (자산 변경 이력 + 사용자 행동 로그 통합) ─── -->
+    <!-- ── Tab: Audit·Logs (자산 변경 이력 + 사용자 행동 로그 통합) ─── -->
     <div class=\"atab-panel\" id=\"atab_logs\">
       <div class=\"stack\">
         <section class=\"card\">
@@ -669,7 +669,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
   <script>
     const defaultPayload = __DEFAULT_PAYLOAD_JSON__;
     const guideExamples = __GUIDE_EXAMPLES__;
-    // i18n helper — resolves via window.t() with a Korean fallback
+    // i18n helper resolves via window.t() with a Korean fallback
     const tt = (k, f) => (window.t ? window.t(k, f) : f);
     const overviewCardsEl = document.getElementById('overview_cards');
     const sourceCoverageEl = document.getElementById('source_coverage');
@@ -721,7 +721,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     let userDashboardPreferences = JSON.parse(JSON.stringify(defaultUserDashboardPreferences));
     let queryMode = 'natural';
 
-    // ── 전역 함수 노출 (onclick 속성에서 직접 호출 — 함수 선언은 호이스팅됨) ──
+    // ── 전역 함수 노출 (onclick 속성에서 직접 호출 함수 선언은 호이스팅됨) ──
     window.switchAdminTab       = switchAdminTab;
     window.deleteOwner          = deleteOwner;
     window.editOwner            = editOwner;
@@ -1816,7 +1816,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || res.status);
         if (status === 'approved' && data.username) {
-          signupStatusEl.innerHTML = `${tt('admin.dyn.approve_done','승인 완료')} — <strong>${data.username}</strong> (${data.role}, ${data.backend}) · ${tt('admin.dyn.signup.initpw','초기 비밀번호')}: <code style="background:#0b1220;padding:1px 6px;border-radius:4px;color:#fbbf24">${data.initial_password}</code> ${tt('admin.dyn.signup.copy_note','(사용자에게 전달, 1회 표시)')}`;
+          signupStatusEl.innerHTML = `${tt('admin.dyn.approve_done','승인 완료')} <strong>${data.username}</strong> (${data.role}, ${data.backend}) · ${tt('admin.dyn.signup.initpw','초기 비밀번호')}: <code style="background:#0b1220;padding:1px 6px;border-radius:4px;color:#fbbf24">${data.initial_password}</code> ${tt('admin.dyn.signup.copy_note','(사용자에게 전달, 1회 표시)')}`;
         } else {
           signupStatusEl.textContent = tt('admin.dyn.reject_done','거절 완료');
         }
@@ -2348,7 +2348,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       document.getElementById('admin_reload_freshness').addEventListener('click', loadAdminSourceFreshness);
     }
 
-    async function loadAdminCompliance() {  // (deprecated — Compliance는 /ui 에서만 편집)
+    async function loadAdminCompliance() {  // (deprecated Compliance는 /ui 에서만 편집)
       const cardsEl = document.getElementById('admin_compliance_cards');
       const catEl = document.getElementById('admin_compliance_categories');
       const pendingEl = document.getElementById('admin_compliance_pending');
@@ -2367,12 +2367,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"metric-card card\"><div class=\"metric-label\">Pass</div><div class=\"metric-value\" style=\"color:#4ade80\">${s.pass||0}</div></div>
           <div class=\"metric-card card\"><div class=\"metric-label\">Fail</div><div class=\"metric-value\" style=\"color:#f87171\">${s.fail||0}</div></div>
           <div class=\"metric-card card\"><div class=\"metric-label\">Warning</div><div class=\"metric-value\" style=\"color:#fbbf24\">${s.warning||0}</div></div>
-          <div class=\"metric-card card\"><div class=\"metric-label\">Pass Rate</div><div class=\"metric-value\" style=\"color:#38bdf8\">${passRate===null?'—':passRate+'%'}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">Pass Rate</div><div class=\"metric-value\" style=\"color:#38bdf8\">${passRate===null?'':passRate+'%'}</div></div>
           <div class=\"metric-card card\"><div class=\"metric-label\">${tt('admin.dyn.metric.pending_icon','미조치')}</div><div class=\"metric-value\" style=\"color:#fbbf24\">${data.pending_count||0}</div><div class=\"metric-sub\">${tt('admin.dyn.col.control','통제')} ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}</div></div>
         `;
         const cats = data.categories || [];
         if (!cats.length) {
-          catEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_category','카테고리 데이터 없음 — 시드 누락 가능성')}</div>`;
+          catEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_category','카테고리 데이터 없음 시드 누락 가능성')}</div>`;
         } else {
           catEl.innerHTML = `<table class=\"result-table\">
             <thead><tr><th>${tt('admin.dyn.col.category','카테고리')}</th><th>${tt('admin.dyn.col.total','총')}</th><th style=\"color:#4ade80\">Pass</th><th style=\"color:#f87171\">Fail</th><th style=\"color:#fbbf24\">Warning</th><th style=\"color:#cbd5e1\">N/A</th><th style=\"color:#94a3b8\">${tt('admin.dyn.col.not_checked','미점검')}</th></tr></thead>
@@ -2676,7 +2676,7 @@ def render_user_dashboard_html(
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0b1220; color: #e5e7eb; }
     .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 20px 48px; }
     .hero { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
-    .hero h1 { margin: 0 0 8px; font-size: 32px; }
+    .hero h1 { margin: 0 0 8px; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
     .hero p { margin: 0; color: #94a3b8; max-width: 860px; line-height: 1.5; }
     .links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
     .links a, .top-actions button { display: inline-flex; align-items: center; justify-content: center; color: #cfe3ff; text-decoration: none; border: 1px solid #334155; padding: 8px 12px; border-radius: 999px; background: #0f172a; }
@@ -2684,15 +2684,15 @@ def render_user_dashboard_html(
     .metrics { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 16px; }
     .layout { display: grid; gap: 16px; }
     .stack { display: grid; gap: 16px; }
-    .card { background: linear-gradient(180deg, #101827 0%, #0f172a 100%); border: 1px solid #1e293b; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
+    .card { background: #111827; border: 1px solid #1c2636; border-radius: 20px; padding: 24px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
     .metric-card { cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
     .metric-card:hover { transform: translateY(-1px); border-color: #38bdf8; }
     .metric-card:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
     .metric-label { color: #94a3b8; font-size: 13px; margin-bottom: 8px; }
     .metric-value { font-size: 28px; font-weight: 800; }
     .metric-sub { margin-top: 6px; color: #38bdf8; font-size: 13px; }
-    .card h2 { margin: 0 0 12px; font-size: 18px; }
-    .subtext { color: #94a3b8; font-size: 13px; margin-bottom: 12px; }
+    .card h2 { margin: 0 0 14px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+    .subtext { color: #94a3b8; font-size: 13px; margin-bottom: 14px; line-height: 1.55; }
     .table-wrap { overflow: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #1f2937; vertical-align: top; }
@@ -2838,7 +2838,7 @@ def render_user_dashboard_html(
   <div class=\"wrap\">
     <section class=\"hero\">
       <div>
-        <h1 data-i18n=\"dash.hero.title\">MORI — 보안 점검 현황</h1>
+        <h1 data-i18n=\"dash.hero.title\">MORI 보안 점검 현황</h1>
         <p data-i18n=\"dash.hero.intro\">ISMS-P / ISO 27001 통제 항목 기준으로 자산·경보·취약점 현황을 한눈에 확인하고, 증적 데이터를 내보낼 수 있는 대시보드입니다.</p>
         <div class=\"links\">
           <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"dash.links.docs\">운영 문서 / 포털</a>
@@ -2847,11 +2847,11 @@ def render_user_dashboard_html(
       <div class=\"top-actions\">
         <button id=\"refresh_dashboard\" type=\"button\" data-i18n=\"dash.actions.refresh\">새로고침</button>
         <div class=\"account-wrap\" style=\"position:relative\">
-          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" style=\"background:#0f172a;border:1px solid #334155;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer\"><span id=\"ui_user_badge\" data-i18n=\"dash.account.title\">계정</span> ▾</button>
+          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" style=\"background:#0f172a;border:1px solid #334155;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer\"><span id=\"ui_user_badge\" data-i18n=\"dash.account.title\">계정</span></button>
           <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
             <button type=\"button\" onclick=\"openProfileModal()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.edit_profile\">프로필 편집</button>
             <button type=\"button\" onclick=\"shortcutMyServers()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.my_servers\">내 서버</button>
-            <a id=\"ui_admin_console_link\" href=\"/admin\" style=\"display:none;width:100%;text-align:left;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;text-decoration:none\" data-i18n=\"dash.account.admin_console\">관리자 콘솔 ↗</a>
+            <a id=\"ui_admin_console_link\" href=\"/admin\" style=\"display:none;width:100%;text-align:left;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;text-decoration:none\" data-i18n=\"dash.account.admin_console\">관리자 콘솔</a>
             <div style=\"border-top:1px solid #334155;margin:10px 0\"></div>
             <div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\" data-i18n=\"dash.account.language\">언어 / Language</div>
             __I18N_TOGGLE__
@@ -2875,19 +2875,19 @@ def render_user_dashboard_html(
     <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
     <div class=\"tab-panel active\" id=\"tab_dashboard\">
       <div style=\"display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;\">
-        <span style=\"font-size:11px;color:#64748b;margin-right:auto\" data-i18n=\"dash.panel.resize_hint\">↔ 패널 오른쪽-아래 모서리를 드래그해 크기를 조절할 수 있어요 (브라우저에 저장)</span>
-        <button id=\"panel_layout_reset\" class=\"secondary\" onclick=\"resetPanelLayout()\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"dash.panel.reset_layout\">↔크기 초기화</button>
+        <span style=\"font-size:11px;color:#64748b;margin-right:auto\" data-i18n=\"dash.panel.resize_hint\">패널 오른쪽-아래 모서리를 드래그해 크기를 조절할 수 있어요 (브라우저에 저장)</span>
+        <button id=\"panel_layout_reset\" class=\"secondary\" onclick=\"resetPanelLayout()\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"dash.panel.reset_layout\">크기 초기화</button>
         <button id=\"panel_edit_toggle\" class=\"secondary\" onclick=\"togglePanelEdit()\" data-i18n=\"dash.panel.edit\">패널 편집</button>
       </div>
       <div id=\"panel_edit_box\" class=\"card hidden\" style=\"margin-bottom:12px;\">
         <div style=\"font-weight:600;color:#38bdf8;margin-bottom:4px\" data-i18n=\"dash.panel.edit_title\">표시할 패널 선택</div>
-        <div class=\"subtext\" data-i18n=\"dash.panel.edit_sub\">보고 싶은 항목만 켜세요. 변경은 자동 저장되어 다음 접속에도 유지됩니다.</div>
+        <div class=\"subtext\" data-i18n=\"dash.panel.edit_sub\">보고 싶은 것만 켜세요. 자동 저장돼서 다음에도 그대로예요.</div>
         <div style=\"margin-top:10px;font-size:12px;color:#94a3b8\" data-i18n=\"dash.panel.group.cards\">요약 카드</div>
         <div id=\"panel_edit_cards\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 12px\"></div>
         <div style=\"font-size:12px;color:#94a3b8\" data-i18n=\"dash.panel.group.sections\">패널</div>
         <div id=\"panel_edit_sections\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin-top:6px\"></div>
       </div>
-      <!-- 보안 요약 히어로 (Toss형: 보안 KPI + 위험 TOP 랭킹) — 보안 우선, 인프라는 아래 -->
+      <!-- 보안 요약 히어로 (Toss형: 보안 KPI + 위험 TOP 랭킹) 보안 우선, 인프라는 아래 -->
       <section class=\"card\" id=\"security_hero_section\" style=\"background:linear-gradient(135deg,#0b1220,#101a33);border:1px solid #334155\">
         <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
           <h2 style=\"margin:0\" data-i18n=\"dash.hero.section\">지금 봐야 할 보안 현황</h2>
@@ -2955,7 +2955,7 @@ def render_user_dashboard_html(
     <div class=\"tab-panel\" id=\"tab_triage\">
       <section class=\"card\">
         <h2 data-i18n=\"dash.card.triage\">Alert Triage</h2>
-        <div class=\"subtext\" data-i18n=\"dash.card.triage.sub\">최근 24h 경보 목록입니다. 상태를 클릭해 Triage 처리하세요.</div>
+        <div class=\"subtext\" data-i18n=\"dash.card.triage.sub\">최근 24시간 경보예요. 상태를 눌러 처리하세요.</div>
         <div class=\"table-wrap\" id=\"triage_table\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         <div style=\"margin-top:10px\"><button id=\"reload_triage\" class=\"secondary\" data-i18n=\"dash.btn.reload\">새로고침</button></div>
       </section>
@@ -3047,7 +3047,7 @@ def render_user_dashboard_html(
             <label style=\"display:inline-flex;align-items:center;gap:5px;color:#cbd5e1;font-size:12px;cursor:pointer;white-space:nowrap\"><input type=\"checkbox\" id=\"fleet_search_mine\" onchange=\"filterAssetTable('fleet')\" /> <span data-i18n=\"dash.assets.only_mine\">내 자산만</span></label>
             <span class=\"asset-search-count\" id=\"fleet_search_count\"></span>
           </div>
-          <div class=\"subtext\" data-i18n=\"dash.assets.fleet_sub\">Fleet에서 관리되는 PC 엔드포인트 현황입니다.</div>
+          <div class=\"subtext\" data-i18n=\"dash.assets.fleet_sub\">Fleet이 관리하는 PC 현황이에요.</div>
           <div class=\"table-wrap\" id=\"fleet_table\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
       </div>
@@ -3075,7 +3075,7 @@ def render_user_dashboard_html(
             <label style=\"display:inline-flex;align-items:center;gap:5px;color:#cbd5e1;font-size:12px;cursor:pointer;white-space:nowrap\"><input type=\"checkbox\" id=\"zabbix_search_mine\" onchange=\"filterAssetTable('zabbix')\" /> <span data-i18n=\"dash.assets.only_mine\">내 자산만</span></label>
             <span class=\"asset-search-count\" id=\"zabbix_search_count\"></span>
           </div>
-          <div class=\"subtext\" data-i18n=\"dash.assets.zabbix_sub\">Zabbix에서 모니터링 중인 서버 현황과 최근 메트릭입니다.</div>
+          <div class=\"subtext\" data-i18n=\"dash.assets.zabbix_sub\">Zabbix가 모니터링 중인 서버 현황이에요.</div>
           <div class=\"table-wrap\" id=\"zabbix_table\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
       </div>
@@ -3094,7 +3094,7 @@ def render_user_dashboard_html(
             <h2 style=\"margin:0\" data-i18n=\"dash.gap.title\">오늘의 작업 큐 (증적 공백)</h2>
             <span id=\"evidence_gap_ts\" style=\"font-size:12px;color:#94a3b8\"></span>
           </div>
-          <div class=\"subtext\" data-i18n=\"dash.gap.sub\">증적으로 이어지지 않은 미조치 항목입니다. 타일을 클릭하면 해당 탭으로 이동합니다.</div>
+          <div class=\"subtext\" data-i18n=\"dash.gap.sub\">아직 증적이 안 남은 미조치 항목이에요. 카드를 누르면 해당 탭으로 가요.</div>
           <div id=\"evidence_gap_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
         <!-- 위험성 평가 매트릭스 (R-4) -->
@@ -3106,7 +3106,7 @@ def render_user_dashboard_html(
               <button id=\"risk_matrix_toggle\" onclick=\"toggleRiskMatrix()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" data-i18n=\"dash.risk.collapse_show\">▼ 펼치기</button>
             </div>
           </div>
-          <div class=\"subtext\" data-i18n=\"dash.risk.matrix_sub\">위험도 = 영향도(자산 중요도) × 발생가능성(심각도+보정). 미평가 항목은 자동 제안 등급으로 집계됩니다.</div>
+          <div class=\"subtext\" data-i18n=\"dash.risk.matrix_sub\">위험도는 영향도 × 발생가능성으로 계산해요. 아직 평가 안 한 건 자동 제안 등급으로 잡아요.</div>
           <div id=\"risk_doa_ctl\" style=\"margin-top:8px\"></div>
           <div id=\"risk_matrix_box\" style=\"margin-top:10px;display:none\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
@@ -3146,7 +3146,7 @@ def render_user_dashboard_html(
               <span class=\"asset-search-count\" id=\"mine_search_count\"></span>
             </div>
           </div>
-          <div class=\"subtext\" data-i18n=\"dash.assets.mine.sub\">프로필의 담당 서버 목록 또는 담당자(이름)가 일치하는 PC·서버 자산을 모아 보여줍니다.</div>
+          <div class=\"subtext\" data-i18n=\"dash.assets.mine.sub\">내가 담당인 PC·서버만 모아서 보여줘요.</div>
           <div class=\"table-wrap\" id=\"mine_table\"><span class=\"empty\" data-i18n=\"dash.assets.mine.empty\">담당 자산이 없습니다. 계정 메뉴 → 프로필 편집에서 담당 서버를 등록하세요.</span></div>
         </section>
       </div>
@@ -3157,7 +3157,7 @@ def render_user_dashboard_html(
     <div class=\"tab-panel\" id=\"tab_compliance\">
       <section class=\"card\">
         <h2 data-i18n=\"dash.card.compliance\">Compliance PDCA 대시보드</h2>
-        <div class=\"subtext\" data-i18n=\"dash.compliance.sub_short\">ISMS-P / ISO 27001 통제 점검을 PDCA 관점으로 요약합니다. 지금 할 일(미조치·기한초과)부터 처리하세요.</div>
+        <div class=\"subtext\" data-i18n=\"dash.compliance.sub_short\">ISMS-P·ISO 27001 통제 점검 현황이에요. 미조치·기한초과부터 처리하면 돼요.</div>
         <details style=\"margin-top:8px\">
           <summary style=\"cursor:pointer;color:#38bdf8;font-size:12px\" data-i18n=\"dash.pdca.criteria\">집계 기준 자세히</summary>
           <div class=\"subtext\" style=\"margin-top:6px\" data-i18n-html=\"dash.compliance.sub\">※ 상단 카드의 <strong>전체 점검 / Pass / Fail / Warning / Pass Rate</strong>는 <strong>통제 점검(control_checks)</strong> 결과만 집계합니다. <strong>미조치 합계</strong>와 <strong>기한초과</strong>는 통제 점검 + Trivy 취약점(critical/high) + Alert(critical/high, 7일) 미조치 항목을 통합 집계합니다.</div>
@@ -3175,14 +3175,14 @@ def render_user_dashboard_html(
           <h2 style=\"margin:0\" data-i18n=\"dash.pdca.pending_title\">미조치 / 기한 초과 항목</h2>
           <a id=\"pdca_pending_csv_btn\" href=\"/compliance/pdca/pending.csv\" download style=\"background:#0f172a;border:1px solid #334155;color:#38bdf8;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer\">CSV</a>
         </div>
-        <div class=\"subtext\" data-i18n=\"dash.pdca.pending_sub\">fail 또는 warning 상태인 통제 항목입니다. 기한 초과는 로 표시됩니다.</div>
+        <div class=\"subtext\" data-i18n=\"dash.pdca.pending_sub\">점검에서 실패·경고가 뜬 통제예요. 기한이 지난 항목은 빨간색으로 보여요.</div>
         <div id=\"pdca_pending_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
       </section>
 
-      <!-- 상세 분석 (기본 접힘 — 처음 보는 담당자에겐 과부하라 뒤로) -->
+      <!-- 상세 분석 (기본 접힘 처음 보는 담당자에겐 과부하라 뒤로) -->
       <details class=\"card\" style=\"padding:0\">
-        <summary style=\"cursor:pointer;padding:16px 18px;font-weight:700;color:#e2e8f0;font-size:15px\" data-i18n=\"dash.pdca.detail_toggle\">상세 분석 — 통제 카탈로그 · 통제 상태 · 카테고리 · PDCA Cycle (펼치기)</summary>
-        <!-- 통제 카탈로그 트리 (ISMS-P 101 × ISO, admin·security 전용) — 이행 상태 편집 -->
+        <summary style=\"cursor:pointer;padding:16px 18px;font-weight:700;color:#e2e8f0;font-size:15px\" data-i18n=\"dash.pdca.detail_toggle\">상세 분석 통제 카탈로그 · 통제 상태 · 카테고리 · PDCA Cycle (펼치기)</summary>
+        <!-- 통제 카탈로그 트리 (ISMS-P 101 × ISO, admin·security 전용) 이행 상태 편집 -->
         <section class=\"card\" id=\"control_tree_card\" style=\"margin:0 16px 12px\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
             <h2 style=\"margin:0\" data-i18n=\"dash.ctl.title\">통제 카탈로그 (ISMS-P × ISO 27001)</h2>
@@ -3191,7 +3191,7 @@ def render_user_dashboard_html(
               <a href=\"/controls/evidence-bundle.zip\" download style=\"background:#0f172a;border:1px solid #334155;color:#38bdf8;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none\" data-i18n=\"dash.ctl.zip\">전체 증적 ZIP</a>
             </div>
           </div>
-          <div class=\"subtext\" data-i18n=\"dash.ctl.sub_compliance\">ISMS-P 101개 인증기준 트리. 항목을 클릭하면 이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 편집할 수 있고, 재시작 후에도 유지됩니다.</div>
+          <div class=\"subtext\" data-i18n=\"dash.ctl.sub_compliance\">인증기준을 누르면 이행 상태·담당자·개선계획·기한을 바로 고칠 수 있어요. 저장한 내용은 계속 유지돼요.</div>
           <div id=\"ctl_admin_bar\" style=\"display:none;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0\">
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openControlEditor()\" data-i18n=\"dash.ctl.add\">통제 추가</button>
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openNlpImport()\" data-i18n=\"dash.ctl.nlp\">법령 텍스트 임포트(NLP)</button>
@@ -3237,7 +3237,7 @@ def render_user_dashboard_html(
       <!-- ── 증적 리포트 다운로드 ────────────────────────────────────── -->
       <section class=\"card\" style=\"margin-top:20px\">
         <h2 data-i18n=\"dash.card.reports\">감사 증적 리포트 다운로드</h2>
-        <div class=\"subtext\" data-i18n=\"dash.card.reports.sub\">ISMS-P / ISO 27001 감사 증적으로 사용할 수 있는 리포트를 CSV로 다운로드합니다. 미리보기를 통해 CSV의 컬럼 구성을 먼저 확인할 수 있습니다.</div>
+        <div class=\"subtext\" data-i18n=\"dash.card.reports.sub\">감사 증적으로 쓸 리포트를 CSV로 받을 수 있어요. 미리보기로 컬럼을 먼저 확인하세요.</div>
         <div id=\"report_download_area\" style=\"margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px\">
         </div>
       </section>
@@ -3262,7 +3262,7 @@ def render_user_dashboard_html(
             <a href=\"/accounts/overview.csv\" download class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px;text-decoration:none\" data-i18n=\"dash.acc.csv\">CSV</a>
           </div>
         </div>
-        <div class=\"subtext\" data-i18n=\"dash.acc.sub\">서버·PC 로컬 계정(osquery) × LDAP 디렉터리 × 승인 대장을 대조해 이상 계정을 찾습니다. ISMS-P 2.5.1·2.5.5·2.5.6 접근권한 검토 증적. osquery push: POST /ingest/accounts</div>
+        <div class=\"subtext\" data-i18n=\"dash.acc.sub\">서버·PC의 로컬 계정을 LDAP·승인 대장과 대조해 이상 계정을 찾아요. ISMS-P 2.5.1·2.5.5·2.5.6 접근권한 검토 증적이에요.</div>
         <div class=\"metrics\" id=\"acc_finding_cards\" style=\"margin-top:12px\"></div>
       </section>
 
@@ -3281,7 +3281,7 @@ def render_user_dashboard_html(
       <div class=\"layout\">
         <section class=\"card\">
           <h2 data-i18n=\"dash.acc.approve_title\">승인 대장 (허용 계정 · sudo)</h2>
-          <div class=\"subtext\" data-i18n=\"dash.acc.approve_sub\">여기에 등록된 계정/sudo는 이상으로 잡지 않습니다. 예외 승인 근거 자체가 증적입니다.</div>
+          <div class=\"subtext\" data-i18n=\"dash.acc.approve_sub\">여기 등록한 계정·sudo는 이상으로 안 잡아요. 승인 사유가 곧 증적이에요.</div>
           <div style=\"display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0\">
             <input id=\"acc_appr_user\" placeholder=\"username\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 10px;font-size:13px;width:120px\" />
             <select id=\"acc_appr_kind\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:13px\"><option value=\"account\">account</option><option value=\"sudo\">sudo</option></select>
@@ -3296,7 +3296,7 @@ def render_user_dashboard_html(
             <h2 style=\"margin:0\" data-i18n=\"dash.acc.ip_title\">IP 리스트</h2>
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"exportIpCsv()\" data-i18n=\"dash.acc.ip_csv\">선별 CSV</button>
           </div>
-          <div class=\"subtext\" data-i18n=\"dash.acc.ip_sub\">팀·용도로 IP를 선별해 CSV로 뽑을 수 있습니다.</div>
+          <div class=\"subtext\" data-i18n=\"dash.acc.ip_sub\">팀·용도로 IP를 골라서 CSV로 뽑을 수 있어요.</div>
           <div style=\"display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0\">
             <input id=\"ip_search\" placeholder=\"호스트/IP 검색…\" data-i18n-placeholder=\"dash.acc.ip_search_ph\" oninput=\"renderAccIpList()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 10px;font-size:13px;width:150px\" />
             <select id=\"ip_filter_team\" onchange=\"renderAccIpList()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:13px\"><option value=\"\" data-i18n=\"dash.acc.ip_allteam\">전체 팀</option></select>
@@ -3308,7 +3308,7 @@ def render_user_dashboard_html(
       </div>
     </div>
 
-    <!-- ── Tab: 가이드 & 기준 ────────────────────────────────────────── -->
+    <!-- ── Tab: 가이드·기준 ────────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_guides\">
       <div id=\"guide_sub_tabs\" style=\"display:flex;gap:0;border-bottom:1px solid #1e293b;margin-bottom:20px;flex-wrap:wrap;\"></div>
       <section class=\"card\" style=\"padding:0\">
@@ -3537,7 +3537,7 @@ def render_user_dashboard_html(
       <div id=\"vuln_plans_notice_body\" style=\"color:#e2e8f0;font-size:13px;line-height:1.6;margin-bottom:18px\"></div>
       <div style=\"display:flex;gap:10px;justify-content:flex-end\">
         <button onclick=\"closeVulnPlansNotice()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px\" data-i18n=\"dash.f.close\">닫기</button>
-        <button id=\"vuln_plans_notice_open_list\" style=\"background:#334155;border:1px solid #334155;color:#38bdf8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600\" data-i18n=\"dash.modal.open_summary_tab\">합계 탭 열기 ↗</button>
+        <button id=\"vuln_plans_notice_open_list\" style=\"background:#334155;border:1px solid #334155;color:#38bdf8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600\" data-i18n=\"dash.modal.open_summary_tab\">합계 탭 열기</button>
       </div>
     </div>
   </div>
@@ -3546,7 +3546,7 @@ def render_user_dashboard_html(
   <div id=\"pdca_do_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #fbbf24;border-radius:10px;padding:24px 28px;width:1080px;max-width:96vw;max-height:88vh;overflow:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:14px\">
-        <h3 style=\"color:#fbbf24;margin:0\" data-i18n=\"dash.modal.pdca_do_title\">Do — 조치가 필요한 항목</h3>
+        <h3 style=\"color:#fbbf24;margin:0\" data-i18n=\"dash.modal.pdca_do_title\">Do 조치가 필요한 항목</h3>
         <button onclick=\"closePdcaDoModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div id=\"pdca_do_modal_subtitle\" style=\"color:#94a3b8;font-size:12px;margin-bottom:10px\"></div>
@@ -3804,7 +3804,7 @@ def render_user_dashboard_html(
     const triageLabel = (s) => tt('dash.dyn.triage.' + s, TRIAGE_STATUS_LABELS[s] || s);
     const INC_STATUS_COLORS = {open:'#fbbf24', investigating:'#38bdf8', resolved:'#6ee7b7', closed:'#94a3b8'};
 
-    // ── 전역 함수 노출 (onclick 속성에서 직접 호출 — 함수 선언은 호이스팅됨) ──
+    // ── 전역 함수 노출 (onclick 속성에서 직접 호출 함수 선언은 호이스팅됨) ──
     window.switchTab         = switchTab;
     window.switchAssetTab    = switchAssetTab;
     window.downloadAssetsCSV = downloadAssetsCSV;
@@ -3873,7 +3873,7 @@ def render_user_dashboard_html(
       } catch (e) { /* re-render best-effort */ }
     };
 
-    // ── 재사용 클라이언트 페이저 — 기본 10, 10단위 선택(최대 100), 이전/다음 ──────
+    // ── 재사용 클라이언트 페이저 기본 10, 10단위 선택(최대 100), 이전/다음 ──────
     // container 안의 <table><tbody> 행을 페이지 단위로 표시/숨김 + 하단 컨트롤 바 추가.
     // 렌더 함수 끝에서 _pgApply(container) 만 호출하면 됨(행 빌더는 그대로).
     const _pg = {};  // key(container.id) -> {size, page, container}
@@ -3902,9 +3902,9 @@ def render_user_dashboard_html(
       el.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:8px;font-size:12px;color:#94a3b8;flex-wrap:wrap';
       el.innerHTML = `<span>${start + 1}–${Math.min(end, total)} / ${total}</span>` +
         `<select onchange=\"_pgSize('${key}',this.value)\" style=\"background:#1e293b;border:1px solid #334155;color:#e5e7eb;border-radius:6px;padding:3px 6px;font-size:12px\">${sizes.map(s => `<option value=\"${s}\"${s === st.size ? ' selected' : ''}>${s}</option>`).join('')}</select>` +
-        `<button class=\"secondary\" style=\"width:auto;padding:2px 9px;font-size:12px\" onclick=\"_pgGo('${key}',-1)\" ${st.page <= 1 ? 'disabled' : ''}>◀</button>` +
+        `<button class=\"secondary\" style=\"width:auto;padding:2px 9px;font-size:12px\" onclick=\"_pgGo('${key}',-1)\" ${st.page <= 1 ? 'disabled' : ''}>이전</button>` +
         `<span>${st.page}/${pages}</span>` +
-        `<button class=\"secondary\" style=\"width:auto;padding:2px 9px;font-size:12px\" onclick=\"_pgGo('${key}',1)\" ${st.page >= pages ? 'disabled' : ''}>▶</button>`;
+        `<button class=\"secondary\" style=\"width:auto;padding:2px 9px;font-size:12px\" onclick=\"_pgGo('${key}',1)\" ${st.page >= pages ? 'disabled' : ''}>다음</button>`;
       container.appendChild(el);
     }
     window._pgApply = _pgApply;
@@ -4044,7 +4044,7 @@ def render_user_dashboard_html(
       openOverviewModal(cardLabels[key] || key, description, renderer(items));
     }
 
-    /* 보안 요약 히어로 — 역할별로 다르게.
+    /* 보안 요약 히어로 역할별로 다르게.
        보안/어드민: 위험 KPI(클릭→드릴다운) + 위험 TOP.
        인프라/헬프데스크: 내 담당 서버 취약점 + 조치율(읽기 전용). */
     const _heroKpi = (label, val, color, onclick) => `<div onclick=\"${onclick||''}\" style=\"flex:1;min-width:130px;background:#0b1220;border:1px solid #1e293b;border-radius:10px;padding:12px 14px;${onclick?'cursor:pointer':''}\">
@@ -4142,7 +4142,7 @@ def render_user_dashboard_html(
     }
     window.renderSecurityHero = renderSecurityHero;
 
-    /* 인프라 현황 위젯 — 24h/12h 전환 + Zabbix/Wazuh 딥링크 (대시보드=인프라 뷰) */
+    /* 인프라 현황 위젯 24h/12h 전환 + Zabbix/Wazuh 딥링크 (대시보드=인프라 뷰) */
     let _infraWindow = '24h';
     function setInfraWindow(w) {
       _infraWindow = w;
@@ -4157,8 +4157,8 @@ def render_user_dashboard_html(
       if (!el) return;
       const o = _lastOverviewData || {};
       const alertsWin = _infraWindow==='12h' ? (o.alerts_12h??0) : (o.alerts_24h??0);
-      const zbx = ZABBIX_URL ? `<a href=\"${escapeHtml(ZABBIX_URL)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:11px;text-decoration:none\">Zabbix ↗</a>` : '';
-      const wzh = WAZUH_URL ? `<a href=\"${escapeHtml(WAZUH_URL)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:11px;text-decoration:none\">Wazuh ↗</a>` : '';
+      const zbx = ZABBIX_URL ? `<a href=\"${escapeHtml(ZABBIX_URL)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:11px;text-decoration:none\">Zabbix</a>` : '';
+      const wzh = WAZUH_URL ? `<a href=\"${escapeHtml(WAZUH_URL)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:11px;text-decoration:none\">Wazuh</a>` : '';
       const tile = (label, val, color, extra) => `<div style=\"flex:1;min-width:110px;background:#0b1220;border:1px solid #1e293b;border-radius:10px;padding:12px\">
         <div style=\"font-size:12px;color:#94a3b8\">${label}</div>
         <div style=\"font-size:24px;font-weight:800;color:${color};margin-top:2px\">${val}</div>
@@ -4169,7 +4169,7 @@ def render_user_dashboard_html(
         ${tile(tt('dash.infra.unknown','미상'), (o.unknown_hosts??0), '#cbd5e1', '')}
         ${tile(_infraWindow==='12h'?tt('dash.infra.alerts_12','경보 12h'):tt('dash.infra.alerts_24','경보 24h'), alertsWin, '#f87171', wzh)}
       </div>
-      <div style=\"margin-top:8px;font-size:11px;color:#64748b\">${tt('dash.infra.hint','타일의 Zabbix / Wazuh 링크로 원본 도구에서 상세를 확인하세요.')}</div>`;
+      <div style=\"margin-top:8px;font-size:11px;color:#64748b\">${tt('dash.infra.hint','카드의 Zabbix·Wazuh 링크로 원본 도구에서 상세를 보세요.')}</div>`;
     }
     window.renderInfraStatus = renderInfraStatus;
 
@@ -4228,7 +4228,7 @@ def render_user_dashboard_html(
     }
     window.togglePanelEdit = togglePanelEdit;
 
-    /* ↔ 패널 사이즈 자유조절 — 네이티브 드래그 리사이즈 + localStorage 영속(브라우저별) */
+    /* 패널 사이즈 자유조절 네이티브 드래그 리사이즈 + localStorage 영속(브라우저별) */
     const _DASH_W_KEY = 'mori_panel_widths';
     let _panelWTimer = null;
     function _applyPanelWidths() {
@@ -4250,7 +4250,7 @@ def render_user_dashboard_html(
       try { localStorage.removeItem(_DASH_W_KEY); } catch (e) {}
       document.querySelectorAll('#dash_grid > section').forEach((sec) => { sec.style.width = ''; });
       if (typeof dashboardStatusEl !== 'undefined' && dashboardStatusEl) {
-        dashboardStatusEl.textContent = tt('dash.panel.layout_reset', '↔패널 크기 초기화됨');
+        dashboardStatusEl.textContent = tt('dash.panel.layout_reset', '패널 크기 초기화됨');
       }
     }
     window.resetPanelLayout = resetPanelLayout;
@@ -4379,9 +4379,9 @@ def render_user_dashboard_html(
         let grafanaLink = '';
         if (item.grafana_url) {
           if (_canViewGrafanaFull()) {
-            grafanaLink = `<a href=\"${escapeHtml(item.grafana_url)}\" target=\"_blank\" rel=\"noreferrer\" style=\"color:#38bdf8;font-size:12px;margin-left:8px;\">${tt('dash.dyn.grafana_full', 'Grafana 상세 로그 ↗')}</a>`;
+            grafanaLink = `<a href=\"${escapeHtml(item.grafana_url)}\" target=\"_blank\" rel=\"noreferrer\" style=\"color:#38bdf8;font-size:12px;margin-left:8px;\">${tt('dash.dyn.grafana_full', 'Grafana 상세 로그')}</a>`;
           } else if (_canViewGrafanaLimited()) {
-            grafanaLink = `<a href=\"${escapeHtml(item.grafana_url)}\" target=\"_blank\" rel=\"noreferrer\" style=\"color:#94a3b8;font-size:12px;margin-left:8px;\">${tt('dash.dyn.grafana_limited', 'Grafana 제한 보기 ↗')}</a>`;
+            grafanaLink = `<a href=\"${escapeHtml(item.grafana_url)}\" target=\"_blank\" rel=\"noreferrer\" style=\"color:#94a3b8;font-size:12px;margin-left:8px;\">${tt('dash.dyn.grafana_limited', 'Grafana 제한 보기')}</a>`;
           } else {
             grafanaLink = `<span style=\"color:#475569;font-size:11px;margin-left:8px\" title=\"${tt('dash.dyn.grafana_no_access', '상세 로그 접근 권한 없음')}\">${tt('dash.dyn.grafana_summary', '요약')}</span>`;
           }
@@ -4542,7 +4542,7 @@ def render_user_dashboard_html(
       } catch (error) {
         console.error('[MORI] loadDashboard fetch error:', error);
         dashboardStatusEl.textContent = `${tt('dash.dyn.dash_load_fail', '대시보드 로드 실패')}: ${error.message}`;
-        overviewCardsEl.innerHTML = `<div class=\"empty\" style=\"padding:16px;color:#f87171\">${tt('dash.dyn.network_err', '네트워크 오류 — 서버 연결을 확인하세요.')}</div>`;
+        overviewCardsEl.innerHTML = `<div class=\"empty\" style=\"padding:16px;color:#f87171\">${tt('dash.dyn.network_err', '네트워크 오류 서버 연결을 확인하세요.')}</div>`;
       }
     }
 
@@ -4570,7 +4570,7 @@ def render_user_dashboard_html(
           const alertOwner = _ownerForHost(a.hostname || '');
           return `<tr>
             <td>${escapeHtml(formatTime(a.observed_at))}</td>
-            <td><span style=\"background:#1e293b;color:#38bdf8;padding:2px 8px;border-radius:4px;font-size:12px\">${escapeHtml(a.source)}</span>${(a.source==='zabbix' && ZABBIX_URL && a.source_event_id)?`<br><a href=\"${escapeHtml(ZABBIX_URL)}/tr_events.php?triggerid=${encodeURIComponent(a.rule_id||'')}&eventid=${encodeURIComponent(a.source_event_id)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:11px;text-decoration:none\">Zabbix ↗</a>`:''}</td>
+            <td><span style=\"background:#1e293b;color:#38bdf8;padding:2px 8px;border-radius:4px;font-size:12px\">${escapeHtml(a.source)}</span>${(a.source==='zabbix' && ZABBIX_URL && a.source_event_id)?`<br><a href=\"${escapeHtml(ZABBIX_URL)}/tr_events.php?triggerid=${encodeURIComponent(a.rule_id||'')}&eventid=${encodeURIComponent(a.source_event_id)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:11px;text-decoration:none\">Zabbix</a>`:''}</td>
             <td><strong>${escapeHtml(a.hostname || a.host_id || '-')}</strong></td>
             <td style=\"color:#4ade80;font-size:12px\">${escapeHtml(alertOwner)}</td>
             <td><span style=\"background:#111827;padding:2px 6px;border-radius:4px;font-size:12px\">${escapeHtml(a.severity)}</span>${a.resolved_at?`<br><span title=\"${escapeHtml(formatTime(a.resolved_at))}\" style=\"background:#052e16;color:#4ade80;border:1px solid #14532d;padding:1px 6px;border-radius:4px;font-size:10px\">${tt('dash.triage.source_resolved','소스 해소')}</span>`:''}</td>
@@ -4837,7 +4837,7 @@ def render_user_dashboard_html(
     // 검색창 Enter 키
     document.getElementById('inc_search')?.addEventListener('keydown', e => { if (e.key === 'Enter') loadIncidents(); });
 
-    // CSV 다운로드 — 변경 이력은 미포함 안내 모달 표시 후 다운로드
+    // CSV 다운로드 변경 이력은 미포함 안내 모달 표시 후 다운로드
     if (document.getElementById('inc_csv_btn')) {
       document.getElementById('inc_csv_btn')?.addEventListener('click', () => {
         const params = buildIncidentParams();
@@ -4967,7 +4967,7 @@ def render_user_dashboard_html(
     }
     window.renderMyServers = renderMyServers;
 
-    /* D: 내 서버 간소화 테이블 — 호스트명·중요도·분류·상태·IP만. 행 더블클릭 → 상세 모달.
+    /* D: 내 서버 간소화 테이블 호스트명·중요도·분류·상태·IP만. 행 더블클릭 → 상세 모달.
        통제/리스크/이력 등 상세는 상세 모달로 이동(대시보드 최소화). */
     const _MINE_IMP_COLOR = { '상':'#f87171', '중':'#fbbf24', '하':'#4ade80' };
     function _mineRow(h, kind) {
@@ -5001,7 +5001,7 @@ def render_user_dashboard_html(
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <div style=\"font-size:11px;color:#64748b;margin-top:4px\">${tt('dash.mine.hint','행을 더블클릭하면 상세 정보와 조치현황(예외 만료·기한 초과·기타)을 볼 수 있습니다.')}</div>`;
+      <div style=\"font-size:11px;color:#64748b;margin-top:4px\">${tt('dash.mine.hint','행을 더블클릭하면 상세와 조치현황을 볼 수 있어요.')}</div>`;
     }
 
     /* 호스트 상세 모달: 캐시의 전체 필드 + 미조치 3버킷(E, /dashboard/host-remediation) */
@@ -5015,7 +5015,7 @@ def render_user_dashboard_html(
     }
     /* 호스트 상세 모달용 외부 연동 딥링크. 자산 종류에 맞는 소스만: 서버→Zabbix, PC→Fleet, 공통→Grafana. */
     function _hostDeepLinks(h, kind) {
-      const btn = (href, label, color) => `<a href=\"${escapeHtml(href)}\" target=\"_blank\" rel=\"noopener\" style=\"display:inline-flex;align-items:center;gap:4px;background:${color}18;border:1px solid ${color}66;color:${color};border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;text-decoration:none\">${label} ↗</a>`;
+      const btn = (href, label, color) => `<a href=\"${escapeHtml(href)}\" target=\"_blank\" rel=\"noopener\" style=\"display:inline-flex;align-items:center;gap:4px;background:${color}18;border:1px solid ${color}66;color:${color};border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;text-decoration:none\">${label}</a>`;
       const links = [];
       if (kind === 'zabbix' && ZABBIX_URL) {
         links.push(btn(`${ZABBIX_URL}/zabbix.php?action=host.list&filter_set=1&filter_host=${encodeURIComponent(h.hostname)}`, 'Zabbix', '#38bdf8'));
@@ -5151,7 +5151,7 @@ def render_user_dashboard_html(
       if (!hosts.length) { containerEl.innerHTML = `<div class=\"empty\">${tt('dash.dyn.empty.fleet', 'Fleet에서 수집된 PC 자산이 없습니다.')}</div>`; return; }
       const rows = hosts.map(h => {
         const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
-        const fleetLink = FLEET_URL ? `<a href=\"${escapeHtml(FLEET_URL)}/hosts?query=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#6ee7b7;font-size:12px;\">Fleet ↗</a>` : '';
+        const fleetLink = FLEET_URL ? `<a href=\"${escapeHtml(FLEET_URL)}/hosts?query=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#6ee7b7;font-size:12px;\">Fleet</a>` : '';
         const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
         const ownerStr = `<span style=\"color:#4ade80;font-size:12px\">${escapeHtml(ownerLabel)}</span>
           <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','','pc','')\"
@@ -5194,7 +5194,7 @@ def render_user_dashboard_html(
       const impLabel = { '\uc0c1': tt('dash.dyn.imp.high','\uc0c1'), '\uc911': tt('dash.dyn.imp.mid','\uc911'), '\ud558': tt('dash.dyn.imp.low','\ud558') };
       const rows = hosts.map(h => {
         const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
-        const zabbixLink = ZABBIX_URL ? `<a href=\"${escapeHtml(ZABBIX_URL)}/zabbix.php?action=host.list&filter_set=1&filter_host=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:12px;\">Zabbix ↗</a>` : '';
+        const zabbixLink = ZABBIX_URL ? `<a href=\"${escapeHtml(ZABBIX_URL)}/zabbix.php?action=host.list&filter_set=1&filter_host=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:12px;\">Zabbix</a>` : '';
         const metricStr = h.latest_metric ? `${escapeHtml(h.latest_metric)}: ${escapeHtml(h.latest_value || '-')}` : '-';
         const impBadge = h.importance ? `<span style=\"background:#1e293b;color:${impColor[h.importance]||'#94a3b8'};padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700\">${escapeHtml(impLabel[h.importance]||h.importance)}</span>` : '-';
         const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
@@ -5264,7 +5264,7 @@ def render_user_dashboard_html(
           exCell = `<button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','','')\" style=\"font-size:11px;padding:2px 7px;background:#3b1f00;border:1px solid #78350f;border-radius:4px;color:#fbbf24;cursor:pointer\">${tt('dash.dyn.add_exception_btn','+ 예외 설정')}</button>`;
         }
         const totalCell = r.total > 0
-          ? `<button onclick=\"openVulnListModal('${escapeHtml(r.host_id)}')\" title=\"${tt('dash.dyn.view_vuln_detail','취약점 상세 보기')}\" style=\"background:#334155;border:1px solid #334155;color:#38bdf8;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:13px;font-weight:700\">${r.total} ${tt('dash.dyn.cases_unit','건 ↗')}</button>`
+          ? `<button onclick=\"openVulnListModal('${escapeHtml(r.host_id)}')\" title=\"${tt('dash.dyn.view_vuln_detail','취약점 상세 보기')}\" style=\"background:#334155;border:1px solid #334155;color:#38bdf8;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:13px;font-weight:700\">${r.total} ${tt('dash.dyn.cases_unit','건')}</button>`
           : `<span style=\"color:#64748b\">${r.total}</span>`;
         const _rscore = _hostRiskScore(r);
         const riskCell = _rscore
@@ -5404,7 +5404,7 @@ def render_user_dashboard_html(
     function openVulnListModal(hostId) {
       const row = (_assetCache.trivy || []).find(r => r.host_id === hostId);
       if (!row) { alert(tt('dash.dyn.host_not_found','호스트 데이터를 찾을 수 없습니다. 자산 새로고침 후 다시 시도해 주세요.')); return; }
-      document.getElementById('vuln_list_modal_title').textContent = `${row.hostname}${tt('dash.dyn.vuln_count_suffix',' — 취약점 ')}${row.total}${tt('dash.dyn.unit_count','건')}`;
+      document.getElementById('vuln_list_modal_title').textContent = `${row.hostname}${tt('dash.dyn.vuln_count_suffix',' 취약점 ')}${row.total}${tt('dash.dyn.unit_count','건')}`;
       document.getElementById('vuln_list_modal_subtitle').textContent =
         `Critical ${row.critical} · High ${row.high} · Medium ${row.medium} · Low ${row.low}`;
       document.getElementById('vuln_list_modal_body').innerHTML = _renderVulnListBody(row);
@@ -5416,7 +5416,7 @@ def render_user_dashboard_html(
     function showVulnPlansNotice(hostId, hostname, count) {
       document.getElementById('vuln_plans_notice_body').innerHTML =
         `<div style=\"margin-bottom:10px\"><strong style=\"color:#fbbf24\">${escapeHtml(hostname)}</strong> 호스트에는 이미 <strong style=\"color:#4ade80\">CVE별 상세 조치 계획/예외</strong>가 ${count}건 설정되어 있습니다.</div>
-         <div style=\"color:#94a3b8\">호스트 단위 일괄 계획 대신 <strong style=\"color:#38bdf8\">합계 탭</strong>(예: <span style=\"background:#334155;color:#38bdf8;padding:1px 8px;border-radius:4px\">N 건 ↗</span> 버튼)에서 각 CVE별 계획을 확인·수정해 주세요.</div>`;
+         <div style=\"color:#94a3b8\">호스트 단위 일괄 계획 대신 <strong style=\"color:#38bdf8\">합계 탭</strong>(예: <span style=\"background:#334155;color:#38bdf8;padding:1px 8px;border-radius:4px\">N 건</span> 버튼)에서 각 CVE별 계획을 확인·수정해 주세요.</div>`;
       const openBtn = document.getElementById('vuln_plans_notice_open_list');
       openBtn.onclick = () => { closeVulnPlansNotice(); openVulnListModal(hostId); };
       document.getElementById('vuln_plans_notice_modal').style.display = 'flex';
@@ -5427,7 +5427,7 @@ def render_user_dashboard_html(
     function showVulnExceptionsNotice(hostId, hostname, count) {
       document.getElementById('vuln_plans_notice_body').innerHTML =
         `<div style=\"margin-bottom:10px\"><strong style=\"color:#fbbf24\">${escapeHtml(hostname)}</strong> 호스트에는 이미 <strong style=\"color:#fbbf24\">CVE별 상세 조치 예외</strong>가 설정되어 있습니다. (총 ${count}건의 CVE별 계획/예외)</div>
-         <div style=\"color:#94a3b8\">호스트 단위 일괄 예외 대신 <strong style=\"color:#38bdf8\">합계 탭</strong>(예: <span style=\"background:#334155;color:#38bdf8;padding:1px 8px;border-radius:4px\">N 건 ↗</span> 버튼)에서 각 CVE별 예외를 확인·수정해 주세요.</div>`;
+         <div style=\"color:#94a3b8\">호스트 단위 일괄 예외 대신 <strong style=\"color:#38bdf8\">합계 탭</strong>(예: <span style=\"background:#334155;color:#38bdf8;padding:1px 8px;border-radius:4px\">N 건</span> 버튼)에서 각 CVE별 예외를 확인·수정해 주세요.</div>`;
       const openBtn = document.getElementById('vuln_plans_notice_open_list');
       openBtn.onclick = () => { closeVulnPlansNotice(); openVulnListModal(hostId); };
       document.getElementById('vuln_plans_notice_modal').style.display = 'flex';
@@ -5536,7 +5536,7 @@ def render_user_dashboard_html(
     const RISK_LEVEL_COLORS = { '매우높음':'#f87171', '높음':'#ea580c', '중간':'#fbbf24', '낮음':'#4ade80' };
     let _riskSummary = { items: [], map: {}, matrix: [[0,0,0],[0,0,0],[0,0,0]], by_level: {}, total: 0, assessed: 0 };
     let _riskModalVulnId = null;
-    let _riskDoa = 4;  // 위험 수용 기준(DoA) 점수 1~9 — /settings/risk 에서 로드
+    let _riskDoa = 4;  // 위험 수용 기준(DoA) 점수 1~9 /settings/risk 에서 로드
 
     // 점수 중심 배지: 큰 숫자로 'N점' + 등급 라벨(보조). score 생략 시 등급만.
     function _riskBadge(level, small, score) {
@@ -5617,7 +5617,7 @@ def render_user_dashboard_html(
     }
     window.saveRiskDoa = saveRiskDoa;
 
-    let _riskMatrixOpen = false;  // C: 기본 접힘 — 대시보드 최소화, '펼치기'로 상세 노출
+    let _riskMatrixOpen = false;  // C: 기본 접힘 대시보드 최소화, '펼치기'로 상세 노출
     function toggleRiskMatrix() {
       _riskMatrixOpen = !_riskMatrixOpen;
       const box = document.getElementById('risk_matrix_box');
@@ -5803,7 +5803,7 @@ def render_user_dashboard_html(
 
     /* ── 감사 이력 모달 ──────────────────────────────────────────────────── */
     async function openAuditModal(hostname) {
-      document.getElementById('audit_modal_title').textContent = `${tt('dash.dyn.audit_title_prefix','변경 이력 — ')}${hostname}`;
+      document.getElementById('audit_modal_title').textContent = `${tt('dash.dyn.audit_title_prefix','변경 이력 ')}${hostname}`;
       document.getElementById('audit_modal_body').innerHTML = '<span style=\"color:#94a3b8\">' + tt('dash.dyn.loading','로딩 중...') + '</span>';
       document.getElementById('audit_modal').style.display = 'flex';
       try {
@@ -5855,7 +5855,7 @@ def render_user_dashboard_html(
       // 처리 예외 기한은 Trivy에서만 필요
       document.getElementById('owner_modal_exception_row').style.display = isTrivy ? '' : 'none';
       const titleMap = { server: tt('dash.dyn.asset_detail.server','서버 자산 상세페이지'), pc: tt('dash.dyn.asset_detail.pc','PC 자산 상세페이지'), trivy: tt('dash.dyn.asset_detail.trivy','취약점 상세페이지') };
-      document.getElementById('owner_modal_title').textContent = `${titleMap[assetType] || tt('dash.dyn.asset_detail.default','자산 수정')} — ${hostname}`;
+      document.getElementById('owner_modal_title').textContent = `${titleMap[assetType] || tt('dash.dyn.asset_detail.default','자산 수정')} ${hostname}`;
       document.getElementById('owner_modal').style.display = 'flex';
     }
     function closeOwnerModal() { document.getElementById('owner_modal').style.display = 'none'; }
@@ -6019,7 +6019,7 @@ def render_user_dashboard_html(
       while (sel.options.length > 1) sel.remove(1);
       cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
     }
-    /* 팀 드롭다운 채우기 (Fleet/Zabbix 공통) — 자산의 team 값에서 유니크 추출 */
+    /* 팀 드롭다운 채우기 (Fleet/Zabbix 공통) 자산의 team 값에서 유니크 추출 */
     function _populateTeams(selId, hosts) {
       const sel = document.getElementById(selId);
       if (!sel) return;
@@ -6174,14 +6174,14 @@ def render_user_dashboard_html(
         // Cache pending list so PDCA Do modal / CSV button can reuse the same dataset
         window.__pdcaPending = data.pending_remediations || [];
         window.__pdcaPendingSources = ps;
-        // Summary cards — 상단은 control_checks만, 하단 2장은 통합(통제+Trivy+Alert)
+        // Summary cards 상단은 control_checks만, 하단 2장은 통합(통제+Trivy+Alert)
         if (cardsEl) {
           // 바쁜 보안 담당자용: 행동 항목(미조치·기한초과) 우선 + 취약률 한 장(숫자 크게).
-          // 피드백 반영: Pass Rate 대신 '취약률(Fail/Weakness Rate)' — 심사에서 봐야 할 건
+          // 피드백 반영: Pass Rate 대신 '취약률(Fail/Weakness Rate)' 심사에서 봐야 할 건
           // '통과율'이 아니라 '얼마나 취약한가'라서 반전 표시. 상세는 아래 접기.
           const totalChecks = data.total_checks || 0;
           const weakCount = (sc.fail || 0) + (sc.warning || 0);
-          const weakRateStr = totalChecks > 0 ? (Math.round(weakCount / totalChecks * 100) + '%') : '—';
+          const weakRateStr = totalChecks > 0 ? (Math.round(weakCount / totalChecks * 100) + '%') : '';
           const weakColor = totalChecks > 0 && (weakCount / totalChecks) >= 0.3 ? '#f43f5e' : '#fbbf24';
           const totalPending = data.pending_count || 0;
           const pendingSub = `${tt('dash.dyn.pdca.control','통제')} ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}`;
@@ -6312,7 +6312,7 @@ def render_user_dashboard_html(
       } catch(e) {
         if (cardsEl) cardsEl.innerHTML = '<div class=\"empty\" style=\"color:#f87171;padding:16px\">' + tt('dash.dyn.pdca.load_fail','Compliance 데이터를 불러올 수 없습니다.') + '</div>';
       }
-      // Load report download cards & crosscheck
+      // Load report download cards·crosscheck
       loadReportCards();
       loadCrosscheck();
     }
@@ -6370,7 +6370,7 @@ def render_user_dashboard_html(
       const bodyEl = document.getElementById('report_preview_body');
       const dlEl = document.getElementById('report_preview_download');
       if (!modal || !bodyEl) return;
-      titleEl.textContent = `${label}${tt('dash.dyn.preview_suffix',' — 미리보기')}`;
+      titleEl.textContent = `${label}${tt('dash.dyn.preview_suffix',' 미리보기')}`;
       dlEl.href = `/compliance/reports/${reportType}?format=csv`;
       const dlPdfEl = document.getElementById('report_preview_download_pdf');
       if (dlPdfEl) dlPdfEl.href = `/compliance/reports/${reportType}?format=pdf`;
@@ -6636,7 +6636,7 @@ def render_user_dashboard_html(
       });
       if (show) { loadEvidenceGaps(); loadControlTree(); }
     }
-    // 계정 거버넌스 열람 역할 — 서버(account_view_roles)에서 주입, admin이 조정. 기본 admin·security.
+    // 계정 거버넌스 열람 역할 서버(account_view_roles)에서 주입, admin이 조정. 기본 admin·security.
     let _accountViewRoles = ['admin', 'security'];
     function _canViewAccounts() { return _accountViewRoles.includes(_currentUserRole); }
     window._canViewAccounts = _canViewAccounts;
@@ -6722,7 +6722,7 @@ def render_user_dashboard_html(
           h += d.evidence_live.map(e => {
             const lbl = (lang==='en'?e.label_en:e.label_ko) || e.source;
             const sm = (lang==='en'?e.summary_en:e.summary_ko) || '-';
-            let row = `<div onclick=\"switchTab('${e.tab}')\" style=\"cursor:pointer;color:#cbd5e1;padding:1px 0\">• ${escapeHtml(lbl)}: <b>${escapeHtml(sm)}</b> ↗</div>`;
+            let row = `<div onclick=\"switchTab('${e.tab}')\" style=\"cursor:pointer;color:#cbd5e1;padding:1px 0\">• ${escapeHtml(lbl)}: <b>${escapeHtml(sm)}</b></div>`;
             const bd = e.breakdown || [];
             if (bd.length) {
               row += `<div style=\"margin:1px 0 3px 14px;color:#94a3b8;font-size:11px\">` +
@@ -6734,7 +6734,7 @@ def render_user_dashboard_html(
         }
         if ((d.mapped_to||[]).length) {
           h += `<div style=\"font-weight:700;color:#38bdf8;margin:6px 0 2px\">${tt('dash.ctl.map','매핑')}</div>`;
-          h += d.mapped_to.map(m => `<div style=\"color:#94a3b8\">↔ ${escapeHtml(m.id)} ${escapeHtml((lang==='en'?m.title_en:m.title_ko)||'')} <span style=\"font-size:10px\">(${escapeHtml(m.relation)})</span></div>`).join('');
+          h += d.mapped_to.map(m => `<div style=\"color:#94a3b8\">${escapeHtml(m.id)} ${escapeHtml((lang==='en'?m.title_en:m.title_ko)||'')} <span style=\"font-size:10px\">(${escapeHtml(m.relation)})</span></div>`).join('');
         }
         if ((d.defects||[]).length) {
           h += `<div style=\"font-weight:700;color:#fbbf24;margin:6px 0 2px\">${tt('dash.ctl.def','관련 결함')}</div>`;
@@ -6742,15 +6742,15 @@ def render_user_dashboard_html(
         }
         // M2-8: 수기 증적 레코드 (admin·security 문서화)
         h += _evRecordsHtml(enc, d.evidence_records || []);
-        // M2-7: 이행 상태 편집 폼 (admin·security) — 저장 시 영속 + audit-log
+        // M2-7: 이행 상태 편집 폼 (admin·security) 저장 시 영속 + audit-log
         h += _ctlStatusForm(enc, d.runtime_status || {});
-        // M2-8: 증적 팩 다운로드 — CSV / PDF 선택
+        // M2-8: 증적 팩 다운로드 CSV / PDF 선택
         h += `<div style=\"margin-top:8px;padding-top:6px;border-top:1px solid #1e293b;display:flex;gap:12px;align-items:center;flex-wrap:wrap\">
           <span style=\"color:#94a3b8\">${tt('dash.ctl.download','증적 팩 다운로드')}:</span>
           <a href=\"/controls/detail/${enc}/evidence.csv\" style=\"color:#38bdf8;text-decoration:none\">CSV</a>
           <a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" style=\"color:#38bdf8;text-decoration:none\">PDF</a>
         </div>`;
-        box.innerHTML = h || `<span class=\"empty\">—</span>`;
+        box.innerHTML = h || `<span class=\"empty\"></span>`;
       } catch(e) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.err','통제 카탈로그를 불러오지 못했습니다.')}</span>`; }
     }
     window.toggleControlDetail = toggleControlDetail;
@@ -6811,15 +6811,15 @@ def render_user_dashboard_html(
           const isAuto = r.source === 'auto';
           const autoBadge = isAuto ? ` <span style=\"background:#0e7490;color:#38bdf8;padding:0 5px;border-radius:4px;font-size:10px\">${tt('dash.ctl.ev_auto','자동')}</span>` : '';
           const meta = [r.collected_at, r.collected_by].filter(Boolean).map(escapeHtml).join(' · ');
-          const ref = (r.reference && !isAuto) ? ` <a href=\"${escapeHtml(r.reference)}\" target=\"_blank\" style=\"color:#38bdf8\">↗</a>` : '';
+          const ref = (r.reference && !isAuto) ? ` <a href=\"${escapeHtml(r.reference)}\" target=\"_blank\" style=\"color:#38bdf8\"></a>` : '';
           const del = canEdit ? `<span onclick=\"deleteEvidenceRecord('${enc}','${escapeHtml(r.id)}')\" style=\"cursor:pointer;color:#f87171;margin-left:6px\">×</span>` : '';
-          // 자동 스냅샷: 한 줄 요약(집계) 인라인 + 전체 본문은 ▾상세로 접힘 / 수기 증적: 짧으니 그대로
+          // 자동 스냅샷: 한 줄 요약(집계) 인라인 + 전체 본문은상세로 접힘 / 수기 증적: 짧으니 그대로
           let bodyToggle = '', body = '';
           if (r.body) {
             const bid = 'evbody_' + enc + '_' + idx;
             if (isAuto) {
               const summ = _evSummary(r.body);
-              bodyToggle = ` <span onclick=\"_toggleBody('${bid}',this)\" data-lbl=\"${tt('dash.ctl.ev_detail','상세')}\" style=\"cursor:pointer;color:#38bdf8;font-size:11px;white-space:nowrap\">▾ ${tt('dash.ctl.ev_detail','상세')}</span>`;
+              bodyToggle = ` <span onclick=\"_toggleBody('${bid}',this)\" data-lbl=\"${tt('dash.ctl.ev_detail','상세')}\" style=\"cursor:pointer;color:#38bdf8;font-size:11px;white-space:nowrap\">${tt('dash.ctl.ev_detail','상세')}</span>`;
               body = (summ ? `<div style=\"color:#38bdf8;font-size:11px;margin-left:12px;margin-top:1px\">${summ}</div>` : '')
                    + `<div id=\"${bid}\" style=\"display:none;color:#94a3b8;font-size:11px;margin:4px 0 2px 12px;white-space:pre-wrap;padding:7px 9px;background:#0f172a;border:1px solid #1e293b;border-radius:6px\">${escapeHtml(r.body)}</div>`;
             } else {
@@ -6832,7 +6832,7 @@ def render_user_dashboard_html(
         const rest = records.slice(SHOW);
         if (rest.length) {
           h += `<div id=\"evmore_${enc}\" style=\"display:none\">${rest.map((r, i) => rowHtml(r, i + SHOW)).join('')}</div>`;
-          h += `<div id=\"evmoretog_${enc}\" onclick=\"_toggleEvMore('${enc}')\" style=\"cursor:pointer;color:#38bdf8;font-size:12px;margin-top:3px\">▾ ${tt('dash.ctl.ev_more','더보기')} (${rest.length})</div>`;
+          h += `<div id=\"evmoretog_${enc}\" onclick=\"_toggleEvMore('${enc}')\" style=\"cursor:pointer;color:#38bdf8;font-size:12px;margin-top:3px\">${tt('dash.ctl.ev_more','더보기')} (${rest.length})</div>`;
         }
       } else {
         h += `<div style=\"color:#64748b\">${tt('dash.ctl.ev_none','문서화된 수기 증적이 없습니다.')}</div>`;
@@ -6881,8 +6881,8 @@ def render_user_dashboard_html(
       if (!box) return;
       const open = box.style.display === 'none';
       box.style.display = open ? 'block' : 'none';
-      if (tog) tog.innerHTML = open ? ('▴ ' + tt('dash.ctl.ev_less','접기'))
-                                    : ('▾ ' + tt('dash.ctl.ev_more','더보기') + ' (' + box.children.length + ')');
+      if (tog) tog.innerHTML = open ? ('' + tt('dash.ctl.ev_less','접기'))
+                                    : ('' + tt('dash.ctl.ev_more','더보기') + ' (' + box.children.length + ')');
     }
     window._toggleEvMore = _toggleEvMore;
     // 자동 스냅샷 본문에서 '[라벨] 요약' 집계줄만 뽑아 한 줄 요약으로 (호스트 목록 등 상세는 접힘)
@@ -6896,7 +6896,7 @@ def render_user_dashboard_html(
       if (!b) return;
       const open = b.style.display === 'none';
       b.style.display = open ? 'block' : 'none';
-      if (el) el.innerHTML = (open ? '▴ ' : '▾ ') + (el.dataset.lbl || '상세');
+      if (el) el.innerHTML = (open ? '' : '') + (el.dataset.lbl || '상세');
     }
     window._toggleBody = _toggleBody;
     // ── 정기 증적 스냅샷 설정 (admin) ──────────────────────────────────────────
@@ -6942,7 +6942,7 @@ def render_user_dashboard_html(
       } catch(e) {}
     }
     window.deleteEvidenceRecord = deleteEvidenceRecord;
-    // 상세 패널 재렌더(열린 상태에서 갱신) — 해당 통제의 detail div를 다시 로드
+    // 상세 패널 재렌더(열린 상태에서 갱신) 해당 통제의 detail div를 다시 로드
     function _refreshControlDetail(enc) {
       const anchor = document.querySelector(`[onclick*=\"toggleControlDetail('${enc}'\"]`);
       if (!anchor) { return; }
@@ -7013,14 +7013,14 @@ def render_user_dashboard_html(
       document.getElementById('ctl_editor').style.display = 'none';
       const inp = 'background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 9px;font-size:13px';
       box.innerHTML = `<div style=\"font-weight:700;color:#38bdf8;margin-bottom:6px\">${tt('dash.ctl.nlp_ttl','법령/고시 텍스트 → 통제 초안')}</div>
-        <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.ctl.nlp_help','규정 텍스트를 붙여넣으면 통제 초안(draft)으로 변환·저장됩니다. Claude API 키가 있으면 정밀 구조화, 없으면 조항 단위 휴리스틱.')}</div>
+        <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.ctl.nlp_help','법령 원문을 붙여넣으면 통제 초안으로 바꿔서 저장해요. Claude 키가 있으면 더 정확하게, 없으면 조항 단위로 나눠요.')}</div>
         <div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px\">
           <input id=\"nlp_framework\" placeholder=\"${tt('dash.ctl.nlp_fw','프레임워크(예: 개인정보보호법)')}\" style=\"${inp};width:220px\" />
           <input id=\"nlp_prefix\" placeholder=\"ID 접두어(예: PIPA)\" value=\"REG\" style=\"${inp};width:150px\" />
         </div>
         <textarea id=\"nlp_text\" placeholder=\"${tt('dash.ctl.nlp_ph','법령/고시 전문을 붙여넣으세요…')}\" style=\"${inp};width:100%;box-sizing:border-box;min-height:120px\"></textarea>
         <div style=\"margin-top:8px;display:flex;gap:8px;align-items:center\">
-          <button onclick=\"runNlpImport()\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.nlp_run','변환 & 저장')}</button>
+          <button onclick=\"runNlpImport()\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.nlp_run','변환·저장')}</button>
           <button onclick=\"document.getElementById('ctl_nlp').style.display='none'\" class=\"secondary\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.cancel','취소')}</button>
           <span id=\"nlp_msg\" style=\"font-size:12px;color:#64748b\"></span>
         </div>`;
@@ -7091,7 +7091,7 @@ def render_user_dashboard_html(
           <td style=\"padding:6px 8px;font-family:monospace\">${escapeHtml(a.username)}${a.disabled?' <span style=\"color:#64748b\">(disabled)</span>':''}</td>
           <td style=\"padding:6px 8px;text-align:center;color:#94a3b8\">${escapeHtml(a.uid||'-')}</td>
           <td style=\"padding:6px 8px;text-align:center\">${a.is_privileged?`<span style=\"color:#f87171\">●${a.is_sudo?' sudo':''}</span>`:'-'}</td>
-          <td style=\"padding:6px 8px;text-align:center\">${a.in_directory?'':'—'}</td>
+          <td style=\"padding:6px 8px;text-align:center\">${a.in_directory?'':''}</td>
           <td style=\"padding:6px 8px;text-align:center;color:${(a.login_age_days!=null&&a.login_age_days>dd)?'#38bdf8':'#94a3b8'};font-size:12px\">${a.login_age_days!=null?a.login_age_days+'d':(a.last_login?'-':'never')}</td>
           <td style=\"padding:6px 8px\">${a.findings.map(_accFindBadge).join('')||'<span style=\"color:#4ade80\"></span>'}</td>
         </tr>`).join('')}</tbody></table>`;
@@ -7362,7 +7362,7 @@ def render_user_dashboard_html(
         dashboardStatusEl.textContent = `${tt('dash.dyn.dash_load_fail', '대시보드 로드 실패')}: ${e.message}`;
         // 빈 데이터라도 placeholder 표시
         if (!sourceCoverageEl.children.length) sourceCoverageEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_source_connected','데이터 소스가 아직 연결되지 않았습니다.') + '</div>';
-        if (!latestStatusEl.children.length || latestStatusEl.querySelector('.empty')) latestStatusEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_host_api','호스트 데이터 없음 — API 연결을 확인하세요.') + '</div>';
+        if (!latestStatusEl.children.length || latestStatusEl.querySelector('.empty')) latestStatusEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_host_api','호스트 데이터 없음 API 연결을 확인하세요.') + '</div>';
         if (!riskSummaryEl.children.length || riskSummaryEl.querySelector('.empty')) riskSummaryEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_risk_summary','위험 요약 데이터 없음') + '</div>';
         if (!recentActivityEl.children.length || recentActivityEl.querySelector('.empty')) recentActivityEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_recent_activity','최근 활동 데이터 없음') + '</div>';
         overviewCardsEl.innerHTML = '<div class=\"empty\" style=\"padding:16px;color:#f87171\">' + tt('dash.dyn.dash_load_fail_full','대시보드 데이터를 불러올 수 없습니다. 서버 상태를 확인하세요.') + '</div>';
@@ -7381,7 +7381,7 @@ def render_user_dashboard_html(
         <h3 style=\"margin:0;font-size:18px\" data-i18n=\"dash.nlq.dialog_title\">자연어 질의 (NLQ)</h3>
         <button id=\"nlq_fab_close\" class=\"secondary\" style=\"padding:4px 12px\" data-i18n=\"dash.f.close\">닫기</button>
       </div>
-      <div style=\"color:#94a3b8;font-size:13px;margin-bottom:10px\"><span data-i18n=\"dash.nlq.dialog_desc\">자연스럽게 질문하거나 예시 형식으로 입력하면 해석합니다.</span> <a href=\"#\" id=\"nlq_guide_link\" style=\"color:#38bdf8;\" data-i18n=\"dash.nlq.guide_link\">가이드 ↗</a></div>
+      <div style=\"color:#94a3b8;font-size:13px;margin-bottom:10px\"><span data-i18n=\"dash.nlq.dialog_desc\">자연스럽게 질문하거나 예시 형식으로 입력하면 해석합니다.</span> <a href=\"#\" id=\"nlq_guide_link\" style=\"color:#38bdf8;\" data-i18n=\"dash.nlq.guide_link\">가이드</a></div>
       <textarea id=\"nlq_textarea\" rows=\"3\" style=\"width:100%;box-sizing:border-box;background:#0b1220;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:10px;font-size:14px;resize:vertical;\" placeholder=\"예: 오프라인 호스트 보여줘 / 최근 24시간 wazuh high alert 요약\" data-i18n-placeholder=\"dash.nlq.textarea_ph\"></textarea>
       <div id=\"nlq_interpret_result\" style=\"margin:8px 0;color:#38bdf8;font-size:13px;\"></div>
       <div style=\"display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;\">
@@ -7421,7 +7421,7 @@ def render_login_html(error: str = "", next_url: str = "/ui") -> str:
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title data-i18n-doctitle="login.doctitle">MORI SOC — 로그인</title>
+  <title data-i18n-doctitle="login.doctitle">MORI SOC 로그인</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{ background: #0b1220; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif;
@@ -7497,9 +7497,9 @@ def render_signup_request_html(success: bool = False) -> str:
     """가입 요청 페이지 HTML 반환 (KO/EN 토글 지원)."""
     body_html = """
     <p data-i18n="signup.intro" style="color:#94a3b8;font-size:14px;margin-bottom:20px;">계정 사용을 원하시면 아래 정보를 입력하고 운영자에게 가입을 요청하세요.</p>
-    <div class="field"><label data-i18n="signup.label.name">이름 *</label><input id="req_name" placeholder="홍길동" data-i18n-placeholder="signup.placeholder.name" /></div>
+    <div class="field"><label data-i18n="signup.label.name">이름</label><input id="req_name" placeholder="홍길동" data-i18n-placeholder="signup.placeholder.name" /></div>
     <div class="field"><label data-i18n="signup.label.username">로그인 아이디</label><input id="req_username" placeholder="hong" autocomplete="off" data-i18n-placeholder="signup.placeholder.username" /></div>
-    <div class="field"><label data-i18n="signup.label.email">이메일 *</label><input id="req_email" type="email" placeholder="hong@company.com" /></div>
+    <div class="field"><label data-i18n="signup.label.email">이메일</label><input id="req_email" type="email" placeholder="hong@company.com" /></div>
     <div class="field"><label data-i18n="signup.label.dept">부서</label><input id="req_dept" placeholder="보안팀" data-i18n-placeholder="signup.placeholder.dept" /></div>
     <div class="field"><label data-i18n="signup.label.reason">요청 사유</label><textarea id="req_reason" style="width:100%;background:#0b1220;border:1px solid #334155;border-radius:8px;color:#e2e8f0;padding:10px 14px;font-size:14px;min-height:80px;outline:none;" placeholder="업무 목적 및 필요 권한을 간략히 작성해주세요." data-i18n-placeholder="signup.placeholder.reason"></textarea></div>
     <button class="btn btn-primary" id="submit_btn" data-i18n="signup.button.submit">가입 요청 제출</button>
@@ -7539,7 +7539,7 @@ def render_signup_request_html(success: bool = False) -> str:
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title data-i18n-doctitle="signup.doctitle">MORI SOC — 가입 요청</title>
+  <title data-i18n-doctitle="signup.doctitle">MORI SOC 가입 요청</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{ background: #0b1220; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif;
