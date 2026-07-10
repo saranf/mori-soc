@@ -5247,8 +5247,8 @@ def render_user_dashboard_html(
           : '<span style=\"color:#111827\">-</span>';
         return `<tr ondblclick=\"openVulnListModal(\'${escapeHtml(r.host_id)}\')\" style=\"cursor:pointer\" title=\"${tt('dash.dyn.dblclick_vuln','더블클릭하면 취약점 상세')}\">
           <td><strong>${escapeHtml(r.hostname)}</strong><br><span style=\"color:#111827;font-size:11px\">${escapeHtml(r.host_id)}</span></td>
-          <td style=\"text-align:center\">${riskCell}</td>
-          <td style=\"text-align:center\">${totalCell}</td>
+          <td>${riskCell}</td>
+          <td>${totalCell}</td>
           <td style=\"color:#16a34a;font-size:12px\">${escapeHtml(ownerLabel)}</td>
           <td style=\"font-size:12px;color:#111827\">${escapeHtml(formatTime(r.latest_detected_at))}</td>
         </tr>`;
