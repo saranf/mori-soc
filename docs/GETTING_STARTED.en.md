@@ -1,6 +1,6 @@
 # Getting Started — Install & Operate MORI (new users)
 
-[🇰🇷 한국어](./GETTING_STARTED.md) · **🇬🇧 English**
+[한국어](./GETTING_STARTED.md) · **English**
 
 > This single page walks you through the whole journey: installing MORI, learning it in demo mode, and moving to real operations.
 > If you already run Zabbix/Wazuh/Fleet and **just want to feed their data into MORI** →
@@ -72,14 +72,14 @@ The demo ships with role-based accounts (all passwords are `1234`, **demo only**
 | `helpdesk` | Help desk | **Only the remediation status of my assigned servers** |
 
 > **Risk assessment / control catalog / evidence** are exclusive to admin and security. Infrastructure and help desk
-> see only the remediation status of the servers they are responsible for. (Register your assigned servers in Profile to use the "⭐ My servers" filter.)
+> see only the remediation status of the servers they are responsible for. (Register your assigned servers in Profile to use the "My servers"filter.)
 
 ---
 
 ## 4. A full operational loop (audit scenario)
 
 1. **Dashboard** — role-based security hero + 24h/12h infrastructure status (alert tiles → source deep-links)
-2. **Asset inventory** — Fleet (PCs), Zabbix (servers), Trivy (vulnerabilities) tabs. Filter by team or "⭐ my assets only",
+2. **Asset inventory** — Fleet (PCs), Zabbix (servers), Trivy (vulnerabilities) tabs. Filter by team or "my assets only",
    and edit each host's owner and criticality (changes are logged automatically)
 3. **Vulnerabilities → Risk assessment** — per-CVE **risk score (1–9)** = impact (criticality) × likelihood (severity).
    Record risk treatment (remediate/accept/transfer/avoid). When admin sets the **DoA (acceptable-risk threshold)** score,

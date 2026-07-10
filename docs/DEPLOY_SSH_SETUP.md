@@ -6,11 +6,11 @@
 
 | 시크릿 | 용도 | 필수 |
 |---|---|---|
-| `DEPLOY_HOST` | 배포 서버 호스트/IP | ✅ |
-| `DEPLOY_PORT` | SSH 포트 (기본 22) | ✅ |
-| `DEPLOY_USER` | SSH 로그인 계정 | ✅ |
-| `DEPLOY_SSH_KEY` | **개인키**(private key) 전체 내용 | ✅ |
-| `DEPLOY_ENV_FILE` | 서버에서 쓸 `.env` 전체 내용(멀티라인) | ✅ |
+| `DEPLOY_HOST` | 배포 서버 호스트/IP | |
+| `DEPLOY_PORT` | SSH 포트 (기본 22) | |
+| `DEPLOY_USER` | SSH 로그인 계정 | |
+| `DEPLOY_SSH_KEY` | **개인키**(private key) 전체 내용 | |
+| `DEPLOY_ENV_FILE` | 서버에서 쓸 `.env` 전체 내용(멀티라인) | |
 | `DEPLOY_KNOWN_HOSTS` | 서버의 known_hosts 라인 | 선택(없으면 ssh-keyscan 자동) |
 
 ---
@@ -86,7 +86,7 @@ GitHub 저장소 → **Settings → Secrets and variables → Actions → New re
 cat ~/.ssh/mori_deploy   # 이 전체를 DEPLOY_SSH_KEY 값에 붙여넣기
 ```
 
-> ⚠️ **`.pub`(공개키)가 아니라 개인키 파일 내용**을 넣습니다. `DEPLOY_SSH_KEY`가 비어 있으면 "The ssh-private-key argument is empty" 에러로 실패합니다(가드로 스킵되지만 자동 배포는 안 됨).
+> **`.pub`(공개키)가 아니라 개인키 파일 내용**을 넣습니다. `DEPLOY_SSH_KEY`가 비어 있으면 "The ssh-private-key argument is empty"에러로 실패합니다(가드로 스킵되지만 자동 배포는 안 됨).
 
 ---
 

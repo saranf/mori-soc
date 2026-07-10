@@ -14,7 +14,7 @@
 
 권장은 **Active Agent** 방식입니다 — 단말이 서버로 outbound 접속하므로 NAT/사내망에서 구성이 단순하고, 서버가 단말의 10050 포트로 들어올 필요가 없습니다.
 
-> ⚡ **빠른 길 (원커맨드 번들)** — 대상 서버에서 한 번에 **Zabbix Agent 2 + Trivy**를 설치·설정합니다.
+> **빠른 길 (원커맨드 번들)** — 대상 서버에서 한 번에 **Zabbix Agent 2 + Trivy**를 설치·설정합니다.
 >
 > 저장소를 클론했다면:
 > ```bash
@@ -134,7 +134,7 @@ Zabbix Web(`:18081`, Admin/zabbix) 접속 후:
 
 수 분 뒤 **Monitoring → Latest data**에서 CPU/메모리/디스크 값이 들어오면 성공입니다.
 
-> 💡 **CLI로 등록**하고 싶으면 `host.create` + `templateid` API를 쓸 수 있습니다. 데모용 문제 발생은 `./scripts/mori-zabbix-demo-problem.sh` 참고.
+> **CLI로 등록**하고 싶으면 `host.create` + `templateid` API를 쓸 수 있습니다. 데모용 문제 발생은 `./scripts/mori-zabbix-demo-problem.sh` 참고.
 
 ---
 
@@ -144,7 +144,7 @@ Zabbix Web(`:18081`, Admin/zabbix) 접속 후:
 `Linux by Zabbix agent` 템플릿의 기본 트리거가 발화하면 **Monitoring → Problems**에 문제가 뜹니다.
 
 - **mori-worker**가 30초 주기로 `problem.get`을 폴링해 정규화 → PostgreSQL `alerts` 적재.
-- MORI `/ui` → **🚨 Alert Triage** 탭에 `source=zabbix`로 표시됩니다(각 알림에 `Zabbix ↗` 딥링크).
+- MORI `/ui` → **Alert Triage** 탭에 `source=zabbix`로 표시됩니다(각 알림에 `Zabbix ↗` 딥링크).
 - 확인용:
 
 ```bash
@@ -158,7 +158,7 @@ docker exec -it mori-soc-soc-postgres-1 psql -U mori -d mori_soc \
 ```
 
 Zabbix에서 문제가 **해소(resolve)** 되면(복구 이벤트 발생) MORI alert의 `resolved_at`이 채워지고
-Triage에 "✓ 소스 해소" 뱃지가 표시됩니다.
+Triage에 "소스 해소"뱃지가 표시됩니다.
 
 ---
 

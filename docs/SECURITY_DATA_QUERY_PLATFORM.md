@@ -205,25 +205,25 @@
 
 | 단계 | 상태 | 비고 |
 | --- | --- | --- |
-| Phase 1 입력 소스/엔터티/질의 카탈로그 문서화 | ✅ 완료 | `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md` |
-| 공통 스키마 초안 작성 | ✅ 완료 | `docs/PHASE1_LOGICAL_SCHEMA.md`, `schema/001_phase1_initial.sql` |
-| 수집기/저장소/조회 API 디렉터리 구조 설계 | ✅ 완료 | `src/mori_soc/{collectors,repositories,services,api}` |
-| 첫 번째 조회 기능 구현 | ✅ 완료 | 12개 인텐트 + 3개 논리 뷰 |
-| **Phase 2 — 운영 UI + 감사 증적** | ✅ Alpha 운영 중 | RBAC(admin/security/monitor/auditor/helpdesk/user), 자산/취약점/Triage/인시던트/PDCA, 6종 증적 리포트(CSV/PDF), 증적팩 PDF |
-| Phase 2 — Compliance/Identity 스키마 확장 | ✅ 완료 | `schema/002_phase2_compliance_identity.sql` |
-| **Phase 2 — 영속화(StateRepository)** | ✅ 완료(M2-1) | 10종 상태 → Postgres cache-aside + write-through (`schema/003..009`) |
-| **위험성 평가 + 통제 카탈로그** | ✅ 완료 | R-series 점수(1~9) + DoA 수용기준(`004`,`008`); 통제 카탈로그 194건(ISMS-P 101 + ISO 93) 트리(컴플라이언스 탭) + 통제 이행상태 편집·영속(`007`,`009`) |
-| **read-only 소스 실시간 통합** | 🟡 진행 중 | Zabbix 실시간 연동 검증 완료 · Trivy HTTP 인제스트(CSOP push) 완료 · Fleet/Wazuh 라이브 폴러 = Phase 3 next |
-| Phase 3 — 조사형 multi-hop pivot 에이전트 | 🔲 미착수 | 8절 원칙 유지하며 점진 도입 |
+| Phase 1 입력 소스/엔터티/질의 카탈로그 문서화 | 완료 | `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md` |
+| 공통 스키마 초안 작성 | 완료 | `docs/PHASE1_LOGICAL_SCHEMA.md`, `schema/001_phase1_initial.sql` |
+| 수집기/저장소/조회 API 디렉터리 구조 설계 | 완료 | `src/mori_soc/{collectors,repositories,services,api}` |
+| 첫 번째 조회 기능 구현 | 완료 | 12개 인텐트 + 3개 논리 뷰 |
+| **Phase 2 — 운영 UI + 감사 증적** | Alpha 운영 중 | RBAC(admin/security/monitor/auditor/helpdesk/user), 자산/취약점/Triage/인시던트/PDCA, 6종 증적 리포트(CSV/PDF), 증적팩 PDF |
+| Phase 2 — Compliance/Identity 스키마 확장 | 완료 | `schema/002_phase2_compliance_identity.sql` |
+| **Phase 2 — 영속화(StateRepository)** | 완료(M2-1) | 10종 상태 → Postgres cache-aside + write-through (`schema/003..009`) |
+| **위험성 평가 + 통제 카탈로그** | 완료 | R-series 점수(1~9) + DoA 수용기준(`004`,`008`); 통제 카탈로그 194건(ISMS-P 101 + ISO 93) 트리(컴플라이언스 탭) + 통제 이행상태 편집·영속(`007`,`009`) |
+| **read-only 소스 실시간 통합** | 진행 중 | Zabbix 실시간 연동 검증 완료 · Trivy HTTP 인제스트(CSOP push) 완료 · Fleet/Wazuh 라이브 폴러 = Phase 3 next |
+| Phase 3 — 조사형 multi-hop pivot 에이전트 | 미착수 | 8절 원칙 유지하며 점진 도입 |
 
 ### 다음 실제 구현 대상
 
 운영 신뢰도 갭은 이제 **기존 도구를 read-only로 연결한 실시간 수집**입니다(데이터 영속성은 M2-1로 해소). MORI는 기존 도구를 대체하지 않고 그 위에 얹는 read-only 증적 레이어를 지향하며, 구체적 순서는:
 
-1. **운영 store → PostgreSQL 영속화** ✅ 완료(M2-1)
+1. **운영 store → PostgreSQL 영속화** 완료(M2-1)
    - `user_profiles`, `asset_owners`, `asset_audit_log`, `vuln_actions`, `triage`, `incidents`, `risk_register`, `evidence_events`, `settings`, `control_status` (총 10종)
    - `schema/003..009` + `repositories/state_*.py`(StateRepository: `state_base` ABC / `state_memory` / `state_postgres`)로 cache-aside + write-through 영속화. 재시작 후 상태 유지, `tests/test_state_persistence.py` 라운드트립 검증. `MORI_QUERY_BACKEND=memory` 또는 `MORI_DATABASE_URL` 미설정 시 인메모리 fallback
-2. **Config 기반 read-only 소스 온보딩(N-series)** 🔲 — 실시간 폴러의 전제
+2. **Config 기반 read-only 소스 온보딩(N-series)** — 실시간 폴러의 전제
    - `config/sources.yaml` 스키마+로더(소스별 `enabled`/`url`/`username`/`token_env`/`input_dir`). 시크릿은 `*_env` 환경변수 이름으로만 참조(리포지토리·DB에 비저장)
    - 소스 연결 메타데이터(`source_syncs` 확장: enabled·마지막 sync·마지막 실패 사유) + read-only 가드레일(에이전트 미설치·기존 도구 설정 무변경·소스 장애 격리·freshness 노출)
    - read-only 통합 5원칙: ① read-only 토큰 권장 ② 기존 설정 무변경 ③ 소스 장애 격리 ④ freshness 표시 ⑤ 마지막 수집 시각·실패 사유 저장
@@ -231,6 +231,6 @@
    - Fleet `/api/v1/fleet/hosts`, Zabbix JSON-RPC, Wazuh `/security/user/authenticate` + alerts
    - 정규화 후 Postgres 적재
 4. **수집 freshness 가시화** — `/dashboard/summary` 에 `source_health` 카드 (마지막 sync, lag, 에러율)
-5. **감사 증적 PDF 출력** ✅ 완료 — 6종 증적 리포트(CSV/PDF) + 증적팩 PDF 출력
+5. **감사 증적 PDF 출력** 완료 — 6종 증적 리포트(CSV/PDF) + 증적팩 PDF 출력
 
 세부 입력 소스 명세는 `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md`, 논리 테이블은 `docs/PHASE1_LOGICAL_SCHEMA.md` + `docs/PHASE2_*` 시리즈를 참조합니다. 운영 + 감사 증적 UI 의 현재 상태는 `docs/MORI_IMPLEMENTATION_SUMMARY.md` 의 §2 를 참고하세요.

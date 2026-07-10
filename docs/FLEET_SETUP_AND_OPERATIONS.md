@@ -16,7 +16,7 @@ MORI 관점(엔드포인트 자산·구성 점검 증적):
                                         MORI 자산 탭(PC 자산) · 구성 점검 증적
 ```
 
-> ⚠️ 현재 MORI 는 Fleet **UI 딥링크**(자산 탭 → Fleet)까지 되어 있고, **라이브 API 폴링은
+> 현재 MORI 는 Fleet **UI 딥링크**(자산 탭 → Fleet)까지 되어 있고, **라이브 API 폴링은
 > 다음 단계(Next)** 입니다. 이 문서는 Fleet 자체 설치·운영과 단말 등록까지를 다룹니다.
 
 ---
@@ -83,7 +83,7 @@ Fleet UI → **Hosts** 에 단말이 **online** 으로 뜨면 성공. 수 분 �
 
 ### 4-3. 클라이언트에 "쉽게" 설치하는 방법들 (상황별 추천)
 
-> ⚡ **MORI 번들(추천)** — Zabbix Agent + **Fleet 에이전트(fleetd)** + Trivy 를 **한 번에** 설치:
+> **MORI 번들(추천)** — Zabbix Agent + **Fleet 에이전트(fleetd)** + Trivy 를 **한 번에** 설치:
 > ```bash
 > sudo -E MORI_ZABBIX_SERVER=<서버> MORI_HOSTNAME=my-web-01 \
 >      MORI_FLEET_URL=https://<fleet>:1337 MORI_FLEET_SECRET=<enroll-secret> \
@@ -108,7 +108,7 @@ sudo fleetctl package --type=deb --fleet-url=http://<서버>:1337 --enroll-secre
 sudo dpkg -i fleet-osquery_*.deb        # 설치 즉시 자동 등록
 ```
 
-> ⚠️ enroll secret 은 비밀입니다. 스크립트/이미지에 하드코딩하지 말고 배포도구의 시크릿으로 주입하세요.
+> enroll secret 은 비밀입니다. 스크립트/이미지에 하드코딩하지 말고 배포도구의 시크릿으로 주입하세요.
 
 ---
 

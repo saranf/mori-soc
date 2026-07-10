@@ -1,6 +1,6 @@
 # 기존 스택 연결 — 운영 중인 Zabbix/Wazuh/Fleet를 MORI에 붙이기
 
-**🇰🇷 한국어** · [🇬🇧 English](./BROWNFIELD_CONNECT.en.md)
+**한국어** · [English](./BROWNFIELD_CONNECT.en.md)
 
 > **이 문서는 이런 분을 위한 것입니다** — *"이미 Zabbix(그리고 Wazuh/Fleet)를 운영 중인데,
 > 그 데이터를 MORI로 받아서 ISMS-P/ISO 증적으로 쌓고 싶다."*
@@ -62,10 +62,10 @@ docker compose up -d
 
 | 소스 | 연결 방식 | 상태 | 핵심 .env |
 |---|---|---|---|
-| **Zabbix** | 라이브 REST(JSON-RPC) 폴링 | ✅ **설정만으로 동작(검증됨)** | `MORI_ZABBIX_API_URL` + 토큰 **또는** user/password |
-| **Trivy / CSOP** | 원격 토큰 push | ✅ 토큰만 설정 | `MORI_INGEST_TOKEN` |
-| **Fleet** | 라이브 REST 폴러 | ⚠️ **Phase 3 예정(미구현)** | `MORI_FLEET_API_URL`, `…_TOKEN` (자리만) |
-| **Wazuh** | Manager REST(55000) 폴러 | ⚠️ **Phase 3 예정(미구현)** | `MORI_WAZUH_API_URL`, `…_USER/PASSWORD` (자리만) |
+| **Zabbix** | 라이브 REST(JSON-RPC) 폴링 | **설정만으로 동작(검증됨)** | `MORI_ZABBIX_API_URL` + 토큰 **또는** user/password |
+| **Trivy / CSOP** | 원격 토큰 push | 토큰만 설정 | `MORI_INGEST_TOKEN` |
+| **Fleet** | 라이브 REST 폴러 | **Phase 3 예정(미구현)** | `MORI_FLEET_API_URL`, `…_TOKEN` (자리만) |
+| **Wazuh** | Manager REST(55000) 폴러 | **Phase 3 예정(미구현)** | `MORI_WAZUH_API_URL`, `…_USER/PASSWORD` (자리만) |
 
 ### 3-1) Zabbix (기존 인스턴스) — 단계별
 

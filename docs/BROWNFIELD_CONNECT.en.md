@@ -1,6 +1,6 @@
 # Connect an existing stack — bring your Zabbix/Wazuh/Fleet data into MORI
 
-[🇰🇷 한국어](./BROWNFIELD_CONNECT.md) · **🇬🇧 English**
+[한국어](./BROWNFIELD_CONNECT.md) · **English**
 
 > **This document is for you if** — *"I already run Zabbix (and maybe Wazuh/Fleet), and I want to feed
 > that data into MORI to build up ISMS-P/ISO evidence."*
@@ -62,10 +62,10 @@ Profiles can be combined: `docker compose --profile zabbix --profile fleet up -d
 
 | Source | Connection method | Status | Key .env |
 |---|---|---|---|
-| **Zabbix** | Live REST (JSON-RPC) polling | ✅ **Works with config only (verified)** | `MORI_ZABBIX_API_URL` + token **or** user/password |
-| **Trivy / CSOP** | Remote token push | ✅ Just set the token | `MORI_INGEST_TOKEN` |
-| **Fleet** | Live REST poller | ⚠️ **Planned for Phase 3 (not yet implemented)** | `MORI_FLEET_API_URL`, `…_TOKEN` (placeholder only) |
-| **Wazuh** | Manager REST (55000) poller | ⚠️ **Planned for Phase 3 (not yet implemented)** | `MORI_WAZUH_API_URL`, `…_USER/PASSWORD` (placeholder only) |
+| **Zabbix** | Live REST (JSON-RPC) polling | **Works with config only (verified)** | `MORI_ZABBIX_API_URL` + token **or** user/password |
+| **Trivy / CSOP** | Remote token push | Just set the token | `MORI_INGEST_TOKEN` |
+| **Fleet** | Live REST poller | **Planned for Phase 3 (not yet implemented)** | `MORI_FLEET_API_URL`, `…_TOKEN` (placeholder only) |
+| **Wazuh** | Manager REST (55000) poller | **Planned for Phase 3 (not yet implemented)** | `MORI_WAZUH_API_URL`, `…_USER/PASSWORD` (placeholder only) |
 
 ### 3-1) Zabbix (existing instance) — step by step
 

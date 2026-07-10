@@ -7,8 +7,8 @@ demo defaults; do not run it as-is in production.
 
 | Version | Supported |
 |---|---|
-| `0.6.x-alpha` (current) | ✅ security fixes |
-| `< 0.6` | ❌ |
+| `0.6.x-alpha` (current) | security fixes |
+| `< 0.6` | |
 
 ## Reporting a vulnerability
 

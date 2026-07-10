@@ -1,10 +1,10 @@
 # controls/ — Control catalog (ISMS-P × ISO 27001)
 
-[🇰🇷 한국어](./README.md) · **🇬🇧 English**
+[한국어](./README.md) · **English**
 
 The core asset of MORI's **identity pivot (Phase 2)**. It structures — machine-readably — **which certification criterion each of the five sources' operational data serves as evidence for** (Zabbix/Wazuh/Fleet/Trivy/Loki). It's an **independent track** with no code dependency, so it can be filled in parallel with poller work and published to the community as it completes.
 
-> Status: 🟢 **live** — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 controls** (all with KO/EN titles). 14 of them are `reviewed` (evidence sources wired); the rest are `draft` skeletons (titles need verification against the official standard). 61 mappings, 5 defects. Browsable and **editable in the Compliance tab tree**; control_status persists to `schema/009`. Coverage lite ~24% / full ~30% (honest ceiling). Next: grow to 10~15 defects.
+> Status: **live** — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 controls** (all with KO/EN titles). 14 of them are `reviewed` (evidence sources wired); the rest are `draft` skeletons (titles need verification against the official standard). 61 mappings, 5 defects. Browsable and **editable in the Compliance tab tree**; control_status persists to `schema/009`. Coverage lite ~24% / full ~30% (honest ceiling). Next: grow to 10~15 defects.
 
 ## Layout
 
@@ -44,4 +44,4 @@ python controls/validate.py            # schema + id cross-refs + mori_signal va
 python controls/_build_catalog_json.py # rebuild the runtime JSON (commit it)
 ```
 
-> `validate.py` runs in GitHub Actions CI (catalog validate job). Roadmap: **Phase 2 — Control catalog** in the README "🗺️ Roadmap (Phase 0 → 5)". It is a prerequisite for P3-5 (Control Mapping) and P4-3 (Evidence Pack).
+> `validate.py` runs in GitHub Actions CI (catalog validate job). Roadmap: **Phase 2 — Control catalog** in the README "Roadmap (Phase 0 → 5)". It is a prerequisite for P3-5 (Control Mapping) and P4-3 (Evidence Pack).

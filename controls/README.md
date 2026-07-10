@@ -1,10 +1,10 @@
 # controls/ — 통제 카탈로그 (ISMS-P × ISO 27001)
 
-**🇰🇷 한국어** · [🇬🇧 English](./README.en.md)
+**한국어** · [English](./README.en.md)
 
 MORI의 **정체성 전환(Phase 2)** 핵심 자산. 다섯 소스(Zabbix/Wazuh/Fleet/Trivy/Loki)의 운영 데이터를 **어떤 인증기준의 증적으로 쓰는지** 기계가 읽을 수 있게 구조화한다. 코드 의존성이 없는 **독립 트랙**이라 폴러 개발과 병렬로 채우고, 완성되는 대로 커뮤니티에 공개 가능하다.
 
-> 상태: 🟢 **라이브** — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 통제**(모두 한/영 제목). 이 중 14건은 증적 소스가 연결된 `reviewed`, 나머지는 `draft` 골격(공식 고시 대비 검증 필요). 매핑 61·결함 5. **Compliance 탭 트리**에서 조회·편집 가능하며 통제 상태(control_status)는 `schema/009`에 영속화된다. 커버리지 lite ~24% / full ~30%(정직한 상한). 다음: 결함 10~15로 확장.
+> 상태: **라이브** — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 통제**(모두 한/영 제목). 이 중 14건은 증적 소스가 연결된 `reviewed`, 나머지는 `draft` 골격(공식 고시 대비 검증 필요). 매핑 61·결함 5. **Compliance 탭 트리**에서 조회·편집 가능하며 통제 상태(control_status)는 `schema/009`에 영속화된다. 커버리지 lite ~24% / full ~30%(정직한 상한). 다음: 결함 10~15로 확장.
 
 ## 디렉터리 구조
 
@@ -46,4 +46,4 @@ python controls/validate.py            # 스키마 준수 + id 상호참조 + mo
 python controls/_build_catalog_json.py # 런타임 JSON 재빌드(커밋)
 ```
 
-> `validate.py`는 GitHub Actions CI(catalog validate job)로 승격되어 있다. 로드맵 위치는 README "🗺️ 로드맵 (Phase 0 → 5)"의 **Phase 2 — 통제 카탈로그**. 전제조건: 이 카탈로그가 있어야 P3-5(Control Mapping)·P4-3(Evidence Pack)이 성립한다.
+> `validate.py`는 GitHub Actions CI(catalog validate job)로 승격되어 있다. 로드맵 위치는 README "로드맵 (Phase 0 → 5)"의 **Phase 2 — 통제 카탈로그**. 전제조건: 이 카탈로그가 있어야 P3-5(Control Mapping)·P4-3(Evidence Pack)이 성립한다.

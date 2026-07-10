@@ -85,7 +85,7 @@ versions are `x.y.z-alpha.n`.
 ## [v0.17.5-alpha.1] — 2026-07-09 — 전체 증적 한방에 ZIP 다운로드
 
 ### Added
-- **📦 전체 증적 ZIP** — 통제 카탈로그 상단 버튼 하나로 전 통제의 증적 문서를 **폴더별로 묶어
+- **전체 증적 ZIP** — 통제 카탈로그 상단 버튼 하나로 전 통제의 증적 문서를 **폴더별로 묶어
   ZIP** 다운로드. `{프레임워크}/{통제ID}_{제목}/evidence.pdf`+`evidence.csv` 구조 + 루트 `INDEX.csv`
   (통제·자산수·증적수 목록). `GET /controls/evidence-bundle.zip?scope=mapped|all` (admin·security).
   기본 scope=mapped(증적 소스 또는 문서화 증적이 있는 통제만), scope=all은 전 통제. 파일명 UTF-8.
@@ -111,7 +111,7 @@ versions are `x.y.z-alpha.n`.
 - **정기 증적 스냅샷 (admin 설정 — off/daily/weekly/monthly)** — 통제 카탈로그 관리 바에서
   주기·범위(증적 있는 통제만/전 통제)를 admin이 자유롭게 설정. **부팅 시** 도래 여부를 확인해
   일괄 스냅샷(재기동으로 월간 트리거 커버) + **열람 시 lazy 트리거**(장기 무재기동 서버 대응).
-  **"⚡ 지금 일괄 스냅샷"** 수동 실행 버튼도 제공. `GET/POST /controls/evidence-snapshot/config`,
+  **"지금 일괄 스냅샷"** 수동 실행 버튼도 제공. `GET/POST /controls/evidence-snapshot/config`,
   `POST /controls/evidence-snapshot/run` (admin). `evidence_snapshot_schedule|scope|last_run` 영속.
 
 ### Changed
@@ -123,11 +123,11 @@ versions are `x.y.z-alpha.n`.
 ## [v0.17.1-alpha.1] — 2026-07-09 — 실증적 자동 증적 스냅샷
 
 ### Added
-- **실증적 자동 기록 (⚡ 원클릭 스냅샷)** — 통제 상세의 휘발성 라이브 집계(Fleet 자산 수·Zabbix
+- **실증적 자동 기록 (원클릭 스냅샷)** — 통제 상세의 휘발성 라이브 집계(Fleet 자산 수·Zabbix
   경보/모니터링·크로스매핑 등)를 **날짜 찍힌 증적 레코드로 자동 생성**. 수기 타이핑 없이
   "이 날 이만큼의 증적이 있었다" 시점 증거를 박제. `POST /controls/detail/{id}/evidence-records/auto`
   (admin·security). 증적 레코드에 `source`(manual|auto) 구분 추가(`schema/011` 자가치유 ALTER),
-  UI에 ⚡자동 배지, CSV `kind=auto` 로 표기.
+  UI에 자동 배지, CSV `kind=auto` 로 표기.
 
 ## [v0.17.0-alpha.1] — 2026-07-09 — 통제 카탈로그 편집 · 법령 NLP 임포트 · 수기 증적 문서화
 
@@ -138,7 +138,7 @@ versions are `x.y.z-alpha.n`.
 - **카탈로그 직접 편집 (admin 전용)** — 통제 추가/수정/삭제. base 카탈로그(`controls/*.yaml`)와
   분리된 오버레이(`schema/011` `catalog_controls`)에 쌓여 카탈로그 재싱크에도 유지. `POST /controls`,
   `DELETE /controls/{id}`(base 통제는 숨김 op=delete, admin이 만든 통제는 완전 삭제). 트리에서
-  ✏️/🗑️ 인라인 편집, "➕ 통제 추가" 폼. custom/법령 프레임워크도 트리에 렌더.
+  / 인라인 편집, "통제 추가"폼. custom/법령 프레임워크도 트리에 렌더.
 - **법령 텍스트 → 통제 NLP 임포트 (하이브리드, admin 전용)** — `POST /controls/import-nlp`.
   `MORI_ANTHROPIC_API_KEY`(또는 `ANTHROPIC_API_KEY`)가 있으면 **Claude API**로 정밀 구조화,
   없으면 **조항 단위 오프라인 휴리스틱**으로 초안 생성. 결과는 `status=draft`, `origin=nlp`로
@@ -162,7 +162,7 @@ versions are `x.y.z-alpha.n`.
 - **계정 거버넌스 열람 역할 — admin 조정** — 계정 탭·호스트 상세 계정 섹션·`/accounts/*`를 볼 수
   있는 역할을 admin이 직접 지정. 기본 **admin·security**, **admin은 항상 포함(lock, 자기 잠금 방지)**.
   `ui_settings.account_view_roles`에 영속. `GET/POST /accounts/view-roles` (admin 전용),
-  `/auth/me`가 `account_view_roles` 반환 → 클라 게이팅. 어드민 콘솔 **권한 탭 → "🔑 계정 거버넌스
+  `/auth/me`가 `account_view_roles` 반환 → 클라 게이팅. 어드민 콘솔 **권한 탭 → "계정 거버넌스
   열람 역할"** 카드에서 체크박스로 설정.
 
 ### Changed
@@ -197,7 +197,7 @@ ISO 27001:2022 A.5.16/A.5.18/A.8.2 접근권한 검토 증적.
   sudo** · **휴면**(로그인 90일↑, 설정 `accounts_dormant_days`).
 - **승인 대장**(`account_approvals`) — 허용 계정/sudo 등록(전역·호스트 범위). 등록된 건 이상
   검출에서 제외(예외 승인 근거=증적). `GET/POST/DELETE /accounts/approvals` (admin·security).
-- **🔑 계정 탭** (admin·security 전용) — 거버넌스 finding 카드 4종 + 통합 계정 목록(서버/PC,
+- **계정 탭** (admin·security 전용) — 거버넌스 finding 카드 4종 + 통합 계정 목록(서버/PC,
   필터: 유형·이상·특권) + **IP 리스트** + 승인 대장 관리 + **CSV 증적 export**(`/accounts/overview.csv`).
 - **호스트 상세 계정 섹션** — '내 담당 서버' 상세 모달에 그 호스트의 로컬 계정·이상 표시(admin·security).
 
@@ -207,7 +207,7 @@ ISO 27001:2022 A.5.16/A.5.18/A.8.2 접근권한 검토 증적.
 - **`/admin` 중복 운영 탭 제거** — 내용이 `/ui#…` 링크뿐이던 **Compliance · Triage & Incidents**
   탭을 콘솔에서 제거(운영 뷰는 `/ui`로 일원화) → 관리자 콘솔은 **6탭**(Overview · Remediation ·
   자산/Owners · Access Control · Audit & Logs · Settings)으로 슬림화.
-- **진입점 정리** — 사용자 대시보드(`/ui`) 계정 메뉴에 **⚙️ 관리자 콘솔** 링크(admin 전용) 추가
+- **진입점 정리** — 사용자 대시보드(`/ui`) 계정 메뉴에 **관리자 콘솔** 링크(admin 전용) 추가
   (기존엔 `/ui`→`/admin` 링크가 없었음). 문서 타이틀 `MORI — 관리자 콘솔`로 정정.
 - **입력 컨트롤 톤 통일** — LDAP 사용자 관리·가입 승인·감사/사용자 로그 필터의 제각각이던
   인라인 입력/셀렉트 스타일(#1e293b·radius 5~6)을 공용 `.inp-sm` 클래스로 교체 → 콘솔 베이스
@@ -218,7 +218,7 @@ ISO 27001:2022 A.5.16/A.5.18/A.8.2 접근권한 검토 증적.
 계정 하나로 MORI·Grafana·Zabbix·Fleet 로그인. **기본 OFF**, 원하면 켜는 옵션.
 
 ### Added
-- **어드민 LDAP 사용자 관리 UI** — 어드민 콘솔 → Access Control → **🔑 LDAP 사용자 관리**:
+- **어드민 LDAP 사용자 관리 UI** — 어드민 콘솔 → Access Control → **LDAP 사용자 관리**:
   상태 표시 + 사용자 목록/추가/삭제/비번 재설정/역할 변경(admin 전용). 엔드포인트
   `GET /admin/ldap/status`·`GET/POST /admin/ldap/users`·`.../{uid}/password`·`.../role`·
   `DELETE .../{uid}` + 헬퍼 `auth.ldap_list_users/ldap_delete_user/ldap_set_password`.
@@ -243,7 +243,7 @@ ISO 27001:2022 A.5.16/A.5.18/A.8.2 접근권한 검토 증적.
 - **호스트 상세 모달 외부 딥링크** — '내 담당 서버' 행 더블클릭 상세에 자산 종류별 딥링크:
   서버→**Zabbix**, PC→**Fleet**, 공통→**Grafana**(Explore, host 로그). `MORI_GRAFANA_URL`
   플레이스홀더 치환 추가. URL 미설정 소스는 자동 생략.
-- **자산 테이블 필터** — Fleet·Zabbix 자산 표에 **팀별 드롭다운** + **'⭐ 내 자산만'**
+- **자산 테이블 필터** — Fleet·Zabbix 자산 표에 **팀별 드롭다운** + **'내 자산만'**
   체크박스(프로필 담당서버/담당자 일치). 팀 옵션은 자산 team 값에서 자동 추출.
 
 ### Changed
@@ -294,7 +294,7 @@ ISO 27001:2022 A.5.16/A.5.18/A.8.2 접근권한 검토 증적.
 
 ### Changed
 - **위험 표기를 점수 중심으로** — 위험 매트릭스 셀·버킷 목록·배지가 `N점`을 전면에,
-  등급 라벨은 보조로. DoA 이하 셀은 🟢 '기본수용'으로 음영 표시.
+  등급 라벨은 보조로. DoA 이하 셀은 '기본수용'으로 음영 표시.
 - **대시보드 최소화** — 위험 매트릭스 카드 **기본 접힘**('펼치기'로 상세 노출).
 - **'내 담당 서버' 테이블 간소화** — 컬럼을 `호스트명·중요도·분류·상태·IP`로 축소
   (통제·리스크·이력 컬럼 제거). 상세·조치현황은 **행 더블클릭 → 상세 모달**로 이동.
@@ -313,7 +313,7 @@ ISO 27001:2022 A.5.16/A.5.18/A.8.2 접근권한 검토 증적.
   run best-effort on app boot (`services/control_catalog.py`).
 - **Per-control evidence-pack PDF** (evidence mapper) — `GET /controls/detail/{id}` +
   `.../evidence.pdf`: joins a control to its cross-mappings, related defects, and the
-  **current live evidence-gap counts**, rendered as a one-click PDF (📄 per control in the
+  **current live evidence-gap counts**, rendered as a one-click PDF (per control in the
   tree). **58 controls** enriched to `reviewed`; crossmappings grown 7 → **61** (coverage
   lite ~24% / full ~30% — the honest ceiling for 5 technical sources; policy/HR/physical/
   privacy controls are documentary-evidence territory and are not force-mapped).

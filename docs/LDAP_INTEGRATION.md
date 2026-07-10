@@ -1,6 +1,6 @@
 # LDAP 통합 — 계정 하나로 MORI·Grafana·Zabbix·Fleet 로그인
 
-**🇰🇷 한국어** · [🇬🇧 English](./LDAP_INTEGRATION.en.md)
+**한국어** · [English](./LDAP_INTEGRATION.en.md)
 
 > LDAP은 **선택**입니다. 기본 설치는 LDAP 없이 로컬 계정으로 동작하고, **원하는 사람만**
 > `MORI_LDAP_ENABLED=true` 로 켜면 됩니다. 켜면 ① MORI 로그인이 LDAP으로 되고 ② **가입 승인 시
@@ -68,7 +68,7 @@ docker compose up -d openldap mori-api
 
 ### (A) MORI 어드민 UI (권장)
 
-`admin` 으로 로그인 → **어드민 콘솔 → Access Control(접근 제어) → 🔑 LDAP 사용자 관리**.
+`admin` 으로 로그인 → **어드민 콘솔 → Access Control(접근 제어) → LDAP 사용자 관리**.
 LDAP이 켜져 있으면 상단에 `● 활성 · <url> · <base_dn>` 이 표시되고, 아래에서:
 
 - **사용자 목록** — uid·이름·이메일·MORI 역할

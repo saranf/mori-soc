@@ -6,14 +6,14 @@
 
 ---
 
-## ⚠️ 핵심 운영 규칙 — 서버 vs PC 자산 분리
+## 핵심 운영 규칙 — 서버 vs PC 자산 분리
 
 | 자산 유형 | 소스 | 자동 수집 주기 | Stale 기준 | On-demand |
 |-----------|------|---------------|-----------|-----------|
-| **서버** | Zabbix | **30초** | 5분 | ✅ 새로고침 버튼 |
-| **PC/노트북** | Fleet | **주 1회** (604800s) | 10일 | ✅ 새로고침 버튼 |
+| **서버** | Zabbix | **30초** | 5분 | 새로고침 버튼 |
+| **PC/노트북** | Fleet | **주 1회** (604800s) | 10일 | 새로고침 버튼 |
 
-- 사용자가 **🔄 새로고침** 버튼을 누르면 `POST /assets/refresh` → 해당 소스 즉시 수집
+- 사용자가 **새로고침** 버튼을 누르면 `POST /assets/refresh` → 해당 소스 즉시 수집
 - 장기 미응답 자산은 자동으로 **stale** 상태로 전환 (UI 노란색 배지)
 - 이 규칙은 **UI / worker / 리포트** 전부에 동일하게 적용
 
@@ -26,13 +26,13 @@
 | **자산 유형** | 서버 | PC / 노트북 | 서버+PC (EDR) | 전체 | 사용자 |
 | **수집 방식** | Polling (REST API) | Polling (REST API) | Polling (REST API) | Batch (파일/온디맨드) | Polling (LDAP) |
 | **폴링 주기** | **30 s** | **604800 s (주 1회)** | 60 s | 86400 s (24 h) | 3600 s (1 h) |
-| **On-demand** | ✅ 새로고침 | ✅ 새로고침 | ✅ 새로고침 | ✅ 새로고침 | ❌ |
+| **On-demand** | 새로고침 | 새로고침 | 새로고침 | 새로고침 | |
 | **목표 레이턴시** | < 45 s | < 수 분 (on-demand) | < 90 s | < 30 min (수동) | < 1.5 h |
 | **Freshness 기준** | 2 min | 7 days | 5 min | 7 days | 4 h |
 | **Max Retries** | 3 | 3 | 3 | 2 | 3 |
 | **Retry Backoff** | 10 s | 15 s | 10 s | 30 s | 30 s |
 | **Stale 판단 기준** | **5 min (300s)** | **10일 (864000s)** | 10 min | 7 days | 8 h |
-| **연동 상태** | ✅ 연결됨 | 🔲 미연결 (API stub) | 🔲 미연결 (파일 모드) | 🟡 수동 실행 | 🟡 옵션 (env 설정 시) |
+| **연동 상태** | 연결됨 | 미연결 (API stub) | 미연결 (파일 모드) | 수동 실행 | 옵션 (env 설정 시) |
 
 ---
 
@@ -155,8 +155,8 @@ MORI_LDAP_STALE_SECONDS=28800      # 기준: 28800 (8h)
 | 상태 | 조건 | UI 표시 |
 |------|------|---------|
 | **Fresh** | `last_success_at` < stale 기준 | 초록색 배지 |
-| **Stale** | `last_success_at` ≥ stale 기준 | 🟡 노란색 STALE 배지, `sources_healthy` 제외 |
-| **Error** | 모든 재시도 실패 | 🔴 빨간색 배지 |
+| **Stale** | `last_success_at` ≥ stale 기준 | 노란색 STALE 배지, `sources_healthy` 제외 |
+| **Error** | 모든 재시도 실패 | 빨간색 배지 |
 
 - 서버(Zabbix) stale: 마지막 성공 수집이 **5분** 이상 경과
 - PC(Fleet) stale: 마지막 성공 수집이 **10일** 이상 경과
@@ -166,7 +166,7 @@ MORI_LDAP_STALE_SECONDS=28800      # 기준: 28800 (8h)
 
 ## On-demand 수집
 
-사용자가 자산 탭에서 **🔄 새로고침** 버튼 클릭 시:
+사용자가 자산 탭에서 **새로고침** 버튼 클릭 시:
 
 1. 프론트엔드 → `POST /assets/refresh {"source":"zabbix"}` 호출
 2. 서버에서 해당 폴러의 `run_cycle()` 즉시 실행
@@ -181,11 +181,11 @@ PC 자산처럼 주 1회 수집이지만 긴급히 확인이 필요할 때 유�
 
 | Phase | 항목 | 목표 |
 |-------|------|------|
-| **현재** | Zabbix API polling (30s) | ✅ 운영 중 |
-| **현재** | On-demand 새로고침 | ✅ 운영 중 |
-| **현재** | Trivy 파일 batch | 🟡 수동 실행 |
-| **현재** | LDAP 동기화 | 🟡 env 설정 필요 |
-| **Phase 3** | Fleet API polling (주 1회 + on-demand) | 🔲 REST API 연동 |
-| **Phase 3** | Wazuh API polling | 🔲 REST API 연동 |
-| **Phase 4** | Webhook 수신 (Fleet/Wazuh) | 🔲 Push 모드 |
+| **현재** | Zabbix API polling (30s) | 운영 중 |
+| **현재** | On-demand 새로고침 | 운영 중 |
+| **현재** | Trivy 파일 batch | 수동 실행 |
+| **현재** | LDAP 동기화 | env 설정 필요 |
+| **Phase 3** | Fleet API polling (주 1회 + on-demand) | REST API 연동 |
+| **Phase 3** | Wazuh API polling | REST API 연동 |
+| **Phase 4** | Webhook 수신 (Fleet/Wazuh) | Push 모드 |
 

@@ -1,6 +1,6 @@
 # LDAP integration — one account for MORI · Grafana · Zabbix · Fleet
 
-[🇰🇷 한국어](./LDAP_INTEGRATION.md) · **🇬🇧 English**
+[한국어](./LDAP_INTEGRATION.md) · **English**
 
 > LDAP is **optional**. The default install works without LDAP, using local accounts,
 > and **only those who want it** turn it on with `MORI_LDAP_ENABLED=true`. Once enabled,
@@ -72,7 +72,7 @@ local accounts such as the administrator (`admin`) still log in as before.
 
 ### (A) MORI admin UI (recommended)
 
-Log in as `admin` → **Admin console → Access Control → 🔑 LDAP User Management**.
+Log in as `admin` → **Admin console → Access Control → LDAP User Management**.
 When LDAP is on, the header shows `● Enabled · <url> · <base_dn>`, and below you can:
 
 - **List users** — uid · name · email · MORI role
