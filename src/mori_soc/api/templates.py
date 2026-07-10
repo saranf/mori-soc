@@ -4092,7 +4092,7 @@ def render_user_dashboard_html(
                   <div style=\"color:#111827;font-size:11px;margin-top:2px\">${escapeHtml(it.hostname)} · <span style=\"text-transform:uppercase;color:${it.severity==='critical'?'#dc2626':'#ea580c'}\">${escapeHtml(it.severity)}</span></div>
                 </div>
                 <div style=\"text-align:right;white-space:nowrap\">
-                  <div style=\"font-weight:800;font-size:15px;color:${RISK_LEVEL_COLORS[it.level]||'#e5e7eb'}\">${it.score}</div>
+                  <div style=\"font-weight:800;font-size:15px;color:${RISK_LEVEL_COLORS[it.level]||'#111827'}\">${it.score}</div>
                   <div style=\"font-size:10px;color:#111827\">${tt('dash.hero.score','위험점수')}</div>
                 </div>
               </div>`).join('');
@@ -6651,10 +6651,10 @@ def render_user_dashboard_html(
     window._applyAccountGating = _applyAccountGating;
     const _CTL_SOURCE_COLOR = { zabbix:'#2563eb', trivy:'#ea580c', wazuh:'#2563eb', fleet:'#16a34a', loki:'#dc2626', mori:'#111827' };
     // M2-7: 통제 이행 상태 색상/배지
-    const _CTL_STATUS_COLOR = { '이행':'#16a34a', '부분이행':'#ea580c', '미이행':'#dc2626', '해당없음':'#111827', '미정':'#d1d5db' };
+    const _CTL_STATUS_COLOR = { '이행':'#16a34a', '부분이행':'#ea580c', '미이행':'#dc2626', '해당없음':'#111827', '미정':'#111827' };
     const _CTL_STATUSES = ['미정','이행','부분이행','미이행','해당없음'];
     function _ctlStatusBadge(s) {
-      const c = _CTL_STATUS_COLOR[s] || '#d1d5db';
+      const c = _CTL_STATUS_COLOR[s] || '#111827';
       return `<span style=\"background:${c}22;color:${c};border:1px solid ${c};padding:0 6px;border-radius:5px;font-size:10px;margin-left:5px;font-weight:700\">${escapeHtml(s)}</span>`;
     }
     let _ctlCanEdit = false;
