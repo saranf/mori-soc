@@ -3321,7 +3321,7 @@ def render_user_dashboard_html(
           <div style=\"display:flex;gap:6px;flex-wrap:wrap;align-items:center\">
             <input id=\"acc_search\" placeholder=\"계정/호스트 검색…\" data-i18n-placeholder=\"dash.acc.search_ph\" oninput=\"renderAccounts()\" style=\"background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:5px 10px;font-size:13px;width:180px\" />
             <select id=\"acc_filter_type\" onchange=\"renderAccounts()\" style=\"background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:5px 8px;font-size:13px\"><option value=\"\" data-i18n=\"dash.acc.f.alltype\">전체 유형</option><option value=\"server\" data-i18n=\"dash.acc.f.server\">서버</option><option value=\"pc\" data-i18n=\"dash.acc.f.pc\">PC</option></select>
-            <select id=\"acc_filter_finding\" onchange=\"renderAccounts()\" style=\"background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:5px 8px;font-size:13px\"><option value=\"\" data-i18n=\"dash.acc.f.allfind\">전체</option><option value=\"flagged\" data-i18n=\"dash.acc.f.flagged\">이상만</option><option value=\"leaver\">퇴사자 잔존</option><option value=\"orphan_priv\">미등록 특권</option><option value=\"unapproved_sudo\">미승인 sudo</option><option value=\"dormant\">휴면</option><option value=\"privileged\" data-i18n=\"dash.acc.f.priv\">특권만</option></select>
+            <select id=\"acc_filter_finding\" onchange=\"renderAccounts()\" style=\"background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:5px 8px;font-size:13px\"><option value=\"\" data-i18n=\"dash.acc.f.allfind\">전체</option><option value=\"flagged\" data-i18n=\"dash.acc.f.flagged\">이상만</option><option value=\"leaver\" data-i18n=\"dash.acc.find.leaver\">퇴사자 잔존</option><option value=\"orphan_priv\" data-i18n=\"dash.acc.find.orphan_priv\">미등록 특권</option><option value=\"unapproved_sudo\" data-i18n=\"dash.acc.find.unapproved_sudo\">미승인 sudo</option><option value=\"dormant\" data-i18n=\"dash.acc.find.dormant\">휴면</option><option value=\"privileged\" data-i18n=\"dash.acc.f.priv\">특권만</option></select>
           </div>
         </div>
         <div class=\"table-wrap\" id=\"acc_table\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
@@ -3692,11 +3692,11 @@ def render_user_dashboard_html(
         <div style=\"display:flex;gap:10px;flex-wrap:wrap\">
           <div style=\"flex:1;min-width:180px\"><label style=\"color:#111827;font-size:13px\" data-i18n=\"dash.risk.f.impact\">영향도 (자산 중요도)</label>
             <select id=\"risk_impact\" onchange=\"_riskRecalc()\" style=\"width:100%;background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:7px;font-size:13px\">
-              <option value=\"3\">상 (3)</option><option value=\"2\">중 (2)</option><option value=\"1\">하 (1)</option>
+              <option value=\"3\" data-i18n=\"dash.acc.impf.high\">상 (3)</option><option value=\"2\" data-i18n=\"dash.acc.impf.mid\">중 (2)</option><option value=\"1\" data-i18n=\"dash.acc.impf.low\">하 (1)</option>
             </select></div>
           <div style=\"flex:1;min-width:180px\"><label style=\"color:#111827;font-size:13px\" data-i18n=\"dash.risk.f.likelihood\">발생가능성 (심각도 기반)</label>
             <select id=\"risk_likelihood\" onchange=\"_riskRecalc()\" style=\"width:100%;background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:7px;font-size:13px\">
-              <option value=\"3\">상 (3)</option><option value=\"2\">중 (2)</option><option value=\"1\">하 (1)</option>
+              <option value=\"3\" data-i18n=\"dash.acc.impf.high\">상 (3)</option><option value=\"2\" data-i18n=\"dash.acc.impf.mid\">중 (2)</option><option value=\"1\" data-i18n=\"dash.acc.impf.low\">하 (1)</option>
             </select></div>
         </div>
         <div><label style=\"color:#111827;font-size:13px\" data-i18n=\"dash.risk.f.treatment\">위험 처리 결정</label>
@@ -3736,7 +3736,7 @@ def render_user_dashboard_html(
   <div id=\"risk_bucket_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
     <div style=\"background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:24px 28px;width:660px;max-width:95vw;max-height:82vh;overflow-y:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px\">
-        <h3 id=\"risk_bucket_modal_title\" style=\"color:#2563eb;margin:0\">위험 상세</h3>
+        <h3 id=\"risk_bucket_modal_title\" style=\"color:#2563eb;margin:0\" data-i18n=\"dash.risk.bucket_title\">위험 상세</h3>
         <button onclick=\"closeRiskBucketModal()\" style=\"background:none;border:none;color:#111827;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div id=\"risk_bucket_modal_body\"></div>
@@ -3747,7 +3747,7 @@ def render_user_dashboard_html(
   <div id=\"host_detail_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
     <div style=\"background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:24px 28px;width:640px;max-width:95vw;max-height:85vh;overflow-y:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px\">
-        <h3 id=\"host_detail_title\" style=\"color:#16a34a;margin:0\">호스트 상세</h3>
+        <h3 id=\"host_detail_title\" style=\"color:#16a34a;margin:0\" data-i18n=\"dash.host.detail_title\">호스트 상세</h3>
         <button onclick=\"closeHostDetail()\" style=\"background:none;border:none;color:#111827;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div id=\"host_detail_body\" style=\"color:#111827;font-size:13px\"></div>

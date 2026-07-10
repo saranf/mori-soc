@@ -164,6 +164,11 @@ _SIGNUP_I18N: dict[str, dict[str, str]] = {
 
 _DASHBOARD_I18N: dict[str, dict[str, str]] = {
     "ko": {
+        "dash.acc.impf.high": "상 (3)",
+        "dash.acc.impf.mid": "중 (2)",
+        "dash.acc.impf.low": "하 (1)",
+        "dash.risk.bucket_title": "위험 상세",
+        "dash.host.detail_title": "호스트 상세",
         "dash.dyn.bulk_apply_note": "선택한 모든 CVE에 동일하게 적용됩니다.",
         "dash.dyn.bulk_exception": "일괄 조치 예외",
         "dash.dyn.bulk_fail": "실패",
@@ -880,6 +885,11 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.nlq.textarea_ph": "예: 오프라인 호스트 보여줘 / 최근 24시간 wazuh high alert 요약",
     },
     "en": {
+        "dash.acc.impf.high": "High (3)",
+        "dash.acc.impf.mid": "Medium (2)",
+        "dash.acc.impf.low": "Low (1)",
+        "dash.risk.bucket_title": "Risk details",
+        "dash.host.detail_title": "Host details",
         "dash.dyn.bulk_apply_note": "Applied identically to all selected CVEs.",
         "dash.dyn.bulk_exception": "Bulk action exception",
         "dash.dyn.bulk_fail": "Failed",
