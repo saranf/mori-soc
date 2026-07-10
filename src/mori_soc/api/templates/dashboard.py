@@ -3605,6 +3605,51 @@ def render_user_dashboard_html(
           if (cats.length === 0) {
             categoryEl.innerHTML = '<div class=\"empty\" style=\"color:#111827;padding:12px\">' + tt('dash.dyn.pdca.no_check_data','점검 데이터가 없습니다.') + '</div>';
           } else {
+            // 통제 카탈로그 트리와 동일하게 프레임워크 → 도메인 → 섹션(카테고리) 계층으로 묶어 매칭.
+            const _fwLabel = { 'isms-p': 'ISMS-P', 'iso27001': 'ISO 27001:2022', 'custom': 'Custom / 법령' };
+            // cats 는 payload 에서 이미 트리 순서(ISMS-P 먼저 · 섹션번호 자연정렬)로 정렬됨.
+            const groups = [];  // {fw, domain, rows:[], agg:{}}
+            cats.forEach(c => {
+              const fw = c.framework || '', dom = c.domain || c.category;
+              let g = groups.length ? groups[groups.length-1] : null;
+              if (!g || g.fw !== fw || g.domain !== dom) {
+                g = { fw, domain: dom, rows: [], agg: {pass:0,fail:0,warning:0,not_checked:0,total:0} };
+                groups.push(g);
+              }
+              g.rows.push(c);
+              g.agg.pass += c.pass; g.agg.fail += c.fail; g.agg.warning += c.warning;
+              g.agg.not_checked += c.not_checked; g.agg.total += c.total;
+            });
+            let lastFw = null;
+            const body = groups.map(g => {
+              let out = '';
+              if (g.fw !== lastFw) {
+                lastFw = g.fw;
+                out += `<tr style=\"background:#f9fafb\"><td colspan=\"6\" style=\"padding:6px 8px;color:#2563eb;font-weight:700;font-size:12px\">${escapeHtml(_fwLabel[g.fw]||g.fw||'')}</td></tr>`;
+              }
+              const domSameAsSec = (g.rows.length === 1 && g.rows[0].category === g.domain);
+              if (!domSameAsSec) {
+                out += `<tr style=\"border-bottom:1px solid #e5e7eb\">
+                  <td style=\"padding:6px 8px;color:#111827;font-weight:700\">${escapeHtml(g.domain)}</td>
+                  <td style=\"text-align:right;padding:6px 8px;color:#16a34a;font-weight:700\">${g.agg.pass}</td>
+                  <td style=\"text-align:right;padding:6px 8px;color:#dc2626;font-weight:700\">${g.agg.fail}</td>
+                  <td style=\"text-align:right;padding:6px 8px;color:#ea580c;font-weight:700\">${g.agg.warning}</td>
+                  <td style=\"text-align:right;padding:6px 8px;color:#111827;font-weight:700\">${g.agg.not_checked}</td>
+                  <td style=\"text-align:right;padding:6px 8px;color:#111827;font-weight:700\">${g.agg.total}</td></tr>`;
+              }
+              out += g.rows.map(c => {
+                const pad = domSameAsSec ? '6px 8px' : '5px 8px 5px 22px';
+                const fw2 = domSameAsSec ? 'font-weight:700' : 'font-weight:400';
+                return `<tr style=\"border-bottom:1px solid #f1f5f9\">
+                  <td style=\"padding:${pad};color:#111827;${fw2}\">${escapeHtml(c.category)}</td>
+                  <td style=\"text-align:right;padding:${pad};color:#16a34a\">${c.pass}</td>
+                  <td style=\"text-align:right;padding:${pad};color:#dc2626\">${c.fail}</td>
+                  <td style=\"text-align:right;padding:${pad};color:#ea580c\">${c.warning}</td>
+                  <td style=\"text-align:right;padding:${pad};color:#111827\">${c.not_checked}</td>
+                  <td style=\"text-align:right;padding:${pad};color:#111827\">${c.total}</td></tr>`;
+              }).join('');
+              return out;
+            }).join('');
             categoryEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
               <thead><tr style=\"color:#111827;border-bottom:1px solid #e5e7eb\">
                 <th style=\"text-align:left;padding:6px 8px\">${tt('dash.dyn.pdca.category','카테고리')}</th>
@@ -3613,16 +3658,7 @@ def render_user_dashboard_html(
                 <th style=\"text-align:right;padding:6px 8px\">Warning</th>
                 <th style=\"text-align:right;padding:6px 8px\">${tt('dash.dyn.pdca.not_checked','미점검')}</th>
                 <th style=\"text-align:right;padding:6px 8px\">${tt('dash.dyn.lbl.total','합계')}</th>
-              </tr></thead><tbody>`
-              + cats.map(c => `<tr style=\"border-bottom:1px solid #e5e7eb\">
-                <td style=\"padding:6px 8px;color:#111827;font-weight:600\">${escapeHtml(c.category)}</td>
-                <td style=\"text-align:right;padding:6px 8px;color:#16a34a\">${c.pass}</td>
-                <td style=\"text-align:right;padding:6px 8px;color:#dc2626\">${c.fail}</td>
-                <td style=\"text-align:right;padding:6px 8px;color:#ea580c\">${c.warning}</td>
-                <td style=\"text-align:right;padding:6px 8px;color:#111827\">${c.not_checked}</td>
-                <td style=\"text-align:right;padding:6px 8px;color:#111827\">${c.total}</td>
-              </tr>`).join('')
-              + '</tbody></table>';
+              </tr></thead><tbody>` + body + '</tbody></table>';
           }
         }
         // Pending remediations (control_check + trivy + alert)

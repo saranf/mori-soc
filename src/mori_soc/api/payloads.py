@@ -160,10 +160,12 @@ def build_pdca_payload(
     _catalog = load_catalog()
     _sec_of: dict[str, str] = {}
     _fw_of: dict[str, str] = {}
+    _dom_of: dict[str, str] = {}
     for cc in _catalog.get("controls", []):
         cid = str(cc.get("id", ""))
         _sec_of[cid] = cc.get("section") or cc.get("domain") or cid.rsplit(".", 1)[0]
         _fw_of[cid] = cc.get("framework", "")
+        _dom_of[cid] = cc.get("domain") or _sec_of[cid]
 
     def _cat_of(control_id: str) -> str:
         sec = _sec_of.get(control_id)
@@ -174,9 +176,11 @@ def build_pdca_payload(
 
     by_category: dict[str, dict[str, int]] = {}
     cat_fw: dict[str, str] = {}
+    cat_dom: dict[str, str] = {}
     for c in checks:
         cat = _cat_of(c.control_id)
         cat_fw.setdefault(cat, _fw_of.get(c.control_id, ""))
+        cat_dom.setdefault(cat, _dom_of.get(c.control_id, cat))
         bucket = by_category.setdefault(cat, {"pass": 0, "fail": 0, "warning": 0, "not_applicable": 0, "not_checked": 0, "total": 0})
         bucket[c.status] = bucket.get(c.status, 0) + 1
         bucket["total"] += 1
@@ -189,7 +193,7 @@ def build_pdca_payload(
         return (fw_rank, key)
 
     categories = [
-        {"category": cat, **counts}
+        {"category": cat, "framework": cat_fw.get(cat, ""), "domain": cat_dom.get(cat, cat), **counts}
         for cat, counts in sorted(by_category.items(), key=lambda kv: _sort_key(kv[0]))
     ]
 
