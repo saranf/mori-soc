@@ -4498,6 +4498,22 @@ def render_user_dashboard_html(
     document.getElementById('refresh_dashboard')?.addEventListener('click', loadDashboard);
 
     // ── Triage ──────────────────────────────────────────────────────────────
+    function _alertSourceUrl(a) {
+      if (a.source === 'zabbix' && ZABBIX_URL) return a.source_event_id ? `${ZABBIX_URL}/tr_events.php?triggerid=${encodeURIComponent(a.rule_id||'')}&eventid=${encodeURIComponent(a.source_event_id)}` : ZABBIX_URL;
+      if (a.source === 'wazuh' && WAZUH_URL) return WAZUH_URL;
+      if (a.source === 'fleet' && FLEET_URL) return FLEET_URL;
+      return '';
+    }
+    let _triageTimer = null;
+    function _triageAutoRefresh() {
+      if (_triageTimer) clearInterval(_triageTimer);
+      _triageTimer = setInterval(() => {
+        const p = document.getElementById('tab_triage');
+        if (!p || !p.classList.contains('active')) { clearInterval(_triageTimer); _triageTimer = null; return; }
+        if (typeof triageModalEl !== 'undefined' && triageModalEl && triageModalEl.open) return;
+        loadTriage();
+      }, 30000);
+    }
     async function loadTriage() {
       triageTableEl.innerHTML = '<span class=\"empty\">' + tt('dash.dyn.loading', '로딩 중…') + '</span>';
       try {
@@ -4508,7 +4524,9 @@ def render_user_dashboard_html(
         if (!alerts.length) { triageTableEl.innerHTML = '<span class=\"empty\">' + tt('dash.dyn.alerts_empty', '최근 24h 경보 없음') + '</span>'; return; }
         // Cache triage data for history display in modal
         alerts.forEach(a => { if (a.triage) triageDataCache[a.alert_id] = a.triage; });
-        const rows = alerts.map(a => {
+        const _TRIAGE_LIMIT = 10;
+        const shown = alerts.slice(0, _TRIAGE_LIMIT);
+        const rows = shown.map(a => {
           const triage = a.triage || {};
           const rawStatus = triage.status || 'pending';
           const triageAnalyst = triage.analyst || '';
@@ -4519,7 +4537,7 @@ def render_user_dashboard_html(
           const alertOwner = _ownerForHost(a.hostname || '');
           return `<tr>
             <td>${escapeHtml(formatTime(a.observed_at))}</td>
-            <td><span style=\"background:#1e293b;color:#38bdf8;padding:2px 8px;border-radius:4px;font-size:12px\">${escapeHtml(a.source)}</span>${(a.source==='zabbix' && ZABBIX_URL && a.source_event_id)?`<br><a href=\"${escapeHtml(ZABBIX_URL)}/tr_events.php?triggerid=${encodeURIComponent(a.rule_id||'')}&eventid=${encodeURIComponent(a.source_event_id)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:11px;text-decoration:none\">Zabbix</a>`:''}</td>
+            <td>${(() => { const u=_alertSourceUrl(a); const b=`<span style=\"background:#1e293b;color:#38bdf8;padding:2px 8px;border-radius:4px;font-size:12px\">${escapeHtml(a.source)}</span>`; return u?`<a href=\"${escapeHtml(u)}\" target=\"_blank\" rel=\"noopener\" style=\"text-decoration:none\" title=\"${escapeHtml(a.source)} ${tt('dash.triage.open_source','원본 열기')}\">${b}</a>`:b; })()}</td>
             <td><strong>${escapeHtml(a.hostname || a.host_id || '-')}</strong></td>
             <td style=\"color:#4ade80;font-size:12px\">${escapeHtml(alertOwner)}</td>
             <td><span style=\"background:#111827;padding:2px 6px;border-radius:4px;font-size:12px\">${escapeHtml(a.severity)}</span>${a.resolved_at?`<br><span title=\"${escapeHtml(formatTime(a.resolved_at))}\" style=\"background:#052e16;color:#4ade80;border:1px solid #14532d;padding:1px 6px;border-radius:4px;font-size:10px\">${tt('dash.triage.source_resolved','소스 해소')}</span>`:''}</td>
@@ -4540,7 +4558,8 @@ def render_user_dashboard_html(
             <th style=\"padding:8px;color:#94a3b8;text-align:left\">${tt('dash.dyn.lbl.analyst', '분석관')}</th>
             <th style=\"padding:8px;color:#fbbf24;text-align:left\">${tt('dash.dyn.lbl.changed_by', '변경자')}</th>
             <th style=\"padding:8px;color:#38bdf8;text-align:left\">${tt('dash.dyn.lbl.status', '상태')}</th>
-          </tr></thead><tbody>${rows}</tbody></table>`;
+          </tr></thead><tbody>${rows}</tbody></table>${alerts.length > _TRIAGE_LIMIT ? `<div class=\"empty\" style=\"padding:10px 2px\">${tt('dash.triage.more_note','최근 {n}건만 표시합니다. 나머지는 각 플랫폼(Zabbix·Wazuh)에서 확인하세요.').replace('{n}', _TRIAGE_LIMIT)}</div>` : ''}`;
+        _triageAutoRefresh();
       } catch (err) { triageTableEl.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix', '오류: ')}${escapeHtml(err.message)}</span>`; }
     }
 

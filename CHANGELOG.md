@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.18.5-alpha.1] — 2026-07-09 — Alert Triage: 소스 클릭 링크 · 최근 10건 · 30초 자동새로고침
+
+### Changed
+- **소스 배지 = 링크** — 소스 아래 별도 링크를 없애고 소스 배지 자체를 누르면 원본(Zabbix 이벤트/
+  Wazuh/Fleet 콘솔)으로 이동(`_alertSourceUrl`). URL이 설정된 소스만 링크.
+- **최근 10건만 표시** — 24시간 경보 중 최신 10건만 보여주고, 나머지는 "각 플랫폼(Zabbix·Wazuh)에서
+  확인" 안내문 노출.
+- **30초 자동 새로고침** — Alert Triage 탭이 활성일 때 30초마다 `/alerts` 재조회(`_triageAutoRefresh`).
+  Zabbix에서 문제가 해소되면 "소스 해소" 배지가 자동 반영됨. 트리아지 편집 모달이 열려 있으면 스킵,
+  탭을 떠나면 타이머 자동 정리.
+
 ## [v0.18.4-alpha.1] — 2026-07-09 — 어드민 콘솔도 슬림 상단바로 통일
 
 ### Changed
