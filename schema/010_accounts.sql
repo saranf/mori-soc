@@ -38,5 +38,9 @@ CREATE TABLE IF NOT EXISTS account_approvals (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- 승인 요청 워크플로우(인프라 요청 → admin·보안 승인/거절). 기존 행은 approved 로 간주.
+ALTER TABLE account_approvals ADD COLUMN IF NOT EXISTS status       TEXT NOT NULL DEFAULT 'approved';  -- pending | approved
+ALTER TABLE account_approvals ADD COLUMN IF NOT EXISTS requested_by TEXT;                                -- 요청자(인프라)
+
 COMMENT ON TABLE host_accounts IS 'osquery push 로컬 계정 인벤토리(호스트별). 접근권한 검토 증적.';
 COMMENT ON TABLE account_approvals IS '허용 계정/sudo 승인 대장 — 이상 검출 기준선(예외 승인 근거=증적).';

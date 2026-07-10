@@ -150,7 +150,9 @@ def register_accounts_gov(ctx: RouteContext) -> None:
     # ── Overview (governance) ─────────────────────────────────────────────────
     def _overview() -> dict[str, Any]:
         now = datetime.now(tz=timezone.utc)
-        result = reconcile(host_accounts, _directory(), list(account_approvals.values()),
+        # 승인 완료(approved)만 이상 검출 기준선에 반영. 대기(pending) 요청은 억제하지 않음.
+        approved = [a for a in account_approvals.values() if a.get("status", "approved") == "approved"]
+        result = reconcile(host_accounts, _directory(), approved,
                           now=now, dormant_days=_dormant_days())
         result["ip_list"] = _ip_list()
         result["dormant_days"] = _dormant_days()
@@ -197,6 +199,7 @@ def register_accounts_gov(ctx: RouteContext) -> None:
             "approver": actor or "unknown",
             "expires": str(payload.get("expires", "")).strip(),
             "created_at": _isoformat(datetime.now(tz=timezone.utc)),
+            "status": "approved", "requested_by": "",  # admin·보안 직접 등록 = 즉시 승인
         }
         account_approvals[rec["id"]] = rec
         if ctx.persist_account_approval:
@@ -215,6 +218,100 @@ def register_accounts_gov(ctx: RouteContext) -> None:
             ctx.delete_account_approval(approval_id)
         if ctx.log_action:
             ctx.log_action(actor or "unknown", "ACCOUNT_APPROVAL_DELETE", f"{rec.get('username')} ({rec.get('kind')})")
+        return {"ok": True, "id": approval_id}
+
+    # ── 승인 요청 워크플로우 (인프라 팝업 요청 → admin·보안 승인/거절) ─────────────
+    def _require_login(request: Request) -> str:
+        u = ctx.get_session_username(request) if ctx.get_session_username else None
+        if ctx.auth_enabled and not u:
+            raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+        return u or ""
+
+    @app.get("/accounts/host/{host_key}/privileged", tags=["Accounts"])
+    def host_privileged_accounts(host_key: str, request: Request) -> dict[str, Any]:
+        """호스트의 특권/sudo 계정 + 승인 상태 (서버 팝업 승인요청용). 로그인 필요."""
+        _require_login(request)
+        ov = _overview()
+        rows = [a for a in ov["accounts"] if a["host_key"] == host_key and a.get("is_privileged")]
+
+        def _status_for(username: str, kind: str) -> str:
+            for ap in account_approvals.values():
+                if ap.get("username") != username or ap.get("kind") not in (kind, "account"):
+                    continue
+                if ap.get("scope") == "host" and (ap.get("host_key") or "") not in ("", host_key):
+                    continue
+                return ap.get("status", "approved")
+            return "none"
+
+        out = [{
+            "username": a["username"], "is_sudo": bool(a.get("is_sudo")),
+            "kind": "sudo" if a.get("is_sudo") else "account",
+            "findings": a.get("findings", []),
+            "approval_status": _status_for(a["username"], "sudo" if a.get("is_sudo") else "account"),
+        } for a in rows]
+        return {"host_key": host_key, "privileged": out, "count": len(out)}
+
+    @app.post("/accounts/approval-requests", tags=["Accounts"])
+    def create_approval_request(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """인프라 담당자가 서버 팝업에서 sudo/특권 계정 승인 요청 (status=pending). 로그인 필요."""
+        actor = _require_login(request)
+        username = str(payload.get("username", "")).strip()
+        if not username:
+            raise HTTPException(status_code=400, detail="username 이 필요합니다.")
+        kind = str(payload.get("kind", "sudo")).strip()
+        if kind not in ("account", "sudo"):
+            kind = "sudo"
+        host_key = str(payload.get("host_key", "")).strip()
+        # 이미 대기중인 동일 요청이면 중복 생성 방지
+        for ap in account_approvals.values():
+            if (ap.get("status") == "pending" and ap.get("username") == username
+                    and ap.get("kind") == kind and (ap.get("host_key") or "") == host_key):
+                raise HTTPException(status_code=409, detail="이미 대기중인 승인 요청이 있습니다.")
+        rec = {
+            "id": str(uuid.uuid4()),
+            "scope": "host" if host_key else "global", "host_key": host_key,
+            "username": username, "kind": kind,
+            "reason": str(payload.get("reason", "")).strip(),
+            "approver": "", "expires": "",
+            "created_at": _isoformat(datetime.now(tz=timezone.utc)),
+            "status": "pending", "requested_by": actor or "unknown",
+        }
+        account_approvals[rec["id"]] = rec
+        if ctx.persist_account_approval:
+            ctx.persist_account_approval(rec["id"])
+        if ctx.log_action:
+            ctx.log_action(actor or "unknown", "ACCOUNT_APPROVAL_REQUEST",
+                           f"{username} ({kind}) @ {host_key or 'global'}")
+        return rec
+
+    @app.post("/accounts/approvals/{approval_id}/approve", tags=["Accounts"])
+    def approve_request(approval_id: str, request: Request) -> dict[str, Any]:
+        """대기 요청 승인 (admin·보안). status→approved 로 전환하면 이상 검출에서 제외."""
+        actor = _require_gov(request)
+        rec = account_approvals.get(approval_id)
+        if not rec:
+            raise HTTPException(status_code=404, detail="요청을 찾을 수 없습니다.")
+        rec["status"] = "approved"
+        rec["approver"] = actor or "unknown"
+        if ctx.persist_account_approval:
+            ctx.persist_account_approval(approval_id)
+        if ctx.log_action:
+            ctx.log_action(actor or "unknown", "ACCOUNT_APPROVAL_APPROVE",
+                           f"{rec.get('username')} ({rec.get('kind')})")
+        return rec
+
+    @app.post("/accounts/approvals/{approval_id}/reject", tags=["Accounts"])
+    def reject_request(approval_id: str, request: Request) -> dict[str, Any]:
+        """대기 요청 거절 (admin·보안). 레코드 삭제."""
+        actor = _require_gov(request)
+        rec = account_approvals.pop(approval_id, None)
+        if not rec:
+            raise HTTPException(status_code=404, detail="요청을 찾을 수 없습니다.")
+        if ctx.delete_account_approval:
+            ctx.delete_account_approval(approval_id)
+        if ctx.log_action:
+            ctx.log_action(actor or "unknown", "ACCOUNT_APPROVAL_REJECT",
+                           f"{rec.get('username')} ({rec.get('kind')})")
         return {"ok": True, "id": approval_id}
 
     # ── 열람 역할 설정 (admin 조정) ────────────────────────────────────────────

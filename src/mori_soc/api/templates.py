@@ -5097,7 +5097,8 @@ def render_user_dashboard_html(
         ${h.last_seen_at?_kv(tt('dash.dyn.lbl.last_seen','마지막 확인'), escapeHtml(formatTime(h.last_seen_at))):''}
       </div>`;
       const acctSlot = _canViewAccounts() ? `<div id=\"host_detail_acct\" style=\"margin-top:14px\"></div>` : '';
-      bodyEl.innerHTML = _hostDeepLinks(h, kind) + meta + `<div id=\"host_detail_remed\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>` + acctSlot;
+      const privreqSlot = (kind === 'zabbix') ? `<div id=\"host_detail_privreq\" style=\"margin-top:14px\"></div>` : '';
+      bodyEl.innerHTML = _hostDeepLinks(h, kind) + meta + `<div id=\"host_detail_remed\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>` + privreqSlot + acctSlot;
       modal.style.display = 'flex';
       // E: 미조치 3버킷
       const remedEl = document.getElementById('host_detail_remed');
@@ -5125,6 +5126,7 @@ def render_user_dashboard_html(
           }
         } catch (e) { /* best-effort */ }
       }
+      if (kind === 'zabbix') _loadHostPrivReq(hostname);  // 특권/sudo 승인요청 섹션
     }
     window.openHostDetail = openHostDetail;
     function closeHostDetail() { const m = document.getElementById('host_detail_modal'); if (m) m.style.display = 'none'; }
@@ -7147,15 +7149,85 @@ def render_user_dashboard_html(
 
     function renderAccApprovals() {
       const el = document.getElementById('acc_approvals'); if (!el) return;
-      if (!_accApprovals.length) { el.innerHTML = `<span class=\"empty\">${tt('dash.acc.appr_none','등록된 승인이 없습니다.')}</span>`; return; }
-      el.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><tbody>${_accApprovals.map(a => `<tr style=\"border-bottom:1px solid #e5e7eb\">
-        <td style=\"padding:5px 6px;font-family:monospace;color:#2563eb\">${escapeHtml(a.username)}</td>
-        <td style=\"padding:5px 6px\"><span style=\"background:${a.kind==='sudo'?'#ea580c22':'#e5e7eb'};color:${a.kind==='sudo'?'#ea580c':'#2563eb'};padding:1px 6px;border-radius:4px\">${escapeHtml(a.kind)}</span></td>
-        <td style=\"padding:5px 6px;color:#111827\">${a.scope==='host'?escapeHtml(a.host_key):tt('dash.acc.global','전역')}</td>
-        <td style=\"padding:5px 6px;color:#111827\">${escapeHtml(a.reason||'')}</td>
-        <td style=\"padding:5px 6px;text-align:right\"><button class=\"danger\" style=\"width:auto;padding:2px 8px;font-size:11px\" onclick=\"deleteAccApproval('${escapeHtml(a.id)}')\">${tt('dash.acc.appr_del','삭제')}</button></td>
-      </tr>`).join('')}</tbody></table>`;
+      const pending = _accApprovals.filter(a => a.status === 'pending');
+      const approved = _accApprovals.filter(a => a.status !== 'pending');
+      let html = '';
+      if (pending.length) {
+        html += `<div style=\"font-weight:700;color:#ea580c;margin-bottom:6px\">${tt('dash.acc.req.pending_title','승인 대기 요청')} (${pending.length})</div>`;
+        html += `<table style=\"width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px\"><tbody>${pending.map(a => `<tr style=\"border-bottom:1px solid #e5e7eb\">
+          <td style=\"padding:5px 6px;font-family:monospace;color:#2563eb\">${escapeHtml(a.username)}</td>
+          <td style=\"padding:5px 6px\"><span style=\"background:#ea580c22;color:#ea580c;padding:1px 6px;border-radius:4px\">${escapeHtml(a.kind)}</span></td>
+          <td style=\"padding:5px 6px;color:#111827\">${a.scope==='host'?escapeHtml(a.host_key):tt('dash.acc.global','전역')}</td>
+          <td style=\"padding:5px 6px;color:#111827\">${escapeHtml(a.reason||'')}<div style=\"font-size:10px;color:#111827\">${tt('dash.acc.req.by','요청')}: ${escapeHtml(a.requested_by||'-')}</div></td>
+          <td style=\"padding:5px 6px;text-align:right;white-space:nowrap\">
+            <button class=\"secondary\" style=\"width:auto;padding:2px 8px;font-size:11px\" onclick=\"approveAccRequest('${escapeHtml(a.id)}')\">${tt('dash.acc.req.approve','승인')}</button>
+            <button class=\"danger\" style=\"width:auto;padding:2px 8px;font-size:11px\" onclick=\"rejectAccRequest('${escapeHtml(a.id)}')\">${tt('dash.acc.req.reject','거절')}</button>
+          </td></tr>`).join('')}</tbody></table>`;
+      }
+      if (!approved.length) {
+        html += `<span class=\"empty\">${tt('dash.acc.appr_none','등록된 승인이 없습니다.')}</span>`;
+      } else {
+        html += `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><tbody>${approved.map(a => `<tr style=\"border-bottom:1px solid #e5e7eb\">
+          <td style=\"padding:5px 6px;font-family:monospace;color:#2563eb\">${escapeHtml(a.username)}</td>
+          <td style=\"padding:5px 6px\"><span style=\"background:${a.kind==='sudo'?'#ea580c22':'#e5e7eb'};color:${a.kind==='sudo'?'#ea580c':'#2563eb'};padding:1px 6px;border-radius:4px\">${escapeHtml(a.kind)}</span></td>
+          <td style=\"padding:5px 6px;color:#111827\">${a.scope==='host'?escapeHtml(a.host_key):tt('dash.acc.global','전역')}</td>
+          <td style=\"padding:5px 6px;color:#111827\">${escapeHtml(a.reason||'')}</td>
+          <td style=\"padding:5px 6px;text-align:right\"><button class=\"danger\" style=\"width:auto;padding:2px 8px;font-size:11px\" onclick=\"deleteAccApproval('${escapeHtml(a.id)}')\">${tt('dash.acc.appr_del','삭제')}</button></td>
+        </tr>`).join('')}</tbody></table>`;
+      }
+      el.innerHTML = html;
     }
+    async function _loadHostPrivReq(hostname) {
+      const el = document.getElementById('host_detail_privreq'); if (!el) return;
+      try {
+        const r = await fetch(`/accounts/host/${encodeURIComponent(hostname)}/privileged`);
+        if (!r.ok) { el.innerHTML = ''; return; }
+        const d = await r.json();
+        if (!d.count) { el.innerHTML = ''; return; }
+        const badge = st => st==='approved' ? `<span style=\"color:#16a34a;font-size:11px\">${tt('dash.acc.req.approved','승인됨')}</span>`
+          : st==='pending' ? `<span style=\"color:#ea580c;font-size:11px\">${tt('dash.acc.req.pending','승인 대기중')}</span>` : '';
+        const rows = d.privileged.map(a => {
+          const action = (a.approval_status === 'none')
+            ? `<button onclick=\"requestAccApproval('${escapeHtml(hostname)}','${escapeHtml(a.username)}','${a.is_sudo?'sudo':'account'}')\" style=\"padding:2px 10px;font-size:11px;border-radius:4px;background:#2563eb;color:#fff;border:none;cursor:pointer\">${tt('dash.acc.req.btn','승인 요청')}</button>`
+            : badge(a.approval_status);
+          return `<div style=\"display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 6px;border-bottom:1px solid #f9fafb;font-size:12px\">
+            <span style=\"font-family:monospace\">${escapeHtml(a.username)} <span style=\"color:#dc2626\">●${a.is_sudo?'sudo':''}</span></span>${action}</div>`;
+        }).join('');
+        el.innerHTML = `<div style=\"font-weight:700;color:#111827;margin-bottom:6px\">${tt('dash.acc.req.title','특권/sudo 계정 승인 요청')}</div>
+          <div style=\"font-size:11px;color:#111827;margin-bottom:6px\">${tt('dash.acc.req.sub','미승인 특권 계정은 승인 요청하면 admin·보안이 검토합니다.')}</div>${rows}`;
+      } catch (e) { el.innerHTML = ''; }
+    }
+    window._loadHostPrivReq = _loadHostPrivReq;
+    async function requestAccApproval(hostKey, username, kind) {
+      const reason = prompt(tt('dash.acc.req.reason_prompt','승인 요청 사유를 입력하세요 (예: 배포 자동화 계정)'));
+      if (reason === null) return;
+      try {
+        const res = await fetch('/accounts/approval-requests', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ host_key: hostKey, username, kind, reason: reason||'' }) });
+        if (!res.ok) throw new Error((await res.json()).detail || res.status);
+        _loadHostPrivReq(hostKey);
+        if (typeof loadAccountsGov === 'function' && _canViewAccounts()) loadAccountsGov();
+        alert(tt('dash.acc.req.done','승인 요청을 보냈습니다. admin·보안 검토 후 반영됩니다.'));
+      } catch (e) { alert(tt('dash.dyn.error_prefix','오류: ') + (e.message || e)); }
+    }
+    window.requestAccApproval = requestAccApproval;
+    async function approveAccRequest(id) {
+      try {
+        const r = await fetch('/accounts/approvals/' + encodeURIComponent(id) + '/approve', { method:'POST' });
+        if (!r.ok) throw new Error((await r.json()).detail || r.status);
+        await loadAccountsGov();
+      } catch (e) { alert(tt('dash.dyn.error_prefix','오류: ') + (e.message || e)); }
+    }
+    window.approveAccRequest = approveAccRequest;
+    async function rejectAccRequest(id) {
+      if (!confirm(tt('dash.acc.req.reject_confirm','이 승인 요청을 거절할까요?'))) return;
+      try {
+        const r = await fetch('/accounts/approvals/' + encodeURIComponent(id) + '/reject', { method:'POST' });
+        if (!r.ok) throw new Error((await r.json()).detail || r.status);
+        await loadAccountsGov();
+      } catch (e) { alert(tt('dash.dyn.error_prefix','오류: ') + (e.message || e)); }
+    }
+    window.rejectAccRequest = rejectAccRequest;
     async function addAccApproval() {
       const g = id => document.getElementById(id);
       const username = g('acc_appr_user').value.trim();

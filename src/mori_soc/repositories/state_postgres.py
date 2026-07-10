@@ -431,7 +431,7 @@ class PostgresStateRepository(StateRepository):
     def load_account_approvals(self) -> dict[str, dict[str, Any]]:
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
-                "SELECT id, scope, host_key, username, kind, reason, approver, expires, created_at "
+                "SELECT id, scope, host_key, username, kind, reason, approver, expires, created_at, status, requested_by "
                 "FROM account_approvals"
             )
             return {r[0]: {
@@ -439,22 +439,25 @@ class PostgresStateRepository(StateRepository):
                 "kind": r[4], "reason": r[5] or "", "approver": r[6] or "",
                 "expires": r[7].isoformat() if r[7] else "",
                 "created_at": r[8].isoformat() if r[8] else None,
+                "status": r[9] or "approved", "requested_by": r[10] or "",
             } for r in cur.fetchall()}
 
     def save_account_approval(self, approval_id: str, record: dict[str, Any]) -> None:
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO account_approvals (id, scope, host_key, username, kind, reason, approver, expires, created_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, now())
+                INSERT INTO account_approvals (id, scope, host_key, username, kind, reason, approver, expires, created_at, status, requested_by)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, now(), %s, %s)
                 ON CONFLICT (id) DO UPDATE SET
                     scope=EXCLUDED.scope, host_key=EXCLUDED.host_key, username=EXCLUDED.username,
-                    kind=EXCLUDED.kind, reason=EXCLUDED.reason, approver=EXCLUDED.approver, expires=EXCLUDED.expires
+                    kind=EXCLUDED.kind, reason=EXCLUDED.reason, approver=EXCLUDED.approver, expires=EXCLUDED.expires,
+                    status=EXCLUDED.status, requested_by=EXCLUDED.requested_by
                 """,
                 (approval_id, record.get("scope", "global"), record.get("host_key") or None,
                  record.get("username", ""), record.get("kind", "account"),
                  record.get("reason") or None, record.get("approver") or None,
-                 record.get("expires") or None),
+                 record.get("expires") or None,
+                 record.get("status", "approved"), record.get("requested_by") or None),
             )
 
     def delete_account_approval(self, approval_id: str) -> None:
