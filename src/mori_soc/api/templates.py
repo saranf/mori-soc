@@ -35,7 +35,7 @@ USER_DASHBOARD_CARD_LABELS = {
     "ingested_records": "Ingested Records",
 }
 USER_DASHBOARD_SECTION_LABELS = {
-    "security_hero": "🛡️ Security Overview",
+    "security_hero": "Security Overview",
     "infra_status": "Infra Status (24h/12h)",
     "source_coverage": "Source Coverage",
     "latest_status": "Latest Host Status",
@@ -48,14 +48,14 @@ USER_DASHBOARD_ASSET_COLUMN_LABELS = {
     "show_iso27001_control": "ISO 27001 통제 컬럼",
 }
 USER_DASHBOARD_GUIDE_LABELS = {
-    "zabbix_setup": "🖧 Zabbix 에이전트 설정",
-    "fleet_install": "🖥️ Fleet 에이전트 설치",
-    "isms_criteria": "📋 ISMS-P 심사 기준",
-    "iso27001_criteria": "🌐 ISO 27001 기준",
-    "ldap_setup": "🔐 LDAP 통합 설정",
-    "incident_response": "🚨 인시던트 대응 절차",
-    "security_policy": "📜 보안 정책 가이드",
-    "risk_methodology": "🎯 위험성 평가 기준",
+    "zabbix_setup": "Zabbix 에이전트 설정",
+    "fleet_install": "Fleet 에이전트 설치",
+    "isms_criteria": "ISMS-P 심사 기준",
+    "iso27001_criteria": "ISO 27001 기준",
+    "ldap_setup": "LDAP 통합 설정",
+    "incident_response": "인시던트 대응 절차",
+    "security_policy": "보안 정책 가이드",
+    "risk_methodology": "위험성 평가 기준",
 }
 DEFAULT_USER_DASHBOARD_PREFERENCES = {
     "cards": {
@@ -128,13 +128,13 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     .layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(340px, 420px); gap: 16px; align-items: start; }
     .stack { display: grid; gap: 16px; }
     .metrics { display: grid; gap: 12px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
-    .card { background: linear-gradient(180deg, #101827 0%, #0f172a 100%); border: 1px solid #233046; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
+    .card { background: linear-gradient(180deg, #101827 0%, #0f172a 100%); border: 1px solid #1e293b; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
     .metric-card { cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
     .metric-card:hover { transform: translateY(-1px); border-color: #38bdf8; }
     .metric-card:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
     .metric-label { color: #94a3b8; font-size: 13px; margin-bottom: 8px; }
     .metric-value { font-size: 28px; font-weight: 800; }
-    .metric-sub { margin-top: 6px; color: #7dd3fc; font-size: 13px; }
+    .metric-sub { margin-top: 6px; color: #38bdf8; font-size: 13px; }
     .card h2 { margin: 0 0 12px; font-size: 18px; }
     .subtext { color: #94a3b8; font-size: 13px; margin-bottom: 12px; }
     .table-wrap { overflow: auto; }
@@ -142,9 +142,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #1f2937; vertical-align: top; }
     th { color: #94a3b8; font-weight: 600; }
     .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
-    .badge.online { background: rgba(34, 197, 94, 0.12); color: #86efac; }
-    .badge.offline { background: rgba(248, 113, 113, 0.12); color: #fca5a5; }
-    .badge.unknown { background: rgba(250, 204, 21, 0.12); color: #fde68a; }
+    .badge.online { background: rgba(34, 197, 94, 0.12); color: #4ade80; }
+    .badge.offline { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+    .badge.unknown { background: rgba(250, 204, 21, 0.12); color: #fbbf24; }
     .coverage { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
     .coverage-item { background: #0b1220; border: 1px solid #223148; border-radius: 14px; padding: 14px; }
     .coverage-item strong { display: block; font-size: 22px; margin-top: 8px; }
@@ -159,17 +159,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     textarea { resize: vertical; min-height: 120px; font-family: ui-monospace, SFMono-Regular, monospace; }
     /* 컴팩트 인라인 입력(폼 한 줄에 여러 개) — 베이스 팔레트와 통일 */
     .inp-sm { width: auto; border-radius: 10px; border: 1px solid #334155; background: #0b1220; color: #e5e7eb; padding: 7px 10px; font-size: 13px; }
-    .inp-sm:focus { outline: none; border-color: #2563eb; }
+    .inp-sm:focus { outline: none; border-color: #38bdf8; }
     /* 버튼 계층: primary(저장/실행) / secondary(보조) / ghost(중립) / danger(삭제) */
-    button { border: 1px solid #1e3a5f; background: #1e3a5f; color: #93c5fd; font-weight: 600; cursor: pointer; font-size: 13px; }
-    button:hover { background: #1e4a7a; border-color: #2563eb; color: #bfdbfe; }
-    button.primary { background: #1d4ed8; border-color: #2563eb; color: #fff; }
-    button.primary:hover { background: #2563eb; }
+    button { border: 1px solid #334155; background: #334155; color: #38bdf8; font-weight: 600; cursor: pointer; font-size: 13px; }
+    button:hover { background: #1e4a7a; border-color: #38bdf8; color: #bfdbfe; }
+    button.primary { background: #1d4ed8; border-color: #38bdf8; color: #fff; }
+    button.primary:hover { background: #38bdf8; }
     button.secondary { background: #1e293b; border: 1px solid #334155; color: #94a3b8; }
     button.secondary:hover { background: #263345; color: #cbd5e1; }
     button.ghost { background: transparent; border: 1px solid #334155; color: #64748b; }
     button.ghost:hover { background: #0f172a; color: #94a3b8; }
-    button.danger { background: #450a0a; border: 1px solid #7f1d1d; color: #fca5a5; }
+    button.danger { background: #450a0a; border: 1px solid #7f1d1d; color: #f87171; }
     button.danger:hover { background: #7f1d1d; }
     .actions { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .actions a, .top-actions a { display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid #334155; background: #172033; color: #94a3b8; padding: 10px 12px; text-decoration: none; font-weight: 600; font-size: 13px; }
@@ -180,18 +180,18 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     .query-result-area { min-height: 80px; background: #0b1220; border: 1px solid #334155; border-radius: 12px; padding: 12px; overflow: auto; font-size: 13px; }
     .result-placeholder { color: #64748b; font-style: italic; }
     .result-error { color: #f87171; font-family: ui-monospace, SFMono-Regular, monospace; white-space: pre-wrap; font-size: 12px; }
-    .result-summary { color: #7dd3fc; font-size: 13px; margin-bottom: 10px; padding: 8px 12px; background: #0f2035; border-radius: 8px; border-left: 3px solid #3b82f6; }
+    .result-summary { color: #38bdf8; font-size: 13px; margin-bottom: 10px; padding: 8px 12px; background: #0f172a; border-radius: 8px; border-left: 3px solid #38bdf8; }
     .result-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
-    .result-table th { background: #0f2035; color: #93c5fd; font-weight: 600; text-align: left; padding: 8px 10px; border-bottom: 1px solid #1e3a5f; }
+    .result-table th { background: #0f172a; color: #38bdf8; font-weight: 600; text-align: left; padding: 8px 10px; border-bottom: 1px solid #334155; }
     .result-table td { padding: 7px 10px; border-bottom: 1px solid #1a2d45; color: #e5e7eb; vertical-align: top; word-break: break-all; }
     .result-table tr:last-child td { border-bottom: none; }
     .result-table tr:hover td { background: #0d1d30; }
-    .result-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: #1e3a5f; color: #93c5fd; }
-    .result-badge.wazuh { background: #2d1f5e; color: #c4b5fd; }
-    .result-badge.zabbix { background: #1e3a5f; color: #93c5fd; }
+    .result-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: #334155; color: #38bdf8; }
+    .result-badge.wazuh { background: #2d1f5e; color: #38bdf8; }
+    .result-badge.zabbix { background: #334155; color: #38bdf8; }
     .result-badge.fleet { background: #1a3324; color: #6ee7b7; }
     .result-badge.trivy { background: #3b1f0e; color: #fbbf24; }
-    .result-badge.hosts { background: #0f2035; color: #7dd3fc; }
+    .result-badge.hosts { background: #0f172a; color: #38bdf8; }
     .top-actions button, .guide-chips button, .guide-list button { width: auto; }
     .guide-chips, .guide-list { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
     .chip { padding: 8px 12px; border-radius: 999px; }
@@ -200,7 +200,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     .toggle-item input { width: auto; margin: 0; }
     .guide-banner { margin-top: 12px; border-radius: 12px; padding: 12px; border: 1px solid #334155; background: #111827; }
     .guide-banner strong { display: block; margin-bottom: 6px; }
-    .guide-banner.need-guide { border-color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
+    .guide-banner.need-guide { border-color: #fbbf24; background: rgba(245, 158, 11, 0.12); }
     .guide-banner.warning { border-color: #38bdf8; background: rgba(56, 189, 248, 0.1); }
     dialog { border: 1px solid #334155; border-radius: 18px; padding: 0; background: #0f172a; color: #e5e7eb; width: min(760px, calc(100vw - 32px)); }
     dialog::backdrop { background: rgba(2, 6, 23, 0.74); }
@@ -241,7 +241,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         bottom: 0; left: 0; right: 0;
         z-index: 1000;
         background: #0f172a;
-        border-top: 1px solid #233046;
+        border-top: 1px solid #1e293b;
         padding: 0;
         box-shadow: 0 -4px 20px rgba(0,0,0,.4);
       }
@@ -264,6 +264,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         transition: color 0.15s;
       }
       .admin-bottom-nav button .bn-icon { font-size: 20px; line-height: 1; }
+      .admin-bottom-nav button .bn-icon:empty { display: none; }
       .admin-bottom-nav button.active { color: #38bdf8; border-top-color: #38bdf8; }
     }
     @media (max-width: 480px) {
@@ -280,7 +281,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         <p data-i18n=\"admin.hero.intro\">통제 항목 점검 결과를 관리하고, 수집 데이터를 교차 검증하며, 사용자 대시보드 노출 범위를 제어하는 관리자 운영 콘솔입니다.</p>
         <div class=\"links\">
           <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"admin.links.docs\">운영 문서 / 포털</a>
-          <a href=\"/docs\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"admin.links.api\">📋 API 문서 (Swagger)</a>
+          <a href=\"/docs\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"admin.links.api\">API 문서 (Swagger)</a>
           <a href=\"/health\" target=\"_blank\" rel=\"noreferrer\">Health JSON</a>
           <a href=\"/dashboard/summary\" target=\"_blank\" rel=\"noreferrer\">Dashboard JSON</a>
           <a href=\"/catalog\" target=\"_blank\" rel=\"noreferrer\">Query Catalog JSON</a>
@@ -292,12 +293,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         <button id=\"query_guide\" class=\"ghost\" data-i18n=\"admin.actions.query_guide\">Query Guide</button>
         <button id=\"refresh_dashboard\" class=\"ghost\" data-i18n=\"admin.actions.refresh\">Refresh Dashboard</button>
         <div class=\"account-wrap\" style=\"position:relative\">
-          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" class=\"ghost\" data-i18n=\"admin.actions.account\">⚙️ 계정 ▾</button>
-          <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0f2035;border:1px solid #1e3a5f;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
+          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" class=\"ghost\" data-i18n=\"admin.actions.account\">계정 ▾</button>
+          <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
             <div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\" data-i18n=\"admin.account.language\">언어 / Language</div>
             __I18N_TOGGLE__
-            <div style=\"border-top:1px solid #1e3a5f;margin:10px 0\"></div>
-            <a href=\"/auth/logout\" style=\"display:block;text-align:center;color:#ef4444;font-size:13px\" data-i18n=\"admin.actions.logout\">로그아웃</a>
+            <div style=\"border-top:1px solid #334155;margin:10px 0\"></div>
+            <a href=\"/auth/logout\" style=\"display:block;text-align:center;color:#f87171;font-size:13px\" data-i18n=\"admin.actions.logout\">로그아웃</a>
           </div>
         </div>
       </div>
@@ -305,12 +306,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     <!-- ── Admin Tab Nav (8 tabs, Phase 2 정렬) ────────────────────────── -->
     <nav class=\"tabs-nav\" id=\"admin_tabs_nav\">
-      <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\" data-i18n=\"admin.tab.overview\">📊 Overview</button>
-      <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\" data-i18n=\"admin.tab.remediation\">🔧 Remediation</button>
-      <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\" data-i18n=\"admin.tab.assets\">👤 자산 / Owners</button>
-      <button data-atab=\"access\" onclick=\"switchAdminTab('access')\" data-i18n=\"admin.tab.access\">🛡️ Access Control</button>
-      <button data-atab=\"logs\" onclick=\"switchAdminTab('logs')\" data-i18n=\"admin.tab.logs\">📝 Audit &amp; Logs</button>
-      <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\" data-i18n=\"admin.tab.settings\">⚙️ Settings</button>
+      <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\" data-i18n=\"admin.tab.overview\">Overview</button>
+      <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\" data-i18n=\"admin.tab.remediation\">Remediation</button>
+      <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\" data-i18n=\"admin.tab.assets\">자산 / Owners</button>
+      <button data-atab=\"access\" onclick=\"switchAdminTab('access')\" data-i18n=\"admin.tab.access\">Access Control</button>
+      <button data-atab=\"logs\" onclick=\"switchAdminTab('logs')\" data-i18n=\"admin.tab.logs\">Audit &amp; Logs</button>
+      <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\" data-i18n=\"admin.tab.settings\">Settings</button>
     </nav>
 
     <!-- ── Tab: Overview ──────────────────────────────────────────────────── -->
@@ -318,7 +319,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       <section class=\"metrics\" id=\"overview_cards\"></section>
       <div class=\"stack\">
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.phase2_health\">📦 Phase 2 데이터 헬스</h2>
+          <h2 data-i18n=\"admin.h.phase2_health\">Phase 2 데이터 헬스</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.phase2_health\">PostgreSQL → InMemoryQueryStore 로 로드된 Phase 2 시드 데이터의 현재 카운트입니다. 0이면 시드 누락 또는 schema 002 미적용일 수 있습니다.</div>
           <div class=\"coverage\" id=\"phase2_health\"></div>
         </section>
@@ -329,8 +330,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"status-line\" id=\"dashboard_status\">dashboard loading...</div>
         </section>
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.collector_health\">📡 Collector Health · Source Freshness</h2>
-          <div class=\"subtext\" data-i18n=\"admin.s.sub.collector_health\">수집기별 마지막 성공 시각과 SLA 임계 대비 지연(lag)을 표시합니다. SLA 초과 시 🟡 STALE, 마지막 sync가 error면 🔴 표시됩니다.</div>
+          <h2 data-i18n=\"admin.h.collector_health\">Collector Health · Source Freshness</h2>
+          <div class=\"subtext\" data-i18n=\"admin.s.sub.collector_health\">수집기별 마지막 성공 시각과 SLA 임계 대비 지연(lag)을 표시합니다. SLA 초과 시 STALE, 마지막 sync가 error면 표시됩니다.</div>
           <div class=\"actions\" style=\"margin-bottom:10px\">
             <button id=\"admin_reload_freshness\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
           </div>
@@ -358,19 +359,19 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"atab-panel\" id=\"atab_remediation\">
       <div class=\"stack\">
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.trivy_remediation\">🔧 Trivy 취약점 조치 상태</h2>
+          <h2 data-i18n=\"admin.h.trivy_remediation\">Trivy 취약점 조치 상태</h2>
           <div class=\"subtext\" data-i18n-html=\"admin.s.sub.trivy\">
             Critical / High 취약점과 등록된 조치 계획(plan) · 예외(exception) 입니다.
-            편집은 <a href=\"/ui#assets\" style=\"color:#7dd3fc\">사용자 대시보드 Assets 탭의 취약점 카드 ↗</a>에서 가능합니다.
+            편집은 <a href=\"/ui#assets\" style=\"color:#38bdf8\">사용자 대시보드 Assets 탭의 취약점 카드 ↗</a>에서 가능합니다.
           </div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
             <button id=\"admin_reload_vulns\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
-            <a href=\"/trivy/vulnerabilities?format=csv&amp;severity=critical\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\" data-i18n=\"admin.s.btn.critical_csv\">📥 Critical CSV</a>
+            <a href=\"/trivy/vulnerabilities?format=csv&amp;severity=critical\" class=\"ghost\" style=\"display:inline-flex;align-items:center;justify-content:center;text-decoration:none\" data-i18n=\"admin.s.btn.critical_csv\">Critical CSV</a>
           </div>
           <div class=\"table-wrap\" id=\"admin_vuln_actions\"></div>
         </section>
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.action_plans\">📝 자산 조치 계획 (action_plans)</h2>
+          <h2 data-i18n=\"admin.h.action_plans\">자산 조치 계획 (action_plans)</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.action_plans\">호스트별 등록된 조치 계획(target_date / text)을 표시합니다.</div>
           <div class=\"table-wrap\" id=\"admin_action_plans\"></div>
         </section>
@@ -380,10 +381,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <!-- ── Tab: 자산 관리 ────────────────────────────────────────────────── -->
     <div class=\"atab-panel\" id=\"atab_assets\">
       <section class=\"card\">
-        <h2 data-i18n=\"admin.h.asset_owners\">👤 자산 담당자 관리</h2>
+        <h2 data-i18n=\"admin.h.asset_owners\">자산 담당자 관리</h2>
         <div class=\"subtext\" data-i18n=\"admin.s.sub.asset_owners\">서버·PC 자산의 담당자와 팀을 등록합니다. 호스트명과 정확히 일치해야 합니다.</div>
         <div id=\"owners_list\" class=\"list\" style=\"margin-bottom:16px;max-height:360px;overflow-y:auto\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
-        <div id=\"owner_form_title\" style=\"font-size:14px;font-weight:700;color:#38bdf8;margin-bottom:8px;\" data-i18n=\"admin.dyn.new_asset\">➕ 새 자산 등록</div>
+        <div id=\"owner_form_title\" style=\"font-size:14px;font-weight:700;color:#38bdf8;margin-bottom:8px;\" data-i18n=\"admin.dyn.new_asset\">새 자산 등록</div>
         <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
           <div class=\"row\"><label data-i18n=\"admin.s.lbl.hostname\">호스트명</label><input id=\"own_hostname\" placeholder=\"예: db-prod-01\" data-i18n-placeholder=\"admin.s.ph.hostname\" /></div>
           <div class=\"row\"><label data-i18n=\"admin.s.lbl.owner\">담당자</label><input id=\"own_owner\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"admin.s.ph.owner\" /></div>
@@ -406,7 +407,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"atab-panel\" id=\"atab_settings\">
       <div class=\"stack\">
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.dashboard_prefs\">🖥️ 사용자 대시보드 설정</h2>
+          <h2 data-i18n=\"admin.h.dashboard_prefs\">사용자 대시보드 설정</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.dashboard_prefs\">`/ui` 에서 사용자에게 보이는 카드와 섹션을 제어합니다. 재시작 시 초기값으로 돌아갑니다.</div>
           <div class=\"row\"><label for=\"docs_portal_url\" data-i18n=\"admin.s.lbl.docs_url\">문서 / 포털 URL</label><input id=\"docs_portal_url\" value=\"__DOCS_PORTAL_URL__\" /></div>
           <div class=\"row\"><label data-i18n=\"admin.s.lbl.user_cards\">사용자 요약 카드</label><div class=\"toggle-grid\" id=\"user_dashboard_cards\"></div></div>
@@ -420,7 +421,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"status-line\" id=\"dashboard_preferences_status\">user dashboard settings loading...</div>
         </section>
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.slack\">🔔 Slack Webhook 관리</h2>
+          <h2 data-i18n=\"admin.h.slack\">Slack Webhook 관리</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.slack\">Critical 경보 발생 시 자동으로 알림을 전송할 Slack Incoming Webhook을 등록합니다.</div>
           <div id=\"webhooks_list\" class=\"list\" style=\"margin-bottom:12px\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
           <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
@@ -434,17 +435,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"status-line\" id=\"webhook_status\"></div>
         </section>
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.guides_editor\">📖 가이드 &amp; 메뉴얼 편집</h2>
+          <h2 data-i18n=\"admin.h.guides_editor\">가이드 &amp; 메뉴얼 편집</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.guides_editor\">사용자 UI에 표시되는 가이드 내용을 수정합니다. 마크다운 형식을 지원합니다.</div>
           <div class=\"row\"><label for=\"guide_edit_select\" data-i18n=\"admin.s.lbl.guide_select\">가이드 선택</label>
             <select id=\"guide_edit_select\">
-              <option value=\"zabbix_setup\" data-i18n=\"admin.s.gopt.zabbix_setup\">🖧 Zabbix 에이전트 설정</option>
-              <option value=\"fleet_install\" data-i18n=\"admin.s.gopt.fleet_install\">🖥️ Fleet 에이전트 설치</option>
-              <option value=\"isms_criteria\" data-i18n=\"admin.s.gopt.isms_criteria\">📋 ISMS-P 심사 기준</option>
-              <option value=\"iso27001_criteria\" data-i18n=\"admin.s.gopt.iso27001_criteria\">🌐 ISO 27001 심사 기준</option>
-              <option value=\"ldap_setup\" data-i18n=\"admin.s.gopt.ldap_setup\">🔐 LDAP 통합 설정</option>
-              <option value=\"incident_response\" data-i18n=\"admin.s.gopt.incident_response\">🚨 인시던트 대응 절차</option>
-              <option value=\"security_policy\" data-i18n=\"admin.s.gopt.security_policy\">📜 보안 정책 가이드</option>
+              <option value=\"zabbix_setup\" data-i18n=\"admin.s.gopt.zabbix_setup\">Zabbix 에이전트 설정</option>
+              <option value=\"fleet_install\" data-i18n=\"admin.s.gopt.fleet_install\">Fleet 에이전트 설치</option>
+              <option value=\"isms_criteria\" data-i18n=\"admin.s.gopt.isms_criteria\">ISMS-P 심사 기준</option>
+              <option value=\"iso27001_criteria\" data-i18n=\"admin.s.gopt.iso27001_criteria\">ISO 27001 심사 기준</option>
+              <option value=\"ldap_setup\" data-i18n=\"admin.s.gopt.ldap_setup\">LDAP 통합 설정</option>
+              <option value=\"incident_response\" data-i18n=\"admin.s.gopt.incident_response\">인시던트 대응 절차</option>
+              <option value=\"security_policy\" data-i18n=\"admin.s.gopt.security_policy\">보안 정책 가이드</option>
             </select>
           </div>
           <div class=\"row\"><label for=\"guide_edit_title\" data-i18n=\"admin.s.lbl.title\">제목</label><input id=\"guide_edit_title\" placeholder=\"가이드 제목\" data-i18n-placeholder=\"admin.s.ph.guide_title\" /></div>
@@ -459,17 +460,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         <!-- ── Dev Tools (자연어 / 구조화 질의 — 접기 기본) ───────────── -->
         <details class=\"card\" style=\"padding:0\">
           <summary style=\"cursor:pointer;padding:18px 22px;font-size:18px;font-weight:700;color:#e2e8f0;list-style:none\">
-            🛠️ Dev Tools <span style=\"color:#94a3b8;font-weight:400;font-size:13px\" data-i18n=\"admin.s.devtools_tag\">— 자연어 / 구조화 질의 (개발자용)</span>
+            Dev Tools <span style=\"color:#94a3b8;font-weight:400;font-size:13px\" data-i18n=\"admin.s.devtools_tag\">— 자연어 / 구조화 질의 (개발자용)</span>
           </summary>
           <div style=\"padding:0 22px 22px 22px\">
-            <div class=\"subtext\" style=\"margin-bottom:12px\" data-i18n-html=\"admin.s.sub.devtools\">관리자가 직접 백엔드 질의를 시험하기 위한 도구입니다. 일반 사용자 화면은 <a href=\"/ui\" style=\"color:#7dd3fc\">/ui</a> 를 참고하세요.</div>
+            <div class=\"subtext\" style=\"margin-bottom:12px\" data-i18n-html=\"admin.s.sub.devtools\">관리자가 직접 백엔드 질의를 시험하기 위한 도구입니다. 일반 사용자 화면은 <a href=\"/ui\" style=\"color:#38bdf8\">/ui</a> 를 참고하세요.</div>
             <section style=\"margin-bottom:18px\">
-              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.quick_actions\">⚡ Quick Actions</h3>
+              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.quick_actions\">Quick Actions</h3>
               <div class=\"quick-actions\" id=\"quick_queries\"></div>
             </section>
             <section style=\"margin-bottom:18px\">
-              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.nlq\">🗣️ Natural Language Query</h3>
-              <div class=\"subtext\"><span data-i18n=\"admin.s.sub.nlq\">자연스럽게 질문하면 의도를 해석해 실행합니다.</span> <a href=\"#\" id=\"query_guide_link\" style=\"color:#7dd3fc;\" data-i18n=\"admin.s.link.query_guide\">질의 가이드 ↗</a></div>
+              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.nlq\">Natural Language Query</h3>
+              <div class=\"subtext\"><span data-i18n=\"admin.s.sub.nlq\">자연스럽게 질문하면 의도를 해석해 실행합니다.</span> <a href=\"#\" id=\"query_guide_link\" style=\"color:#38bdf8;\" data-i18n=\"admin.s.link.query_guide\">질의 가이드 ↗</a></div>
               <div class=\"row\">
                 <label for=\"nlp_text\" data-i18n=\"admin.s.lbl.question\">질문</label>
                 <textarea id=\"nlp_text\" data-i18n=\"admin.s.nlq_default\">오프라인 호스트 보여줘</textarea>
@@ -484,7 +485,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <div class=\"status-line\" id=\"query_status\">catalog loading...</div>
             </section>
             <section style=\"margin-bottom:18px\">
-              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.query_builder\">🔧 Structured Query Builder</h3>
+              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.query_builder\">Structured Query Builder</h3>
               <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;\">
                 <div class=\"row\"><label for=\"intent\">Intent</label><select id=\"intent\"></select></div>
                 <div class=\"row\"><label for=\"time_range\">time_range</label><input id=\"time_range\" value=\"24h\" /></div>
@@ -500,7 +501,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               </div>
             </section>
             <section>
-              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.request_response\">📨 Request / Response</h3>
+              <h3 style=\"margin:0 0 8px 0;font-size:15px;color:#cbd5e1\" data-i18n=\"admin.h.request_response\">Request / Response</h3>
               <div class=\"row\"><label for=\"payload\">Request Payload</label><textarea id=\"payload\">__PAYLOAD_JSON__</textarea></div>
               <div class=\"row\"><label>Response</label><div id=\"result\" class=\"query-result-area\"><span class=\"result-placeholder\" data-i18n=\"admin.dyn.not_run_yet\">아직 실행 전입니다.</span></div></div>
             </section>
@@ -513,7 +514,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"atab-panel\" id=\"atab_access\">
       <div class=\"stack\">
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.signup_requests\">🙋 가입 요청 관리</h2>
+          <h2 data-i18n=\"admin.h.signup_requests\">가입 요청 관리</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.signup_requests\">사용자가 제출한 가입 요청 목록입니다. 역할·초기 비밀번호를 정해 승인하면 계정이 자동 생성됩니다(LDAP 활성 시 디렉터리, 아니면 로컬). 초기 비밀번호는 1회 표시됩니다.</div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
             <button id=\"reload_signup_requests\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
@@ -522,10 +523,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"status-line\" id=\"signup_requests_status\"></div>
         </section>
 
-        <!-- 🔑 LDAP 사용자 관리 (admin 전용, LDAP 활성 시) -->
+        <!-- LDAP 사용자 관리 (admin 전용, LDAP 활성 시) -->
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-            <h2 style=\"margin:0\" data-i18n=\"admin.h.ldap\">🔑 LDAP 사용자 관리</h2>
+            <h2 style=\"margin:0\" data-i18n=\"admin.h.ldap\">LDAP 사용자 관리</h2>
             <span id=\"ldap_status_badge\" style=\"font-size:12px;color:#94a3b8\"></span>
           </div>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.ldap\">디렉터리에 사용자를 직접 추가·삭제하고 비밀번호·역할을 바꿉니다. 여기서 만든 계정은 같은 LDAP을 보는 Grafana/Zabbix/Fleet 에서도 로그인됩니다. (LDAP 비활성 시 .env의 MORI_LDAP_ENABLED=true 필요)</div>
@@ -543,7 +544,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
 
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.role_perms\">🔐 역할별 탭 권한 관리</h2>
+          <h2 data-i18n=\"admin.h.role_perms\">역할별 탭 권한 관리</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.role_perms\">각 계정 역할에서 보이는 탭을 설정합니다. 저장 후 다음 로그인부터 적용됩니다.</div>
           <div id=\"roleperm_list\" style=\"display:grid;gap:16px;margin-bottom:16px\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
           <div class=\"actions\">
@@ -554,7 +555,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
 
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.acct_roles\">🔑 계정 거버넌스 열람 역할</h2>
+          <h2 data-i18n=\"admin.h.acct_roles\">계정 거버넌스 열람 역할</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.acct_roles\">계정 탭·호스트 상세 계정 섹션·/accounts API를 볼 수 있는 역할을 지정합니다. admin은 항상 포함됩니다. 저장 후 다음 로그인부터 적용됩니다.</div>
           <div id=\"acctrole_list\" style=\"display:flex;flex-wrap:wrap;gap:14px;margin:14px 0\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
           <div class=\"actions\">
@@ -565,10 +566,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
 
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.user_tabs\">👤 유저별 대시보드 탭 관리</h2>
+          <h2 data-i18n=\"admin.h.user_tabs\">유저별 대시보드 탭 관리</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.user_tabs\">개별 유저에게 역할 기본값과 다른 탭을 지정합니다. 유저별 설정이 있으면 역할 기본값보다 우선 적용됩니다.</div>
           <div class=\"actions\" style=\"margin-bottom:12px\">
-            <button id=\"reload_usertab\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh_icon\">🔄 새로고침</button>
+            <button id=\"reload_usertab\" class=\"secondary\" data-i18n=\"admin.s.btn.refresh_icon\">새로고침</button>
           </div>
           <div id=\"usertab_list\" style=\"display:grid;gap:14px;margin-bottom:16px\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
           <div class=\"status-line\" id=\"usertab_status\"></div>
@@ -580,7 +581,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <div class=\"atab-panel\" id=\"atab_logs\">
       <div class=\"stack\">
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.asset_audit\">📝 자산 변경 이력</h2>
+          <h2 data-i18n=\"admin.h.asset_audit\">자산 변경 이력</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.asset_audit\">사용자가 수정한 담당자·카테고리 변경 이력입니다. 최신 순으로 표시됩니다.</div>
           <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
             <input id=\"audit_filter_hostname\" class=\"inp-sm\" placeholder=\"호스트명으로 검색\" data-i18n-placeholder=\"admin.s.ph.audit_host\" style=\"width:180px\" />
@@ -589,7 +590,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <option value=\"owner\" data-i18n=\"admin.s.opt.owner\">담당자</option>
               <option value=\"category\" data-i18n=\"admin.s.opt.category\">카테고리</option>
             </select>
-            <button id=\"audit_search_btn\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.search\">🔍 검색</button>
+            <button id=\"audit_search_btn\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.search\">검색</button>
             <button id=\"reload_audit_log\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
           </div>
           <div id=\"audit_log_list\" class=\"list\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
@@ -597,7 +598,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         </section>
 
         <section class=\"card\">
-          <h2 data-i18n=\"admin.h.user_activity\">👤 사용자 행동 로그</h2>
+          <h2 data-i18n=\"admin.h.user_activity\">사용자 행동 로그</h2>
           <div class=\"subtext\" data-i18n=\"admin.s.sub.user_activity\">로그인·로그아웃·탭 전환·쿼리 실행 등 모든 사용자 행동이 기록됩니다.</div>
           <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px\">
             <input id=\"userlog_filter_user\" class=\"inp-sm\" placeholder=\"사용자명으로 검색\" data-i18n-placeholder=\"admin.s.ph.userlog_user\" style=\"width:180px\" />
@@ -610,7 +611,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <option value=\"QUERY\">QUERY</option>
               <option value=\"INTERPRET\">INTERPRET</option>
             </select>
-            <button id=\"userlog_search_btn\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.search\">🔍 검색</button>
+            <button id=\"userlog_search_btn\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.search\">검색</button>
             <button id=\"reload_userlog\" class=\"secondary\" style=\"padding:6px 14px\" data-i18n=\"admin.s.btn.refresh\">새로고침</button>
           </div>
           <div id=\"userlog_list\" class=\"list\"><span class=\"empty\" data-i18n=\"admin.dyn.loading\">로딩 중…</span></div>
@@ -622,22 +623,22 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
   <!-- ── 어드민 하단 탭 바 (모바일 전용) ────────────────────────────────── -->
   <nav class=\"admin-bottom-nav\" id=\"admin_bottom_nav\">
     <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\">
-      <span class=\"bn-icon\">📊</span><span data-i18n=\"admin.s.bn.overview\">Overview</span>
+      <span class=\"bn-icon\"></span><span data-i18n=\"admin.s.bn.overview\">Overview</span>
     </button>
     <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\">
-      <span class=\"bn-icon\">🔧</span><span data-i18n=\"admin.s.bn.remediation\">조치</span>
+      <span class=\"bn-icon\"></span><span data-i18n=\"admin.s.bn.remediation\">조치</span>
     </button>
     <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\">
-      <span class=\"bn-icon\">👤</span><span data-i18n=\"admin.s.bn.assets\">자산</span>
+      <span class=\"bn-icon\"></span><span data-i18n=\"admin.s.bn.assets\">자산</span>
     </button>
     <button data-atab=\"access\" onclick=\"switchAdminTab('access')\">
-      <span class=\"bn-icon\">🛡️</span><span data-i18n=\"admin.s.bn.access\">권한</span>
+      <span class=\"bn-icon\"></span><span data-i18n=\"admin.s.bn.access\">권한</span>
     </button>
     <button data-atab=\"logs\" onclick=\"switchAdminTab('logs')\">
-      <span class=\"bn-icon\">📝</span><span data-i18n=\"admin.s.bn.logs\">로그</span>
+      <span class=\"bn-icon\"></span><span data-i18n=\"admin.s.bn.logs\">로그</span>
     </button>
     <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\">
-      <span class=\"bn-icon\">⚙️</span><span data-i18n=\"admin.s.bn.settings\">설정</span>
+      <span class=\"bn-icon\"></span><span data-i18n=\"admin.s.bn.settings\">설정</span>
     </button>
   </nav>
 
@@ -969,7 +970,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       ], items, tt('admin.dyn.none_show_hosts','표시할 호스트가 없습니다.'));
     }
 
-    const UI_TRIAGE_COLORS = {new:'#f59e0b', acknowledged:'#38bdf8', investigating:'#a78bfa', closed:'#6ee7b7', false_positive:'#94a3b8'};
+    const UI_TRIAGE_COLORS = {new:'#fbbf24', acknowledged:'#38bdf8', investigating:'#38bdf8', closed:'#6ee7b7', false_positive:'#94a3b8'};
     let uiTriageData = {};
     async function loadUiTriageData() {
       try { const r = await fetch('/alerts'); const d = await r.json(); (d.alerts||[]).forEach(a => { uiTriageData[a.alert_id] = a.triage || {status:'pending'}; }); } catch(_) {}
@@ -982,7 +983,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           label: 'Host',
           render: (item) => `<strong>${escapeHtml(item.hostname || '-')}</strong><br /><span class="subtext">${escapeHtml(item.host_id || '-')}</span>`,
         },
-        { label: tt('admin.dyn.col.owner','담당자'), render: (item) => `<span style="color:#a3e635">${escapeHtml(item.owner || '-')}</span>` },
+        { label: tt('admin.dyn.col.owner','담당자'), render: (item) => `<span style="color:#4ade80">${escapeHtml(item.owner || '-')}</span>` },
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'Severity', render: (item) => escapeHtml(item.severity) },
         { label: 'Message', render: (item) => escapeHtml(item.message) },
@@ -1005,7 +1006,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           label: 'Host',
           render: (item) => `<strong>${escapeHtml(item.hostname || item.host_id)}</strong><br /><span class="subtext">${escapeHtml(item.host_id)}</span>`,
         },
-        { label: tt('admin.dyn.col.owner','담당자'), render: (item) => `<span style="color:#a3e635">${escapeHtml(item.owner || '-')}</span>` },
+        { label: tt('admin.dyn.col.owner','담당자'), render: (item) => `<span style="color:#4ade80">${escapeHtml(item.owner || '-')}</span>` },
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'CVE', render: (item) => escapeHtml(item.cve || '-') },
         { label: 'Package', render: (item) => escapeHtml(item.package_name || '-') },
@@ -1013,7 +1014,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           if (!item.plan_text) return `<span style="color:#64748b;font-size:11px">${tt('admin.dyn.unset','미설정')}</span>`;
           const tgt = item.plan_target_date ? `<br /><span style="color:#64748b;font-size:11px">~${escapeHtml(item.plan_target_date)}</span>` : '';
           const by = item.plan_updated_by ? ` <span style="color:#94a3b8;font-size:11px">(${escapeHtml(item.plan_updated_by)})</span>` : '';
-          return `<span style="color:#a3e635;font-size:12px" title="${escapeHtml(item.plan_text)}">${escapeHtml(item.plan_text.substring(0,30))}${item.plan_text.length>30?'…':''}</span>${by}${tgt}`;
+          return `<span style="color:#4ade80;font-size:12px" title="${escapeHtml(item.plan_text)}">${escapeHtml(item.plan_text.substring(0,30))}${item.plan_text.length>30?'…':''}</span>${by}${tgt}`;
         }},
         { label: tt('admin.dyn.col.exception','조치 예외'), render: (item) => {
           if (!item.exception_until) return `<span style="color:#64748b;font-size:11px">${tt('admin.dyn.none_word','없음')}</span>`;
@@ -1100,7 +1101,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       }
       const statusToBadge = { success: 'online', error: 'offline', running: 'unknown', unknown: 'unknown' };
       sourceCoverageEl.innerHTML = items.map((item) => {
-        const staleBadge = item.is_stale ? ' <span class=\"badge\" style=\"background:#f59e0b;color:#000\">STALE</span>' : '';
+        const staleBadge = item.is_stale ? ' <span class=\"badge\" style=\"background:#fbbf24;color:#000\">STALE</span>' : '';
         return `
         <div class=\"coverage-item\">
           <div class=\"metric-label\">${escapeHtml(item.source.toUpperCase())}</div>
@@ -1519,7 +1520,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     let _editingHostname = null; // track if we are editing
 
     const impLabel = { '\uc0c1':tt('admin.s.opt.high','상'), '\uc911':tt('admin.s.opt.mid','중'), '\ud558':tt('admin.s.opt.low','하') };
-    const impColor = { '\uc0c1':'#fca5a5', '\uc911':'#fde68a', '\ud558':'#86efac' };
+    const impColor = { '\uc0c1':'#f87171', '\uc911':'#fbbf24', '\ud558':'#4ade80' };
 
     async function loadOwners() {
       ownersListEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</span>`;
@@ -1531,17 +1532,17 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         ownersListEl.innerHTML = list.map(o => {
           const imp = o.importance || '';
           const impBadge = imp ? `<span style=\"background:#1e293b;color:${impColor[imp]||'#94a3b8'};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px\">${escapeHtml(impLabel[imp]||imp)}</span>` : '';
-          const catBadge = o.category ? `<span style=\"color:#7dd3fc;font-size:11px;margin-left:6px\">[${escapeHtml(o.category)}]</span>` : '';
+          const catBadge = o.category ? `<span style=\"color:#38bdf8;font-size:11px;margin-left:6px\">[${escapeHtml(o.category)}]</span>` : '';
           return `<div style=\"display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid #1e293b;font-size:13px;gap:8px\">
             <div style=\"flex:1;min-width:0\">
               <strong style=\"color:#e2e8f0\">${escapeHtml(o.hostname)}</strong>${catBadge}${impBadge}
-              <br><span style=\"color:#a3e635;font-size:12px\">${escapeHtml(o.owner||'-')}</span>
+              <br><span style=\"color:#4ade80;font-size:12px\">${escapeHtml(o.owner||'-')}</span>
               ${o.team ? `<span style=\"color:#64748b;margin-left:6px;font-size:12px\">(${escapeHtml(o.team)})</span>` : ''}
               ${o.email ? `<span style=\"color:#64748b;font-size:11px;margin-left:6px\">${escapeHtml(o.email)}</span>` : ''}
             </div>
             <div style=\"display:flex;gap:6px;flex-shrink:0\">
-              <button onclick=\"editOwner('${escapeHtml(o.hostname)}')\" style=\"background:#1e3a5f;border:1px solid #334155;color:#93c5fd;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px\">${tt('admin.dyn.edit','✏️ 수정')}</button>
-              <button onclick=\"deleteOwner('${escapeHtml(o.hostname)}')\" style=\"background:#7f1d1d;border:none;color:#fca5a5;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px\">${tt('admin.dyn.delete','삭제')}</button>
+              <button onclick=\"editOwner('${escapeHtml(o.hostname)}')\" style=\"background:#334155;border:1px solid #334155;color:#38bdf8;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px\">${tt('admin.dyn.edit','수정')}</button>
+              <button onclick=\"deleteOwner('${escapeHtml(o.hostname)}')\" style=\"background:#7f1d1d;border:none;color:#f87171;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px\">${tt('admin.dyn.delete','삭제')}</button>
             </div>
           </div>`;
         }).join('');
@@ -1568,8 +1569,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       ownTeamEl.value = o.team || '';
       ownCategoryEl.value = o.category || '';
       ownImportanceEl.value = o.importance || '';
-      ownerFormTitleEl.textContent = `✏️ ${hostname} ${tt('admin.dyn.editing','수정 중')}`;
-      ownerFormTitleEl.style.color = '#fde68a';
+      ownerFormTitleEl.textContent = `${hostname} ${tt('admin.dyn.editing','수정 중')}`;
+      ownerFormTitleEl.style.color = '#fbbf24';
       cancelEditBtn.style.display = '';
       ownerStatusEl.textContent = '';
       // scroll form into view
@@ -1582,7 +1583,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       ownTeamEl.value = ''; ownCategoryEl.value = ''; ownImportanceEl.value = '';
       ownHostnameEl.readOnly = false;
       ownHostnameEl.style.opacity = '1';
-      ownerFormTitleEl.textContent = tt('admin.dyn.new_asset','➕ 새 자산 등록');
+      ownerFormTitleEl.textContent = tt('admin.dyn.new_asset','새 자산 등록');
       ownerFormTitleEl.style.color = '#38bdf8';
       cancelEditBtn.style.display = 'none';
     }
@@ -1616,7 +1617,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.status);
         _resetOwnerForm();
-        ownerStatusEl.textContent = tt('admin.dyn.save_done','저장 완료 ✓');
+        ownerStatusEl.textContent = tt('admin.dyn.save_done','저장 완료 ');
         await loadOwners();
       } catch(e) { ownerStatusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
     });
@@ -1636,7 +1637,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <div class=\"meta mono\" style=\"word-break:break-all\">${escapeHtml(w.url)}</div>
             <div style=\"margin-top:8px;display:flex;gap:8px\">
               <button class=\"secondary\" style=\"width:auto;padding:4px 12px;font-size:12px\" onclick=\"testWebhook('${escapeHtml(w.id)}', this)\">${tt('admin.dyn.test','테스트')}</button>
-              <button class=\"ghost\" style=\"width:auto;padding:4px 12px;font-size:12px;border-color:#ef4444;color:#fca5a5\" onclick=\"deleteWebhook('${escapeHtml(w.id)}', this)\">${tt('admin.dyn.delete','삭제')}</button>
+              <button class=\"ghost\" style=\"width:auto;padding:4px 12px;font-size:12px;border-color:#f87171;color:#f87171\" onclick=\"deleteWebhook('${escapeHtml(w.id)}', this)\">${tt('admin.dyn.delete','삭제')}</button>
             </div>
           </div>
         `).join('');
@@ -1646,8 +1647,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       btn.textContent = tt('admin.dyn.sending','전송 중…'); btn.disabled = true;
       try {
         const res = await fetch(`/webhooks/${id}/test`, {method:'POST'});
-        btn.textContent = res.ok ? tt('admin.dyn.success_check','✓ 성공') : tt('admin.dyn.fail_check','✗ 실패');
-      } catch(e) { btn.textContent = tt('admin.dyn.error_check','✗ 오류'); }
+        btn.textContent = res.ok ? tt('admin.dyn.success_check','성공') : tt('admin.dyn.fail_check','× 실패');
+      } catch(e) { btn.textContent = tt('admin.dyn.error_check','× 오류'); }
       setTimeout(() => { btn.textContent = tt('admin.dyn.test','테스트'); btn.disabled = false; }, 2000);
     }
     async function deleteWebhook(id, btn) {
@@ -1667,7 +1668,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const res = await fetch('/webhooks', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name: whNameEl.value.trim() || 'Slack Webhook', url})});
         if (!res.ok) throw new Error((await res.json()).detail || res.status);
         whNameEl.value = ''; whUrlEl.value = '';
-        webhookStatusEl.textContent = tt('admin.dyn.add_done','추가 완료 ✓');
+        webhookStatusEl.textContent = tt('admin.dyn.add_done','추가 완료 ');
         await loadWebhooks();
       } catch(e) { webhookStatusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
     });
@@ -1709,7 +1710,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           body: JSON.stringify({title, content}),
         });
         if (!res.ok) throw new Error((await res.json()).detail || res.status);
-        guideEditStatusEl.textContent = tt('admin.dyn.save_done','저장 완료 ✓');
+        guideEditStatusEl.textContent = tt('admin.dyn.save_done','저장 완료 ');
       } catch(e) { guideEditStatusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
     });
 
@@ -1767,13 +1768,13 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           signupListEl.innerHTML = `<span class="empty">${tt('admin.dyn.none_signup','가입 요청이 없습니다.')}</span>`;
           return;
         }
-        const statusBadge = s => ({pending:tt('admin.dyn.signup.pending','🟡 대기중'), approved:tt('admin.dyn.signup.approved','🟢 승인됨'), rejected:tt('admin.dyn.signup.rejected','🔴 거절됨')}[s] || s);
+        const statusBadge = s => ({pending:tt('admin.dyn.signup.pending','대기중'), approved:tt('admin.dyn.signup.approved','승인됨'), rejected:tt('admin.dyn.signup.rejected','거절됨')}[s] || s);
         signupListEl.innerHTML = reqs.map(r => `
-          <div class="owner-row" style="border:1px solid #1e3a5f;border-radius:10px;padding:12px;margin-bottom:10px;">
+          <div class="owner-row" style="border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:10px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
               <div>
                 <strong>${r.name}</strong> <span style="color:#94a3b8;font-size:12px;">${r.email}</span>
-                ${r.username ? `<span style="color:#7dd3fc;font-size:12px;margin-left:6px;font-family:monospace">@${r.username}</span>` : ''}
+                ${r.username ? `<span style="color:#38bdf8;font-size:12px;margin-left:6px;font-family:monospace">@${r.username}</span>` : ''}
                 ${r.department ? `<span style="color:#64748b;font-size:12px;margin-left:6px;">[${r.department}]</span>` : ''}
                 <div style="font-size:12px;color:#94a3b8;margin-top:4px;">${r.reason || tt('admin.dyn.no_reason','(사유 없음)')}</div>
                 <div style="font-size:11px;color:#475569;margin-top:4px;">${tt('admin.dyn.col.created','요청일')}: ${r.created_at || '-'}${r.reviewed_at ? ' / ' + tt('admin.dyn.col.reviewed','처리일') + ': ' + r.reviewed_at : ''}</div>
@@ -1815,9 +1816,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || res.status);
         if (status === 'approved' && data.username) {
-          signupStatusEl.innerHTML = `${tt('admin.dyn.approve_done','✅ 승인 완료')} — <strong>${data.username}</strong> (${data.role}, ${data.backend}) · ${tt('admin.dyn.signup.initpw','초기 비밀번호')}: <code style="background:#0b1322;padding:1px 6px;border-radius:4px;color:#fde68a">${data.initial_password}</code> ${tt('admin.dyn.signup.copy_note','(사용자에게 전달, 1회 표시)')}`;
+          signupStatusEl.innerHTML = `${tt('admin.dyn.approve_done','승인 완료')} — <strong>${data.username}</strong> (${data.role}, ${data.backend}) · ${tt('admin.dyn.signup.initpw','초기 비밀번호')}: <code style="background:#0b1220;padding:1px 6px;border-radius:4px;color:#fbbf24">${data.initial_password}</code> ${tt('admin.dyn.signup.copy_note','(사용자에게 전달, 1회 표시)')}`;
         } else {
-          signupStatusEl.textContent = tt('admin.dyn.reject_done','❌ 거절 완료');
+          signupStatusEl.textContent = tt('admin.dyn.reject_done','거절 완료');
         }
         await loadSignupRequests();
       } catch(e) {
@@ -1858,9 +1859,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         if (!users.length) { ldapListEl.innerHTML = `<span class="empty">${tt('admin.dyn.ldap.none','디렉터리에 사용자가 없습니다.')}</span>`; return; }
         ldapListEl.innerHTML = users.map(u => {
           const roleOpts = _ldapRoles.map(r => `<option value="${r}"${u.role===r?' selected':''}>${r}</option>`).join('');
-          return `<div class="owner-row" style="border:1px solid #1e3a5f;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          return `<div class="owner-row" style="border:1px solid #334155;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
             <div>
-              <strong style="font-family:monospace;color:#7dd3fc">${escapeHtml(u.uid)}</strong>
+              <strong style="font-family:monospace;color:#38bdf8">${escapeHtml(u.uid)}</strong>
               <span style="color:#e2e8f0;font-size:13px;margin-left:6px">${escapeHtml(u.cn||'')}</span>
               ${u.mail ? `<span style="color:#94a3b8;font-size:12px;margin-left:6px">${escapeHtml(u.mail)}</span>` : ''}
             </div>
@@ -1887,7 +1888,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const res = await fetch('/admin/ldap/users', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
         const d = await res.json();
         if (!res.ok) throw new Error(d.detail || res.status);
-        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.added','✅ 추가됨')}: ${d.uid} (${d.role})`; ldapStatusMsgEl.style.color = '#4ade80'; }
+        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.added','추가됨')}: ${d.uid} (${d.role})`; ldapStatusMsgEl.style.color = '#4ade80'; }
         ['ldap_new_uid','ldap_new_cn','ldap_new_mail','ldap_new_pw'].forEach(i => g(i).value = '');
         await loadLdapUsers();
       } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#f87171'; } }
@@ -1899,7 +1900,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       try {
         const res = await fetch('/admin/ldap/users/' + encodeURIComponent(uid), { method:'DELETE' });
         const d = await res.json(); if (!res.ok) throw new Error(d.detail || res.status);
-        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.deleted','🗑️ 삭제됨')}: ${uid}`; ldapStatusMsgEl.style.color = '#94a3b8'; }
+        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.deleted','삭제됨')}: ${uid}`; ldapStatusMsgEl.style.color = '#94a3b8'; }
         await loadLdapUsers();
       } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#f87171'; } }
     }
@@ -1911,7 +1912,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       try {
         const res = await fetch('/admin/ldap/users/' + encodeURIComponent(uid) + '/password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password: pw}) });
         const d = await res.json(); if (!res.ok) throw new Error(d.detail || res.status);
-        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.pw_done','🔑 비밀번호 재설정됨')}: ${uid}`; ldapStatusMsgEl.style.color = '#4ade80'; }
+        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.pw_done','비밀번호 재설정됨')}: ${uid}`; ldapStatusMsgEl.style.color = '#4ade80'; }
       } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#f87171'; } }
     }
     window.ldapResetPw = ldapResetPw;
@@ -1949,13 +1950,13 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         if (!logs.length) { auditLogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.none_audit','변경 이력 없음')}</span>`; return; }
         const FIELD_LABEL = { owner: tt('admin.dyn.field.owner','담당자'), category: tt('admin.dyn.field.category','카테고리') };
         auditLogListEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead><tr style="background:#0f2035;">
-            <th style="padding:8px;color:#7dd3fc;text-align:left">${tt('admin.dyn.col.time','시각')}</th>
-            <th style="padding:8px;color:#7dd3fc;text-align:left">${tt('admin.dyn.col.host','호스트')}</th>
-            <th style="padding:8px;color:#7dd3fc;text-align:left">${tt('admin.dyn.col.field','항목')}</th>
-            <th style="padding:8px;color:#7dd3fc;text-align:left">${tt('admin.dyn.col.old_value','이전 값')}</th>
-            <th style="padding:8px;color:#a3e635;text-align:left">${tt('admin.dyn.col.new_value','변경 값')}</th>
-            <th style="padding:8px;color:#7dd3fc;text-align:left">${tt('admin.dyn.col.changed_by','변경자')}</th>
+          <thead><tr style="background:#0f172a;">
+            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.time','시각')}</th>
+            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.host','호스트')}</th>
+            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.field','항목')}</th>
+            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.old_value','이전 값')}</th>
+            <th style="padding:8px;color:#4ade80;text-align:left">${tt('admin.dyn.col.new_value','변경 값')}</th>
+            <th style="padding:8px;color:#38bdf8;text-align:left">${tt('admin.dyn.col.changed_by','변경자')}</th>
           </tr></thead>
           <tbody>
           ${logs.map(l => `<tr style="border-bottom:1px solid #1e293b;">
@@ -1963,8 +1964,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <td style="padding:7px 8px;color:#e2e8f0;font-weight:600">${escapeHtml(l.hostname)}</td>
             <td style="padding:7px 8px;color:#fbbf24">${escapeHtml(FIELD_LABEL[l.field] || l.field)}</td>
             <td style="padding:7px 8px;color:#94a3b8">${escapeHtml(l.old_value || '-')}</td>
-            <td style="padding:7px 8px;color:#a3e635">${escapeHtml(l.new_value || '-')}</td>
-            <td style="padding:7px 8px;color:#93c5fd">${escapeHtml(l.changed_by)}</td>
+            <td style="padding:7px 8px;color:#4ade80">${escapeHtml(l.new_value || '-')}</td>
+            <td style="padding:7px 8px;color:#38bdf8">${escapeHtml(l.changed_by)}</td>
           </tr>`).join('')}
           </tbody></table>`;
         if (auditLogStatusEl) auditLogStatusEl.textContent = `${tt('admin.dyn.col.total','총')} ${data.total}${tt('admin.dyn.count_suffix','건')}`;
@@ -1982,12 +1983,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     // ── Role Permissions ─────────────────────────────────────────────────────
     const ROLE_PERM_TABS = [
-      { id: 'dashboard', label: '📊 대시보드', labelKey: 'admin.dyn.tab.dashboard' },
-      { id: 'triage', label: '🚨 Alert Triage', labelKey: 'admin.dyn.tab.triage' },
-      { id: 'incidents', label: '📋 인시던트', labelKey: 'admin.dyn.tab.incidents' },
-      { id: 'assets', label: '📡 자산 현황', labelKey: 'admin.dyn.tab.assets' },
-      { id: 'compliance', label: '✅ Compliance PDCA', labelKey: 'admin.dyn.tab.compliance' },
-      { id: 'guides', label: '📖 가이드', labelKey: 'admin.dyn.tab.guides' },
+      { id: 'dashboard', label: '대시보드', labelKey: 'admin.dyn.tab.dashboard' },
+      { id: 'triage', label: 'Alert Triage', labelKey: 'admin.dyn.tab.triage' },
+      { id: 'incidents', label: '인시던트', labelKey: 'admin.dyn.tab.incidents' },
+      { id: 'assets', label: '자산 현황', labelKey: 'admin.dyn.tab.assets' },
+      { id: 'compliance', label: 'Compliance PDCA', labelKey: 'admin.dyn.tab.compliance' },
+      { id: 'guides', label: '가이드', labelKey: 'admin.dyn.tab.guides' },
     ];
     const ROLE_PERM_ROLES = [
       { key: 'security', label: '보안담당자 (security)', labelKey: 'admin.dyn.role.security' },
@@ -2016,7 +2017,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <span style=\"font-size:13px\">${tt(tab.labelKey, tab.label)}</span>
             </label>`;
           }).join('');
-          return `<div style=\"background:#0f172a;border:1px solid #233046;border-radius:12px;padding:14px\">
+          return `<div style=\"background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:14px\">
             <div style=\"font-weight:700;color:#38bdf8;margin-bottom:10px\">${escapeHtml(tt(role.labelKey, role.label))}</div>
             <div style=\"display:flex;flex-wrap:wrap;gap:8px\">${checks}</div>
           </div>`;
@@ -2046,10 +2047,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload),
           });
           if (!res.ok) throw new Error(await res.text());
-          statusEl.style.color = '#86efac';
-          statusEl.textContent = tt('admin.dyn.roleperm_saved','✅ 권한이 저장되었습니다. 해당 역할 사용자 재로그인 후 적용됩니다.');
+          statusEl.style.color = '#4ade80';
+          statusEl.textContent = tt('admin.dyn.roleperm_saved','권한이 저장되었습니다. 해당 역할 사용자 재로그인 후 적용됩니다.');
         } catch(e) {
-          statusEl.style.color = '#fca5a5';
+          statusEl.style.color = '#f87171';
           statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`;
         }
       });
@@ -2093,10 +2094,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({roles}),
         });
         if (!res.ok) throw new Error(await res.text());
-        statusEl.style.color = '#86efac';
-        statusEl.textContent = tt('admin.dyn.acctrole_saved','✅ 저장되었습니다. 대상 사용자 재로그인 후 계정 탭이 보입니다.');
+        statusEl.style.color = '#4ade80';
+        statusEl.textContent = tt('admin.dyn.acctrole_saved','저장되었습니다. 대상 사용자 재로그인 후 계정 탭이 보입니다.');
       } catch(e) {
-        statusEl.style.color = '#fca5a5';
+        statusEl.style.color = '#f87171';
         statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`;
       }
     });
@@ -2120,7 +2121,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           const activeTabs = u.has_override ? u.user_tabs : u.role_default_tabs;
           const overrideBadge = u.has_override
             ? `<span style=\"background:#854d0e;color:#fbbf24;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px\">${tt('admin.dyn.override_custom','개별 설정')}</span>`
-            : `<span style=\"background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px\">${tt('admin.dyn.override_default','역할 기본값')}</span>`;
+            : `<span style=\"background:#334155;color:#38bdf8;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px\">${tt('admin.dyn.override_default','역할 기본값')}</span>`;
           const checks = ROLE_PERM_TABS.map(tab => {
             const checked = activeTabs.includes(tab.id) ? 'checked' : '';
             return `<label style=\"display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #223148;border-radius:6px;background:#0b1220;cursor:pointer;font-size:12px\">
@@ -2129,9 +2130,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             </label>`;
           }).join('');
           const resetBtn = u.has_override
-            ? `<button onclick=\"_resetUserTabs('${escapeHtml(u.username)}')\" style=\"font-size:11px;padding:3px 10px;background:#450a0a;color:#fca5a5;border:1px solid #7f1d1d;border-radius:6px;cursor:pointer;margin-left:8px\">${tt('admin.dyn.reset','초기화')}</button>`
+            ? `<button onclick=\"_resetUserTabs('${escapeHtml(u.username)}')\" style=\"font-size:11px;padding:3px 10px;background:#450a0a;color:#f87171;border:1px solid #7f1d1d;border-radius:6px;cursor:pointer;margin-left:8px\">${tt('admin.dyn.reset','초기화')}</button>`
             : '';
-          return `<div style=\"background:#0f172a;border:1px solid #233046;border-radius:12px;padding:14px\" id=\"usertab_row_${escapeHtml(u.username)}\">
+          return `<div style=\"background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:14px\" id=\"usertab_row_${escapeHtml(u.username)}\">
             <div style=\"display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px\">
               <div>
                 <strong style=\"color:#e2e8f0\">${escapeHtml(u.username)}</strong>
@@ -2161,11 +2162,11 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           body: JSON.stringify({ tabs }),
         });
         if (!res.ok) throw new Error(await res.text());
-        if (statusEl) { statusEl.style.color = '#86efac'; statusEl.textContent = tt('admin.dyn.saved_relogin','✅ 저장됨 (재로그인 후 적용)'); }
+        if (statusEl) { statusEl.style.color = '#4ade80'; statusEl.textContent = tt('admin.dyn.saved_relogin','저장됨 (재로그인 후 적용)'); }
         // 배지 업데이트
         setTimeout(() => loadUserTabPermissions(), 500);
       } catch(e) {
-        if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
+        if (statusEl) { statusEl.style.color = '#f87171'; statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
       }
     }
     window._onUserTabChange = _onUserTabChange;
@@ -2176,10 +2177,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       try {
         const res = await fetch(`/admin/user-tab-permissions/${encodeURIComponent(username)}`, { method: 'DELETE' });
         if (!res.ok) throw new Error(await res.text());
-        if (statusEl) { statusEl.style.color = '#86efac'; statusEl.textContent = tt('admin.dyn.reset_done','✅ 초기화됨'); }
+        if (statusEl) { statusEl.style.color = '#4ade80'; statusEl.textContent = tt('admin.dyn.reset_done','초기화됨'); }
         setTimeout(() => loadUserTabPermissions(), 500);
       } catch(e) {
-        if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
+        if (statusEl) { statusEl.style.color = '#f87171'; statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
       }
     }
     window._resetUserTabs = _resetUserTabs;
@@ -2203,8 +2204,8 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         if (filterAction) logs = logs.filter(e => e.action === filterAction);
         if (!logs.length) { listEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.none_userlog','로그 없음')}</span>`; return; }
         const ACTION_COLOR = {
-          LOGIN:'#86efac', LOGIN_FAIL:'#fca5a5', LOGOUT:'#94a3b8',
-          TAB_SWITCH:'#7dd3fc', QUERY:'#fbbf24', INTERPRET:'#c4b5fd', UNKNOWN:'#cbd5e1',
+          LOGIN:'#4ade80', LOGIN_FAIL:'#f87171', LOGOUT:'#94a3b8',
+          TAB_SWITCH:'#38bdf8', QUERY:'#fbbf24', INTERPRET:'#38bdf8', UNKNOWN:'#cbd5e1',
         };
         listEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
           <thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155\">
@@ -2245,15 +2246,15 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 
     // ── Phase 2: Overview · Compliance · Triage · Remediation 로더 ───────────
     const STATUS_BADGE = {
-      pass:'<span style=\"background:rgba(34,197,94,.12);color:#86efac;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">PASS</span>',
-      fail:'<span style=\"background:rgba(248,113,113,.12);color:#fca5a5;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">FAIL</span>',
-      warning:'<span style=\"background:rgba(250,204,21,.12);color:#fde68a;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">WARN</span>',
+      pass:'<span style=\"background:rgba(34,197,94,.12);color:#4ade80;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">PASS</span>',
+      fail:'<span style=\"background:rgba(248,113,113,.12);color:#f87171;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">FAIL</span>',
+      warning:'<span style=\"background:rgba(250,204,21,.12);color:#fbbf24;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">WARN</span>',
       not_applicable:'<span style=\"background:rgba(148,163,184,.12);color:#cbd5e1;padding:2px 8px;border-radius:6px;font-size:12px\">N/A</span>',
       not_checked:`<span style=\"background:rgba(100,116,139,.12);color:#94a3b8;padding:2px 8px;border-radius:6px;font-size:12px\">${tt('admin.dyn.metric.not_checked','미점검')}</span>`,
     };
     const _statusBadge = (s) => STATUS_BADGE[s] || `<span>${escapeHtml(s||'')}</span>`;
     const _sourceBadge = (src) => {
-      const map = { control_check:'#7dd3fc', trivy:'#fbbf24', alert:'#fca5a5' };
+      const map = { control_check:'#38bdf8', trivy:'#fbbf24', alert:'#f87171' };
       const color = map[src] || '#94a3b8';
       return `<span style=\"background:rgba(56,189,248,.08);color:${color};padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700\">${escapeHtml(src||'-')}</span>`;
     };
@@ -2277,11 +2278,11 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         el.innerHTML = items.map(it => `
           <div class=\"coverage-item\">
             <div style=\"color:#94a3b8;font-size:12px\">${escapeHtml(it.label)}</div>
-            <strong style=\"color:${it.value>0?'#86efac':'#fca5a5'}\">${it.value}</strong>
+            <strong style=\"color:${it.value>0?'#4ade80':'#f87171'}\">${it.value}</strong>
             <div style=\"color:#64748b;font-size:11px;margin-top:4px\">${escapeHtml(it.hint)}</div>
           </div>`).join('');
       } catch (e) {
-        el.innerHTML = `<div class=\"coverage-item\"><span style=\"color:#fca5a5\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</span></div>`;
+        el.innerHTML = `<div class=\"coverage-item\"><span style=\"color:#f87171\">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</span></div>`;
       }
     }
 
@@ -2319,13 +2320,13 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           const lastErr = rec.last_error_at ? new Date(rec.last_error_at).getTime() : null;
           const lagSec = lastOk != null ? (nowMs - lastOk) / 1000 : null;
           const sla = rec.stale_threshold_seconds || null;
-          let statusColor = '#86efac', statusLabel = (rec.status||'unknown').toUpperCase();
-          if (rec.status === 'error') { statusColor = '#fca5a5'; }
-          else if (rec.is_stale) { statusColor = '#fde68a'; statusLabel = 'STALE'; }
-          else if (rec.status === 'running') { statusColor = '#93c5fd'; }
+          let statusColor = '#4ade80', statusLabel = (rec.status||'unknown').toUpperCase();
+          if (rec.status === 'error') { statusColor = '#f87171'; }
+          else if (rec.is_stale) { statusColor = '#fbbf24'; statusLabel = 'STALE'; }
+          else if (rec.status === 'running') { statusColor = '#38bdf8'; }
           const lagColor = rec.is_stale ? '#fbbf24' : (lagSec != null ? '#cbd5e1' : '#64748b');
           const slaText = sla ? _humanizeLag(sla) : '-';
-          const errBadge = lastErr ? `<div style=\"color:#fca5a5;font-size:11px;margin-top:2px\">${tt('admin.dyn.recent_error_prefix','⚠ 최근 에러: ')}${escapeHtml(formatTime(rec.last_error_at))}</div>` : '';
+          const errBadge = lastErr ? `<div style=\"color:#f87171;font-size:11px;margin-top:2px\">${tt('admin.dyn.recent_error_prefix','최근 에러: ')}${escapeHtml(formatTime(rec.last_error_at))}</div>` : '';
           return `<tr>
             <td><strong>${escapeHtml((rec.source||'-').toUpperCase())}</strong></td>
             <td><span style=\"background:rgba(56,189,248,.08);color:${statusColor};padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">${escapeHtml(statusLabel)}</span></td>
@@ -2362,32 +2363,32 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const passRate = total > 0 ? Math.round(((s.pass||0)/total)*100) : null;
         const ps = data.pending_sources || {};
         cardsEl.innerHTML = `
-          <div class=\"metric-card card\"><div class=\"metric-label\">${tt('admin.dyn.metric.total_checks','📋 전체 점검')}</div><div class=\"metric-value\">${total}</div></div>
-          <div class=\"metric-card card\"><div class=\"metric-label\">✅ Pass</div><div class=\"metric-value\" style=\"color:#86efac\">${s.pass||0}</div></div>
-          <div class=\"metric-card card\"><div class=\"metric-label\">❌ Fail</div><div class=\"metric-value\" style=\"color:#fca5a5\">${s.fail||0}</div></div>
-          <div class=\"metric-card card\"><div class=\"metric-label\">⚠️ Warning</div><div class=\"metric-value\" style=\"color:#fde68a\">${s.warning||0}</div></div>
-          <div class=\"metric-card card\"><div class=\"metric-label\">📊 Pass Rate</div><div class=\"metric-value\" style=\"color:#a78bfa\">${passRate===null?'—':passRate+'%'}</div></div>
-          <div class=\"metric-card card\"><div class=\"metric-label\">${tt('admin.dyn.metric.pending_icon','🔧 미조치')}</div><div class=\"metric-value\" style=\"color:#fb923c\">${data.pending_count||0}</div><div class=\"metric-sub\">${tt('admin.dyn.col.control','통제')} ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">${tt('admin.dyn.metric.total_checks','전체 점검')}</div><div class=\"metric-value\">${total}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">Pass</div><div class=\"metric-value\" style=\"color:#4ade80\">${s.pass||0}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">Fail</div><div class=\"metric-value\" style=\"color:#f87171\">${s.fail||0}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">Warning</div><div class=\"metric-value\" style=\"color:#fbbf24\">${s.warning||0}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">Pass Rate</div><div class=\"metric-value\" style=\"color:#38bdf8\">${passRate===null?'—':passRate+'%'}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">${tt('admin.dyn.metric.pending_icon','미조치')}</div><div class=\"metric-value\" style=\"color:#fbbf24\">${data.pending_count||0}</div><div class=\"metric-sub\">${tt('admin.dyn.col.control','통제')} ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}</div></div>
         `;
         const cats = data.categories || [];
         if (!cats.length) {
           catEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_category','카테고리 데이터 없음 — 시드 누락 가능성')}</div>`;
         } else {
           catEl.innerHTML = `<table class=\"result-table\">
-            <thead><tr><th>${tt('admin.dyn.col.category','카테고리')}</th><th>${tt('admin.dyn.col.total','총')}</th><th style=\"color:#86efac\">Pass</th><th style=\"color:#fca5a5\">Fail</th><th style=\"color:#fde68a\">Warning</th><th style=\"color:#cbd5e1\">N/A</th><th style=\"color:#94a3b8\">${tt('admin.dyn.col.not_checked','미점검')}</th></tr></thead>
+            <thead><tr><th>${tt('admin.dyn.col.category','카테고리')}</th><th>${tt('admin.dyn.col.total','총')}</th><th style=\"color:#4ade80\">Pass</th><th style=\"color:#f87171\">Fail</th><th style=\"color:#fbbf24\">Warning</th><th style=\"color:#cbd5e1\">N/A</th><th style=\"color:#94a3b8\">${tt('admin.dyn.col.not_checked','미점검')}</th></tr></thead>
             <tbody>${cats.map(c => `<tr>
               <td><strong>${escapeHtml(c.category||'-')}</strong></td>
               <td>${c.total||0}</td>
-              <td style=\"color:#86efac\">${c.pass||0}</td>
-              <td style=\"color:#fca5a5\">${c.fail||0}</td>
-              <td style=\"color:#fde68a\">${c.warning||0}</td>
+              <td style=\"color:#4ade80\">${c.pass||0}</td>
+              <td style=\"color:#f87171\">${c.fail||0}</td>
+              <td style=\"color:#fbbf24\">${c.warning||0}</td>
               <td style=\"color:#cbd5e1\">${c.not_applicable||0}</td>
               <td style=\"color:#94a3b8\">${c.not_checked||0}</td>
             </tr>`).join('')}</tbody></table>`;
         }
         const pending = data.pending_remediations || [];
         if (!pending.length) {
-          pendingEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_pending','미조치 항목 없음 🎉')}</div>`;
+          pendingEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_pending','미조치 항목 없음 ')}</div>`;
         } else {
           pendingEl.innerHTML = `<table class=\"result-table\">
             <thead><tr><th>${tt('admin.dyn.col.source','출처')}</th><th>${tt('admin.dyn.col.control_id','통제 ID')}</th><th>${tt('admin.dyn.col.target','대상')}</th><th>${tt('admin.dyn.col.status','상태')}</th><th>${tt('admin.dyn.col.owner','담당자')}</th><th>${tt('admin.dyn.col.due','조치기한')}</th><th>${tt('admin.dyn.col.note','비고')}</th></tr></thead>
@@ -2397,7 +2398,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
               <td>${escapeHtml(p.entity_id||'-')}</td>
               <td>${_statusBadge(p.status)}</td>
               <td>${escapeHtml(p.owner||'-')}</td>
-              <td style=\"${p.overdue?'color:#fca5a5;font-weight:700':''}\">${p.overdue?'🔴 ':''}${escapeHtml(p.remediation_due_at?formatTime(p.remediation_due_at):'-')}</td>
+              <td style=\"${p.overdue?'color:#f87171;font-weight:700':''}\">${p.overdue?'':''}${escapeHtml(p.remediation_due_at?formatTime(p.remediation_due_at):'-')}</td>
               <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(p.note||'')}</td>
             </tr>`).join('')}${pending.length>100?`<tr><td colspan=\"7\" style=\"color:#64748b;text-align:center;padding:8px\">… ${pending.length-100}${tt('admin.dyn.more_rows_suffix','건 더 (CSV 다운로드 권장)')}</td></tr>`:''}</tbody></table>`;
         }
@@ -2429,19 +2430,19 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_alert','표시할 alert 없음')}</div>`;
           return;
         }
-        const TRIAGE_LABEL = { pending:tt('admin.dyn.atriage.pending','🟡 대기'), reviewing:tt('admin.dyn.atriage.reviewing','🔵 검토중'), resolved:tt('admin.dyn.atriage.resolved','🟢 조치') };
+        const TRIAGE_LABEL = { pending:tt('admin.dyn.atriage.pending','대기'), reviewing:tt('admin.dyn.atriage.reviewing','검토중'), resolved:tt('admin.dyn.atriage.resolved','조치') };
         el.innerHTML = `<table class=\"result-table\">
           <thead><tr><th>${tt('admin.dyn.col.severity','심각도')}</th><th>${tt('admin.dyn.col.host','호스트')}</th><th>${tt('admin.dyn.col.message','메시지')}</th><th>Triage</th><th>${tt('admin.dyn.col.analyst','분석관')}</th><th>${tt('admin.dyn.col.observed','발생 시각')}</th></tr></thead>
           <tbody>${rows.map(a => {
             const sev = a.severity || '-';
-            const sevColor = sev==='critical'?'#fca5a5':sev==='high'?'#fbbf24':'#94a3b8';
+            const sevColor = sev==='critical'?'#f87171':sev==='high'?'#fbbf24':'#94a3b8';
             const t = a.triage || {};
             return `<tr>
               <td><strong style=\"color:${sevColor}\">${escapeHtml(sev.toUpperCase())}</strong></td>
               <td>${escapeHtml(a.hostname||a.host_id||'-')}</td>
               <td style=\"color:#cbd5e1;max-width:380px;overflow:hidden;text-overflow:ellipsis\">${escapeHtml(a.message||'')}</td>
-              <td>${escapeHtml(TRIAGE_LABEL[t.status]||t.status||tt('admin.dyn.atriage.pending','🟡 대기'))}</td>
-              <td style=\"color:#93c5fd\">${escapeHtml(t.analyst||'-')}</td>
+              <td>${escapeHtml(TRIAGE_LABEL[t.status]||t.status||tt('admin.dyn.atriage.pending','대기'))}</td>
+              <td style=\"color:#38bdf8\">${escapeHtml(t.analyst||'-')}</td>
               <td style=\"color:#64748b;font-size:12px\">${escapeHtml(formatTime(a.observed_at))}</td>
             </tr>`;
           }).join('')}</tbody></table>`;
@@ -2467,7 +2468,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_incidents','등록된 인시던트 없음')}</div>`;
           return;
         }
-        const STATUS_COLOR = { open:'#ef4444', investigating:'#f59e0b', resolved:'#22c55e', closed:'#6b7280' };
+        const STATUS_COLOR = { open:'#f87171', investigating:'#fbbf24', resolved:'#4ade80', closed:'#6b7280' };
         el.innerHTML = `<table class=\"result-table\">
           <thead><tr><th>${tt('admin.dyn.col.title','제목')}</th><th>${tt('admin.dyn.col.status','상태')}</th><th>${tt('admin.dyn.col.host','호스트')}</th><th>${tt('admin.dyn.col.handler','담당자')}</th><th>${tt('admin.dyn.col.analyst','분석관')}</th><th>${tt('admin.dyn.col.created','등록일')}</th><th>${tt('admin.dyn.col.updated','업데이트')}</th></tr></thead>
           <tbody>${list.slice(0,100).map(i => `<tr>
@@ -2475,7 +2476,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <td><span style=\"background:rgba(56,189,248,.08);color:${STATUS_COLOR[i.status]||'#94a3b8'};padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">${escapeHtml((i.status||'').toUpperCase())}</span></td>
             <td>${escapeHtml(i.hostname||'-')}</td>
             <td>${escapeHtml(i.handler||'-')}</td>
-            <td style=\"color:#93c5fd\">${escapeHtml(i.analyst||'-')}</td>
+            <td style=\"color:#38bdf8\">${escapeHtml(i.analyst||'-')}</td>
             <td style=\"color:#64748b;font-size:12px\">${escapeHtml(formatTime(i.created_at))}</td>
             <td style=\"color:#64748b;font-size:12px\">${escapeHtml(formatTime(i.status_updated_at))}</td>
           </tr>`).join('')}</tbody></table>`;
@@ -2511,12 +2512,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <tbody>${flatRows.slice(0,150).map(v => {
             const act = v.action || {};
             const planTxt = act.plan_text ? `<div>${escapeHtml(act.plan_text.substring(0,80))}${act.plan_text.length>80?'…':''}</div><div style=\"color:#64748b;font-size:11px\">${tt('admin.dyn.due_prefix','기한 ')}${escapeHtml(act.plan_target_date||'-')} · ${escapeHtml(act.plan_updated_by||'-')}</div>` : `<span style=\"color:#64748b\">${tt('admin.dyn.unregistered','미등록')}</span>`;
-            const excTxt = act.exception_until ? `<div style=\"color:#fde68a\">~${escapeHtml(act.exception_until)}</div><div style=\"color:#64748b;font-size:11px\">${escapeHtml((act.exception_reason||'').substring(0,60))}</div>` : '<span style=\"color:#64748b\">-</span>';
+            const excTxt = act.exception_until ? `<div style=\"color:#fbbf24\">~${escapeHtml(act.exception_until)}</div><div style=\"color:#64748b;font-size:11px\">${escapeHtml((act.exception_reason||'').substring(0,60))}</div>` : '<span style=\"color:#64748b\">-</span>';
             return `<tr>
               <td><strong>${escapeHtml(v.hostname||'-')}</strong></td>
               <td style=\"font-family:ui-monospace\">${escapeHtml(v.cve||v.vuln_id||'-')}</td>
               <td style=\"color:#cbd5e1\">${escapeHtml(v.package_name||'-')}</td>
-              <td><strong style=\"color:${v.severity==='critical'?'#fca5a5':'#fbbf24'}\">${escapeHtml((v.severity||'').toUpperCase())}</strong></td>
+              <td><strong style=\"color:${v.severity==='critical'?'#f87171':'#fbbf24'}\">${escapeHtml((v.severity||'').toUpperCase())}</strong></td>
               <td style=\"color:#cbd5e1;font-size:12px\">${planTxt}</td>
               <td style=\"font-size:12px\">${excTxt}</td>
             </tr>`;
@@ -2563,7 +2564,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <thead><tr><th>${tt('admin.dyn.col.host','호스트')}</th><th>${tt('admin.dyn.col.target_date','목표일')}</th><th>${tt('admin.dyn.col.plan_content','계획 내용')}</th><th>${tt('admin.dyn.col.updated','업데이트')}</th></tr></thead>
           <tbody>${rows.slice(0,100).map(r => `<tr>
             <td><strong>${escapeHtml(r.hostname)}</strong></td>
-            <td style=\"color:#fde68a\">${escapeHtml(r.plan.target_date||'-')}</td>
+            <td style=\"color:#fbbf24\">${escapeHtml(r.plan.target_date||'-')}</td>
             <td style=\"color:#cbd5e1\">${escapeHtml((r.plan.text||'').substring(0,200))}${(r.plan.text||'').length>200?'…':''}</td>
             <td style=\"color:#64748b;font-size:12px\">${escapeHtml(formatTime(r.plan.updated_at)||'-')} · ${escapeHtml(r.plan.updated_by||'-')}</td>
           </tr>`).join('')}</tbody></table>`;
@@ -2608,7 +2609,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const badge = document.getElementById('admin_user_badge');
         if (badge && me.username) {
           const roleLabel = _adminRoleLabel(role);
-          badge.innerHTML = '<strong style="color:#38bdf8">' + me.username + '</strong> <span style="background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:6px;font-size:12px">' + roleLabel + '</span>';
+          badge.innerHTML = '<strong style="color:#38bdf8">' + me.username + '</strong> <span style="background:#334155;color:#38bdf8;padding:2px 8px;border-radius:6px;font-size:12px">' + roleLabel + '</span>';
         }
       } catch(e) { /* ignore */ }
     }
@@ -2683,13 +2684,13 @@ def render_user_dashboard_html(
     .metrics { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 16px; }
     .layout { display: grid; gap: 16px; }
     .stack { display: grid; gap: 16px; }
-    .card { background: linear-gradient(180deg, #101827 0%, #0f172a 100%); border: 1px solid #233046; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
+    .card { background: linear-gradient(180deg, #101827 0%, #0f172a 100%); border: 1px solid #1e293b; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
     .metric-card { cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
     .metric-card:hover { transform: translateY(-1px); border-color: #38bdf8; }
     .metric-card:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
     .metric-label { color: #94a3b8; font-size: 13px; margin-bottom: 8px; }
     .metric-value { font-size: 28px; font-weight: 800; }
-    .metric-sub { margin-top: 6px; color: #7dd3fc; font-size: 13px; }
+    .metric-sub { margin-top: 6px; color: #38bdf8; font-size: 13px; }
     .card h2 { margin: 0 0 12px; font-size: 18px; }
     .subtext { color: #94a3b8; font-size: 13px; margin-bottom: 12px; }
     .table-wrap { overflow: auto; }
@@ -2697,9 +2698,9 @@ def render_user_dashboard_html(
     th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #1f2937; vertical-align: top; }
     th { color: #94a3b8; font-weight: 600; }
     .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
-    .badge.online { background: rgba(34, 197, 94, 0.12); color: #86efac; }
-    .badge.offline { background: rgba(248, 113, 113, 0.12); color: #fca5a5; }
-    .badge.unknown { background: rgba(250, 204, 21, 0.12); color: #fde68a; }
+    .badge.online { background: rgba(34, 197, 94, 0.12); color: #4ade80; }
+    .badge.offline { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+    .badge.unknown { background: rgba(250, 204, 21, 0.12); color: #fbbf24; }
     .coverage { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
     .coverage-item { background: #0b1220; border: 1px solid #223148; border-radius: 14px; padding: 14px; }
     .coverage-item strong { display: block; font-size: 22px; margin-top: 8px; }
@@ -2723,28 +2724,28 @@ def render_user_dashboard_html(
     button { cursor: pointer; padding: 8px 16px; border-radius: 999px; border: 1px solid #334155; background: #1d4ed8; color: #fff; font-size: 14px; font-weight: 600; }
     button.secondary { background: #0f172a; color: #cfe3ff; }
     button.ghost { background: transparent; color: #94a3b8; }
-    .tabs-nav { display: flex; gap: 0; border-bottom: 1px solid #233046; margin-bottom: 20px; overflow-x: auto; }
+    .tabs-nav { display: flex; gap: 0; border-bottom: 1px solid #1e293b; margin-bottom: 20px; overflow-x: auto; }
     .tabs-nav button { background: none; border: none; border-bottom: 2px solid transparent; padding: 10px 22px; color: #94a3b8; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: -1px; border-radius: 0; white-space: nowrap; }
     .tabs-nav button.active { color: #38bdf8; border-bottom-color: #38bdf8; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
     .result-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-    .result-badge.wazuh { background: rgba(167,139,250,.15); color: #c4b5fd; }
-    .result-badge.zabbix { background: rgba(56,189,248,.15); color: #7dd3fc; }
+    .result-badge.wazuh { background: rgba(167,139,250,.15); color: #38bdf8; }
+    .result-badge.zabbix { background: rgba(56,189,248,.15); color: #38bdf8; }
     .result-badge.fleet { background: rgba(52,211,153,.15); color: #6ee7b7; }
-    .result-badge.trivy { background: rgba(251,146,60,.15); color: #fdba74; }
+    .result-badge.trivy { background: rgba(251,146,60,.15); color: #fbbf24; }
     .result-badge.hosts { background: rgba(148,163,184,.15); color: #cbd5e1; }
     /* ── NLQ FAB ── */
-    .nlq-fab { position: fixed; bottom: 88px; right: 20px; z-index: 1001; background: linear-gradient(135deg,#1d4ed8,#0ea5e9); color: #fff; border: none; border-radius: 999px; padding: 14px 20px; font-size: 14px; font-weight: 700; box-shadow: 0 6px 24px rgba(14,165,233,.45); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.15s, box-shadow 0.15s; }
+    .nlq-fab { position: fixed; bottom: 88px; right: 20px; z-index: 1001; background: linear-gradient(135deg,#1d4ed8,#38bdf8); color: #fff; border: none; border-radius: 999px; padding: 14px 20px; font-size: 14px; font-weight: 700; box-shadow: 0 6px 24px rgba(14,165,233,.45); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.15s, box-shadow 0.15s; }
     .nlq-fab:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(14,165,233,.55); }
     @media (min-width: 769px) { .nlq-fab { bottom: 32px; } }
     .nlq-dialog { width: min(640px, calc(100vw - 24px)); }
     .nlq-dialog-body { padding: 20px; }
     /* ── Logout button ── */
-    .logout-btn { background: rgba(239,68,68,.12); color: #fca5a5; border: 1px solid rgba(239,68,68,.3); border-radius: 999px; padding: 7px 16px; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; transition: background .15s; white-space: nowrap; }
+    .logout-btn { background: rgba(239,68,68,.12); color: #f87171; border: 1px solid rgba(239,68,68,.3); border-radius: 999px; padding: 7px 16px; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; transition: background .15s; white-space: nowrap; }
     .logout-btn:hover { background: rgba(239,68,68,.22); }
     /* ── Asset sub-tabs (scrollable on mobile) ── */
-    .asset-sub-nav { display: flex; gap: 0; border-bottom: 1px solid #233046; margin-bottom: 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .asset-sub-nav { display: flex; gap: 0; border-bottom: 1px solid #1e293b; margin-bottom: 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .asset-sub-nav button { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 20px; color: #94a3b8; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 0; margin-bottom: -1px; white-space: nowrap; }
     .asset-sub-nav button.active { color: #38bdf8; border-bottom-color: #38bdf8; }
     /* ── Asset search bar ── */
@@ -2796,7 +2797,7 @@ def render_user_dashboard_html(
         bottom: 0; left: 0; right: 0;
         z-index: 1000;
         background: #0f172a;
-        border-top: 1px solid #233046;
+        border-top: 1px solid #1e293b;
         padding: 0;
         box-shadow: 0 -4px 20px rgba(0,0,0,.4);
       }
@@ -2818,6 +2819,7 @@ def render_user_dashboard_html(
         transition: color 0.15s;
       }
       .bottom-nav button .bn-icon { font-size: 20px; line-height: 1; }
+      .bottom-nav button .bn-icon:empty { display: none; }
       .bottom-nav button.active { color: #38bdf8; border-top-color: #38bdf8; }
     }
     @media (max-width: 480px) {
@@ -2843,57 +2845,57 @@ def render_user_dashboard_html(
         </div>
       </div>
       <div class=\"top-actions\">
-        <button id=\"refresh_dashboard\" type=\"button\" data-i18n=\"dash.actions.refresh\">🔄 새로고침</button>
+        <button id=\"refresh_dashboard\" type=\"button\" data-i18n=\"dash.actions.refresh\">새로고침</button>
         <div class=\"account-wrap\" style=\"position:relative\">
-          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" style=\"background:#0f2035;border:1px solid #1e3a5f;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer\">👤 <span id=\"ui_user_badge\" data-i18n=\"dash.account.title\">계정</span> ▾</button>
-          <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0f2035;border:1px solid #1e3a5f;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
-            <button type=\"button\" onclick=\"openProfileModal()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.edit_profile\">👤 프로필 편집</button>
-            <button type=\"button\" onclick=\"shortcutMyServers()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.my_servers\">⭐ 내 서버</button>
-            <a id=\"ui_admin_console_link\" href=\"/admin\" style=\"display:none;width:100%;text-align:left;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;text-decoration:none\" data-i18n=\"dash.account.admin_console\">⚙️ 관리자 콘솔 ↗</a>
-            <div style=\"border-top:1px solid #1e3a5f;margin:10px 0\"></div>
+          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" style=\"background:#0f172a;border:1px solid #334155;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer\"><span id=\"ui_user_badge\" data-i18n=\"dash.account.title\">계정</span> ▾</button>
+          <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
+            <button type=\"button\" onclick=\"openProfileModal()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.edit_profile\">프로필 편집</button>
+            <button type=\"button\" onclick=\"shortcutMyServers()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.my_servers\">내 서버</button>
+            <a id=\"ui_admin_console_link\" href=\"/admin\" style=\"display:none;width:100%;text-align:left;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;text-decoration:none\" data-i18n=\"dash.account.admin_console\">관리자 콘솔 ↗</a>
+            <div style=\"border-top:1px solid #334155;margin:10px 0\"></div>
             <div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\" data-i18n=\"dash.account.language\">언어 / Language</div>
             __I18N_TOGGLE__
-            <div style=\"border-top:1px solid #1e3a5f;margin:10px 0\"></div>
-            <a href=\"/auth/logout\" class=\"logout-btn\" style=\"display:block;text-align:center\" data-i18n=\"dash.actions.logout\">🚪 로그아웃</a>
+            <div style=\"border-top:1px solid #334155;margin:10px 0\"></div>
+            <a href=\"/auth/logout\" class=\"logout-btn\" style=\"display:block;text-align:center\" data-i18n=\"dash.actions.logout\">로그아웃</a>
           </div>
         </div>
       </div>
     </section>
 
     <nav class=\"tabs-nav\">
-      <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\" data-i18n=\"dash.tab.dashboard\">📊 대시보드</button>
-      <button data-tab=\"triage\" onclick=\"switchTab('triage')\" data-i18n=\"dash.tab.triage\">🚨 Alert Triage</button>
-      <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\" data-i18n=\"dash.tab.incidents\">📋 인시던트</button>
-      <button data-tab=\"assets\" onclick=\"switchTab('assets')\" data-i18n=\"dash.tab.assets\">📡 자산 현황</button>
-      <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\" data-i18n=\"dash.tab.compliance\">✅ Compliance PDCA</button>
-      <button id=\"tab_btn_accounts\" data-tab=\"accounts\" onclick=\"switchTab('accounts')\" data-i18n=\"dash.tab.accounts\" style=\"display:none\">🔑 계정</button>
-      <button data-tab=\"guides\" onclick=\"switchTab('guides')\" data-i18n=\"dash.tab.guides\">📖 가이드 &amp; 기준</button>
+      <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\" data-i18n=\"dash.tab.dashboard\">대시보드</button>
+      <button data-tab=\"triage\" onclick=\"switchTab('triage')\" data-i18n=\"dash.tab.triage\">Alert Triage</button>
+      <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\" data-i18n=\"dash.tab.incidents\">인시던트</button>
+      <button data-tab=\"assets\" onclick=\"switchTab('assets')\" data-i18n=\"dash.tab.assets\">자산 현황</button>
+      <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\" data-i18n=\"dash.tab.compliance\">Compliance PDCA</button>
+      <button id=\"tab_btn_accounts\" data-tab=\"accounts\" onclick=\"switchTab('accounts')\" data-i18n=\"dash.tab.accounts\" style=\"display:none\">계정</button>
+      <button data-tab=\"guides\" onclick=\"switchTab('guides')\" data-i18n=\"dash.tab.guides\">가이드 &amp; 기준</button>
     </nav>
 
     <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
     <div class=\"tab-panel active\" id=\"tab_dashboard\">
       <div style=\"display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;\">
         <span style=\"font-size:11px;color:#64748b;margin-right:auto\" data-i18n=\"dash.panel.resize_hint\">↔ 패널 오른쪽-아래 모서리를 드래그해 크기를 조절할 수 있어요 (브라우저에 저장)</span>
-        <button id=\"panel_layout_reset\" class=\"secondary\" onclick=\"resetPanelLayout()\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"dash.panel.reset_layout\">↔️ 크기 초기화</button>
-        <button id=\"panel_edit_toggle\" class=\"secondary\" onclick=\"togglePanelEdit()\" data-i18n=\"dash.panel.edit\">🧩 패널 편집</button>
+        <button id=\"panel_layout_reset\" class=\"secondary\" onclick=\"resetPanelLayout()\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"dash.panel.reset_layout\">↔크기 초기화</button>
+        <button id=\"panel_edit_toggle\" class=\"secondary\" onclick=\"togglePanelEdit()\" data-i18n=\"dash.panel.edit\">패널 편집</button>
       </div>
       <div id=\"panel_edit_box\" class=\"card hidden\" style=\"margin-bottom:12px;\">
-        <div style=\"font-weight:600;color:#7dd3fc;margin-bottom:4px\" data-i18n=\"dash.panel.edit_title\">표시할 패널 선택</div>
+        <div style=\"font-weight:600;color:#38bdf8;margin-bottom:4px\" data-i18n=\"dash.panel.edit_title\">표시할 패널 선택</div>
         <div class=\"subtext\" data-i18n=\"dash.panel.edit_sub\">보고 싶은 항목만 켜세요. 변경은 자동 저장되어 다음 접속에도 유지됩니다.</div>
         <div style=\"margin-top:10px;font-size:12px;color:#94a3b8\" data-i18n=\"dash.panel.group.cards\">요약 카드</div>
         <div id=\"panel_edit_cards\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 12px\"></div>
         <div style=\"font-size:12px;color:#94a3b8\" data-i18n=\"dash.panel.group.sections\">패널</div>
         <div id=\"panel_edit_sections\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin-top:6px\"></div>
       </div>
-      <!-- 🛡️ 보안 요약 히어로 (Toss형: 보안 KPI + 위험 TOP 랭킹) — 보안 우선, 인프라는 아래 -->
-      <section class=\"card\" id=\"security_hero_section\" style=\"background:linear-gradient(135deg,#0b1220,#101a33);border:1px solid #1e3a5f\">
+      <!-- 보안 요약 히어로 (Toss형: 보안 KPI + 위험 TOP 랭킹) — 보안 우선, 인프라는 아래 -->
+      <section class=\"card\" id=\"security_hero_section\" style=\"background:linear-gradient(135deg,#0b1220,#101a33);border:1px solid #334155\">
         <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-          <h2 style=\"margin:0\" data-i18n=\"dash.hero.section\">🛡️ 지금 봐야 할 보안 현황</h2>
+          <h2 style=\"margin:0\" data-i18n=\"dash.hero.section\">지금 봐야 할 보안 현황</h2>
           <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" data-i18n=\"dash.hero.goto_risk\">위험 매트릭스 →</button>
         </div>
         <div id=\"security_hero_body\" style=\"margin-top:12px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
       </section>
-      <section class=\"metrics\" id=\"overview_cards\"><div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.overview_loading\">⏳ 요약 카드를 불러오는 중…</div></section>
+      <section class=\"metrics\" id=\"overview_cards\"><div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.overview_loading\">요약 카드를 불러오는 중…</div></section>
       <style>
         /* 패널 자유조절: flex-wrap + 네이티브 드래그 리사이즈. 반응형(좁으면 100%로 접힘). */
         #dash_grid { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
@@ -2909,50 +2911,50 @@ def render_user_dashboard_html(
         @media (max-width:640px){ #dash_grid > section { width:100%!important; resize:none; } }
       </style>
       <div id=\"dash_grid\">
-          <!-- 🖥️ 인프라 현황 (24h/12h 전환 + Zabbix/Wazuh 딥링크) -->
+          <!-- 인프라 현황 (24h/12h 전환 + Zabbix/Wazuh 딥링크) -->
           <section class=\"card\" id=\"infra_status_section\">
             <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-              <h2 style=\"margin:0\" data-i18n=\"dash.infra.title\">🖥️ 인프라 현황</h2>
-              <div style=\"display:flex;gap:4px;background:#0b1322;border:1px solid #1e293b;border-radius:8px;padding:2px\">
-                <button id=\"infra_win_24\" onclick=\"setInfraWindow('24h')\" style=\"padding:3px 10px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:#1e3a5f;color:#e2e8f0\">24h</button>
+              <h2 style=\"margin:0\" data-i18n=\"dash.infra.title\">인프라 현황</h2>
+              <div style=\"display:flex;gap:4px;background:#0b1220;border:1px solid #1e293b;border-radius:8px;padding:2px\">
+                <button id=\"infra_win_24\" onclick=\"setInfraWindow('24h')\" style=\"padding:3px 10px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:#334155;color:#e2e8f0\">24h</button>
                 <button id=\"infra_win_12\" onclick=\"setInfraWindow('12h')\" style=\"padding:3px 10px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:transparent;color:#94a3b8\">12h</button>
               </div>
             </div>
-            <div id=\"infra_status_body\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.status.loading\">⏳ 로딩 중…</span></div>
+            <div id=\"infra_status_body\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.status.loading\">로딩 중…</span></div>
           </section>
           <section class=\"card\" id=\"source_coverage_section\">
             <h2 data-i18n=\"dash.card.source_coverage\">Source Coverage</h2>
             <div class=\"subtext\" data-i18n=\"dash.card.source_coverage.sub\">운영자가 노출을 허용한 경우에만 source 상태를 표시합니다.</div>
-            <div class=\"coverage\" id=\"source_coverage\"><span class=\"empty\" data-i18n=\"dash.status.loading\">⏳ 로딩 중…</span></div>
+            <div class=\"coverage\" id=\"source_coverage\"><span class=\"empty\" data-i18n=\"dash.status.loading\">로딩 중…</span></div>
           </section>
 
           <section class=\"card\" id=\"latest_status_section\">
             <h2 data-i18n=\"dash.card.latest_status\">Latest Host Status</h2>
             <div class=\"subtext\" data-i18n=\"dash.card.latest_status.sub\">조치가 필요한 offline / unknown 호스트를 우선 확인합니다.</div>
-            <div class=\"table-wrap\" id=\"latest_status\"><span class=\"empty\" data-i18n=\"dash.status.loading\">⏳ 로딩 중…</span></div>
+            <div class=\"table-wrap\" id=\"latest_status\"><span class=\"empty\" data-i18n=\"dash.status.loading\">로딩 중…</span></div>
           </section>
 
           <section class=\"card\" id=\"risk_summary_section\">
             <h2 data-i18n=\"dash.card.risk_summary\">Risk Summary</h2>
             <div class=\"subtext\" data-i18n=\"dash.card.risk_summary.sub\">alert, 취약점, 상태를 기준으로 우선 대응 대상을 확인합니다.</div>
-            <div class=\"table-wrap\" id=\"risk_summary\"><span class=\"empty\" data-i18n=\"dash.status.loading\">⏳ 로딩 중…</span></div>
+            <div class=\"table-wrap\" id=\"risk_summary\"><span class=\"empty\" data-i18n=\"dash.status.loading\">로딩 중…</span></div>
           </section>
 
           <section class=\"card\" id=\"recent_activity_section\">
             <h2 data-i18n=\"dash.card.recent_activity\">Recent Activity</h2>
             <div class=\"subtext\" data-i18n=\"dash.card.recent_activity.sub\">운영자가 허용한 범위에서 최근 이벤트와 관측값을 보여줍니다.</div>
-            <div class=\"list\" id=\"recent_activity\"><span class=\"empty\" data-i18n=\"dash.status.loading\">⏳ 로딩 중…</span></div>
+            <div class=\"list\" id=\"recent_activity\"><span class=\"empty\" data-i18n=\"dash.status.loading\">로딩 중…</span></div>
           </section>
 
           <!-- NLQ section moved to floating button -->
       </div>
-      <div class=\"status-line\" id=\"dashboard_status\" data-i18n=\"dash.status.initializing\">⏳ 초기화 중…</div>
+      <div class=\"status-line\" id=\"dashboard_status\" data-i18n=\"dash.status.initializing\">초기화 중…</div>
     </div>
 
     <!-- ── Tab: Alert Triage ───────────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_triage\">
       <section class=\"card\">
-        <h2 data-i18n=\"dash.card.triage\">🚨 Alert Triage</h2>
+        <h2 data-i18n=\"dash.card.triage\">Alert Triage</h2>
         <div class=\"subtext\" data-i18n=\"dash.card.triage.sub\">최근 24h 경보 목록입니다. 상태를 클릭해 Triage 처리하세요.</div>
         <div class=\"table-wrap\" id=\"triage_table\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         <div style=\"margin-top:10px\"><button id=\"reload_triage\" class=\"secondary\" data-i18n=\"dash.btn.reload\">새로고침</button></div>
@@ -2962,7 +2964,7 @@ def render_user_dashboard_html(
     <!-- ── Tab: Incidents ─────────────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_incidents\">
       <section class=\"card\">
-        <h2 data-i18n=\"dash.card.incidents\">📋 인시던트 관리</h2>
+        <h2 data-i18n=\"dash.card.incidents\">인시던트 관리</h2>
         <div class=\"subtext\" data-i18n=\"dash.card.incidents.sub\">여러 경보를 하나의 인시던트로 묶고 조사 노트를 남깁니다.</div>
         <!-- 검색 + 날짜 필터 + CSV 다운로드 -->
         <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:#0f172a;border-radius:8px;border:1px solid #1e293b\">
@@ -2975,12 +2977,12 @@ def render_user_dashboard_html(
             <label style=\"color:#94a3b8;font-size:13px;white-space:nowrap\" data-i18n=\"dash.inc.date_to\">종료일</label>
             <input type=\"date\" id=\"inc_date_to\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:13px\" />
           </div>
-          <button id=\"inc_filter_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px\" data-i18n=\"dash.inc.filter_btn\">🔍 조회</button>
-          <button id=\"inc_csv_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px;background:#1d3a5f;color:#93c5fd\" data-i18n=\"dash.inc.csv_btn\">⬇️ CSV 다운로드</button>
+          <button id=\"inc_filter_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px\" data-i18n=\"dash.inc.filter_btn\">조회</button>
+          <button id=\"inc_csv_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px;background:#1d3a5f;color:#38bdf8\" data-i18n=\"dash.inc.csv_btn\">CSV 다운로드</button>
         </div>
         <div id=\"incidents_list\" class=\"list\" style=\"margin-bottom:14px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
-        <div style=\"background:#0c1827;border:1px solid #1e3a5f;border-radius:8px;padding:16px;margin-bottom:10px\">
-          <div style=\"font-size:13px;font-weight:600;color:#7dd3fc;margin-bottom:10px\" data-i18n=\"dash.inc.create_title\">➕ 새 인시던트 생성</div>
+        <div style=\"background:#0c1827;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:10px\">
+          <div style=\"font-size:13px;font-weight:600;color:#38bdf8;margin-bottom:10px\" data-i18n=\"dash.inc.create_title\">새 인시던트 생성</div>
           <div class=\"row\">
             <label for=\"inc_title\" data-i18n=\"dash.f.title\">제목</label>
             <input id=\"inc_title\" placeholder=\"예: 특정 서버 무단 접근 시도\" data-i18n-placeholder=\"dash.inc.title_ph\" />
@@ -3017,32 +3019,32 @@ def render_user_dashboard_html(
     <div class=\"tab-panel\" id=\"tab_assets\">
       <!-- Sub-nav -->
       <nav class=\"asset-sub-nav\">
-        <button class=\"active\" id=\"asset_tab_fleet\" onclick=\"switchAssetTab('fleet')\"><span data-i18n=\"dash.assets.tab.fleet\">🖥️ PC 자산 (Fleet)</span></button>
-        <button id=\"asset_tab_zabbix\" onclick=\"switchAssetTab('zabbix')\"><span data-i18n=\"dash.assets.tab.zabbix\">🖧 서버 자산 (Zabbix)</span></button>
-        <button id=\"asset_tab_trivy\" onclick=\"switchAssetTab('trivy')\"><span data-i18n=\"dash.assets.tab.trivy\">🔍 취약점 (Trivy)</span></button>
-        <button id=\"asset_tab_mine\" onclick=\"switchAssetTab('mine')\"><span data-i18n=\"dash.assets.tab.mine\">⭐ 내 서버</span></button>
+        <button class=\"active\" id=\"asset_tab_fleet\" onclick=\"switchAssetTab('fleet')\"><span data-i18n=\"dash.assets.tab.fleet\">PC 자산 (Fleet)</span></button>
+        <button id=\"asset_tab_zabbix\" onclick=\"switchAssetTab('zabbix')\"><span data-i18n=\"dash.assets.tab.zabbix\">서버 자산 (Zabbix)</span></button>
+        <button id=\"asset_tab_trivy\" onclick=\"switchAssetTab('trivy')\"><span data-i18n=\"dash.assets.tab.trivy\">취약점 (Trivy)</span></button>
+        <button id=\"asset_tab_mine\" onclick=\"switchAssetTab('mine')\"><span data-i18n=\"dash.assets.tab.mine\">내 서버</span></button>
       </nav>
 
       <!-- Fleet PC Section -->
       <div id=\"assets_fleet_section\">
         <div class=\"summary-grid-3\">
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.fleet_total\">전체 PC</div><div class=\"metric-value\" id=\"fleet_total\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.online\">온라인</div><div class=\"metric-value\" style=\"color:#86efac\" id=\"fleet_online\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.offline\">오프라인</div><div class=\"metric-value\" style=\"color:#fca5a5\" id=\"fleet_offline\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.online\">온라인</div><div class=\"metric-value\" style=\"color:#4ade80\" id=\"fleet_online\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.offline\">오프라인</div><div class=\"metric-value\" style=\"color:#f87171\" id=\"fleet_offline\">-</div></section>
         </div>
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
-            <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.fleet\">🖥️ PC 자산 목록 (Fleet)</h2>
+            <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.fleet\">PC 자산 목록 (Fleet)</h2>
             <div style=\"display:flex;gap:6px;\">
-              <button onclick=\"onDemandRefresh('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.assets.refresh\">🔄 새로고침</button>
-              <button onclick=\"downloadAssetsCSV('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.btn.csv\">📥 CSV 내보내기</button>
+              <button onclick=\"onDemandRefresh('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.assets.refresh\">새로고침</button>
+              <button onclick=\"downloadAssetsCSV('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.btn.csv\">CSV 내보내기</button>
             </div>
           </div>
           <div class=\"asset-search-bar\">
             <input type=\"text\" id=\"fleet_search_hostname\" placeholder=\"호스트명 검색…\" data-i18n-placeholder=\"dash.assets.host_search_ph\" oninput=\"filterAssetTable('fleet')\" />
             <select id=\"fleet_search_status\" onchange=\"filterAssetTable('fleet')\"><option value=\"\" data-i18n=\"dash.assets.all_status\">전체 상태</option><option value=\"online\" data-i18n=\"dash.assets.online\">온라인</option><option value=\"offline\" data-i18n=\"dash.assets.offline\">오프라인</option><option value=\"unknown\" data-i18n=\"dash.assets.unknown\">알 수 없음</option></select>
             <select id=\"fleet_search_team\" onchange=\"filterAssetTable('fleet')\"><option value=\"\" data-i18n=\"dash.assets.all_team\">전체 팀</option></select>
-            <label style=\"display:inline-flex;align-items:center;gap:5px;color:#cbd5e1;font-size:12px;cursor:pointer;white-space:nowrap\"><input type=\"checkbox\" id=\"fleet_search_mine\" onchange=\"filterAssetTable('fleet')\" /> <span data-i18n=\"dash.assets.only_mine\">⭐ 내 자산만</span></label>
+            <label style=\"display:inline-flex;align-items:center;gap:5px;color:#cbd5e1;font-size:12px;cursor:pointer;white-space:nowrap\"><input type=\"checkbox\" id=\"fleet_search_mine\" onchange=\"filterAssetTable('fleet')\" /> <span data-i18n=\"dash.assets.only_mine\">내 자산만</span></label>
             <span class=\"asset-search-count\" id=\"fleet_search_count\"></span>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.assets.fleet_sub\">Fleet에서 관리되는 PC 엔드포인트 현황입니다.</div>
@@ -3054,15 +3056,15 @@ def render_user_dashboard_html(
       <div id=\"assets_zabbix_section\" class=\"hidden\">
         <div class=\"summary-grid-3\">
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.zabbix_total\">전체 서버</div><div class=\"metric-value\" id=\"zabbix_total\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.online\">온라인</div><div class=\"metric-value\" style=\"color:#86efac\" id=\"zabbix_online\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.offline\">오프라인</div><div class=\"metric-value\" style=\"color:#fca5a5\" id=\"zabbix_offline\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.online\">온라인</div><div class=\"metric-value\" style=\"color:#4ade80\" id=\"zabbix_online\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.offline\">오프라인</div><div class=\"metric-value\" style=\"color:#f87171\" id=\"zabbix_offline\">-</div></section>
         </div>
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
-            <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.zabbix\">🖧 서버 자산 목록 (Zabbix)</h2>
+            <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.zabbix\">서버 자산 목록 (Zabbix)</h2>
             <div style=\"display:flex;gap:6px;\">
-              <button onclick=\"onDemandRefresh('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.assets.refresh\">🔄 새로고침</button>
-              <button onclick=\"downloadAssetsCSV('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.btn.csv\">📥 CSV 내보내기</button>
+              <button onclick=\"onDemandRefresh('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.assets.refresh\">새로고침</button>
+              <button onclick=\"downloadAssetsCSV('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.btn.csv\">CSV 내보내기</button>
             </div>
           </div>
           <div class=\"asset-search-bar\">
@@ -3070,7 +3072,7 @@ def render_user_dashboard_html(
             <select id=\"zabbix_search_category\" onchange=\"filterAssetTable('zabbix')\"><option value=\"\" data-i18n=\"dash.assets.all_category\">전체 분류</option></select>
             <select id=\"zabbix_search_status\" onchange=\"filterAssetTable('zabbix')\"><option value=\"\" data-i18n=\"dash.assets.all_status\">전체 상태</option><option value=\"online\" data-i18n=\"dash.assets.online\">온라인</option><option value=\"offline\" data-i18n=\"dash.assets.offline\">오프라인</option><option value=\"unknown\" data-i18n=\"dash.assets.unknown\">알 수 없음</option></select>
             <select id=\"zabbix_search_team\" onchange=\"filterAssetTable('zabbix')\"><option value=\"\" data-i18n=\"dash.assets.all_team\">전체 팀</option></select>
-            <label style=\"display:inline-flex;align-items:center;gap:5px;color:#cbd5e1;font-size:12px;cursor:pointer;white-space:nowrap\"><input type=\"checkbox\" id=\"zabbix_search_mine\" onchange=\"filterAssetTable('zabbix')\" /> <span data-i18n=\"dash.assets.only_mine\">⭐ 내 자산만</span></label>
+            <label style=\"display:inline-flex;align-items:center;gap:5px;color:#cbd5e1;font-size:12px;cursor:pointer;white-space:nowrap\"><input type=\"checkbox\" id=\"zabbix_search_mine\" onchange=\"filterAssetTable('zabbix')\" /> <span data-i18n=\"dash.assets.only_mine\">내 자산만</span></label>
             <span class=\"asset-search-count\" id=\"zabbix_search_count\"></span>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.assets.zabbix_sub\">Zabbix에서 모니터링 중인 서버 현황과 최근 메트릭입니다.</div>
@@ -3083,22 +3085,22 @@ def render_user_dashboard_html(
         <div class=\"summary-grid-4\">
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.trivy_affected\">영향받는 호스트</div><div class=\"metric-value\" id=\"trivy_affected_hosts\">-</div></section>
           <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.trivy_total\">전체 취약점</div><div class=\"metric-value\" id=\"trivy_total_vulns\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">Critical</div><div class=\"metric-value\" style=\"color:#fca5a5\" id=\"trivy_critical\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">High</div><div class=\"metric-value\" style=\"color:#fdba74\" id=\"trivy_high\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">Critical</div><div class=\"metric-value\" style=\"color:#f87171\" id=\"trivy_critical\">-</div></section>
+          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">High</div><div class=\"metric-value\" style=\"color:#fbbf24\" id=\"trivy_high\">-</div></section>
         </div>
-        <!-- 🎯 증적 공백 / 오늘의 작업 큐 (admin·security 전용) -->
+        <!-- 증적 공백 / 오늘의 작업 큐 (admin·security 전용) -->
         <section class=\"card\" id=\"evidence_gap_card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-            <h2 style=\"margin:0\" data-i18n=\"dash.gap.title\">🎯 오늘의 작업 큐 (증적 공백)</h2>
+            <h2 style=\"margin:0\" data-i18n=\"dash.gap.title\">오늘의 작업 큐 (증적 공백)</h2>
             <span id=\"evidence_gap_ts\" style=\"font-size:12px;color:#94a3b8\"></span>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.gap.sub\">증적으로 이어지지 않은 미조치 항목입니다. 타일을 클릭하면 해당 탭으로 이동합니다.</div>
           <div id=\"evidence_gap_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
-        <!-- 🎯 위험성 평가 매트릭스 (R-4) -->
+        <!-- 위험성 평가 매트릭스 (R-4) -->
         <section class=\"card\" id=\"risk_matrix_card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-            <h2 style=\"margin:0\" data-i18n=\"dash.risk.matrix_title\">🎯 위험성 평가 매트릭스</h2>
+            <h2 style=\"margin:0\" data-i18n=\"dash.risk.matrix_title\">위험성 평가 매트릭스</h2>
             <div style=\"display:flex;align-items:center;gap:10px\">
               <span id=\"risk_matrix_assessed\" style=\"font-size:12px;color:#94a3b8\"></span>
               <button id=\"risk_matrix_toggle\" onclick=\"toggleRiskMatrix()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" data-i18n=\"dash.risk.collapse_show\">▼ 펼치기</button>
@@ -3110,8 +3112,8 @@ def render_user_dashboard_html(
         </section>
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
-            <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.trivy\">🔍 취약점 현황 (Trivy)</h2>
-            <button onclick=\"downloadAssetsCSV('trivy')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.btn.csv\">📥 CSV 내보내기</button>
+            <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.trivy\">취약점 현황 (Trivy)</h2>
+            <button onclick=\"downloadAssetsCSV('trivy')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.btn.csv\">CSV 내보내기</button>
           </div>
           <div class=\"asset-search-bar\" style=\"flex-wrap:wrap;\">
             <input type=\"text\" id=\"trivy_search_hostname\" placeholder=\"호스트명 검색…\" data-i18n-placeholder=\"dash.assets.host_search_ph\" oninput=\"filterAssetTable('trivy')\" />
@@ -3131,7 +3133,7 @@ def render_user_dashboard_html(
       <div id=\"assets_mine_section\" class=\"hidden\">
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
-            <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.mine\">⭐ 내 담당 서버</h2>
+            <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.mine\">내 담당 서버</h2>
             <div style=\"display:flex;align-items:center;gap:8px\">
               <label style=\"color:#94a3b8;font-size:13px;white-space:nowrap\" data-i18n=\"dash.assets.mine.groupby\">그룹 기준</label>
               <select id=\"mine_group_by\" onchange=\"renderMyServers()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:4px 8px;font-size:13px\">
@@ -3154,47 +3156,47 @@ def render_user_dashboard_html(
     <!-- ── Tab: Compliance PDCA ──────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_compliance\">
       <section class=\"card\">
-        <h2 data-i18n=\"dash.card.compliance\">✅ Compliance PDCA 대시보드</h2>
+        <h2 data-i18n=\"dash.card.compliance\">Compliance PDCA 대시보드</h2>
         <div class=\"subtext\" data-i18n=\"dash.compliance.sub_short\">ISMS-P / ISO 27001 통제 점검을 PDCA 관점으로 요약합니다. 지금 할 일(미조치·기한초과)부터 처리하세요.</div>
         <details style=\"margin-top:8px\">
-          <summary style=\"cursor:pointer;color:#7dd3fc;font-size:12px\" data-i18n=\"dash.pdca.criteria\">ⓘ 집계 기준 자세히</summary>
-          <div class=\"subtext\" style=\"margin-top:6px\" data-i18n-html=\"dash.compliance.sub\">※ 상단 카드의 <strong>📋 전체 점검 / Pass / Fail / Warning / Pass Rate</strong>는 <strong>통제 점검(control_checks)</strong> 결과만 집계합니다. <strong>🔧 미조치 합계</strong>와 <strong>🔴 기한초과</strong>는 통제 점검 + Trivy 취약점(critical/high) + Alert(critical/high, 7일) 미조치 항목을 통합 집계합니다.</div>
+          <summary style=\"cursor:pointer;color:#38bdf8;font-size:12px\" data-i18n=\"dash.pdca.criteria\">집계 기준 자세히</summary>
+          <div class=\"subtext\" style=\"margin-top:6px\" data-i18n-html=\"dash.compliance.sub\">※ 상단 카드의 <strong>전체 점검 / Pass / Fail / Warning / Pass Rate</strong>는 <strong>통제 점검(control_checks)</strong> 결과만 집계합니다. <strong>미조치 합계</strong>와 <strong>기한초과</strong>는 통제 점검 + Trivy 취약점(critical/high) + Alert(critical/high, 7일) 미조치 항목을 통합 집계합니다.</div>
         </details>
       </section>
 
       <!-- PDCA Summary Cards -->
       <section class=\"metrics\" id=\"pdca_cards\">
-        <div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.pdca_loading\">⏳ PDCA 데이터를 불러오는 중…</div>
+        <div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.pdca_loading\">PDCA 데이터를 불러오는 중…</div>
       </section>
 
       <!-- 지금 할 일: 미조치 / 기한초과 (항상 표시, 최우선) -->
       <section class=\"card\">
         <div style=\"display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap\">
-          <h2 style=\"margin:0\" data-i18n=\"dash.pdca.pending_title\">⚠️ 미조치 / 기한 초과 항목</h2>
-          <a id=\"pdca_pending_csv_btn\" href=\"/compliance/pdca/pending.csv\" download style=\"background:#0c2a4a;border:1px solid #1e3a5f;color:#7dd3fc;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer\">📥 CSV</a>
+          <h2 style=\"margin:0\" data-i18n=\"dash.pdca.pending_title\">미조치 / 기한 초과 항목</h2>
+          <a id=\"pdca_pending_csv_btn\" href=\"/compliance/pdca/pending.csv\" download style=\"background:#0f172a;border:1px solid #334155;color:#38bdf8;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer\">CSV</a>
         </div>
-        <div class=\"subtext\" data-i18n=\"dash.pdca.pending_sub\">fail 또는 warning 상태인 통제 항목입니다. 기한 초과는 🔴로 표시됩니다.</div>
+        <div class=\"subtext\" data-i18n=\"dash.pdca.pending_sub\">fail 또는 warning 상태인 통제 항목입니다. 기한 초과는 로 표시됩니다.</div>
         <div id=\"pdca_pending_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
       </section>
 
       <!-- 상세 분석 (기본 접힘 — 처음 보는 담당자에겐 과부하라 뒤로) -->
       <details class=\"card\" style=\"padding:0\">
-        <summary style=\"cursor:pointer;padding:16px 18px;font-weight:700;color:#e2e8f0;font-size:15px\" data-i18n=\"dash.pdca.detail_toggle\">📊 상세 분석 — 통제 카탈로그 · 통제 상태 · 카테고리 · PDCA Cycle (펼치기)</summary>
-        <!-- 📚 통제 카탈로그 트리 (ISMS-P 101 × ISO, admin·security 전용) — 이행 상태 편집 -->
+        <summary style=\"cursor:pointer;padding:16px 18px;font-weight:700;color:#e2e8f0;font-size:15px\" data-i18n=\"dash.pdca.detail_toggle\">상세 분석 — 통제 카탈로그 · 통제 상태 · 카테고리 · PDCA Cycle (펼치기)</summary>
+        <!-- 통제 카탈로그 트리 (ISMS-P 101 × ISO, admin·security 전용) — 이행 상태 편집 -->
         <section class=\"card\" id=\"control_tree_card\" style=\"margin:0 16px 12px\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-            <h2 style=\"margin:0\" data-i18n=\"dash.ctl.title\">📚 통제 카탈로그 (ISMS-P × ISO 27001)</h2>
+            <h2 style=\"margin:0\" data-i18n=\"dash.ctl.title\">통제 카탈로그 (ISMS-P × ISO 27001)</h2>
             <div style=\"display:flex;align-items:center;gap:10px;flex-wrap:wrap\">
               <span id=\"control_tree_coverage\" style=\"font-size:12px;color:#94a3b8\"></span>
-              <a href=\"/controls/evidence-bundle.zip\" download style=\"background:#0c2a4a;border:1px solid #1e3a5f;color:#7dd3fc;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none\" data-i18n=\"dash.ctl.zip\">📦 전체 증적 ZIP</a>
+              <a href=\"/controls/evidence-bundle.zip\" download style=\"background:#0f172a;border:1px solid #334155;color:#38bdf8;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none\" data-i18n=\"dash.ctl.zip\">전체 증적 ZIP</a>
             </div>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.ctl.sub_compliance\">ISMS-P 101개 인증기준 트리. 항목을 클릭하면 이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 편집할 수 있고, 재시작 후에도 유지됩니다.</div>
           <div id=\"ctl_admin_bar\" style=\"display:none;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0\">
-            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openControlEditor()\" data-i18n=\"dash.ctl.add\">➕ 통제 추가</button>
-            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openNlpImport()\" data-i18n=\"dash.ctl.nlp\">📥 법령 텍스트 임포트(NLP)</button>
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openControlEditor()\" data-i18n=\"dash.ctl.add\">통제 추가</button>
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openNlpImport()\" data-i18n=\"dash.ctl.nlp\">법령 텍스트 임포트(NLP)</button>
             <span style=\"width:1px;height:20px;background:#334155\"></span>
-            <span style=\"font-size:12px;color:#94a3b8\" data-i18n=\"dash.ctl.snap_sched\">📸 정기 증적 스냅샷</span>
+            <span style=\"font-size:12px;color:#94a3b8\" data-i18n=\"dash.ctl.snap_sched\">정기 증적 스냅샷</span>
             <select id=\"snap_schedule\" onchange=\"saveSnapshotConfig()\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:12px\">
               <option value=\"off\" data-i18n=\"dash.ctl.snap_off\">끔</option>
               <option value=\"daily\" data-i18n=\"dash.ctl.snap_daily\">매일</option>
@@ -3205,27 +3207,27 @@ def render_user_dashboard_html(
               <option value=\"mapped\" data-i18n=\"dash.ctl.snap_mapped\">증적 있는 통제만</option>
               <option value=\"all\" data-i18n=\"dash.ctl.snap_all\">전 통제</option>
             </select>
-            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"runBulkSnapshot()\" data-i18n=\"dash.ctl.snap_now\">⚡ 지금 일괄 스냅샷</button>
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"runBulkSnapshot()\" data-i18n=\"dash.ctl.snap_now\">지금 일괄 스냅샷</button>
             <span id=\"snap_msg\" style=\"font-size:11px;color:#64748b\"></span>
           </div>
-          <div id=\"ctl_editor\" style=\"display:none;margin:8px 0;padding:12px;background:#0f172a;border:1px solid #233046;border-radius:10px\"></div>
-          <div id=\"ctl_nlp\" style=\"display:none;margin:8px 0;padding:12px;background:#0f172a;border:1px solid #233046;border-radius:10px\"></div>
+          <div id=\"ctl_editor\" style=\"display:none;margin:8px 0;padding:12px;background:#0f172a;border:1px solid #1e293b;border-radius:10px\"></div>
+          <div id=\"ctl_nlp\" style=\"display:none;margin:8px 0;padding:12px;background:#0f172a;border:1px solid #1e293b;border-radius:10px\"></div>
           <div id=\"control_tree_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
         <div class=\"layout\" style=\"padding:0 16px 16px\">
           <div class=\"stack\">
             <section class=\"card\">
-              <h2 data-i18n=\"dash.pdca.status_title\">📊 통제 항목 상태</h2>
+              <h2 data-i18n=\"dash.pdca.status_title\">통제 항목 상태</h2>
               <div id=\"pdca_status_chart\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin-top:12px\"></div>
             </section>
             <section class=\"card\">
-              <h2 data-i18n=\"dash.pdca.category_title\">📈 카테고리별 현황</h2>
+              <h2 data-i18n=\"dash.pdca.category_title\">카테고리별 현황</h2>
               <div id=\"pdca_category_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
             </section>
           </div>
           <div class=\"stack\">
             <section class=\"card\">
-              <h2>🔄 PDCA Cycle</h2>
+              <h2>PDCA Cycle</h2>
               <div id=\"pdca_cycle_chart\" style=\"margin-top:12px\"></div>
             </section>
           </div>
@@ -3234,7 +3236,7 @@ def render_user_dashboard_html(
 
       <!-- ── 증적 리포트 다운로드 ────────────────────────────────────── -->
       <section class=\"card\" style=\"margin-top:20px\">
-        <h2 data-i18n=\"dash.card.reports\">📥 감사 증적 리포트 다운로드</h2>
+        <h2 data-i18n=\"dash.card.reports\">감사 증적 리포트 다운로드</h2>
         <div class=\"subtext\" data-i18n=\"dash.card.reports.sub\">ISMS-P / ISO 27001 감사 증적으로 사용할 수 있는 리포트를 CSV로 다운로드합니다. 미리보기를 통해 CSV의 컬럼 구성을 먼저 확인할 수 있습니다.</div>
         <div id=\"report_download_area\" style=\"margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px\">
         </div>
@@ -3242,10 +3244,10 @@ def render_user_dashboard_html(
 
       <!-- ── 교차 검증 (Cross-verification) ─────────────────────────── -->
       <section class=\"card\" style=\"margin-top:20px\">
-        <h2 data-i18n=\"dash.card.crosscheck\">🔀 소스 간 교차 검증</h2>
+        <h2 data-i18n=\"dash.card.crosscheck\">소스 간 교차 검증</h2>
         <div class=\"subtext\" data-i18n=\"dash.card.crosscheck.sub\">서로 다른 수집 소스의 데이터를 교차 비교하여 누락·불일치를 확인합니다.</div>
         <div id=\"crosscheck_area\" style=\"margin-top:16px\">
-          <div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.crosscheck_loading\">⏳ 교차 검증 데이터를 불러오는 중…</div>
+          <div class=\"empty\" style=\"padding:16px;color:#64748b\" data-i18n=\"dash.status.crosscheck_loading\">교차 검증 데이터를 불러오는 중…</div>
         </div>
       </section>
     </div>
@@ -3254,10 +3256,10 @@ def render_user_dashboard_html(
     <div class=\"tab-panel\" id=\"tab_accounts\">
       <section class=\"card\">
         <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-          <h2 style=\"margin:0\" data-i18n=\"dash.acc.title\">🔑 계정 거버넌스 (접근권한 검토)</h2>
+          <h2 style=\"margin:0\" data-i18n=\"dash.acc.title\">계정 거버넌스 (접근권한 검토)</h2>
           <div style=\"display:flex;gap:8px;align-items:center\">
             <span id=\"acc_summary\" style=\"font-size:12px;color:#94a3b8\"></span>
-            <a href=\"/accounts/overview.csv\" download class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px;text-decoration:none\" data-i18n=\"dash.acc.csv\">📥 CSV</a>
+            <a href=\"/accounts/overview.csv\" download class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px;text-decoration:none\" data-i18n=\"dash.acc.csv\">CSV</a>
           </div>
         </div>
         <div class=\"subtext\" data-i18n=\"dash.acc.sub\">서버·PC 로컬 계정(osquery) × LDAP 디렉터리 × 승인 대장을 대조해 이상 계정을 찾습니다. ISMS-P 2.5.1·2.5.5·2.5.6 접근권한 검토 증적. osquery push: POST /ingest/accounts</div>
@@ -3278,7 +3280,7 @@ def render_user_dashboard_html(
 
       <div class=\"layout\">
         <section class=\"card\">
-          <h2 data-i18n=\"dash.acc.approve_title\">✅ 승인 대장 (허용 계정 · sudo)</h2>
+          <h2 data-i18n=\"dash.acc.approve_title\">승인 대장 (허용 계정 · sudo)</h2>
           <div class=\"subtext\" data-i18n=\"dash.acc.approve_sub\">여기에 등록된 계정/sudo는 이상으로 잡지 않습니다. 예외 승인 근거 자체가 증적입니다.</div>
           <div style=\"display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0\">
             <input id=\"acc_appr_user\" placeholder=\"username\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 10px;font-size:13px;width:120px\" />
@@ -3291,8 +3293,8 @@ def render_user_dashboard_html(
         </section>
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-            <h2 style=\"margin:0\" data-i18n=\"dash.acc.ip_title\">🌐 IP 리스트</h2>
-            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"exportIpCsv()\" data-i18n=\"dash.acc.ip_csv\">📥 선별 CSV</button>
+            <h2 style=\"margin:0\" data-i18n=\"dash.acc.ip_title\">IP 리스트</h2>
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"exportIpCsv()\" data-i18n=\"dash.acc.ip_csv\">선별 CSV</button>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.acc.ip_sub\">팀·용도로 IP를 선별해 CSV로 뽑을 수 있습니다.</div>
           <div style=\"display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0\">
@@ -3308,7 +3310,7 @@ def render_user_dashboard_html(
 
     <!-- ── Tab: 가이드 & 기준 ────────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_guides\">
-      <div id=\"guide_sub_tabs\" style=\"display:flex;gap:0;border-bottom:1px solid #233046;margin-bottom:20px;flex-wrap:wrap;\"></div>
+      <div id=\"guide_sub_tabs\" style=\"display:flex;gap:0;border-bottom:1px solid #1e293b;margin-bottom:20px;flex-wrap:wrap;\"></div>
       <section class=\"card\" style=\"padding:0\">
         <div style=\"display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0;\">
           <h2 id=\"guide_content_title\" style=\"margin:0;font-size:16px\"></h2>
@@ -3361,9 +3363,9 @@ def render_user_dashboard_html(
         <div id=\"triage_modal_alert_info\" style=\"margin-bottom:12px\"></div>
         <div class=\"row\"><label data-i18n=\"dash.f.status\">상태</label>
           <select id=\"triage_modal_status\">
-            <option value=\"pending\" data-i18n=\"dash.opt.triage_pending\">🔴 미확인 (Pending)</option>
-            <option value=\"reviewing\" data-i18n=\"dash.opt.triage_reviewing\">🟡 검토중 (Reviewing)</option>
-            <option value=\"resolved\" data-i18n=\"dash.opt.triage_resolved\">🟢 조치예정/완료 (Resolved)</option>
+            <option value=\"pending\" data-i18n=\"dash.opt.triage_pending\">미확인 (Pending)</option>
+            <option value=\"reviewing\" data-i18n=\"dash.opt.triage_reviewing\">검토중 (Reviewing)</option>
+            <option value=\"resolved\" data-i18n=\"dash.opt.triage_resolved\">조치예정/완료 (Resolved)</option>
           </select>
         </div>
         <div class=\"row\"><label><span data-i18n=\"dash.f.analyst\">담당자</span> <span style=\"color:#64748b;font-size:11px\" data-i18n=\"dash.modal.analyst_default_hint\">(서버 담당자 기본)</span></label><input id=\"triage_modal_analyst\" placeholder=\"예: alice\" data-i18n-placeholder=\"dash.ph.alice\" /></div>
@@ -3375,7 +3377,7 @@ def render_user_dashboard_html(
         </div>
         <div class=\"status-line\" id=\"triage_modal_status_line\"></div>
         <hr style=\"border-color:#334155;margin:12px 0\" />
-        <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#7dd3fc\" data-i18n=\"dash.modal.history_title\">📋 상태 변경 히스토리</div>
+        <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#38bdf8\" data-i18n=\"dash.modal.history_title\">상태 변경 히스토리</div>
         <div id=\"triage_modal_history\" style=\"max-height:200px;overflow-y:auto\"><div style=\"color:#64748b;font-size:13px\" data-i18n=\"dash.modal.no_history\">변경 이력 없음</div></div>
       </div>
     </div>
@@ -3402,10 +3404,10 @@ def render_user_dashboard_html(
         <div class=\"row\"><label data-i18n=\"dash.f.changed_by\">변경자(작성)</label><input id=\"incident_modal_status_analyst\" placeholder=\"예: alice (미입력 시 로그인 사용자)\" data-i18n-placeholder=\"dash.ph.alice_login\" /></div>
         <button id=\"incident_modal_update_status\" style=\"margin-bottom:12px\" data-i18n=\"dash.f.save_change\">변경 저장</button>
         <hr style=\"border-color:#334155;margin:12px 0\" />
-        <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#7dd3fc\" data-i18n=\"dash.modal.history_title\">📋 상태 변경 히스토리</div>
+        <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#38bdf8\" data-i18n=\"dash.modal.history_title\">상태 변경 히스토리</div>
         <div id=\"incident_modal_history\" style=\"margin-bottom:12px\"></div>
         <hr style=\"border-color:#334155;margin:12px 0\" />
-        <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#a3e635\" data-i18n=\"dash.modal.notes_title\">📝 조사 노트</div>
+        <div style=\"margin-bottom:8px;font-size:13px;font-weight:600;color:#4ade80\" data-i18n=\"dash.modal.notes_title\">조사 노트</div>
         <div id=\"incident_modal_notes\" style=\"margin-bottom:12px\"></div>
         <div class=\"row\"><label data-i18n=\"dash.f.note_content\">노트 내용</label><textarea id=\"incident_modal_note_text\" style=\"min-height:72px\"></textarea></div>
         <div class=\"row\"><label data-i18n=\"dash.f.author\">작성자</label><input id=\"incident_modal_analyst\" placeholder=\"예: alice\" data-i18n-placeholder=\"dash.ph.alice\" /></div>
@@ -3419,8 +3421,8 @@ def render_user_dashboard_html(
   <div id=\"plan_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:28px 32px;width:500px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
-        <h3 id=\"plan_modal_title\" style=\"color:#a3e635;margin:0\" data-i18n=\"dash.modal.action_plan\">조치 계획</h3>
-        <button onclick=\"closePlanModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        <h3 id=\"plan_modal_title\" style=\"color:#4ade80;margin:0\" data-i18n=\"dash.modal.action_plan\">조치 계획</h3>
+        <button onclick=\"closePlanModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div style=\"display:flex;flex-direction:column;gap:12px\">
         <div><label style=\"color:#94a3b8;font-size:13px\" data-i18n=\"dash.f.plan_content\">조치 계획 내용</label>
@@ -3435,7 +3437,7 @@ def render_user_dashboard_html(
           </div>
         </div>
         <div style=\"display:flex;gap:10px;justify-content:flex-end;margin-top:4px\">
-          <button id=\"plan_modal_save\" style=\"background:#16a34a;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\" data-i18n=\"dash.f.save\">저장</button>
+          <button id=\"plan_modal_save\" style=\"background:#4ade80;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\" data-i18n=\"dash.f.save\">저장</button>
           <button onclick=\"closePlanModal()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\" data-i18n=\"dash.f.cancel\">취소</button>
         </div>
       </div>
@@ -3447,7 +3449,7 @@ def render_user_dashboard_html(
     <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:28px 32px;width:440px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
         <h3 id=\"profile_modal_title\" style=\"color:#38bdf8;margin:0\" data-i18n=\"dash.profile.title\">내 프로필 편집</h3>
-        <button onclick=\"closeProfileModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        <button onclick=\"closeProfileModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div style=\"display:flex;flex-direction:column;gap:12px\">
         <div><label style=\"color:#94a3b8;font-size:13px\" data-i18n=\"dash.profile.display_name\">이름</label>
@@ -3458,7 +3460,7 @@ def render_user_dashboard_html(
         </div>
         <div><label style=\"color:#94a3b8;font-size:13px\" data-i18n=\"dash.profile.assigned_servers\">담당 서버 (호스트명)</label>
           <textarea id=\"profile_assigned_servers\" rows=\"4\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"한 줄에 하나씩 또는 쉼표로 구분\" data-i18n-placeholder=\"dash.profile.assigned_servers_ph\"></textarea>
-          <span style=\"color:#64748b;font-size:11px\" data-i18n=\"dash.profile.assigned_servers_hint\">⭐ 내 서버 탭에서 이 호스트만 모아 볼 수 있습니다.</span>
+          <span style=\"color:#64748b;font-size:11px\" data-i18n=\"dash.profile.assigned_servers_hint\">내 서버 탭에서 이 호스트만 모아 볼 수 있습니다.</span>
         </div>
         <div id=\"profile_modal_status\" style=\"font-size:13px;color:#94a3b8;\"></div>
         <div style=\"display:flex;gap:10px;justify-content:flex-end;margin-top:4px\">
@@ -3473,8 +3475,8 @@ def render_user_dashboard_html(
   <div id=\"owner_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:28px 32px;width:440px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
-        <h3 id=\"owner_modal_title\" style=\"color:#a3e635;margin:0\" data-i18n=\"dash.modal.edit_owner_title\">담당자/카테고리 수정</h3>
-        <button onclick=\"closeOwnerModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        <h3 id=\"owner_modal_title\" style=\"color:#4ade80;margin:0\" data-i18n=\"dash.modal.edit_owner_title\">담당자/카테고리 수정</h3>
+        <button onclick=\"closeOwnerModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div style=\"display:flex;flex-direction:column;gap:12px\">
         <div><label style=\"color:#94a3b8;font-size:13px\" data-i18n=\"dash.f.hostname\">호스트명</label>
@@ -3517,8 +3519,8 @@ def render_user_dashboard_html(
   <div id=\"vuln_list_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px 28px;width:980px;max-width:96vw;max-height:88vh;overflow:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:14px\">
-        <h3 id=\"vuln_list_modal_title\" style=\"color:#fdba74;margin:0\" data-i18n=\"dash.modal.vuln_detail_title\">취약점 상세</h3>
-        <button onclick=\"closeVulnListModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        <h3 id=\"vuln_list_modal_title\" style=\"color:#fbbf24;margin:0\" data-i18n=\"dash.modal.vuln_detail_title\">취약점 상세</h3>
+        <button onclick=\"closeVulnListModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div id=\"vuln_list_modal_subtitle\" style=\"color:#94a3b8;font-size:12px;margin-bottom:10px\"></div>
       <div id=\"vuln_list_modal_body\"></div>
@@ -3529,23 +3531,23 @@ def render_user_dashboard_html(
   <div id=\"vuln_plans_notice_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #78350f;border-radius:10px;padding:28px 32px;width:480px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
-        <h3 style=\"color:#fbbf24;margin:0\" data-i18n=\"dash.modal.plan_exists_title\">📋 상세 계획이 정해져 있습니다</h3>
-        <button onclick=\"closeVulnPlansNotice()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        <h3 style=\"color:#fbbf24;margin:0\" data-i18n=\"dash.modal.plan_exists_title\">상세 계획이 정해져 있습니다</h3>
+        <button onclick=\"closeVulnPlansNotice()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div id=\"vuln_plans_notice_body\" style=\"color:#e2e8f0;font-size:13px;line-height:1.6;margin-bottom:18px\"></div>
       <div style=\"display:flex;gap:10px;justify-content:flex-end\">
         <button onclick=\"closeVulnPlansNotice()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px\" data-i18n=\"dash.f.close\">닫기</button>
-        <button id=\"vuln_plans_notice_open_list\" style=\"background:#1e3a5f;border:1px solid #334155;color:#7dd3fc;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600\" data-i18n=\"dash.modal.open_summary_tab\">합계 탭 열기 ↗</button>
+        <button id=\"vuln_plans_notice_open_list\" style=\"background:#334155;border:1px solid #334155;color:#38bdf8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600\" data-i18n=\"dash.modal.open_summary_tab\">합계 탭 열기 ↗</button>
       </div>
     </div>
   </div>
 
   <!-- PDCA Do(조치) 항목 상세 모달 -->
   <div id=\"pdca_do_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:center;justify-content:center;\">
-    <div style=\"background:#0f172a;border:1px solid #f59e0b;border-radius:10px;padding:24px 28px;width:1080px;max-width:96vw;max-height:88vh;overflow:auto\">
+    <div style=\"background:#0f172a;border:1px solid #fbbf24;border-radius:10px;padding:24px 28px;width:1080px;max-width:96vw;max-height:88vh;overflow:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:14px\">
-        <h3 style=\"color:#f59e0b;margin:0\" data-i18n=\"dash.modal.pdca_do_title\">🔧 Do — 조치가 필요한 항목</h3>
-        <button onclick=\"closePdcaDoModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        <h3 style=\"color:#fbbf24;margin:0\" data-i18n=\"dash.modal.pdca_do_title\">Do — 조치가 필요한 항목</h3>
+        <button onclick=\"closePdcaDoModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div id=\"pdca_do_modal_subtitle\" style=\"color:#94a3b8;font-size:12px;margin-bottom:10px\"></div>
       <div id=\"pdca_do_modal_body\"></div>
@@ -3556,11 +3558,11 @@ def render_user_dashboard_html(
   <div id=\"report_preview_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px 28px;width:1080px;max-width:96vw;max-height:88vh;overflow:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px;flex-wrap:wrap\">
-        <h3 id=\"report_preview_title\" style=\"color:#67e8f9;margin:0\" data-i18n=\"dash.modal.report_preview_title\">📄 리포트 미리보기</h3>
+        <h3 id=\"report_preview_title\" style=\"color:#38bdf8;margin:0\" data-i18n=\"dash.modal.report_preview_title\">리포트 미리보기</h3>
         <div style=\"display:flex;gap:8px;align-items:center\">
-          <a id=\"report_preview_download\" href=\"#\" download style=\"background:#164e63;border:1px solid #155e75;color:#67e8f9;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none\" data-i18n=\"dash.modal.csv_download\">📥 CSV 다운로드</a>
-          <a id=\"report_preview_download_pdf\" href=\"#\" download style=\"background:#7c2d12;border:1px solid #9a3412;color:#fed7aa;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none\" data-i18n=\"dash.modal.pdf_download\">📄 PDF 다운로드</a>
-          <button onclick=\"closeReportPreview()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+          <a id=\"report_preview_download\" href=\"#\" download style=\"background:#164e63;border:1px solid #155e75;color:#38bdf8;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none\" data-i18n=\"dash.modal.csv_download\">CSV 다운로드</a>
+          <a id=\"report_preview_download_pdf\" href=\"#\" download style=\"background:#7c2d12;border:1px solid #9a3412;color:#fed7aa;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none\" data-i18n=\"dash.modal.pdf_download\">PDF 다운로드</a>
+          <button onclick=\"closeReportPreview()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
         </div>
       </div>
       <div id=\"report_preview_subtitle\" style=\"color:#94a3b8;font-size:12px;margin-bottom:10px\" data-i18n=\"dash.modal.report_preview_sub\">CSV 파일이 아래와 같은 형태로 생성됩니다. (상위 50행만 표시)</div>
@@ -3572,17 +3574,17 @@ def render_user_dashboard_html(
   <div id=\"incident_csv_notice_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #78350f;border-radius:10px;padding:28px 32px;width:520px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
-        <h3 style=\"color:#fbbf24;margin:0\" data-i18n=\"dash.modal.incident_csv_title\">📥 인시던트 CSV 다운로드</h3>
-        <button onclick=\"closeIncidentCsvNotice()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        <h3 style=\"color:#fbbf24;margin:0\" data-i18n=\"dash.modal.incident_csv_title\">인시던트 CSV 다운로드</h3>
+        <button onclick=\"closeIncidentCsvNotice()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div style=\"color:#e2e8f0;font-size:13px;line-height:1.7;margin-bottom:18px\">
-        <div style=\"margin-bottom:10px\" data-i18n-html=\"dash.modal.incident_csv_warn_html\">⚠️ <strong style=\"color:#fbbf24\">변경 내역(history)은 CSV 내역에 포함되지 않습니다.</strong></div>
-        <div style=\"color:#cbd5e1\" data-i18n-html=\"dash.modal.incident_csv_desc_html\">각 인시던트는 <strong style=\"color:#7dd3fc\">변경 일자</strong>와 <strong style=\"color:#7dd3fc\">최신 내역</strong>(현재 상태 / 담당자 / 영향도 등)만 1행으로 표시됩니다.</div>
-        <div style=\"color:#94a3b8;margin-top:10px;font-size:12px\" data-i18n-html=\"dash.modal.incident_csv_hint_html\">전체 변경 이력은 인시던트 상세 모달의 \"📋 변경 이력\" 섹션 또는 <code style=\"background:#1e293b;padding:1px 6px;border-radius:3px\">/incidents/{id}/history</code> API를 이용해 주세요.</div>
+        <div style=\"margin-bottom:10px\" data-i18n-html=\"dash.modal.incident_csv_warn_html\"><strong style=\"color:#fbbf24\">변경 내역(history)은 CSV 내역에 포함되지 않습니다.</strong></div>
+        <div style=\"color:#cbd5e1\" data-i18n-html=\"dash.modal.incident_csv_desc_html\">각 인시던트는 <strong style=\"color:#38bdf8\">변경 일자</strong>와 <strong style=\"color:#38bdf8\">최신 내역</strong>(현재 상태 / 담당자 / 영향도 등)만 1행으로 표시됩니다.</div>
+        <div style=\"color:#94a3b8;margin-top:10px;font-size:12px\" data-i18n-html=\"dash.modal.incident_csv_hint_html\">전체 변경 이력은 인시던트 상세 모달의 \"변경 이력\" 섹션 또는 <code style=\"background:#1e293b;padding:1px 6px;border-radius:3px\">/incidents/{id}/history</code> API를 이용해 주세요.</div>
       </div>
       <div style=\"display:flex;gap:10px;justify-content:flex-end\">
         <button onclick=\"closeIncidentCsvNotice()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px\" data-i18n=\"dash.f.cancel\">취소</button>
-        <button id=\"incident_csv_confirm_btn\" style=\"background:#164e63;border:1px solid #155e75;color:#67e8f9;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600\" data-i18n=\"dash.modal.download\">📥 다운로드</button>
+        <button id=\"incident_csv_confirm_btn\" style=\"background:#164e63;border:1px solid #155e75;color:#38bdf8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600\" data-i18n=\"dash.modal.download\">다운로드</button>
       </div>
     </div>
   </div>
@@ -3591,10 +3593,10 @@ def render_user_dashboard_html(
   <div id=\"vuln_action_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px 28px;width:520px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:14px\">
-        <h3 id=\"vuln_action_modal_title\" style=\"color:#a3e635;margin:0\" data-i18n=\"dash.modal.vuln_action_title\">취약점 조치</h3>
-        <button onclick=\"closeVulnActionModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        <h3 id=\"vuln_action_modal_title\" style=\"color:#4ade80;margin:0\" data-i18n=\"dash.modal.vuln_action_title\">취약점 조치</h3>
+        <button onclick=\"closeVulnActionModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
-      <div id=\"vuln_action_modal_meta\" style=\"color:#94a3b8;font-size:12px;margin-bottom:12px;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;background:#0b1322\"></div>
+      <div id=\"vuln_action_modal_meta\" style=\"color:#94a3b8;font-size:12px;margin-bottom:12px;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;background:#0b1220\"></div>
 
       <!-- 조치 계획 영역 -->
       <div id=\"vuln_plan_section\" style=\"display:none;flex-direction:column;gap:10px\">
@@ -3625,21 +3627,21 @@ def render_user_dashboard_html(
 
       <div id=\"vuln_action_modal_status\" style=\"font-size:13px;color:#94a3b8;margin-top:10px\"></div>
       <div style=\"display:flex;gap:8px;justify-content:flex-end;margin-top:12px\">
-        <button id=\"vuln_action_modal_clear\" style=\"display:none;background:#3f1d1d;border:1px solid #7f1d1d;color:#fca5a5;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px\" data-i18n=\"dash.modal.clear_exception\">예외 해제</button>
-        <button id=\"vuln_action_modal_save\" style=\"background:#16a34a;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\" data-i18n=\"dash.f.save\">저장</button>
+        <button id=\"vuln_action_modal_clear\" style=\"display:none;background:#3f1d1d;border:1px solid #7f1d1d;color:#f87171;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px\" data-i18n=\"dash.modal.clear_exception\">예외 해제</button>
+        <button id=\"vuln_action_modal_save\" style=\"background:#4ade80;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\" data-i18n=\"dash.f.save\">저장</button>
         <button onclick=\"closeVulnActionModal()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\" data-i18n=\"dash.f.cancel\">취소</button>
       </div>
     </div>
   </div>
 
-  <!-- 🎯 위험성 평가 모달 (R-4) -->
+  <!-- 위험성 평가 모달 (R-4) -->
   <div id=\"risk_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px 28px;width:560px;max-width:95vw;max-height:88vh;overflow-y:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:14px\">
-        <h3 id=\"risk_modal_title\" style=\"color:#c4b5fd;margin:0\" data-i18n=\"dash.risk.modal_title\">🎯 위험성 평가</h3>
-        <button onclick=\"closeRiskModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        <h3 id=\"risk_modal_title\" style=\"color:#38bdf8;margin:0\" data-i18n=\"dash.risk.modal_title\">위험성 평가</h3>
+        <button onclick=\"closeRiskModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
-      <div id=\"risk_modal_meta\" style=\"color:#94a3b8;font-size:12px;margin-bottom:12px;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;background:#0b1322\"></div>
+      <div id=\"risk_modal_meta\" style=\"color:#94a3b8;font-size:12px;margin-bottom:12px;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;background:#0b1220\"></div>
       <!-- 현재 등급 배지 + 자동 제안 -->
       <div id=\"risk_modal_grade\" style=\"margin-bottom:6px\"></div>
       <div style=\"font-size:11px;color:#64748b;margin-bottom:12px;line-height:1.5\" data-i18n=\"dash.risk.basis_note\">산정 기준: 영향도(자산 중요도 상/중/하) × 발생가능성(취약점 심각도·Trivy CVSS 기반). ISMS-P 위험관리 / ISO 27001 6.1.2·8.8 방법론. 조직 DoA(수용가능 위험수준)에 맞춰 등급 조정 가능.</div>
@@ -3677,7 +3679,7 @@ def render_user_dashboard_html(
             <input id=\"risk_assessed_by\" style=\"width:100%;background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
         </div>
       </div>
-      <!-- 🔎 산정 근거 (관리자 전용) -->
+      <!-- 산정 근거 (관리자 전용) -->
       <div id=\"risk_provenance\" style=\"display:none;margin-top:14px;border:1px solid #3730a3;border-radius:8px;padding:10px 12px;background:#0b1230\"></div>
       <div id=\"risk_modal_status\" style=\"font-size:13px;color:#94a3b8;margin-top:10px\"></div>
       <div style=\"display:flex;gap:8px;justify-content:flex-end;margin-top:12px\">
@@ -3687,23 +3689,23 @@ def render_user_dashboard_html(
     </div>
   </div>
 
-  <!-- 🎯 위험 버킷 드릴다운 모달 (매트릭스 셀/칩 클릭) -->
+  <!-- 위험 버킷 드릴다운 모달 (매트릭스 셀/칩 클릭) -->
   <div id=\"risk_bucket_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px 28px;width:660px;max-width:95vw;max-height:82vh;overflow-y:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px\">
-        <h3 id=\"risk_bucket_modal_title\" style=\"color:#c4b5fd;margin:0\">🎯 위험 상세</h3>
-        <button onclick=\"closeRiskBucketModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        <h3 id=\"risk_bucket_modal_title\" style=\"color:#38bdf8;margin:0\">위험 상세</h3>
+        <button onclick=\"closeRiskBucketModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div id=\"risk_bucket_modal_body\"></div>
     </div>
   </div>
 
-  <!-- ⭐ 내 서버 호스트 상세 모달 (행 더블클릭) -->
+  <!-- 내 서버 호스트 상세 모달 (행 더블클릭) -->
   <div id=\"host_detail_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px 28px;width:640px;max-width:95vw;max-height:85vh;overflow-y:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px\">
-        <h3 id=\"host_detail_title\" style=\"color:#a3e635;margin:0\">🖥️ 호스트 상세</h3>
-        <button onclick=\"closeHostDetail()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        <h3 id=\"host_detail_title\" style=\"color:#4ade80;margin:0\">호스트 상세</h3>
+        <button onclick=\"closeHostDetail()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div id=\"host_detail_body\" style=\"color:#e2e8f0;font-size:13px\"></div>
     </div>
@@ -3713,8 +3715,8 @@ def render_user_dashboard_html(
   <div id=\"audit_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
     <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:28px 32px;width:600px;max-width:95vw;max-height:80vh;overflow-y:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
-        <h3 id=\"audit_modal_title\" style=\"color:#a3e635;margin:0\" data-i18n=\"dash.modal.audit_title\">변경 이력</h3>
-        <button onclick=\"closeAuditModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">✕</button>
+        <h3 id=\"audit_modal_title\" style=\"color:#4ade80;margin:0\" data-i18n=\"dash.modal.audit_title\">변경 이력</h3>
+        <button onclick=\"closeAuditModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
       </div>
       <div id=\"audit_modal_body\" style=\"color:#e2e8f0;font-size:13px\" data-i18n=\"dash.modal.loading\">로딩 중...</div>
     </div>
@@ -3723,22 +3725,22 @@ def render_user_dashboard_html(
   <!-- ── 하단 탭 바 (모바일 전용) ────────────────────────────────────────── -->
   <nav class=\"bottom-nav\" id=\"bottom_nav\">
     <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\">
-      <span class=\"bn-icon\">📊</span><span data-i18n=\"dash.bn.dashboard\">대시보드</span>
+      <span class=\"bn-icon\"></span><span data-i18n=\"dash.bn.dashboard\">대시보드</span>
     </button>
     <button data-tab=\"triage\" onclick=\"switchTab('triage')\">
-      <span class=\"bn-icon\">🚨</span><span data-i18n=\"dash.bn.triage\">Triage</span>
+      <span class=\"bn-icon\"></span><span data-i18n=\"dash.bn.triage\">Triage</span>
     </button>
     <button data-tab=\"assets\" onclick=\"switchTab('assets')\">
-      <span class=\"bn-icon\">📡</span><span data-i18n=\"dash.bn.assets\">자산</span>
+      <span class=\"bn-icon\"></span><span data-i18n=\"dash.bn.assets\">자산</span>
     </button>
     <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\">
-      <span class=\"bn-icon\">📋</span><span data-i18n=\"dash.bn.incidents\">인시던트</span>
+      <span class=\"bn-icon\"></span><span data-i18n=\"dash.bn.incidents\">인시던트</span>
     </button>
     <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\">
-      <span class=\"bn-icon\">✅</span><span data-i18n=\"dash.bn.compliance\">PDCA</span>
+      <span class=\"bn-icon\"></span><span data-i18n=\"dash.bn.compliance\">PDCA</span>
     </button>
     <button data-tab=\"guides\" onclick=\"switchTab('guides')\">
-      <span class=\"bn-icon\">📖</span><span data-i18n=\"dash.bn.guides\">가이드</span>
+      <span class=\"bn-icon\"></span><span data-i18n=\"dash.bn.guides\">가이드</span>
     </button>
   </nav>
 
@@ -3792,15 +3794,15 @@ def render_user_dashboard_html(
     let currentIncidentId = null;
     let triageDataCache = {};
     const TRIAGE_STATUS_COLORS = {
-      pending: '#ef4444', reviewing: '#f59e0b', resolved: '#22c55e',
+      pending: '#f87171', reviewing: '#fbbf24', resolved: '#4ade80',
       // legacy (backward compat)
-      new: '#ef4444', acknowledged: '#f59e0b', investigating: '#f59e0b',
-      closed: '#22c55e', false_positive: '#94a3b8'
+      new: '#f87171', acknowledged: '#fbbf24', investigating: '#fbbf24',
+      closed: '#4ade80', false_positive: '#94a3b8'
     };
     const tt = (k, f) => (window.t ? window.t(k, f) : f);
-    const TRIAGE_STATUS_LABELS = { pending:tt('dash.dyn.triage.pending','🔴 미확인'), reviewing:tt('dash.dyn.triage.reviewing','🟡 검토중'), resolved:tt('dash.dyn.triage.resolved','🟢 조치예정/완료') };
+    const TRIAGE_STATUS_LABELS = { pending:tt('dash.dyn.triage.pending','미확인'), reviewing:tt('dash.dyn.triage.reviewing','검토중'), resolved:tt('dash.dyn.triage.resolved','조치예정/완료') };
     const triageLabel = (s) => tt('dash.dyn.triage.' + s, TRIAGE_STATUS_LABELS[s] || s);
-    const INC_STATUS_COLORS = {open:'#f59e0b', investigating:'#a78bfa', resolved:'#6ee7b7', closed:'#94a3b8'};
+    const INC_STATUS_COLORS = {open:'#fbbf24', investigating:'#38bdf8', resolved:'#6ee7b7', closed:'#94a3b8'};
 
     // ── 전역 함수 노출 (onclick 속성에서 직접 호출 — 함수 선언은 호이스팅됨) ──
     window.switchTab         = switchTab;
@@ -3982,7 +3984,7 @@ def render_user_dashboard_html(
       return renderDetailTable([
         { label: 'Time', render: (item) => escapeHtml(formatTime(item.observed_at)) },
         { label: 'Host', render: (item) => `<strong>${escapeHtml(item.hostname || '-')}</strong><br /><span class=\"subtext\">${escapeHtml(item.host_id || '-')}</span>` },
-        { label: tt('dash.dyn.col.owner', '담당자'), render: (item) => `<span style=\"color:#a3e635\">${escapeHtml(item.owner || '-')}</span>` },
+        { label: tt('dash.dyn.col.owner', '담당자'), render: (item) => `<span style=\"color:#4ade80\">${escapeHtml(item.owner || '-')}</span>` },
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'Severity', render: (item) => escapeHtml(item.severity) },
         { label: 'Message', render: (item) => escapeHtml(item.message) },
@@ -3993,7 +3995,7 @@ def render_user_dashboard_html(
       return renderDetailTable([
         { label: 'Detected', render: (item) => escapeHtml(formatTime(item.detected_at)) },
         { label: 'Host', render: (item) => `<strong>${escapeHtml(item.hostname || item.host_id)}</strong><br /><span class=\"subtext\">${escapeHtml(item.host_id)}</span>` },
-        { label: tt('dash.dyn.col.owner', '담당자'), render: (item) => `<span style=\"color:#a3e635\">${escapeHtml(item.owner || '-')}</span>` },
+        { label: tt('dash.dyn.col.owner', '담당자'), render: (item) => `<span style=\"color:#4ade80\">${escapeHtml(item.owner || '-')}</span>` },
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'CVE', render: (item) => escapeHtml(item.cve || '-') },
         { label: 'Package', render: (item) => escapeHtml(item.package_name || '-') },
@@ -4001,7 +4003,7 @@ def render_user_dashboard_html(
           if (!item.plan_text) return `<span style=\"color:#64748b;font-size:11px\">${tt('dash.dyn.plan.unset', '미설정')}</span>`;
           const tgt = item.plan_target_date ? `<br /><span style=\"color:#64748b;font-size:11px\">~${escapeHtml(item.plan_target_date)}</span>` : '';
           const by = item.plan_updated_by ? ` <span style=\"color:#94a3b8;font-size:11px\">(${escapeHtml(item.plan_updated_by)})</span>` : '';
-          return `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(item.plan_text)}\">${escapeHtml(item.plan_text.substring(0,30))}${item.plan_text.length>30?'…':''}</span>${by}${tgt}`;
+          return `<span style=\"color:#4ade80;font-size:12px\" title=\"${escapeHtml(item.plan_text)}\">${escapeHtml(item.plan_text.substring(0,30))}${item.plan_text.length>30?'…':''}</span>${by}${tgt}`;
         }},
         { label: tt('dash.dyn.col.exception', '조치 예외'), render: (item) => {
           if (!item.exception_until) return `<span style=\"color:#64748b;font-size:11px\">${tt('dash.dyn.exception.none', '없음')}</span>`;
@@ -4042,10 +4044,10 @@ def render_user_dashboard_html(
       openOverviewModal(cardLabels[key] || key, description, renderer(items));
     }
 
-    /* 🛡️ 보안 요약 히어로 — 역할별로 다르게.
+    /* 보안 요약 히어로 — 역할별로 다르게.
        보안/어드민: 위험 KPI(클릭→드릴다운) + 위험 TOP.
        인프라/헬프데스크: 내 담당 서버 취약점 + 조치율(읽기 전용). */
-    const _heroKpi = (label, val, color, onclick) => `<div onclick=\"${onclick||''}\" style=\"flex:1;min-width:130px;background:#0b1322;border:1px solid #1e293b;border-radius:10px;padding:12px 14px;${onclick?'cursor:pointer':''}\">
+    const _heroKpi = (label, val, color, onclick) => `<div onclick=\"${onclick||''}\" style=\"flex:1;min-width:130px;background:#0b1220;border:1px solid #1e293b;border-radius:10px;padding:12px 14px;${onclick?'cursor:pointer':''}\">
         <div style=\"font-size:12px;color:#94a3b8\">${label}</div>
         <div style=\"font-size:26px;font-weight:800;color:${color};margin-top:2px\">${val}</div></div>`;
 
@@ -4069,9 +4071,9 @@ def render_user_dashboard_html(
     function _myServersVulnBanner() {
       const s = _computeMyVulnSummary(_assetCache.trivy);
       if (!s.total) return '';
-      const barColor = s.pct >= 80 ? '#22c55e' : (s.pct >= 50 ? '#f59e0b' : '#ef4444');
-      return `<div style=\"background:#0f2035;border:1px solid #1e3a5f;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap\">
-        <span style=\"color:#e2e8f0;font-weight:600\">${tt('dash.mine.remediation_summary','🐞 내 서버 취약점 {n}건 · 조치 {m}건 ({p}%)').replace('{n}', s.total).replace('{m}', s.done).replace('{p}', s.pct)}</span>
+      const barColor = s.pct >= 80 ? '#4ade80' : (s.pct >= 50 ? '#fbbf24' : '#f87171');
+      return `<div style=\"background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap\">
+        <span style=\"color:#e2e8f0;font-weight:600\">${tt('dash.mine.remediation_summary','내 서버 취약점 {n}건 · 조치 {m}건 ({p}%)').replace('{n}', s.total).replace('{m}', s.done).replace('{p}', s.pct)}</span>
         <span style=\"flex:1;min-width:120px;max-width:280px;height:8px;background:#1e293b;border-radius:4px;overflow:hidden\"><span style=\"display:block;height:100%;width:${s.pct}%;background:${barColor}\"></span></span>
       </div>`;
     }
@@ -4087,25 +4089,25 @@ def render_user_dashboard_html(
         (risk.items || []).forEach(it => { _riskSummary.map[it.vuln_id] = it; });
         const bl = risk.by_level || {};
         const kpis = `<div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px\">
-          ${_heroKpi(tt('dash.hero.critical_risk','🔴 매우높음 위험'), (bl['매우높음']||0), '#f87171', \"openRiskLevelModal('매우높음')\")}
-          ${_heroKpi(tt('dash.hero.high_risk','🟠 높음 위험'), (bl['높음']||0), '#fb923c', \"openRiskLevelModal('높음')\")}
-          ${_heroKpi(tt('dash.hero.alerts','🚨 24h 경보'), (o.alerts_24h??0), '#fca5a5', \"switchTab('triage')\")}
-          ${_heroKpi(tt('dash.hero.crit_vulns','🐞 Critical 취약점'), (o.critical_vulns??0), '#fca5a5', \"switchTab('assets');switchAssetTab('trivy')\")}
+          ${_heroKpi(tt('dash.hero.critical_risk','매우높음 위험'), (bl['매우높음']||0), '#f87171', \"openRiskLevelModal('매우높음')\")}
+          ${_heroKpi(tt('dash.hero.high_risk','높음 위험'), (bl['높음']||0), '#fbbf24', \"openRiskLevelModal('높음')\")}
+          ${_heroKpi(tt('dash.hero.alerts','24h 경보'), (o.alerts_24h??0), '#f87171', \"switchTab('triage')\")}
+          ${_heroKpi(tt('dash.hero.crit_vulns','Critical 취약점'), (o.critical_vulns??0), '#f87171', \"switchTab('assets');switchAssetTab('trivy')\")}
         </div>`;
         const top = (risk.items || []).slice(0, 6);
-        const rankColor = (i) => i===0?'#f87171':i===1?'#fb923c':i===2?'#fbbf24':'#64748b';
+        const rankColor = (i) => i===0?'#f87171':i===1?'#fbbf24':i===2?'#fbbf24':'#64748b';
         const list = !top.length
           ? `<div class=\"empty\" style=\"color:#64748b\">${tt('dash.hero.no_risk','평가 대상 취약점이 없습니다.')}</div>`
-          : `<style>.hero-rank-row{border-bottom:1px solid #16233b}.hero-rank-row:last-child{border-bottom:none}.hero-rank-row:hover{background:#0f2035}</style>
+          : `<style>.hero-rank-row{border-bottom:1px solid #1e293b}.hero-rank-row:last-child{border-bottom:none}.hero-rank-row:hover{background:#0f172a}</style>
              <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:4px\">
                <span style=\"font-size:13px;font-weight:700;color:#e2e8f0\">${tt('dash.hero.top_title','위험 TOP')} <span style=\"color:#64748b;font-weight:400;font-size:11px\">· ${tt('dash.hero.by_score','위험점수순')}</span></span>
-               <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" style=\"background:none;border:none;color:#7dd3fc;font-size:12px;cursor:pointer\">${tt('dash.hero.view_all','전체 보기 →')}</button>
+               <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" style=\"background:none;border:none;color:#38bdf8;font-size:12px;cursor:pointer\">${tt('dash.hero.view_all','전체 보기 →')}</button>
              </div>` + top.map((it, i) => `
               <div class=\"hero-rank-row\" onclick=\"openRiskModal('${escapeHtml(it.vuln_id)}')\" style=\"display:flex;align-items:center;gap:12px;padding:9px 6px;cursor:pointer\">
                 <span style=\"width:20px;text-align:center;font-weight:800;font-size:15px;color:${rankColor(i)}\">${i+1}</span>
                 <div style=\"min-width:0;flex:1\">
                   <div style=\"display:flex;align-items:center;gap:8px\">${_riskBadge(it.level, true)}<strong style=\"color:#e2e8f0;font-size:13px\">${escapeHtml(it.cve)}</strong></div>
-                  <div style=\"color:#64748b;font-size:11px;margin-top:2px\">${escapeHtml(it.hostname)} · <span style=\"text-transform:uppercase;color:${it.severity==='critical'?'#fca5a5':'#fdba74'}\">${escapeHtml(it.severity)}</span></div>
+                  <div style=\"color:#64748b;font-size:11px;margin-top:2px\">${escapeHtml(it.hostname)} · <span style=\"text-transform:uppercase;color:${it.severity==='critical'?'#f87171':'#fbbf24'}\">${escapeHtml(it.severity)}</span></div>
                 </div>
                 <div style=\"text-align:right;white-space:nowrap\">
                   <div style=\"font-weight:800;font-size:15px;color:${RISK_LEVEL_COLORS[it.level]||'#e2e8f0'}\">${it.score}</div>
@@ -4119,19 +4121,19 @@ def render_user_dashboard_html(
         if (!rows || !rows.length) { try { const r = await fetch('/assets'); if (r.ok) { rows = (await r.json()).trivy?.rows || []; _assetCache.trivy = rows; } } catch (e) { rows = []; } }
         const s = _computeMyVulnSummary(rows);
         const kpis = `<div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px\">
-          ${_heroKpi(tt('dash.hero.my_vulns','🐞 내 서버 취약점'), s.total, s.total?'#fca5a5':'#86efac', \"shortcutMyServers()\")}
-          ${_heroKpi(tt('dash.hero.my_remediation','🛠️ 내 서버 조치율'), s.pct + '%', s.pct>=80?'#86efac':(s.pct>=50?'#fdba74':'#fca5a5'), \"shortcutMyServers()\")}
-          ${_heroKpi(tt('dash.hero.alerts','🚨 24h 경보'), (o.alerts_24h??0), '#fca5a5', \"switchTab('triage')\")}
+          ${_heroKpi(tt('dash.hero.my_vulns','내 서버 취약점'), s.total, s.total?'#f87171':'#4ade80', \"shortcutMyServers()\")}
+          ${_heroKpi(tt('dash.hero.my_remediation','내 서버 조치율'), s.pct + '%', s.pct>=80?'#4ade80':(s.pct>=50?'#fbbf24':'#f87171'), \"shortcutMyServers()\")}
+          ${_heroKpi(tt('dash.hero.alerts','24h 경보'), (o.alerts_24h??0), '#f87171', \"switchTab('triage')\")}
         </div>`;
         const list = !s.hosts.length
           ? `<div class=\"empty\" style=\"color:#64748b\">${tt('dash.mine.no_vulns','취약점 없음')}</div>`
           : `<div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\">${tt('dash.hero.my_servers_title','내 담당 서버 조치 현황')}</div>` + s.hosts.slice(0,6).map(h => {
               const pct = h.total ? Math.round(h.done/h.total*100) : 100;
-              return `<div onclick=\"openVulnListModal('${escapeHtml(h.host_id)}')\" style=\"display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #1e293b;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#0b1322\">
+              return `<div onclick=\"openVulnListModal('${escapeHtml(h.host_id)}')\" style=\"display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #1e293b;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#0b1220\">
                 <strong style=\"color:#e2e8f0;font-size:13px;min-width:120px\">${escapeHtml(h.hostname)}</strong>
-                <span style=\"color:#fca5a5;font-size:11px\">C ${h.critical}</span><span style=\"color:#fdba74;font-size:11px\">H ${h.high}</span>
+                <span style=\"color:#f87171;font-size:11px\">C ${h.critical}</span><span style=\"color:#fbbf24;font-size:11px\">H ${h.high}</span>
                 <span style=\"margin-left:auto;display:flex;align-items:center;gap:6px\">
-                  <span style=\"width:90px;height:7px;background:#1e293b;border-radius:4px;overflow:hidden\"><span style=\"display:block;height:100%;width:${pct}%;background:${pct>=80?'#22c55e':(pct>=50?'#f59e0b':'#ef4444')}\"></span></span>
+                  <span style=\"width:90px;height:7px;background:#1e293b;border-radius:4px;overflow:hidden\"><span style=\"display:block;height:100%;width:${pct}%;background:${pct>=80?'#4ade80':(pct>=50?'#fbbf24':'#f87171')}\"></span></span>
                   <span style=\"font-size:11px;color:#94a3b8;width:60px;text-align:right\">${h.done}/${h.total} (${pct}%)</span></span>
               </div>`;
             }).join('');
@@ -4140,13 +4142,13 @@ def render_user_dashboard_html(
     }
     window.renderSecurityHero = renderSecurityHero;
 
-    /* 🖥️ 인프라 현황 위젯 — 24h/12h 전환 + Zabbix/Wazuh 딥링크 (대시보드=인프라 뷰) */
+    /* 인프라 현황 위젯 — 24h/12h 전환 + Zabbix/Wazuh 딥링크 (대시보드=인프라 뷰) */
     let _infraWindow = '24h';
     function setInfraWindow(w) {
       _infraWindow = w;
       const b24 = document.getElementById('infra_win_24'), b12 = document.getElementById('infra_win_12');
-      if (b24) { b24.style.background = w==='24h'?'#1e3a5f':'transparent'; b24.style.color = w==='24h'?'#e2e8f0':'#94a3b8'; }
-      if (b12) { b12.style.background = w==='12h'?'#1e3a5f':'transparent'; b12.style.color = w==='12h'?'#e2e8f0':'#94a3b8'; }
+      if (b24) { b24.style.background = w==='24h'?'#334155':'transparent'; b24.style.color = w==='24h'?'#e2e8f0':'#94a3b8'; }
+      if (b12) { b12.style.background = w==='12h'?'#334155':'transparent'; b12.style.color = w==='12h'?'#e2e8f0':'#94a3b8'; }
       renderInfraStatus();
     }
     window.setInfraWindow = setInfraWindow;
@@ -4155,17 +4157,17 @@ def render_user_dashboard_html(
       if (!el) return;
       const o = _lastOverviewData || {};
       const alertsWin = _infraWindow==='12h' ? (o.alerts_12h??0) : (o.alerts_24h??0);
-      const zbx = ZABBIX_URL ? `<a href=\"${escapeHtml(ZABBIX_URL)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#7dd3fc;font-size:11px;text-decoration:none\">Zabbix ↗</a>` : '';
-      const wzh = WAZUH_URL ? `<a href=\"${escapeHtml(WAZUH_URL)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#a78bfa;font-size:11px;text-decoration:none\">Wazuh ↗</a>` : '';
-      const tile = (label, val, color, extra) => `<div style=\"flex:1;min-width:110px;background:#0b1322;border:1px solid #1e293b;border-radius:10px;padding:12px\">
+      const zbx = ZABBIX_URL ? `<a href=\"${escapeHtml(ZABBIX_URL)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:11px;text-decoration:none\">Zabbix ↗</a>` : '';
+      const wzh = WAZUH_URL ? `<a href=\"${escapeHtml(WAZUH_URL)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:11px;text-decoration:none\">Wazuh ↗</a>` : '';
+      const tile = (label, val, color, extra) => `<div style=\"flex:1;min-width:110px;background:#0b1220;border:1px solid #1e293b;border-radius:10px;padding:12px\">
         <div style=\"font-size:12px;color:#94a3b8\">${label}</div>
         <div style=\"font-size:24px;font-weight:800;color:${color};margin-top:2px\">${val}</div>
         <div style=\"margin-top:4px\">${extra||''}</div></div>`;
       el.innerHTML = `<div style=\"display:flex;gap:10px;flex-wrap:wrap\">
-        ${tile(tt('dash.infra.online','🟢 온라인'), (o.online_hosts??0), '#86efac', zbx)}
-        ${tile(tt('dash.infra.offline','🔴 오프라인'), (o.offline_hosts??0), '#fca5a5', zbx)}
-        ${tile(tt('dash.infra.unknown','⚪ 미상'), (o.unknown_hosts??0), '#cbd5e1', '')}
-        ${tile(_infraWindow==='12h'?tt('dash.infra.alerts_12','🚨 경보 12h'):tt('dash.infra.alerts_24','🚨 경보 24h'), alertsWin, '#fca5a5', wzh)}
+        ${tile(tt('dash.infra.online','온라인'), (o.online_hosts??0), '#4ade80', zbx)}
+        ${tile(tt('dash.infra.offline','오프라인'), (o.offline_hosts??0), '#f87171', zbx)}
+        ${tile(tt('dash.infra.unknown','미상'), (o.unknown_hosts??0), '#cbd5e1', '')}
+        ${tile(_infraWindow==='12h'?tt('dash.infra.alerts_12','경보 12h'):tt('dash.infra.alerts_24','경보 24h'), alertsWin, '#f87171', wzh)}
       </div>
       <div style=\"margin-top:8px;font-size:11px;color:#64748b\">${tt('dash.infra.hint','타일의 Zabbix / Wazuh 링크로 원본 도구에서 상세를 확인하세요.')}</div>`;
     }
@@ -4215,13 +4217,13 @@ def render_user_dashboard_html(
       });
     }
 
-    /* 🧩 패널 편집: 사용자가 직접 표시할 카드/패널을 선택 (개인별 자동 저장) */
+    /* 패널 편집: 사용자가 직접 표시할 카드/패널을 선택 (개인별 자동 저장) */
     function togglePanelEdit() {
       _panelEditOpen = !_panelEditOpen;
       const box = document.getElementById('panel_edit_box');
       const btn = document.getElementById('panel_edit_toggle');
       if (box) box.classList.toggle('hidden', !_panelEditOpen);
-      if (btn) btn.textContent = _panelEditOpen ? tt('dash.panel.done', '✓ 완료') : tt('dash.panel.edit', '🧩 패널 편집');
+      if (btn) btn.textContent = _panelEditOpen ? tt('dash.panel.done', '완료') : tt('dash.panel.edit', '패널 편집');
       if (_panelEditOpen) renderPanelEditor();
     }
     window.togglePanelEdit = togglePanelEdit;
@@ -4248,7 +4250,7 @@ def render_user_dashboard_html(
       try { localStorage.removeItem(_DASH_W_KEY); } catch (e) {}
       document.querySelectorAll('#dash_grid > section').forEach((sec) => { sec.style.width = ''; });
       if (typeof dashboardStatusEl !== 'undefined' && dashboardStatusEl) {
-        dashboardStatusEl.textContent = tt('dash.panel.layout_reset', '↔️ 패널 크기 초기화됨');
+        dashboardStatusEl.textContent = tt('dash.panel.layout_reset', '↔패널 크기 초기화됨');
       }
     }
     window.resetPanelLayout = resetPanelLayout;
@@ -4304,10 +4306,10 @@ def render_user_dashboard_html(
             body: JSON.stringify({ user_dashboard: { cards: userPreferences.cards || {}, sections: userPreferences.sections || {} } }),
           });
           dashboardStatusEl.textContent = response.ok
-            ? tt('dash.panel.saved', '✅ 패널 설정 저장됨')
-            : `${tt('dash.panel.save_fail', '❌ 패널 설정 저장 실패')}: HTTP ${response.status}`;
+            ? tt('dash.panel.saved', '패널 설정 저장됨')
+            : `${tt('dash.panel.save_fail', '패널 설정 저장 실패')}: HTTP ${response.status}`;
         } catch (error) {
-          dashboardStatusEl.textContent = `${tt('dash.panel.save_fail', '❌ 패널 설정 저장 실패')}: ${error.message}`;
+          dashboardStatusEl.textContent = `${tt('dash.panel.save_fail', '패널 설정 저장 실패')}: ${error.message}`;
         }
       }, 400);
     }
@@ -4319,7 +4321,7 @@ def render_user_dashboard_html(
       }
       const statusToBadge = { success: 'online', error: 'offline', running: 'unknown', unknown: 'unknown' };
       sourceCoverageEl.innerHTML = items.map((item) => {
-        const staleBadge = item.is_stale ? ' <span class=\"badge\" style=\"background:#f59e0b;color:#000\">STALE</span>' : '';
+        const staleBadge = item.is_stale ? ' <span class=\"badge\" style=\"background:#fbbf24;color:#000\">STALE</span>' : '';
         return `
         <div class=\"coverage-item\">
           <div class=\"metric-label\">${escapeHtml(item.source.toUpperCase())}</div>
@@ -4381,7 +4383,7 @@ def render_user_dashboard_html(
           } else if (_canViewGrafanaLimited()) {
             grafanaLink = `<a href=\"${escapeHtml(item.grafana_url)}\" target=\"_blank\" rel=\"noreferrer\" style=\"color:#94a3b8;font-size:12px;margin-left:8px;\">${tt('dash.dyn.grafana_limited', 'Grafana 제한 보기 ↗')}</a>`;
           } else {
-            grafanaLink = `<span style=\"color:#475569;font-size:11px;margin-left:8px\" title=\"${tt('dash.dyn.grafana_no_access', '상세 로그 접근 권한 없음')}\">${tt('dash.dyn.grafana_summary', '📊 요약')}</span>`;
+            grafanaLink = `<span style=\"color:#475569;font-size:11px;margin-left:8px\" title=\"${tt('dash.dyn.grafana_no_access', '상세 로그 접근 권한 없음')}\">${tt('dash.dyn.grafana_summary', '요약')}</span>`;
           }
         }
         return `
@@ -4474,7 +4476,7 @@ def render_user_dashboard_html(
       const srcBadge = (src) => {
         const s = (src || '').toLowerCase();
         const cls = s.includes('wazuh') ? 'wazuh' : s.includes('zabbix') ? 'zabbix' : s.includes('fleet') ? 'fleet' : s.includes('trivy') ? 'trivy' : s.includes('host') ? 'hosts' : '';
-        return `<span style=\"display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#1e3a5f;color:#93c5fd;\" class=\"${cls}\">${escapeHtml(src||'-')}</span>`;
+        return `<span style=\"display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#334155;color:#38bdf8;\" class=\"${cls}\">${escapeHtml(src||'-')}</span>`;
       };
       const rows = evidence.map((ev, i) => `
         <tr style=\"border-bottom:1px solid #1a2d45;\">
@@ -4484,14 +4486,14 @@ def render_user_dashboard_html(
           <td style=\"padding:7px 10px;font-size:11px;color:#64748b;font-family:monospace\">${escapeHtml(ev.record_id || '-')}</td>
         </tr>`).join('');
       nlqResultArea.innerHTML = `
-        ${summary ? `<div style=\"color:#7dd3fc;font-size:13px;margin-bottom:10px;padding:8px 12px;background:#0f2035;border-radius:8px;border-left:3px solid #3b82f6\">${escapeHtml(summary)}</div>` : ''}
+        ${summary ? `<div style=\"color:#38bdf8;font-size:13px;margin-bottom:10px;padding:8px 12px;background:#0f172a;border-radius:8px;border-left:3px solid #38bdf8\">${escapeHtml(summary)}</div>` : ''}
         <div style=\"overflow:auto\">
           <table style=\"width:100%;border-collapse:collapse;font-size:13px\">
-            <thead><tr style=\"background:#0f2035\">
-              <th style=\"padding:8px 10px;color:#93c5fd;font-weight:600;text-align:left\">#</th>
-              <th style=\"padding:8px 10px;color:#93c5fd;font-weight:600;text-align:left\">Source</th>
-              <th style=\"padding:8px 10px;color:#93c5fd;font-weight:600;text-align:left\">Summary</th>
-              <th style=\"padding:8px 10px;color:#93c5fd;font-weight:600;text-align:left\">Record ID</th>
+            <thead><tr style=\"background:#0f172a\">
+              <th style=\"padding:8px 10px;color:#38bdf8;font-weight:600;text-align:left\">#</th>
+              <th style=\"padding:8px 10px;color:#38bdf8;font-weight:600;text-align:left\">Source</th>
+              <th style=\"padding:8px 10px;color:#38bdf8;font-weight:600;text-align:left\">Summary</th>
+              <th style=\"padding:8px 10px;color:#38bdf8;font-weight:600;text-align:left\">Record ID</th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
@@ -4518,14 +4520,14 @@ def render_user_dashboard_html(
     }
 
     async function loadDashboard() {
-      dashboardStatusEl.textContent = tt('dash.dyn.dash_requesting', '📡 대시보드 데이터 요청 중…');
+      dashboardStatusEl.textContent = tt('dash.dyn.dash_requesting', '대시보드 데이터 요청 중…');
       try {
         const response = await fetch('/dashboard/summary');
         if (!response.ok) {
           let detail = `HTTP ${response.status}`;
           try { const e = await response.json(); detail = e.detail || detail; } catch(_){}
-          dashboardStatusEl.textContent = `${tt('dash.dyn.dash_load_fail', '❌ 대시보드 로드 실패')}: ${detail}`;
-          overviewCardsEl.innerHTML = `<div class=\"empty\" style=\"padding:16px;color:#fca5a5\">${tt('dash.dyn.dash_no_data', '⚠️ 서버가 데이터를 반환하지 못했습니다')} (${escapeHtml(detail)})</div>`;
+          dashboardStatusEl.textContent = `${tt('dash.dyn.dash_load_fail', '대시보드 로드 실패')}: ${detail}`;
+          overviewCardsEl.innerHTML = `<div class=\"empty\" style=\"padding:16px;color:#f87171\">${tt('dash.dyn.dash_no_data', '서버가 데이터를 반환하지 못했습니다')} (${escapeHtml(detail)})</div>`;
           return;
         }
         const data = await response.json();
@@ -4536,11 +4538,11 @@ def render_user_dashboard_html(
         renderRiskSummary(data.risk_summary || []);
         renderRecentActivity(data.recent_activity || []);
         applyUserPreferences();
-        dashboardStatusEl.textContent = `✅ dashboard updated at ${formatTime(data.generated_at)}`;
+        dashboardStatusEl.textContent = `dashboard updated at ${formatTime(data.generated_at)}`;
       } catch (error) {
         console.error('[MORI] loadDashboard fetch error:', error);
-        dashboardStatusEl.textContent = `${tt('dash.dyn.dash_load_fail', '❌ 대시보드 로드 실패')}: ${error.message}`;
-        overviewCardsEl.innerHTML = `<div class=\"empty\" style=\"padding:16px;color:#fca5a5\">${tt('dash.dyn.network_err', '⚠️ 네트워크 오류 — 서버 연결을 확인하세요.')}</div>`;
+        dashboardStatusEl.textContent = `${tt('dash.dyn.dash_load_fail', '대시보드 로드 실패')}: ${error.message}`;
+        overviewCardsEl.innerHTML = `<div class=\"empty\" style=\"padding:16px;color:#f87171\">${tt('dash.dyn.network_err', '네트워크 오류 — 서버 연결을 확인하세요.')}</div>`;
       }
     }
 
@@ -4568,27 +4570,27 @@ def render_user_dashboard_html(
           const alertOwner = _ownerForHost(a.hostname || '');
           return `<tr>
             <td>${escapeHtml(formatTime(a.observed_at))}</td>
-            <td><span style=\"background:#1e293b;color:#93c5fd;padding:2px 8px;border-radius:4px;font-size:12px\">${escapeHtml(a.source)}</span>${(a.source==='zabbix' && ZABBIX_URL && a.source_event_id)?`<br><a href=\"${escapeHtml(ZABBIX_URL)}/tr_events.php?triggerid=${encodeURIComponent(a.rule_id||'')}&eventid=${encodeURIComponent(a.source_event_id)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#7dd3fc;font-size:11px;text-decoration:none\">Zabbix ↗</a>`:''}</td>
+            <td><span style=\"background:#1e293b;color:#38bdf8;padding:2px 8px;border-radius:4px;font-size:12px\">${escapeHtml(a.source)}</span>${(a.source==='zabbix' && ZABBIX_URL && a.source_event_id)?`<br><a href=\"${escapeHtml(ZABBIX_URL)}/tr_events.php?triggerid=${encodeURIComponent(a.rule_id||'')}&eventid=${encodeURIComponent(a.source_event_id)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:11px;text-decoration:none\">Zabbix ↗</a>`:''}</td>
             <td><strong>${escapeHtml(a.hostname || a.host_id || '-')}</strong></td>
-            <td style=\"color:#a3e635;font-size:12px\">${escapeHtml(alertOwner)}</td>
-            <td><span style=\"background:#111827;padding:2px 6px;border-radius:4px;font-size:12px\">${escapeHtml(a.severity)}</span>${a.resolved_at?`<br><span title=\"${escapeHtml(formatTime(a.resolved_at))}\" style=\"background:#052e16;color:#86efac;border:1px solid #14532d;padding:1px 6px;border-radius:4px;font-size:10px\">${tt('dash.triage.source_resolved','✓ 소스 해소')}</span>`:''}</td>
+            <td style=\"color:#4ade80;font-size:12px\">${escapeHtml(alertOwner)}</td>
+            <td><span style=\"background:#111827;padding:2px 6px;border-radius:4px;font-size:12px\">${escapeHtml(a.severity)}</span>${a.resolved_at?`<br><span title=\"${escapeHtml(formatTime(a.resolved_at))}\" style=\"background:#052e16;color:#4ade80;border:1px solid #14532d;padding:1px 6px;border-radius:4px;font-size:10px\">${tt('dash.triage.source_resolved','소스 해소')}</span>`:''}</td>
             <td style=\"max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">${escapeHtml(a.message)}</td>
             <td style=\"color:#94a3b8;font-size:12px\">${escapeHtml(triageAnalyst || '-')}</td>
-            <td style=\"color:#fde68a;font-size:12px\">${escapeHtml(triageChangedBy || '-')}</td>
+            <td style=\"color:#fbbf24;font-size:12px\">${escapeHtml(triageChangedBy || '-')}</td>
             <td><button onclick=\"openTriageModal('${escapeHtml(a.alert_id)}','${escapeHtml(rawStatus)}','${escapeHtml(triageAnalyst)}','${escapeHtml(triageNote)}','${escapeHtml(a.message||'').replace(/'/g,\"&#39;\")}','${escapeHtml(alertOwner)}')\" style=\"background:${color};color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;white-space:nowrap\">${label}</button></td>
           </tr>`;
         }).join('');
         triageTableEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
-          <thead><tr style=\"background:#0f2035\">
-            <th style=\"padding:8px;color:#93c5fd;text-align:left\">${tt('dash.dyn.lbl.time', '시각')}</th>
-            <th style=\"padding:8px;color:#93c5fd;text-align:left\">${tt('dash.dyn.lbl.source', '소스')}</th>
-            <th style=\"padding:8px;color:#93c5fd;text-align:left\">${tt('dash.dyn.lbl.host', '호스트')}</th>
-            <th style=\"padding:8px;color:#a3e635;text-align:left\">${tt('dash.dyn.lbl.server_owner', '서버 담당자')}</th>
-            <th style=\"padding:8px;color:#93c5fd;text-align:left\">${tt('dash.dyn.lbl.severity', '심각도')}</th>
-            <th style=\"padding:8px;color:#93c5fd;text-align:left\">${tt('dash.dyn.lbl.message', '메시지')}</th>
+          <thead><tr style=\"background:#0f172a\">
+            <th style=\"padding:8px;color:#38bdf8;text-align:left\">${tt('dash.dyn.lbl.time', '시각')}</th>
+            <th style=\"padding:8px;color:#38bdf8;text-align:left\">${tt('dash.dyn.lbl.source', '소스')}</th>
+            <th style=\"padding:8px;color:#38bdf8;text-align:left\">${tt('dash.dyn.lbl.host', '호스트')}</th>
+            <th style=\"padding:8px;color:#4ade80;text-align:left\">${tt('dash.dyn.lbl.server_owner', '서버 담당자')}</th>
+            <th style=\"padding:8px;color:#38bdf8;text-align:left\">${tt('dash.dyn.lbl.severity', '심각도')}</th>
+            <th style=\"padding:8px;color:#38bdf8;text-align:left\">${tt('dash.dyn.lbl.message', '메시지')}</th>
             <th style=\"padding:8px;color:#94a3b8;text-align:left\">${tt('dash.dyn.lbl.analyst', '분석관')}</th>
-            <th style=\"padding:8px;color:#fde68a;text-align:left\">${tt('dash.dyn.lbl.changed_by', '변경자')}</th>
-            <th style=\"padding:8px;color:#93c5fd;text-align:left\">${tt('dash.dyn.lbl.status', '상태')}</th>
+            <th style=\"padding:8px;color:#fbbf24;text-align:left\">${tt('dash.dyn.lbl.changed_by', '변경자')}</th>
+            <th style=\"padding:8px;color:#38bdf8;text-align:left\">${tt('dash.dyn.lbl.status', '상태')}</th>
           </tr></thead><tbody>${rows}</tbody></table>`;
       } catch (err) { triageTableEl.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix', '오류: ')}${escapeHtml(err.message)}</span>`; }
     }
@@ -4613,8 +4615,8 @@ def render_user_dashboard_html(
               const fromLabel = triageLabel(h.from_status);
               const toLabel = triageLabel(h.to_status);
               const arrow = `${fromLabel} → <strong>${toLabel}</strong>`;
-              const noteText = h.note ? `<div style=\"color:#cbd5e1;margin-top:2px;font-size:11px\">📝 ${escapeHtml(h.note)}</div>` : '';
-              const actorText = h.changed_by ? ` &nbsp;·&nbsp; <span style=\"color:#fde68a\">${tt('dash.dyn.lbl.changed_by', '변경자')}: ${escapeHtml(h.changed_by)}</span>` : '';
+              const noteText = h.note ? `<div style=\"color:#cbd5e1;margin-top:2px;font-size:11px\">${escapeHtml(h.note)}</div>` : '';
+              const actorText = h.changed_by ? ` &nbsp;·&nbsp; <span style=\"color:#fbbf24\">${tt('dash.dyn.lbl.changed_by', '변경자')}: ${escapeHtml(h.changed_by)}</span>` : '';
               return `<div style=\"background:#0c1827;border-left:3px solid #334155;padding:7px 12px;margin-bottom:5px;border-radius:4px;font-size:12px\">
                 <div style=\"color:#64748b\">${escapeHtml(formatTime(h.changed_at))} &nbsp;·&nbsp; ${tt('dash.dyn.lbl.analyst', '분석관')}: ${escapeHtml(h.analyst || '-')}${actorText}</div>
                 <div style=\"color:#e2e8f0;margin-top:2px\">${arrow}</div>${noteText}
@@ -4652,8 +4654,8 @@ def render_user_dashboard_html(
           method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
         });
         if (!res.ok) { const d = await res.json(); triageModalStatusLineEl.textContent = `${tt('dash.dyn.error_prefix', '오류: ')}${d.detail || res.status}`; return; }
-        triageModalStatusLineEl.style.color = '#86efac';
-        triageModalStatusLineEl.textContent = tt('dash.dyn.autosaved', '✅ 자동 저장됨');
+        triageModalStatusLineEl.style.color = '#4ade80';
+        triageModalStatusLineEl.textContent = tt('dash.dyn.autosaved', '자동 저장됨');
         loadTriage();
       } catch (err) { triageModalStatusLineEl.textContent = `${tt('dash.dyn.error_prefix', '오류: ')}${err.message}`; }
     });
@@ -4682,7 +4684,7 @@ def render_user_dashboard_html(
         const data = await res.json();
         const list = data.incidents || [];
         if (!list.length) { incidentsListEl.innerHTML = '<span class=\"empty\">' + tt('dash.dyn.incidents_empty', '인시던트 없음') + '</span>'; return; }
-        const STATUS_COLOR = { open: '#ef4444', investigating: '#f59e0b', resolved: '#22c55e', closed: '#6b7280' };
+        const STATUS_COLOR = { open: '#f87171', investigating: '#fbbf24', resolved: '#4ade80', closed: '#6b7280' };
         incidentsListEl.innerHTML = list.map(inc => {
           const color = STATUS_COLOR[inc.status] || '#6b7280';
           const ownerLabel = (inc.related_owners || []).join(', ') || '-';
@@ -4694,12 +4696,12 @@ def render_user_dashboard_html(
           return `<div style=\"background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center\">
             <div>
               <strong>${escapeHtml(inc.title)}</strong>
-              <div style=\"color:#94a3b8;font-size:12px;margin-top:4px\">${escapeHtml(formatTime(inc.created_at))} · ${tt('dash.dyn.notes_label', '노트')} ${(inc.notes||[]).length}${tt('dash.dyn.notes_unit', '개')}${incHost ? ' · ' + tt('dash.dyn.lbl.host', '호스트') + ': <span style=\"color:#93c5fd\">' + escapeHtml(incHost) + '</span>' : ''}${hostLabel ? ' · <span style=\"color:#93c5fd\">' + escapeHtml(hostLabel) + '</span>' : ''}</div>
-              <div style=\"color:#a3e635;font-size:12px;margin-top:2px\">${tt('dash.dyn.col.owner', '담당자')}: ${escapeHtml(incAnalyst || ownerLabel)}${handlerInfo}</div>
+              <div style=\"color:#94a3b8;font-size:12px;margin-top:4px\">${escapeHtml(formatTime(inc.created_at))} · ${tt('dash.dyn.notes_label', '노트')} ${(inc.notes||[]).length}${tt('dash.dyn.notes_unit', '개')}${incHost ? ' · ' + tt('dash.dyn.lbl.host', '호스트') + ': <span style=\"color:#38bdf8\">' + escapeHtml(incHost) + '</span>' : ''}${hostLabel ? ' · <span style=\"color:#38bdf8\">' + escapeHtml(hostLabel) + '</span>' : ''}</div>
+              <div style=\"color:#4ade80;font-size:12px;margin-top:2px\">${tt('dash.dyn.col.owner', '담당자')}: ${escapeHtml(incAnalyst || ownerLabel)}${handlerInfo}</div>
             </div>
             <div style=\"display:flex;gap:8px;align-items:center\">
               <span style=\"background:${color};color:#fff;padding:3px 10px;border-radius:6px;font-size:12px\">${escapeHtml(inc.status)}</span>
-              <button onclick=\"openIncidentModal('${escapeHtml(inc.incident_id)}')\" style=\"background:#1e293b;color:#93c5fd;border:1px solid #334155;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px\">${tt('dash.dyn.detail_btn', '상세')}</button>
+              <button onclick=\"openIncidentModal('${escapeHtml(inc.incident_id)}')\" style=\"background:#1e293b;color:#38bdf8;border:1px solid #334155;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px\">${tt('dash.dyn.detail_btn', '상세')}</button>
             </div>
           </div>`;
         }).join('');
@@ -4726,25 +4728,25 @@ def render_user_dashboard_html(
         if (!inc) return;
         document.getElementById('incident_modal_title').textContent = inc.title;
         const statusUpdatedLine = inc.status_updated_at
-          ? `<br>🕐 <strong style="color:#fbbf24">${tt('dash.dyn.status_changed_at', '상태 변경 시각')}:</strong> ${escapeHtml(formatTime(inc.status_updated_at))}`
+          ? `<br><strong style="color:#fbbf24">${tt('dash.dyn.status_changed_at', '상태 변경 시각')}:</strong> ${escapeHtml(formatTime(inc.status_updated_at))}`
           : '';
-        const hostLine = inc.hostname ? `<br>🖥️ <strong style="color:#93c5fd">${tt('dash.dyn.lbl.host', '호스트')}:</strong> ${escapeHtml(inc.hostname)}` : '';
-        const analystLine = inc.analyst ? `<br>👤 <strong style="color:#a3e635">${tt('dash.dyn.col.owner', '담당자')}:</strong> ${escapeHtml(inc.analyst)}` : '';
-        const handlerLine = (inc.handler && inc.handler !== inc.analyst) ? `<br>🔧 <strong style="color:#fbbf24">${tt('dash.dyn.lbl.handler', '조치자')}:</strong> ${escapeHtml(inc.handler)}` : '';
+        const hostLine = inc.hostname ? `<br><strong style="color:#38bdf8">${tt('dash.dyn.lbl.host', '호스트')}:</strong> ${escapeHtml(inc.hostname)}` : '';
+        const analystLine = inc.analyst ? `<br><strong style="color:#4ade80">${tt('dash.dyn.col.owner', '담당자')}:</strong> ${escapeHtml(inc.analyst)}` : '';
+        const handlerLine = (inc.handler && inc.handler !== inc.analyst) ? `<br><strong style="color:#fbbf24">${tt('dash.dyn.lbl.handler', '조치자')}:</strong> ${escapeHtml(inc.handler)}` : '';
         document.getElementById('incident_modal_info').innerHTML = `<span style="color:#64748b">ID: ${escapeHtml(inc.incident_id)}</span><br>${tt('dash.dyn.created_label', '생성')}: ${escapeHtml(formatTime(inc.created_at))} &nbsp;|&nbsp; ${tt('dash.dyn.updated_label', '수정')}: ${escapeHtml(formatTime(inc.updated_at))}${statusUpdatedLine}${hostLine}${analystLine}${handlerLine}`;
         document.getElementById('incident_modal_status').value = inc.status;
         // 상태 / 담당자 / 조치자 변경 히스토리
         const history = inc.history || [];
-        const statusLabels = { open: '🔵 open', investigating: '🟡 investigating', resolved: '🟢 resolved', closed: '⚫ closed', created: tt('dash.dyn.inc_status_created', '🆕 생성됨') };
+        const statusLabels = { open: 'open', investigating: 'investigating', resolved: 'resolved', closed: 'closed', created: tt('dash.dyn.inc_status_created', '생성됨') };
         document.getElementById('incident_modal_history').innerHTML = history.length
           ? [...history].reverse().map(h => {
               let arrow;
               if (h.event === 'created') {
                 arrow = `<span style=\"color:#94a3b8\">${tt('dash.dyn.created_label', '생성')}:</span> <strong>${statusLabels[h.to_status] || h.to_status}</strong>`;
               } else if (h.event === 'analyst_changed') {
-                arrow = `<span style=\"color:#a3e635\">👤 ${tt('dash.dyn.col.owner', '담당자')}:</span> ${escapeHtml(h.from_analyst || '-')} → <strong>${escapeHtml(h.to_analyst || '-')}</strong>`;
+                arrow = `<span style=\"color:#4ade80\">${tt('dash.dyn.col.owner', '담당자')}:</span> ${escapeHtml(h.from_analyst || '-')} → <strong>${escapeHtml(h.to_analyst || '-')}</strong>`;
               } else if (h.event === 'handler_changed') {
-                arrow = `<span style=\"color:#fbbf24\">🔧 ${tt('dash.dyn.lbl.handler', '조치자')}:</span> ${escapeHtml(h.from_handler || '-')} → <strong>${escapeHtml(h.to_handler || '-')}</strong>`;
+                arrow = `<span style=\"color:#fbbf24\">${tt('dash.dyn.lbl.handler', '조치자')}:</span> ${escapeHtml(h.from_handler || '-')} → <strong>${escapeHtml(h.to_handler || '-')}</strong>`;
               } else {
                 arrow = `${statusLabels[h.from_status] || h.from_status} → <strong>${statusLabels[h.to_status] || h.to_status}</strong>`;
               }
@@ -4884,7 +4886,7 @@ def render_user_dashboard_html(
       if (!matches.length) { sugEl.style.display = 'none'; return; }
       sugEl.innerHTML = matches.map(h => {
         const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
-        return `<div onclick=\"_incSelectHost('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}')\" style=\"padding:8px 12px;cursor:pointer;border-bottom:1px solid #334155;font-size:13px;color:#e2e8f0\" onmouseover=\"this.style.background='#1e3a5f'\" onmouseout=\"this.style.background=''\">
+        return `<div onclick=\"_incSelectHost('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}')\" style=\"padding:8px 12px;cursor:pointer;border-bottom:1px solid #334155;font-size:13px;color:#e2e8f0\" onmouseover=\"this.style.background='#334155'\" onmouseout=\"this.style.background=''\">
           <strong>${escapeHtml(h.hostname)}</strong> <span style=\"color:#64748b;font-size:11px\">${tt('dash.dyn.lbl.owner_short', '담당')}: ${escapeHtml(ownerLabel)}</span>
         </div>`;
       }).join('');
@@ -4916,7 +4918,7 @@ def render_user_dashboard_html(
       if (tab === 'trivy') loadRiskMatrix();
     }
 
-    /* ⭐ 내 서버: assigned_servers(호스트명) 또는 owner==display_name 인 자산만 모아 렌더 */
+    /* 내 서버: assigned_servers(호스트명) 또는 owner==display_name 인 자산만 모아 렌더 */
     function renderMyServers() {
       const containerEl = document.getElementById('mine_table');
       const countEl = document.getElementById('mine_search_count');
@@ -4967,12 +4969,12 @@ def render_user_dashboard_html(
 
     /* D: 내 서버 간소화 테이블 — 호스트명·중요도·분류·상태·IP만. 행 더블클릭 → 상세 모달.
        통제/리스크/이력 등 상세는 상세 모달로 이동(대시보드 최소화). */
-    const _MINE_IMP_COLOR = { '상':'#fca5a5', '중':'#fde68a', '하':'#86efac' };
+    const _MINE_IMP_COLOR = { '상':'#f87171', '중':'#fbbf24', '하':'#4ade80' };
     function _mineRow(h, kind) {
       const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
       const typeBadge = kind === 'fleet'
-        ? `<span style=\"background:#0d2137;color:#6ee7b7;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700\">🖥️ PC</span>`
-        : `<span style=\"background:#0d2137;color:#7dd3fc;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700\">🖧 ${tt('dash.mine.server','서버')}</span>`;
+        ? `<span style=\"background:#0d2137;color:#6ee7b7;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700\">PC</span>`
+        : `<span style=\"background:#0d2137;color:#38bdf8;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700\">${tt('dash.mine.server','서버')}</span>`;
       const imp = (h.importance || '').trim();
       const impCell = imp
         ? `<span style=\"color:${_MINE_IMP_COLOR[imp]||'#94a3b8'};font-weight:700\">${escapeHtml(imp)}</span>`
@@ -4991,18 +4993,18 @@ def render_user_dashboard_html(
       ].join('');
       if (!rows) return '';
       return `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
-        <thead><tr style=\"background:#0f2035\">
+        <thead><tr style=\"background:#0f172a\">
           <th style=\"padding:8px;text-align:left;color:#e2e8f0\">${tt('dash.dyn.lbl.hostname','호스트명')}</th>
-          <th style=\"padding:8px;text-align:left;color:#93c5fd\">${tt('dash.mine.importance','중요도')}</th>
-          <th style=\"padding:8px;text-align:left;color:#93c5fd\">${tt('dash.dyn.lbl.status','상태')}</th>
-          <th style=\"padding:8px;text-align:left;color:#93c5fd\">IP</th>
+          <th style=\"padding:8px;text-align:left;color:#38bdf8\">${tt('dash.mine.importance','중요도')}</th>
+          <th style=\"padding:8px;text-align:left;color:#38bdf8\">${tt('dash.dyn.lbl.status','상태')}</th>
+          <th style=\"padding:8px;text-align:left;color:#38bdf8\">IP</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <div style=\"font-size:11px;color:#64748b;margin-top:4px\">💡 ${tt('dash.mine.hint','행을 더블클릭하면 상세 정보와 조치현황(예외 만료·기한 초과·기타)을 볼 수 있습니다.')}</div>`;
+      <div style=\"font-size:11px;color:#64748b;margin-top:4px\">${tt('dash.mine.hint','행을 더블클릭하면 상세 정보와 조치현황(예외 만료·기한 초과·기타)을 볼 수 있습니다.')}</div>`;
     }
 
-    /* ⭐ 호스트 상세 모달: 캐시의 전체 필드 + 미조치 3버킷(E, /dashboard/host-remediation) */
+    /* 호스트 상세 모달: 캐시의 전체 필드 + 미조치 3버킷(E, /dashboard/host-remediation) */
     function _hostFromCache(hostname) {
       const all = [...(_assetCache.zabbix || []), ...(_assetCache.fleet || [])];
       return all.find(h => h.hostname === hostname) || null;
@@ -5016,15 +5018,15 @@ def render_user_dashboard_html(
       const btn = (href, label, color) => `<a href=\"${escapeHtml(href)}\" target=\"_blank\" rel=\"noopener\" style=\"display:inline-flex;align-items:center;gap:4px;background:${color}18;border:1px solid ${color}66;color:${color};border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;text-decoration:none\">${label} ↗</a>`;
       const links = [];
       if (kind === 'zabbix' && ZABBIX_URL) {
-        links.push(btn(`${ZABBIX_URL}/zabbix.php?action=host.list&filter_set=1&filter_host=${encodeURIComponent(h.hostname)}`, 'Zabbix', '#7dd3fc'));
+        links.push(btn(`${ZABBIX_URL}/zabbix.php?action=host.list&filter_set=1&filter_host=${encodeURIComponent(h.hostname)}`, 'Zabbix', '#38bdf8'));
       }
       if (kind === 'fleet' && FLEET_URL) {
-        links.push(btn(`${FLEET_URL}/hosts?query=${encodeURIComponent(h.hostname)}`, 'Fleet', '#34d399'));
+        links.push(btn(`${FLEET_URL}/hosts?query=${encodeURIComponent(h.hostname)}`, 'Fleet', '#4ade80'));
       }
       if (GRAFANA_URL) {
         const q = h.host_id ? `{host_id=\"${h.host_id}\"}` : `{hostname=\"${h.hostname}\"}`;
         const panes = encodeURIComponent(JSON.stringify({ pane: { queries: [{ refId: 'A', expr: q, queryType: 'range' }], range: { from: 'now-6h', to: 'now' } } }));
-        links.push(btn(`${GRAFANA_URL}/explore?schemaVersion=1&panes=${panes}&orgId=1`, 'Grafana', '#f59e0b'));
+        links.push(btn(`${GRAFANA_URL}/explore?schemaVersion=1&panes=${panes}&orgId=1`, 'Grafana', '#fbbf24'));
       }
       if (!links.length) {
         return `<div style=\"font-size:11px;color:#64748b;margin-bottom:12px\">${tt('dash.host.no_links','연동 URL 미설정 (.env: MORI_ZABBIX_UI_URL·MORI_GRAFANA_URL·MORI_FLEET_UI_URL)')}</div>`;
@@ -5039,14 +5041,14 @@ def render_user_dashboard_html(
       const h = _hostFromCache(hostname) || { hostname };
       const _isZ = (_assetCache.zabbix || []).some(x => x.hostname === hostname);
       const kind = _isZ ? 'zabbix' : 'fleet';  // 서버(Zabbix)면 Zabbix, 아니면 PC(Fleet)
-      if (titleEl) titleEl.textContent = `🖥️ ${hostname}`;
+      if (titleEl) titleEl.textContent = `${hostname}`;
       const imp = (h.importance || '').trim();
       const impStr = imp ? `<span style=\"color:${_MINE_IMP_COLOR[imp]||'#94a3b8'};font-weight:700\">${escapeHtml(imp)}</span>` : '-';
       const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
       const excStr = h.exception_until
         ? `${escapeHtml(String(h.exception_until).slice(0,10))}${h.exception_reason ? ' · ' + escapeHtml(h.exception_reason) : ''}`
         : '-';
-      const meta = `<div style=\"background:#0b1322;border:1px solid #1e293b;border-radius:8px;padding:10px 14px;margin-bottom:14px\">
+      const meta = `<div style=\"background:#0b1220;border:1px solid #1e293b;border-radius:8px;padding:10px 14px;margin-bottom:14px\">
         ${_kv(tt('dash.mine.importance','중요도'), impStr)}
         ${_kv(tt('dash.mine.category','분류'), escapeHtml((h.category||'').trim()||'-'))}
         ${_kv(tt('dash.dyn.lbl.status','상태'), `<span class=\\\"badge ${h.status==='online'?'online':h.status==='offline'?'offline':'unknown'}\\\">${escapeHtml(h.status||'-')}</span>`)}
@@ -5077,10 +5079,10 @@ def render_user_dashboard_html(
           if (ar.ok) {
             const ad = await ar.json();
             if (!ad.count) {
-              acctEl.innerHTML = `<div style=\"font-weight:700;color:#e2e8f0;margin-bottom:6px\">🔑 ${tt('dash.acc.host_title','로컬 계정')}</div><div class=\"empty\" style=\"color:#64748b\">${tt('dash.acc.host_none','수집된 계정 없음 (osquery push 필요)')}</div>`;
+              acctEl.innerHTML = `<div style=\"font-weight:700;color:#e2e8f0;margin-bottom:6px\">${tt('dash.acc.host_title','로컬 계정')}</div><div class=\"empty\" style=\"color:#64748b\">${tt('dash.acc.host_none','수집된 계정 없음 (osquery push 필요)')}</div>`;
             } else {
-              acctEl.innerHTML = `<div style=\"font-weight:700;color:#e2e8f0;margin-bottom:6px\">🔑 ${tt('dash.acc.host_title','로컬 계정')} (${ad.count}${ad.flagged?` · ⚠ ${ad.flagged}`:''})</div>` +
-                `<div style=\"max-height:180px;overflow-y:auto\">${ad.accounts.map(a => `<div style=\"display:flex;justify-content:space-between;gap:8px;padding:3px 6px;border-bottom:1px solid #0f1e33;font-size:12px\"><span style=\"font-family:monospace\">${escapeHtml(a.username)}${a.is_privileged?` <span style=\"color:#fca5a5\">●${a.is_sudo?'sudo':''}</span>`:''}</span><span>${a.findings.map(_accFindBadge).join('')||(a.in_directory?'✅':'')}</span></div>`).join('')}</div>`;
+              acctEl.innerHTML = `<div style=\"font-weight:700;color:#e2e8f0;margin-bottom:6px\">${tt('dash.acc.host_title','로컬 계정')} (${ad.count}${ad.flagged?` · ${ad.flagged}`:''})</div>` +
+                `<div style=\"max-height:180px;overflow-y:auto\">${ad.accounts.map(a => `<div style=\"display:flex;justify-content:space-between;gap:8px;padding:3px 6px;border-bottom:1px solid #0f1e33;font-size:12px\"><span style=\"font-family:monospace\">${escapeHtml(a.username)}${a.is_privileged?` <span style=\"color:#f87171\">●${a.is_sudo?'sudo':''}</span>`:''}</span><span>${a.findings.map(_accFindBadge).join('')||(a.in_directory?'':'')}</span></div>`).join('')}</div>`;
             }
           }
         } catch (e) { /* best-effort */ }
@@ -5094,7 +5096,7 @@ def render_user_dashboard_html(
       const b = bucket || { count: 0, items: [] };
       const items = (b.items || []).map(it => `<div style=\"display:flex;justify-content:space-between;gap:10px;padding:4px 8px;border-bottom:1px solid #0f1e33;font-size:12px\">
         <span style=\"color:#cbd5e1\">${escapeHtml(it.label||it.id)}</span>
-        <span style=\"color:${it.severity==='critical'?'#fca5a5':'#fdba74'};text-transform:uppercase;font-size:10px\">${escapeHtml(it.severity||'')}${it.exception_until?` · ~${escapeHtml(String(it.exception_until).slice(0,10))}`:''}${it.plan_target_date?` · D:${escapeHtml(String(it.plan_target_date).slice(0,10))}`:''}</span>
+        <span style=\"color:${it.severity==='critical'?'#f87171':'#fbbf24'};text-transform:uppercase;font-size:10px\">${escapeHtml(it.severity||'')}${it.exception_until?` · ~${escapeHtml(String(it.exception_until).slice(0,10))}`:''}${it.plan_target_date?` · D:${escapeHtml(String(it.plan_target_date).slice(0,10))}`:''}</span>
       </div>`).join('');
       return `<div style=\"flex:1;min-width:170px;border:1px solid ${color}55;border-radius:8px;overflow:hidden\">
         <div style=\"background:${color}18;padding:6px 10px;display:flex;justify-content:space-between;align-items:center\">
@@ -5105,12 +5107,12 @@ def render_user_dashboard_html(
     }
     function _renderRemediation(d) {
       const bk = d.buckets || {};
-      const head = `<div style=\"font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:8px\">🔧 ${tt('dash.host.remed_title','조치현황 (미조치 {n}건)').replace('{n}', d.total||0)}</div>`;
-      if (!d.total) return head + `<div class=\"empty\" style=\"padding:12px;color:#4ade80\">✅ ${tt('dash.host.remed_clear','미조치 항목이 없습니다.')}</div>`;
+      const head = `<div style=\"font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:8px\">${tt('dash.host.remed_title','조치현황 (미조치 {n}건)').replace('{n}', d.total||0)}</div>`;
+      if (!d.total) return head + `<div class=\"empty\" style=\"padding:12px;color:#4ade80\">${tt('dash.host.remed_clear','미조치 항목이 없습니다.')}</div>`;
       return head + `<div style=\"display:flex;gap:10px;flex-wrap:wrap\">
-        ${_remedBucket(tt('dash.host.bucket_exc','예외 만료'), '#f87171', '⏰', bk.exception_expired)}
-        ${_remedBucket(tt('dash.host.bucket_overdue','조치기한 초과'), '#fb923c', '🔴', bk.overdue)}
-        ${_remedBucket(tt('dash.host.bucket_other','기타 위험'), '#facc15', '⚠️', bk.other)}
+        ${_remedBucket(tt('dash.host.bucket_exc','예외 만료'), '#f87171', '', bk.exception_expired)}
+        ${_remedBucket(tt('dash.host.bucket_overdue','조치기한 초과'), '#fbbf24', '', bk.overdue)}
+        ${_remedBucket(tt('dash.host.bucket_other','기타 위험'), '#fbbf24', '', bk.other)}
       </div>`;
     }
 
@@ -5151,31 +5153,31 @@ def render_user_dashboard_html(
         const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
         const fleetLink = FLEET_URL ? `<a href=\"${escapeHtml(FLEET_URL)}/hosts?query=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#6ee7b7;font-size:12px;\">Fleet ↗</a>` : '';
         const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
-        const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>
+        const ownerStr = `<span style=\"color:#4ade80;font-size:12px\">${escapeHtml(ownerLabel)}</span>
           <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','','pc','')\"
-            style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
+            style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#334155;color:#38bdf8;border:1px solid #334155;cursor:pointer;\"></button>`;
         return `<tr ondblclick=\"openHostDetail('${escapeHtml(h.hostname)}')\" style=\"cursor:pointer\" title=\"${tt('dash.mine.dblclick','더블클릭하면 상세·조치현황')}\">
           <td><strong>${escapeHtml(h.hostname)}</strong>${fleetLink ? '<br>' + fleetLink : ''}</td>
-          <td><span style=\"background:#0d2137;color:#6ee7b7;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;\">🖥️ PC</span></td>
+          <td><span style=\"background:#0d2137;color:#6ee7b7;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;\">PC</span></td>
           <td>${escapeHtml(h.platform)}</td>
           <td>${escapeHtml(h.primary_ip)}</td>
           <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
           <td>${escapeHtml(h.risk_score)}</td>
           <td>${escapeHtml(formatTime(h.last_seen_at))}</td>
           <td>${ownerStr}</td>
-          <td><button onclick=\"openAuditModal('${escapeHtml(h.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e293b;border:1px solid #334155;border-radius:4px;color:#94a3b8;cursor:pointer\">${tt('dash.dyn.history_btn','📋 이력')}</button></td>
+          <td><button onclick=\"openAuditModal('${escapeHtml(h.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e293b;border:1px solid #334155;border-radius:4px;color:#94a3b8;cursor:pointer\">${tt('dash.dyn.history_btn','이력')}</button></td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
-        <thead><tr style=\"background:#0f2035;\">
+        <thead><tr style=\"background:#0f172a;\">
           <th style=\"padding:8px;color:#6ee7b7\">${tt('dash.dyn.lbl.hostname','호스트명')}</th>
           <th style=\"padding:8px;color:#6ee7b7\">${tt('dash.dyn.lbl.type','유형')}</th>
-          <th style=\"padding:8px;color:#93c5fd\">${tt('dash.dyn.lbl.platform','플랫폼')}</th>
-          <th style=\"padding:8px;color:#93c5fd\">IP</th>
-          <th style=\"padding:8px;color:#93c5fd\">${tt('dash.dyn.lbl.status','상태')}</th>
-          <th style=\"padding:8px;color:#93c5fd\">${tt('dash.dyn.lbl.risk','리스크')}</th>
-          <th style=\"padding:8px;color:#93c5fd\">${tt('dash.dyn.lbl.last_seen','마지막 확인')}</th>
-          <th style=\"padding:8px;color:#a3e635\">${tt('dash.dyn.lbl.owner_team','담당자 / 팀')}</th>
+          <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.platform','플랫폼')}</th>
+          <th style=\"padding:8px;color:#38bdf8\">IP</th>
+          <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.status','상태')}</th>
+          <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.risk','리스크')}</th>
+          <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.last_seen','마지막 확인')}</th>
+          <th style=\"padding:8px;color:#4ade80\">${tt('dash.dyn.lbl.owner_team','담당자 / 팀')}</th>
           <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.history','이력')}</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -5188,41 +5190,41 @@ def render_user_dashboard_html(
       const showImp = assetColumnPrefs.show_importance !== false;
       const showIsms = assetColumnPrefs.show_isms_control !== false;
       const showIso = assetColumnPrefs.show_iso27001_control !== false;
-      const impColor = { '\uc0c1': '#fca5a5', '\uc911': '#fde68a', '\ud558': '#86efac' };
+      const impColor = { '\uc0c1': '#f87171', '\uc911': '#fbbf24', '\ud558': '#4ade80' };
       const impLabel = { '\uc0c1': tt('dash.dyn.imp.high','\uc0c1'), '\uc911': tt('dash.dyn.imp.mid','\uc911'), '\ud558': tt('dash.dyn.imp.low','\ud558') };
       const rows = hosts.map(h => {
         const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
-        const zabbixLink = ZABBIX_URL ? `<a href=\"${escapeHtml(ZABBIX_URL)}/zabbix.php?action=host.list&filter_set=1&filter_host=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#7dd3fc;font-size:12px;\">Zabbix ↗</a>` : '';
+        const zabbixLink = ZABBIX_URL ? `<a href=\"${escapeHtml(ZABBIX_URL)}/zabbix.php?action=host.list&filter_set=1&filter_host=${encodeURIComponent(h.hostname)}\" target=\"_blank\" rel=\"noopener\" style=\"color:#38bdf8;font-size:12px;\">Zabbix ↗</a>` : '';
         const metricStr = h.latest_metric ? `${escapeHtml(h.latest_metric)}: ${escapeHtml(h.latest_value || '-')}` : '-';
         const impBadge = h.importance ? `<span style=\"background:#1e293b;color:${impColor[h.importance]||'#94a3b8'};padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700\">${escapeHtml(impLabel[h.importance]||h.importance)}</span>` : '-';
         const ownerLabel = [h.owner, h.team].filter(Boolean).join(' / ') || '-';
-        const ownerStr = `<span style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</span>
+        const ownerStr = `<span style=\"color:#4ade80;font-size:12px\">${escapeHtml(ownerLabel)}</span>
           <button onclick=\"openOwnerModal('${escapeHtml(h.hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}','server','','','${escapeHtml(h.importance||'')}')\"
-            style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;cursor:pointer;\">✏️</button>`;
+            style=\"margin-left:6px;padding:2px 6px;font-size:11px;border-radius:4px;background:#334155;color:#38bdf8;border:1px solid #334155;cursor:pointer;\"></button>`;
         return `<tr ondblclick=\"openHostDetail('${escapeHtml(h.hostname)}')\" style=\"cursor:pointer\" title=\"${tt('dash.mine.dblclick','더블클릭하면 상세·조치현황')}\">
           <td><strong>${escapeHtml(h.hostname)}</strong>${zabbixLink ? '<br>' + zabbixLink : ''}</td>
           <td style=\"font-size:12px\">${escapeHtml(h.category || '-')}</td>
           ${showImp ? `<td>${impBadge}</td>` : ''}
-          ${showIsms ? `<td style=\"font-size:11px;color:#7dd3fc\">${escapeHtml(h.isms_control || '-')}</td>` : ''}
-          ${showIso ? `<td style=\"font-size:11px;color:#a78bfa\">${escapeHtml(h.iso27001_control || '-')}</td>` : ''}
+          ${showIsms ? `<td style=\"font-size:11px;color:#38bdf8\">${escapeHtml(h.isms_control || '-')}</td>` : ''}
+          ${showIso ? `<td style=\"font-size:11px;color:#38bdf8\">${escapeHtml(h.iso27001_control || '-')}</td>` : ''}
           <td>${escapeHtml(h.primary_ip)}</td>
           <td><span class=\"badge ${statusCls}\">${escapeHtml(h.status)}</span></td>
           <td style=\"font-size:12px;color:#94a3b8\">${metricStr}</td>
           <td>${ownerStr}</td>
-          <td><button onclick=\"openAuditModal('${escapeHtml(h.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e293b;border:1px solid #334155;border-radius:4px;color:#94a3b8;cursor:pointer\">${tt('dash.dyn.history_btn','📋 이력')}</button></td>
+          <td><button onclick=\"openAuditModal('${escapeHtml(h.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e293b;border:1px solid #334155;border-radius:4px;color:#94a3b8;cursor:pointer\">${tt('dash.dyn.history_btn','이력')}</button></td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
-        <thead><tr style=\"background:#0f2035;\">
-          <th style=\"padding:8px;color:#7dd3fc\">${tt('dash.dyn.lbl.hostname','호스트명')}</th>
-          <th style=\"padding:8px;color:#7dd3fc\">${tt('dash.dyn.lbl.category','분류')}</th>
-          ${showImp ? '<th style=\"padding:8px;color:#fde68a\">' + tt('dash.dyn.lbl.importance','중요도') + '</th>' : ''}
-          ${showIsms ? '<th style=\"padding:8px;color:#7dd3fc\">' + tt('dash.dyn.lbl.isms_control','ISMS-P 통제') + '</th>' : ''}
-          ${showIso ? '<th style=\"padding:8px;color:#a78bfa\">ISO 27001</th>' : ''}
-          <th style=\"padding:8px;color:#93c5fd\">IP</th>
-          <th style=\"padding:8px;color:#93c5fd\">${tt('dash.dyn.lbl.status','상태')}</th>
+        <thead><tr style=\"background:#0f172a;\">
+          <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.hostname','호스트명')}</th>
+          <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.category','분류')}</th>
+          ${showImp ? '<th style=\"padding:8px;color:#fbbf24\">' + tt('dash.dyn.lbl.importance','중요도') + '</th>' : ''}
+          ${showIsms ? '<th style=\"padding:8px;color:#38bdf8\">' + tt('dash.dyn.lbl.isms_control','ISMS-P 통제') + '</th>' : ''}
+          ${showIso ? '<th style=\"padding:8px;color:#38bdf8\">ISO 27001</th>' : ''}
+          <th style=\"padding:8px;color:#38bdf8\">IP</th>
+          <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.status','상태')}</th>
           <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.latest_metric','최근 메트릭')}</th>
-          <th style=\"padding:8px;color:#a3e635\">${tt('dash.dyn.lbl.owner_team','담당자 / 팀')}</th>
+          <th style=\"padding:8px;color:#4ade80\">${tt('dash.dyn.lbl.owner_team','담당자 / 팀')}</th>
           <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.history','이력')}</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -5232,19 +5234,19 @@ def render_user_dashboard_html(
 
     function renderTrivyTable(rows, containerEl) {
       if (!rows.length) { containerEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.trivy_empty', 'Trivy 취약점 데이터가 없습니다.') + '</div>'; return; }
-      const sevColor = { critical:'#fca5a5', high:'#fdba74', medium:'#fde68a', low:'#86efac', info:'#94a3b8' };
+      const sevColor = { critical:'#f87171', high:'#fbbf24', medium:'#fbbf24', low:'#4ade80', info:'#94a3b8' };
       const tableRows = rows.map(r => {
         const planText = r.action_plan ? escapeHtml(r.action_plan).substring(0, 30) + (r.action_plan.length > 30 ? '…' : '') : '';
         let planCell;
         if (r.has_vuln_plans) {
           const cnt = (r.vuln_plans_count || 0) + (r.vuln_exceptions_count || 0);
-          planCell = `<span style=\"color:#fbbf24;font-size:12px;font-weight:600\">${tt('dash.dyn.cve_plan_detail','📋 CVE별 상세 계획')}</span>
+          planCell = `<span style=\"color:#fbbf24;font-size:12px;font-weight:600\">${tt('dash.dyn.cve_plan_detail','CVE별 상세 계획')}</span>
             <br><span style=\"color:#94a3b8;font-size:11px\">${tt('dash.dyn.plan_count','계획')} ${r.vuln_plans_count||0} · ${tt('dash.dyn.exception_count','예외')} ${r.vuln_exceptions_count||0}</span>
-            <br><button onclick=\"showVulnPlansNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">${tt('dash.dyn.notice_btn','ℹ️ 안내')}</button>`;
+            <br><button onclick=\"showVulnPlansNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">${tt('dash.dyn.notice_btn','안내')}</button>`;
         } else if (r.action_plan) {
-          planCell = `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(r.action_plan)}\">${planText}</span>${r.action_target_date ? '<br><span style=\"color:#64748b;font-size:11px\">~' + escapeHtml(r.action_target_date) + '</span>' : ''}<br><button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:1px 6px;background:#1e3a5f;border:1px solid #334155;border-radius:3px;color:#7dd3fc;cursor:pointer;margin-top:2px\">${tt('dash.dyn.edit_btn','✏️ 수정')}</button>`;
+          planCell = `<span style=\"color:#4ade80;font-size:12px\" title=\"${escapeHtml(r.action_plan)}\">${planText}</span>${r.action_target_date ? '<br><span style=\"color:#64748b;font-size:11px\">~' + escapeHtml(r.action_target_date) + '</span>' : ''}<br><button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:1px 6px;background:#334155;border:1px solid #334155;border-radius:3px;color:#38bdf8;cursor:pointer;margin-top:2px\">${tt('dash.dyn.edit_btn','수정')}</button>`;
         } else {
-          planCell = `<button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#1e3a5f;border:1px solid #334155;border-radius:4px;color:#7dd3fc;cursor:pointer\">${tt('dash.dyn.add_plan_btn','+ 계획 추가')}</button>`;
+          planCell = `<button onclick=\"openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')\" style=\"font-size:11px;padding:2px 7px;background:#334155;border:1px solid #334155;border-radius:4px;color:#38bdf8;cursor:pointer\">${tt('dash.dyn.add_plan_btn','+ 계획 추가')}</button>`;
         }
         const ownerLabel = _ownerForHost(r.hostname);
         const ownerData = _getOwnerData(r.hostname);
@@ -5253,16 +5255,16 @@ def render_user_dashboard_html(
         let exCell;
         if (r.has_vuln_exceptions) {
           const cnt = (r.vuln_plans_count || 0) + (r.vuln_exceptions_count || 0);
-          exCell = `<span style=\"color:#fbbf24;font-size:12px;font-weight:600\">${tt('dash.dyn.cve_exception_detail','📋 CVE별 상세 예외')}</span>
+          exCell = `<span style=\"color:#fbbf24;font-size:12px;font-weight:600\">${tt('dash.dyn.cve_exception_detail','CVE별 상세 예외')}</span>
             <br><span style=\"color:#94a3b8;font-size:11px\">${tt('dash.dyn.exception_count','예외')} ${r.vuln_exceptions_count||0} · ${tt('dash.dyn.plan_count','계획')} ${r.vuln_plans_count||0}</span>
-            <br><button onclick=\"showVulnExceptionsNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">${tt('dash.dyn.notice_btn','ℹ️ 안내')}</button>`;
+            <br><button onclick=\"showVulnExceptionsNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">${tt('dash.dyn.notice_btn','안내')}</button>`;
         } else if (exUntil) {
-          exCell = `<span style=\"color:#fde68a;font-size:12px\">~${escapeHtml(exUntil)}</span>${exReason ? '<br><span style=\"color:#94a3b8;font-size:11px\" title=\"'+escapeHtml(exReason)+'\">'+escapeHtml(exReason.substring(0,20))+(exReason.length>20?'…':'')+'</span>' : ''}<br><button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','${escapeHtml(exUntil)}','${escapeHtml(exReason).replace(/'/g,"\\\\'")}')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">${tt('dash.dyn.edit_btn','✏️ 수정')}</button>`;
+          exCell = `<span style=\"color:#fbbf24;font-size:12px\">~${escapeHtml(exUntil)}</span>${exReason ? '<br><span style=\"color:#94a3b8;font-size:11px\" title=\"'+escapeHtml(exReason)+'\">'+escapeHtml(exReason.substring(0,20))+(exReason.length>20?'…':'')+'</span>' : ''}<br><button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','${escapeHtml(exUntil)}','${escapeHtml(exReason).replace(/'/g,"\\\\'")}')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:2px\">${tt('dash.dyn.edit_btn','수정')}</button>`;
         } else {
           exCell = `<button onclick=\"openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','','')\" style=\"font-size:11px;padding:2px 7px;background:#3b1f00;border:1px solid #78350f;border-radius:4px;color:#fbbf24;cursor:pointer\">${tt('dash.dyn.add_exception_btn','+ 예외 설정')}</button>`;
         }
         const totalCell = r.total > 0
-          ? `<button onclick=\"openVulnListModal('${escapeHtml(r.host_id)}')\" title=\"${tt('dash.dyn.view_vuln_detail','취약점 상세 보기')}\" style=\"background:#1e3a5f;border:1px solid #334155;color:#7dd3fc;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:13px;font-weight:700\">${r.total} ${tt('dash.dyn.cases_unit','건 ↗')}</button>`
+          ? `<button onclick=\"openVulnListModal('${escapeHtml(r.host_id)}')\" title=\"${tt('dash.dyn.view_vuln_detail','취약점 상세 보기')}\" style=\"background:#334155;border:1px solid #334155;color:#38bdf8;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:13px;font-weight:700\">${r.total} ${tt('dash.dyn.cases_unit','건 ↗')}</button>`
           : `<span style=\"color:#64748b\">${r.total}</span>`;
         const _rscore = _hostRiskScore(r);
         const riskCell = _rscore
@@ -5270,7 +5272,7 @@ def render_user_dashboard_html(
           : '<span style=\"color:#475569\">-</span>';
         return `<tr>
           <td><strong>${escapeHtml(r.hostname)}</strong><br><span style=\"color:#64748b;font-size:11px\">${escapeHtml(r.host_id)}</span></td>
-          <td style=\"color:#a3e635;font-size:12px\">${escapeHtml(ownerLabel)}</td>
+          <td style=\"color:#4ade80;font-size:12px\">${escapeHtml(ownerLabel)}</td>
           <td style=\"color:${sevColor.critical};font-weight:700;text-align:center\">${r.critical}</td>
           <td style=\"text-align:center\">${riskCell}</td>
           <td style=\"text-align:center\">${totalCell}</td>
@@ -5278,19 +5280,19 @@ def render_user_dashboard_html(
           <td style=\"font-size:12px;color:#64748b\">${escapeHtml(formatTime(r.latest_detected_at))}</td>
           <td style=\"min-width:130px\">${planCell}</td>
           <td style=\"min-width:110px\">${exCell}</td>
-          <td style=\"text-align:center\"><button onclick=\"openAuditModal('${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:2px 6px;background:#1e293b;border:1px solid #334155;border-radius:3px;color:#94a3b8;cursor:pointer\" title=\"${tt('dash.dyn.edit_history','수정 이력')}\">📋</button></td>
+          <td style=\"text-align:center\"><button onclick=\"openAuditModal('${escapeHtml(r.hostname)}')\" style=\"font-size:10px;padding:2px 6px;background:#1e293b;border:1px solid #334155;border-radius:3px;color:#94a3b8;cursor:pointer\" title=\"${tt('dash.dyn.edit_history','수정 이력')}\"></button></td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
-        <thead><tr style=\"background:#0f2035;\">
-          <th style=\"padding:8px;color:#fdba74\">${tt('dash.dyn.lbl.host','호스트')}</th>
-          <th style=\"padding:8px;color:#a3e635\">${tt('dash.dyn.lbl.owner','담당자')}</th>
-          <th style=\"padding:8px;color:#fca5a5\">Critical</th>
-          <th style=\"padding:8px;color:#c4b5fd\">${tt('dash.dyn.lbl.risk_score','위험점수')}</th>
-          <th style=\"padding:8px;color:#93c5fd\">${tt('dash.dyn.lbl.total','합계')}</th>
+        <thead><tr style=\"background:#0f172a;\">
+          <th style=\"padding:8px;color:#fbbf24\">${tt('dash.dyn.lbl.host','호스트')}</th>
+          <th style=\"padding:8px;color:#4ade80\">${tt('dash.dyn.lbl.owner','담당자')}</th>
+          <th style=\"padding:8px;color:#f87171\">Critical</th>
+          <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.risk_score','위험점수')}</th>
+          <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.total','합계')}</th>
           <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.latest_cve','최근 CVE')}</th>
           <th style=\"padding:8px;color:#64748b\">${tt('dash.dyn.lbl.detected_date','탐지일')}</th>
-          <th style=\"padding:8px;color:#a3e635\">${tt('dash.dyn.lbl.action_plan','조치 계획')}</th>
+          <th style=\"padding:8px;color:#4ade80\">${tt('dash.dyn.lbl.action_plan','조치 계획')}</th>
           <th style=\"padding:8px;color:#fbbf24\">${tt('dash.dyn.lbl.action_exception','조치 예외')}</th>
           <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.history','이력')}</th>
         </tr></thead>
@@ -5318,7 +5320,7 @@ def render_user_dashboard_html(
 
     /* ── 호스트별 취약점 리스트 모달 ──────────────────────────────────────── */
     function _renderVulnListBody(hostRow) {
-      const sevColor = { critical:'#fca5a5', high:'#fdba74', medium:'#fde68a', low:'#86efac', info:'#94a3b8' };
+      const sevColor = { critical:'#f87171', high:'#fbbf24', medium:'#fbbf24', low:'#4ade80', info:'#94a3b8' };
       const showRisk = _canAssessRisk();  // 위험등급 열은 어드민/보안만
       const vulns = hostRow.vulns || [];
       // 호스트 단위 계획/예외 (CVE별 vuln_actions와 별개)
@@ -5333,18 +5335,18 @@ def render_user_dashboard_html(
         const parts = [];
         if (hasHostPlan) {
           parts.push(`<div style=\"flex:1;min-width:240px\">
-              <div style=\"color:#86efac;font-size:11px;font-weight:600;margin-bottom:3px\">${tt('dash.dyn.host_plan_title','📋 호스트 단위 조치 계획')}</div>
+              <div style=\"color:#4ade80;font-size:11px;font-weight:600;margin-bottom:3px\">${tt('dash.dyn.host_plan_title','호스트 단위 조치 계획')}</div>
               <div style=\"color:#e2e8f0;font-size:13px\">${escapeHtml(hostPlan)}</div>
               <div style=\"color:#64748b;font-size:11px;margin-top:2px\">${hostPlanDate?tt('dash.dyn.target_date_label','목표일')+' '+escapeHtml(hostPlanDate):''}${hostPlanBy?(hostPlanDate?' · ':'')+tt('dash.dyn.author_label','작성자')+' '+escapeHtml(hostPlanBy):''}</div>
             </div>`);
         }
         if (hasHostEx) {
           parts.push(`<div style=\"flex:1;min-width:200px\">
-              <div style=\"color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:3px\">${tt('dash.dyn.host_exception_title','⚠️ 호스트 단위 조치 예외')}</div>
+              <div style=\"color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:3px\">${tt('dash.dyn.host_exception_title','호스트 단위 조치 예외')}</div>
               <div style=\"color:#e2e8f0;font-size:13px\">~${escapeHtml(hostEx)}${tt('dash.dyn.until_suffix',' 까지')}</div>
             </div>`);
         }
-        hostBanner = `<div style=\"background:#0f2035;border:1px solid #1e3a5f;border-radius:6px;padding:10px 14px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:18px\">
+        hostBanner = `<div style=\"background:#0f172a;border:1px solid #334155;border-radius:6px;padding:10px 14px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:18px\">
           ${parts.join('')}
           <div style=\"width:100%;color:#64748b;font-size:11px;margin-top:4px\">${tt('dash.dyn.cve_priority_note','※ 아래 CVE별 계획/예외가 설정된 경우 해당 CVE에 한해 우선 적용됩니다.')}</div>
         </div>`;
@@ -5354,9 +5356,9 @@ def render_user_dashboard_html(
       }
       const rows = vulns.map(v => {
         const planLabel = v.plan_text
-          ? `<span style=\"color:#a3e635;font-size:12px\" title=\"${escapeHtml(v.plan_text)}\">${escapeHtml(v.plan_text.substring(0,30))}${v.plan_text.length>30?'…':''}</span>${v.plan_target_date?'<br><span style=\"color:#64748b;font-size:11px\">~'+escapeHtml(v.plan_target_date)+'</span>':''}`
+          ? `<span style=\"color:#4ade80;font-size:12px\" title=\"${escapeHtml(v.plan_text)}\">${escapeHtml(v.plan_text.substring(0,30))}${v.plan_text.length>30?'…':''}</span>${v.plan_target_date?'<br><span style=\"color:#64748b;font-size:11px\">~'+escapeHtml(v.plan_target_date)+'</span>':''}`
           : (hasHostPlan
-              ? `<span style=\"color:#86efac;font-size:11px;font-style:italic\">${tt('dash.dyn.host_level_applied','호스트 단위 적용')}</span>${hostPlanDate?'<br><span style=\"color:#64748b;font-size:11px\">~'+escapeHtml(hostPlanDate)+'</span>':''}`
+              ? `<span style=\"color:#4ade80;font-size:11px;font-style:italic\">${tt('dash.dyn.host_level_applied','호스트 단위 적용')}</span>${hostPlanDate?'<br><span style=\"color:#64748b;font-size:11px\">~'+escapeHtml(hostPlanDate)+'</span>':''}`
               : '<span style=\"color:#64748b;font-size:11px\">' + tt('dash.dyn.not_set','미설정') + '</span>');
         const exLabel = v.exception_until
           ? `<span style=\"color:#fbbf24;font-size:12px\">~${escapeHtml(v.exception_until)}</span>${v.exception_reason?'<br><span style=\"color:#94a3b8;font-size:11px\" title=\"'+escapeHtml(v.exception_reason)+'\">'+escapeHtml(v.exception_reason.substring(0,24))+(v.exception_reason.length>24?'…':'')+'</span>':''}`
@@ -5364,35 +5366,35 @@ def render_user_dashboard_html(
               ? `<span style=\"color:#fbbf24;font-size:11px;font-style:italic\">${tt('dash.dyn.host_level_applied','호스트 단위 적용')}</span><br><span style=\"color:#64748b;font-size:11px\">~${escapeHtml(hostEx)}</span>`
               : '<span style=\"color:#64748b;font-size:11px\">' + tt('dash.dyn.none','없음') + '</span>');
         const versionStr = v.installed_version
-          ? `${escapeHtml(v.installed_version)}${v.fixed_version?' → <span style=\"color:#86efac\">'+escapeHtml(v.fixed_version)+'</span>':''}`
+          ? `${escapeHtml(v.installed_version)}${v.fixed_version?' → <span style=\"color:#4ade80\">'+escapeHtml(v.fixed_version)+'</span>':''}`
           : '-';
         const rk = (_riskSummary.map || {})[v.vuln_id];
         const riskCell = rk
           ? `${_riskBadge(rk.level, true)}${rk.assessed?'':`<div style=\"color:#64748b;font-size:9px;margin-top:2px\">${tt('dash.risk.badge_unassessed','미평가')}</div>`}`
           : `<span style=\"color:#64748b;font-size:11px\">-</span>`;
         const riskTd = showRisk
-          ? `<td style=\"padding:6px 8px;text-align:center;white-space:nowrap\">${riskCell}<br><button onclick=\"openRiskModal('${escapeHtml(v.vuln_id)}')\" style=\"font-size:10px;padding:1px 6px;background:#2a1852;border:1px solid #4c1d95;border-radius:3px;color:#c4b5fd;cursor:pointer;margin-top:3px\">${tt('dash.risk.btn','🎯 평가')}</button></td>`
+          ? `<td style=\"padding:6px 8px;text-align:center;white-space:nowrap\">${riskCell}<br><button onclick=\"openRiskModal('${escapeHtml(v.vuln_id)}')\" style=\"font-size:10px;padding:1px 6px;background:#2a1852;border:1px solid #4c1d95;border-radius:3px;color:#38bdf8;cursor:pointer;margin-top:3px\">${tt('dash.risk.btn','평가')}</button></td>`
           : '';
         return `<tr>
-          <td style=\"padding:6px 8px\"><strong style=\"color:#7dd3fc\">${escapeHtml(v.cve||'-')}</strong></td>
+          <td style=\"padding:6px 8px\"><strong style=\"color:#38bdf8\">${escapeHtml(v.cve||'-')}</strong></td>
           <td style=\"padding:6px 8px;text-align:center\"><span style=\"color:${sevColor[v.severity]||'#94a3b8'};font-weight:700;text-transform:uppercase;font-size:11px\">${escapeHtml(v.severity)}</span></td>
           ${riskTd}
           <td style=\"padding:6px 8px;font-size:12px\">${escapeHtml(v.package_name||'-')}</td>
           <td style=\"padding:6px 8px;font-size:12px;color:#94a3b8\">${versionStr}</td>
           <td style=\"padding:6px 8px;font-size:11px;color:#64748b\">${escapeHtml(formatTime(v.detected_at))}</td>
-          <td style=\"padding:6px 8px;min-width:140px\">${planLabel}<br><button onclick=\"openVulnActionModal('${escapeHtml(v.vuln_id)}','plan')\" style=\"font-size:10px;padding:1px 6px;background:#0f3a1d;border:1px solid #14532d;border-radius:3px;color:#86efac;cursor:pointer;margin-top:3px\">${tt('dash.dyn.edit_plan_btn','✏️ 조치 계획')}</button></td>
-          <td style=\"padding:6px 8px;min-width:140px\">${exLabel}<br><button onclick=\"openVulnActionModal('${escapeHtml(v.vuln_id)}','exception')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:3px\">${tt('dash.dyn.edit_exception_btn','⚠️ 조치 예외')}</button></td>
+          <td style=\"padding:6px 8px;min-width:140px\">${planLabel}<br><button onclick=\"openVulnActionModal('${escapeHtml(v.vuln_id)}','plan')\" style=\"font-size:10px;padding:1px 6px;background:#0f3a1d;border:1px solid #14532d;border-radius:3px;color:#4ade80;cursor:pointer;margin-top:3px\">${tt('dash.dyn.edit_plan_btn','조치 계획')}</button></td>
+          <td style=\"padding:6px 8px;min-width:140px\">${exLabel}<br><button onclick=\"openVulnActionModal('${escapeHtml(v.vuln_id)}','exception')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:3px\">${tt('dash.dyn.edit_exception_btn','조치 예외')}</button></td>
         </tr>`;
       }).join('');
       return hostBanner + `<table style=\"width:100%;border-collapse:collapse;font-size:12px\">
-        <thead><tr style=\"background:#0f2035\">
-          <th style=\"padding:8px;color:#7dd3fc;text-align:left\">CVE</th>
-          <th style=\"padding:8px;color:#fdba74\">${tt('dash.dyn.lbl.severity','심각도')}</th>
-          ${showRisk?`<th style=\"padding:8px;color:#c4b5fd\">${tt('dash.risk.col','위험등급')}</th>`:''}
+        <thead><tr style=\"background:#0f172a\">
+          <th style=\"padding:8px;color:#38bdf8;text-align:left\">CVE</th>
+          <th style=\"padding:8px;color:#fbbf24\">${tt('dash.dyn.lbl.severity','심각도')}</th>
+          ${showRisk?`<th style=\"padding:8px;color:#38bdf8\">${tt('dash.risk.col','위험등급')}</th>`:''}
           <th style=\"padding:8px;color:#94a3b8;text-align:left\">${tt('dash.dyn.lbl.package','패키지')}</th>
           <th style=\"padding:8px;color:#94a3b8;text-align:left\">${tt('dash.dyn.lbl.install_recommend','설치 → 권장')}</th>
           <th style=\"padding:8px;color:#64748b\">${tt('dash.dyn.lbl.detected_date','탐지일')}</th>
-          <th style=\"padding:8px;color:#a3e635;text-align:left\">${tt('dash.dyn.lbl.action_plan','조치 계획')}</th>
+          <th style=\"padding:8px;color:#4ade80;text-align:left\">${tt('dash.dyn.lbl.action_plan','조치 계획')}</th>
           <th style=\"padding:8px;color:#fbbf24;text-align:left\">${tt('dash.dyn.lbl.action_exception','조치 예외')}</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -5402,7 +5404,7 @@ def render_user_dashboard_html(
     function openVulnListModal(hostId) {
       const row = (_assetCache.trivy || []).find(r => r.host_id === hostId);
       if (!row) { alert(tt('dash.dyn.host_not_found','호스트 데이터를 찾을 수 없습니다. 자산 새로고침 후 다시 시도해 주세요.')); return; }
-      document.getElementById('vuln_list_modal_title').textContent = `🛡️ ${row.hostname}${tt('dash.dyn.vuln_count_suffix',' — 취약점 ')}${row.total}${tt('dash.dyn.unit_count','건')}`;
+      document.getElementById('vuln_list_modal_title').textContent = `${row.hostname}${tt('dash.dyn.vuln_count_suffix',' — 취약점 ')}${row.total}${tt('dash.dyn.unit_count','건')}`;
       document.getElementById('vuln_list_modal_subtitle').textContent =
         `Critical ${row.critical} · High ${row.high} · Medium ${row.medium} · Low ${row.low}`;
       document.getElementById('vuln_list_modal_body').innerHTML = _renderVulnListBody(row);
@@ -5413,8 +5415,8 @@ def render_user_dashboard_html(
     /* ── 호스트 단위 조치 계획 안내 (CVE별 상세 계획 존재 시) ──────────── */
     function showVulnPlansNotice(hostId, hostname, count) {
       document.getElementById('vuln_plans_notice_body').innerHTML =
-        `<div style=\"margin-bottom:10px\"><strong style=\"color:#fdba74\">${escapeHtml(hostname)}</strong> 호스트에는 이미 <strong style=\"color:#a3e635\">CVE별 상세 조치 계획/예외</strong>가 ${count}건 설정되어 있습니다.</div>
-         <div style=\"color:#94a3b8\">호스트 단위 일괄 계획 대신 <strong style=\"color:#7dd3fc\">합계 탭</strong>(예: <span style=\"background:#1e3a5f;color:#7dd3fc;padding:1px 8px;border-radius:4px\">N 건 ↗</span> 버튼)에서 각 CVE별 계획을 확인·수정해 주세요.</div>`;
+        `<div style=\"margin-bottom:10px\"><strong style=\"color:#fbbf24\">${escapeHtml(hostname)}</strong> 호스트에는 이미 <strong style=\"color:#4ade80\">CVE별 상세 조치 계획/예외</strong>가 ${count}건 설정되어 있습니다.</div>
+         <div style=\"color:#94a3b8\">호스트 단위 일괄 계획 대신 <strong style=\"color:#38bdf8\">합계 탭</strong>(예: <span style=\"background:#334155;color:#38bdf8;padding:1px 8px;border-radius:4px\">N 건 ↗</span> 버튼)에서 각 CVE별 계획을 확인·수정해 주세요.</div>`;
       const openBtn = document.getElementById('vuln_plans_notice_open_list');
       openBtn.onclick = () => { closeVulnPlansNotice(); openVulnListModal(hostId); };
       document.getElementById('vuln_plans_notice_modal').style.display = 'flex';
@@ -5424,8 +5426,8 @@ def render_user_dashboard_html(
     /* ── 호스트 단위 조치 예외 안내 (CVE별 상세 예외 존재 시) ──────────── */
     function showVulnExceptionsNotice(hostId, hostname, count) {
       document.getElementById('vuln_plans_notice_body').innerHTML =
-        `<div style=\"margin-bottom:10px\"><strong style=\"color:#fdba74\">${escapeHtml(hostname)}</strong> 호스트에는 이미 <strong style=\"color:#fbbf24\">CVE별 상세 조치 예외</strong>가 설정되어 있습니다. (총 ${count}건의 CVE별 계획/예외)</div>
-         <div style=\"color:#94a3b8\">호스트 단위 일괄 예외 대신 <strong style=\"color:#7dd3fc\">합계 탭</strong>(예: <span style=\"background:#1e3a5f;color:#7dd3fc;padding:1px 8px;border-radius:4px\">N 건 ↗</span> 버튼)에서 각 CVE별 예외를 확인·수정해 주세요.</div>`;
+        `<div style=\"margin-bottom:10px\"><strong style=\"color:#fbbf24\">${escapeHtml(hostname)}</strong> 호스트에는 이미 <strong style=\"color:#fbbf24\">CVE별 상세 조치 예외</strong>가 설정되어 있습니다. (총 ${count}건의 CVE별 계획/예외)</div>
+         <div style=\"color:#94a3b8\">호스트 단위 일괄 예외 대신 <strong style=\"color:#38bdf8\">합계 탭</strong>(예: <span style=\"background:#334155;color:#38bdf8;padding:1px 8px;border-radius:4px\">N 건 ↗</span> 버튼)에서 각 CVE별 예외를 확인·수정해 주세요.</div>`;
       const openBtn = document.getElementById('vuln_plans_notice_open_list');
       openBtn.onclick = () => { closeVulnPlansNotice(); openVulnListModal(hostId); };
       document.getElementById('vuln_plans_notice_modal').style.display = 'flex';
@@ -5439,18 +5441,18 @@ def render_user_dashboard_html(
       const bodyEl = document.getElementById('pdca_do_modal_body');
       if (!bodyEl) return;
       const overdue = items.filter(i => i.overdue).length;
-      subtitleEl.innerHTML = tt('dash.dyn.pdca.do_subtitle','총 {n}건 조치 필요 (기한 초과 {o}건) · ').replace('{n}','<strong style=\"color:#f59e0b\">'+items.length+'</strong>').replace('{o}','<strong style=\"color:#fca5a5\">'+overdue+'</strong>')
-        + `<span style=\"color:#7dd3fc\">${tt('dash.dyn.pdca.control','통제')} ${ps.control_check||0}</span> ·
-        <span style=\"color:#fdba74\">Trivy ${ps.trivy||0}</span> ·
-        <span style=\"color:#fca5a5\">Alert ${ps.alert||0}</span>
-        <a href=\"/compliance/pdca/pending.csv\" download style=\"margin-left:12px;background:#0c2a4a;border:1px solid #1e3a5f;color:#7dd3fc;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none\">📥 CSV</a>`;
+      subtitleEl.innerHTML = tt('dash.dyn.pdca.do_subtitle','총 {n}건 조치 필요 (기한 초과 {o}건) · ').replace('{n}','<strong style=\"color:#fbbf24\">'+items.length+'</strong>').replace('{o}','<strong style=\"color:#f87171\">'+overdue+'</strong>')
+        + `<span style=\"color:#38bdf8\">${tt('dash.dyn.pdca.control','통제')} ${ps.control_check||0}</span> ·
+        <span style=\"color:#fbbf24\">Trivy ${ps.trivy||0}</span> ·
+        <span style=\"color:#f87171\">Alert ${ps.alert||0}</span>
+        <a href=\"/compliance/pdca/pending.csv\" download style=\"margin-left:12px;background:#0f172a;border:1px solid #334155;color:#38bdf8;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none\">CSV</a>`;
       if (items.length === 0) {
-        bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:24px;text-align:center\">' + tt('dash.dyn.pdca.do_no_items','조치가 필요한 항목이 없습니다. 🎉') + '</div>';
+        bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:24px;text-align:center\">' + tt('dash.dyn.pdca.do_no_items','조치가 필요한 항목이 없습니다. ') + '</div>';
       } else {
         const sourceBadge = (s) => {
-          if (s === 'trivy') return '<span style=\"background:#3b1f00;color:#fdba74;padding:2px 6px;border-radius:4px;font-size:10px\">🛡️ Trivy</span>';
-          if (s === 'alert') return '<span style=\"background:#450a0a;color:#fca5a5;padding:2px 6px;border-radius:4px;font-size:10px\">🚨 Alert</span>';
-          return '<span style=\"background:#0c2a4a;color:#7dd3fc;padding:2px 6px;border-radius:4px;font-size:10px\">' + tt('dash.dyn.pdca.control_badge','📋 통제') + '</span>';
+          if (s === 'trivy') return '<span style=\"background:#3b1f00;color:#fbbf24;padding:2px 6px;border-radius:4px;font-size:10px\">Trivy</span>';
+          if (s === 'alert') return '<span style=\"background:#450a0a;color:#f87171;padding:2px 6px;border-radius:4px;font-size:10px\">Alert</span>';
+          return '<span style=\"background:#0f172a;color:#38bdf8;padding:2px 6px;border-radius:4px;font-size:10px\">' + tt('dash.dyn.pdca.control_badge','통제') + '</span>';
         };
         bodyEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
           <thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155\">
@@ -5464,10 +5466,10 @@ def render_user_dashboard_html(
           </tr></thead><tbody>`
           + items.map(i => {
             const statusBadge = i.status === 'fail'
-              ? '<span style=\"background:#450a0a;color:#fca5a5;padding:2px 8px;border-radius:999px;font-size:11px\">Fail</span>'
+              ? '<span style=\"background:#450a0a;color:#f87171;padding:2px 8px;border-radius:999px;font-size:11px\">Fail</span>'
               : '<span style=\"background:#451a03;color:#fbbf24;padding:2px 8px;border-radius:999px;font-size:11px\">Warning</span>';
             const due = i.remediation_due_at ? new Date(i.remediation_due_at).toLocaleDateString('ko-KR') : '-';
-            const overdueFlag = i.overdue ? ' 🔴' : '';
+            const overdueFlag = i.overdue ? ' ' : '';
             return `<tr style=\"border-bottom:1px solid #1e293b\">
               <td style=\"text-align:center;padding:6px 8px\">${sourceBadge(i.source)}</td>
               <td style=\"padding:6px 8px;color:#38bdf8;font-weight:600\">${escapeHtml(i.control_id)}</td>
@@ -5496,8 +5498,8 @@ def render_user_dashboard_html(
       }
       _vulnActionHostId = foundHost ? foundHost.host_id : null;
       const meta = foundVuln
-        ? `<div><strong style=\"color:#7dd3fc\">${escapeHtml(foundVuln.cve||vulnId)}</strong> · <span style=\"color:#fdba74;text-transform:uppercase\">${escapeHtml(foundVuln.severity)}</span></div>
-           <div style=\"margin-top:3px\">${escapeHtml(foundVuln.package_name||'-')} ${foundVuln.installed_version?'('+escapeHtml(foundVuln.installed_version)+')':''} ${foundVuln.fixed_version?'→ <span style=\"color:#86efac\">'+escapeHtml(foundVuln.fixed_version)+'</span>':''}</div>
+        ? `<div><strong style=\"color:#38bdf8\">${escapeHtml(foundVuln.cve||vulnId)}</strong> · <span style=\"color:#fbbf24;text-transform:uppercase\">${escapeHtml(foundVuln.severity)}</span></div>
+           <div style=\"margin-top:3px\">${escapeHtml(foundVuln.package_name||'-')} ${foundVuln.installed_version?'('+escapeHtml(foundVuln.installed_version)+')':''} ${foundVuln.fixed_version?'→ <span style=\"color:#4ade80\">'+escapeHtml(foundVuln.fixed_version)+'</span>':''}</div>
            <div style=\"margin-top:3px;color:#64748b\">호스트: ${escapeHtml(foundHost?foundHost.hostname:'-')}</div>`
         : `<div>vuln_id: ${escapeHtml(vulnId)}</div>`;
       document.getElementById('vuln_action_modal_meta').innerHTML = meta;
@@ -5506,12 +5508,12 @@ def render_user_dashboard_html(
       const exSec = document.getElementById('vuln_exception_section');
       const clearBtn = document.getElementById('vuln_action_modal_clear');
       if (mode === 'exception') {
-        document.getElementById('vuln_action_modal_title').textContent = tt('dash.dyn.vuln_action.exception_title','⚠️ 조치 예외 설정');
+        document.getElementById('vuln_action_modal_title').textContent = tt('dash.dyn.vuln_action.exception_title','조치 예외 설정');
         planSec.style.display = 'none';
         exSec.style.display = 'flex';
         clearBtn.style.display = (foundVuln && foundVuln.exception_until) ? 'inline-block' : 'none';
       } else {
-        document.getElementById('vuln_action_modal_title').textContent = tt('dash.dyn.vuln_action.plan_title','✏️ 조치 계획 작성');
+        document.getElementById('vuln_action_modal_title').textContent = tt('dash.dyn.vuln_action.plan_title','조치 계획 작성');
         planSec.style.display = 'flex';
         exSec.style.display = 'none';
         clearBtn.style.display = 'none';
@@ -5530,8 +5532,8 @@ def render_user_dashboard_html(
     }
     function closeVulnActionModal() { document.getElementById('vuln_action_modal').style.display = 'none'; }
 
-    /* ── 🎯 위험성 평가 (R-4) ─────────────────────────────────────────────── */
-    const RISK_LEVEL_COLORS = { '매우높음':'#dc2626', '높음':'#ea580c', '중간':'#d97706', '낮음':'#16a34a' };
+    /* ── 위험성 평가 (R-4) ─────────────────────────────────────────────── */
+    const RISK_LEVEL_COLORS = { '매우높음':'#f87171', '높음':'#ea580c', '중간':'#fbbf24', '낮음':'#4ade80' };
     let _riskSummary = { items: [], map: {}, matrix: [[0,0,0],[0,0,0],[0,0,0]], by_level: {}, total: 0, assessed: 0 };
     let _riskModalVulnId = null;
     let _riskDoa = 4;  // 위험 수용 기준(DoA) 점수 1~9 — /settings/risk 에서 로드
@@ -5584,15 +5586,15 @@ def render_user_dashboard_html(
       if (canEdit) {
         let opts = '';
         for (let i = 1; i <= 9; i++) opts += `<option value=\"${i}\"${i===_riskDoa?' selected':''}>${i}${tt('dash.risk.pt','점')}</option>`;
-        el.innerHTML = `<div style=\"display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#0b1322;border:1px solid #1e293b;border-radius:8px;padding:8px 12px\">
-          <span style=\"font-size:12px;color:#a3e635;font-weight:700\">🟢 ${label}</span>
+        el.innerHTML = `<div style=\"display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#0b1220;border:1px solid #1e293b;border-radius:8px;padding:8px 12px\">
+          <span style=\"font-size:12px;color:#4ade80;font-weight:700\">${label}</span>
           <select id=\"doa_input\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:4px 8px;font-size:13px\">${opts}</select>
           <button onclick=\"saveRiskDoa()\" class=\"secondary\" style=\"width:auto;padding:4px 12px;font-size:12px\">${tt('dash.risk.doa_save','저장')}</button>
           <span id=\"doa_status\" style=\"font-size:11px;color:#64748b\"></span>
           <span style=\"font-size:11px;color:#64748b;flex-basis:100%\">${help}</span>
         </div>`;
       } else {
-        el.innerHTML = `<div style=\"font-size:12px;color:#94a3b8\">🟢 ${label}: <strong style=\"color:#4ade80\">${_riskDoa}${tt('dash.risk.pt','점')}</strong> ${tt('dash.risk.doa_readonly','이하 기본 수용')}</div>`;
+        el.innerHTML = `<div style=\"font-size:12px;color:#94a3b8\">${label}: <strong style=\"color:#4ade80\">${_riskDoa}${tt('dash.risk.pt','점')}</strong> ${tt('dash.risk.doa_readonly','이하 기본 수용')}</div>`;
       }
     }
 
@@ -5609,7 +5611,7 @@ def render_user_dashboard_html(
         if (!res.ok) { if (status) status.textContent = tt('dash.risk.doa_err','저장 실패'); return; }
         const d = await res.json();
         _riskDoa = d.doa;
-        if (status) { status.textContent = tt('dash.risk.doa_ok','✓ 저장됨'); status.style.color = '#4ade80'; }
+        if (status) { status.textContent = tt('dash.risk.doa_ok','저장됨'); status.style.color = '#4ade80'; }
         loadRiskMatrix();  // 매트릭스 수용 셀 갱신
       } catch (e) { if (status) status.textContent = tt('dash.risk.doa_err','저장 실패'); }
     }
@@ -5625,20 +5627,20 @@ def render_user_dashboard_html(
     }
     window.toggleRiskMatrix = toggleRiskMatrix;
 
-    /* 🎯 매트릭스 셀/칩 클릭 → 해당 버킷의 실제 취약점·호스트 목록 모달 */
+    /* 매트릭스 셀/칩 클릭 → 해당 버킷의 실제 취약점·호스트 목록 모달 */
     function _riskBucketRows(items) {
       if (!items.length) return `<div class=\"empty\" style=\"color:#64748b;padding:16px\">${tt('dash.dyn.empty.vulns','취약점이 없습니다.')}</div>`;
       const rows = items.map(it => `<tr>
         <td style=\"padding:6px 8px\">${_riskBadge(it.level, true, it.score)}</td>
-        <td style=\"padding:6px 8px\"><strong style=\"color:#7dd3fc\">${escapeHtml(it.cve)}</strong></td>
+        <td style=\"padding:6px 8px\"><strong style=\"color:#38bdf8\">${escapeHtml(it.cve)}</strong></td>
         <td style=\"padding:6px 8px;color:#94a3b8;font-size:12px\">${escapeHtml(it.hostname)}</td>
-        <td style=\"padding:6px 8px;text-align:center\"><span style=\"color:${it.severity==='critical'?'#fca5a5':'#fdba74'};text-transform:uppercase;font-size:11px\">${escapeHtml(it.severity)}</span></td>
-        <td style=\"padding:6px 8px;text-align:center;font-size:11px;color:#64748b\">${it.doa_accept?`<span style=\"background:#16a34a22;border:1px solid #16a34a;color:#4ade80;border-radius:5px;padding:1px 6px;font-weight:700\">${tt('dash.risk.doa_accept','기본수용')}</span>`:(it.assessed?tt('dash.risk.assessed','평가됨'):tt('dash.risk.badge_unassessed','미평가'))}</td>
-        <td style=\"padding:6px 8px;text-align:center\">${_canAssessRisk()?`<button onclick=\"closeRiskBucketModal();openRiskModal('${escapeHtml(it.vuln_id)}')\" style=\"font-size:10px;padding:2px 8px;background:#2a1852;border:1px solid #4c1d95;border-radius:4px;color:#c4b5fd;cursor:pointer\">${tt('dash.risk.btn','🎯 평가')}</button>`:''}</td>
+        <td style=\"padding:6px 8px;text-align:center\"><span style=\"color:${it.severity==='critical'?'#f87171':'#fbbf24'};text-transform:uppercase;font-size:11px\">${escapeHtml(it.severity)}</span></td>
+        <td style=\"padding:6px 8px;text-align:center;font-size:11px;color:#64748b\">${it.doa_accept?`<span style=\"background:#4ade8022;border:1px solid #4ade80;color:#4ade80;border-radius:5px;padding:1px 6px;font-weight:700\">${tt('dash.risk.doa_accept','기본수용')}</span>`:(it.assessed?tt('dash.risk.assessed','평가됨'):tt('dash.risk.badge_unassessed','미평가'))}</td>
+        <td style=\"padding:6px 8px;text-align:center\">${_canAssessRisk()?`<button onclick=\"closeRiskBucketModal();openRiskModal('${escapeHtml(it.vuln_id)}')\" style=\"font-size:10px;padding:2px 8px;background:#2a1852;border:1px solid #4c1d95;border-radius:4px;color:#38bdf8;cursor:pointer\">${tt('dash.risk.btn','평가')}</button>`:''}</td>
       </tr>`).join('');
-      return `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"background:#0f2035\">
-        <th style=\"padding:8px;color:#c4b5fd\">${tt('dash.risk.col','위험등급')}</th><th style=\"padding:8px;color:#7dd3fc;text-align:left\">CVE</th>
-        <th style=\"padding:8px;color:#94a3b8;text-align:left\">${tt('dash.risk.prov.host','자산')}</th><th style=\"padding:8px;color:#fdba74\">${tt('dash.dyn.lbl.severity','심각도')}</th>
+      return `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"background:#0f172a\">
+        <th style=\"padding:8px;color:#38bdf8\">${tt('dash.risk.col','위험등급')}</th><th style=\"padding:8px;color:#38bdf8;text-align:left\">CVE</th>
+        <th style=\"padding:8px;color:#94a3b8;text-align:left\">${tt('dash.risk.prov.host','자산')}</th><th style=\"padding:8px;color:#fbbf24\">${tt('dash.dyn.lbl.severity','심각도')}</th>
         <th style=\"padding:8px;color:#94a3b8\">${tt('dash.risk.status','상태')}</th><th style=\"padding:8px\"></th></tr></thead><tbody>${rows}</tbody></table>`;
     }
     function _openRiskBucket(pred, title) {
@@ -5647,8 +5649,8 @@ def render_user_dashboard_html(
       document.getElementById('risk_bucket_modal_body').innerHTML = _riskBucketRows(items);
       document.getElementById('risk_bucket_modal').style.display = 'flex';
     }
-    function openRiskLevelModal(level) { _openRiskBucket(it => it.level === level, `${tt('dash.risk.bucket_title','🎯 위험 상세')} · ${level}`); }
-    function openRiskCellModal(impact, likelihood) { _openRiskBucket(it => it.impact === impact && it.likelihood === likelihood, `${tt('dash.risk.bucket_title','🎯 위험 상세')} · ${_levelForScore(impact*likelihood)}`); }
+    function openRiskLevelModal(level) { _openRiskBucket(it => it.level === level, `${tt('dash.risk.bucket_title','위험 상세')} · ${level}`); }
+    function openRiskCellModal(impact, likelihood) { _openRiskBucket(it => it.impact === impact && it.likelihood === likelihood, `${tt('dash.risk.bucket_title','위험 상세')} · ${_levelForScore(impact*likelihood)}`); }
     function closeRiskBucketModal() { const m=document.getElementById('risk_bucket_modal'); if(m) m.style.display='none'; }
     window.openRiskLevelModal = openRiskLevelModal;
     window.openRiskCellModal = openRiskCellModal;
@@ -5680,7 +5682,7 @@ def render_user_dashboard_html(
           const n = (m[r] && m[r][c]) || 0;
           const accepted = cellScore <= _riskDoa;  // DoA 이하 = 기본 수용 셀
           const click = n ? `onclick=\"openRiskCellModal(${imp},${lk})\"` : '';
-          const accRing = accepted ? 'box-shadow:inset 0 0 0 2px #16a34a99;' : '';
+          const accRing = accepted ? 'box-shadow:inset 0 0 0 2px #4ade8099;' : '';
           rowCells += `<td style=\"padding:0\"><div ${click} title=\"${tt('dash.risk.score','위험점수')} ${cellScore}\" style=\"margin:3px;border-radius:6px;background:${col}${n?'33':'12'};border:1px solid ${col}${n?'':'44'};${accRing}width:60px;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;${n?'cursor:pointer':''}\">
             <div style=\"font-size:9px;color:${col}cc;font-weight:700\">${cellScore}${tt('dash.risk.pt','점')}</div>
             <div style=\"font-size:18px;font-weight:800;color:${n?col:'#334155'}\">${n}</div>
@@ -5690,7 +5692,7 @@ def render_user_dashboard_html(
       }
       const order = ['매우높음','높음','중간','낮음'];
       const chips = order.map(lv => { const n=(data.by_level&&data.by_level[lv])||0; return `<span onclick=\"${n?`openRiskLevelModal('${lv}')`:''}\" style=\"display:inline-flex;align-items:center;gap:5px;margin:0 8px 8px 0;font-size:12px;padding:4px 10px;border:1px solid ${RISK_LEVEL_COLORS[lv]}44;border-radius:8px;background:${RISK_LEVEL_COLORS[lv]}12;${n?'cursor:pointer':'opacity:.5'}\"><span style=\"width:10px;height:10px;border-radius:2px;background:${RISK_LEVEL_COLORS[lv]};display:inline-block\"></span>${lv} <strong style=\"color:${RISK_LEVEL_COLORS[lv]}\">${n}</strong></span>`; }).join('');
-      const doaNote = `<div style=\"margin-top:8px;font-size:11px;color:#94a3b8\">🟢 ${tt('dash.risk.doa_note','DoA 기준: {n}점 이하는 기본 수용가능').replace('{n}', _riskDoa)}</div>`;
+      const doaNote = `<div style=\"margin-top:8px;font-size:11px;color:#94a3b8\">${tt('dash.risk.doa_note','DoA 기준: {n}점 이하는 기본 수용가능').replace('{n}', _riskDoa)}</div>`;
       box.innerHTML = `<div style=\"display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start\">
         <div>
           <table style=\"border-collapse:collapse\">${header}${cells}</table>
@@ -5706,7 +5708,7 @@ def render_user_dashboard_html(
       const s = imp*lk, level = _levelForScore(s);
       const gradeEl = document.getElementById('risk_modal_grade');
       if (!gradeEl) return;
-      const note = gradeEl.dataset.suggested === '1' ? ` <span style=\"color:#a78bfa;font-size:11px\">${tt('dash.risk.suggested_note','자동 제안 등급 (저장 전)')}</span>` : '';
+      const note = gradeEl.dataset.suggested === '1' ? ` <span style=\"color:#38bdf8;font-size:11px\">${tt('dash.risk.suggested_note','자동 제안 등급 (저장 전)')}</span>` : '';
       gradeEl.innerHTML = `${_riskBadge(level)} <span style=\"color:#94a3b8;font-size:13px;margin-left:6px\">${tt('dash.risk.impact','영향도')} ${imp} × ${tt('dash.risk.likelihood','발생가능성')} ${lk} = <strong style=\"color:#e2e8f0\">${s}</strong></span>${note}`;
     }
     window._riskRecalc = _riskRecalc;
@@ -5716,7 +5718,7 @@ def render_user_dashboard_html(
       document.getElementById('risk_modal_status').textContent = '';
       const it = _riskSummary.map[vulnId];
       document.getElementById('risk_modal_meta').innerHTML = it
-        ? `<strong style=\"color:#7dd3fc\">${escapeHtml(it.cve)}</strong> · <span style=\"color:#fdba74;text-transform:uppercase\">${escapeHtml(it.severity)}</span> · <span style=\"color:#64748b\">${escapeHtml(it.hostname)}</span>`
+        ? `<strong style=\"color:#38bdf8\">${escapeHtml(it.cve)}</strong> · <span style=\"color:#fbbf24;text-transform:uppercase\">${escapeHtml(it.severity)}</span> · <span style=\"color:#64748b\">${escapeHtml(it.hostname)}</span>`
         : `vuln_id: ${escapeHtml(vulnId)}`;
       document.getElementById('risk_provenance').style.display = 'none';
       document.getElementById('risk_modal').style.display = 'flex';
@@ -5739,7 +5741,7 @@ def render_user_dashboard_html(
           const row = (k,v) => `<div style=\"display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:2px 0\"><span style=\"color:#94a3b8\">${k}</span><span style=\"color:#e2e8f0;text-align:right\">${escapeHtml(String(v==null||v===''?'-':v))}</span></div>`;
           const impSrc = p.importance_source === 'owner' ? tt('dash.risk.prov.owner',' (담당자 지정)') : tt('dash.risk.prov.auto',' (자동분류)');
           document.getElementById('risk_provenance').innerHTML =
-            `<div style=\"color:#c4b5fd;font-weight:700;font-size:12px;margin-bottom:6px\">${tt('dash.risk.provenance_title','🔎 산정 근거 (관리자 전용)')}</div>`
+            `<div style=\"color:#38bdf8;font-weight:700;font-size:12px;margin-bottom:6px\">${tt('dash.risk.provenance_title','산정 근거 (관리자 전용)')}</div>`
             + row(tt('dash.risk.prov.source','데이터 소스'), p.data_source)
             + row(tt('dash.risk.prov.host','자산(호스트)'), p.hostname)
             + row(tt('dash.risk.prov.pkg','패키지'), (p.package_name||'-') + (p.installed_version?(' '+p.installed_version):'') + (p.fixed_version?(' → '+p.fixed_version):''))
@@ -5775,8 +5777,8 @@ def render_user_dashboard_html(
       try {
         const res = await fetch(`/vulnerabilities/${encodeURIComponent(_riskModalVulnId)}/risk`, {
           method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-        if (!res.ok) { statusEl.textContent = `${tt('dash.risk.save_fail','❌ 위험성 평가 저장 실패')}: HTTP ${res.status}`; return; }
-        statusEl.textContent = tt('dash.risk.saved','✅ 위험성 평가 저장됨');
+        if (!res.ok) { statusEl.textContent = `${tt('dash.risk.save_fail','위험성 평가 저장 실패')}: HTTP ${res.status}`; return; }
+        statusEl.textContent = tt('dash.risk.saved','위험성 평가 저장됨');
         await loadRiskMatrix();
         const listModal = document.getElementById('vuln_list_modal');
         if (listModal && listModal.style.display === 'flex' && _vulnActionHostId != null) {
@@ -5785,12 +5787,12 @@ def render_user_dashboard_html(
         }
         setTimeout(closeRiskModal, 700);
       } catch(e) {
-        statusEl.textContent = `${tt('dash.risk.save_fail','❌ 위험성 평가 저장 실패')}: ${e.message}`;
+        statusEl.textContent = `${tt('dash.risk.save_fail','위험성 평가 저장 실패')}: ${e.message}`;
       }
     }
     window.saveRiskAssessment = saveRiskAssessment;
 
-    /* ⭐ 프로필 메뉴 → 내 서버 바로가기 */
+    /* 프로필 메뉴 → 내 서버 바로가기 */
     function shortcutMyServers() {
       const menu = document.getElementById('account_menu');
       if (menu) menu.style.display = 'none';
@@ -5815,19 +5817,19 @@ def render_user_dashboard_html(
         const fieldLabels = {owner:tt('dash.dyn.lbl.owner','담당자'), team:tt('dash.dyn.field.team','팀'), category:tt('dash.dyn.field.category','분류'), importance:tt('dash.dyn.field.importance','중요도'), exception_until:tt('dash.dyn.field.exception_until','예외기한'), exception_reason:tt('dash.dyn.field.exception_reason','예외사유')};
         const rows = logs.map(l => `<div style=\"border-bottom:1px solid #1e293b;padding:10px 0\">
           <div style=\"display:flex;justify-content:space-between;align-items:center\">
-            <span style=\"color:#7dd3fc;font-weight:700\">${escapeHtml(fieldLabels[l.field]||l.field)}</span>
+            <span style=\"color:#38bdf8;font-weight:700\">${escapeHtml(fieldLabels[l.field]||l.field)}</span>
             <span style=\"color:#64748b;font-size:11px\">${escapeHtml(l.changed_at||'')}</span>
           </div>
           <div style=\"font-size:12px;margin-top:4px\">
-            <span style=\"color:#fca5a5\">${escapeHtml(l.old_value||tt('dash.dyn.no_value','(없음)'))}</span>
+            <span style=\"color:#f87171\">${escapeHtml(l.old_value||tt('dash.dyn.no_value','(없음)'))}</span>
             <span style=\"color:#64748b\"> → </span>
-            <span style=\"color:#86efac\">${escapeHtml(l.new_value||tt('dash.dyn.no_value','(없음)'))}</span>
+            <span style=\"color:#4ade80\">${escapeHtml(l.new_value||tt('dash.dyn.no_value','(없음)'))}</span>
           </div>
           <div style=\"font-size:11px;color:#94a3b8;margin-top:2px\">${tt('dash.dyn.editor_prefix','수정자: ')}${escapeHtml(l.changed_by||'unknown')}</div>
         </div>`).join('');
         document.getElementById('audit_modal_body').innerHTML = rows;
       } catch(e) {
-        document.getElementById('audit_modal_body').innerHTML = `<div style=\"color:#fca5a5\">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</div>`;
+        document.getElementById('audit_modal_body').innerHTML = `<div style=\"color:#f87171\">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</div>`;
       }
     }
     function closeAuditModal() { document.getElementById('audit_modal').style.display = 'none'; }
@@ -5877,11 +5879,11 @@ def render_user_dashboard_html(
             body: JSON.stringify({ hostname, owner, team, category, importance, exception_until, exception_reason })
           });
           if (!res.ok) throw new Error(await res.text());
-          statusEl.style.color = '#86efac';
-          statusEl.textContent = tt('dash.dyn.saved','✅ 저장되었습니다.');
+          statusEl.style.color = '#4ade80';
+          statusEl.textContent = tt('dash.dyn.saved','저장되었습니다.');
           setTimeout(() => { closeOwnerModal(); loadAssets(); }, 800);
         } catch(e) {
-          statusEl.style.color = '#fca5a5';
+          statusEl.style.color = '#f87171';
           statusEl.textContent = `${tt('dash.dyn.error_prefix','오류: ')}${e.message}`;
         }
       });
@@ -5936,7 +5938,7 @@ def render_user_dashboard_html(
           await loadAssets();
           if (hostId) openVulnListModal(hostId);
         } catch(err) {
-          statusEl.style.color = '#fca5a5';
+          statusEl.style.color = '#f87171';
           statusEl.textContent = `${tt('dash.dyn.error_prefix','오류: ')}${err.message}`;
         }
       });
@@ -5955,7 +5957,7 @@ def render_user_dashboard_html(
           await loadAssets();
           if (hostId) openVulnListModal(hostId);
         } catch(err) {
-          statusEl.style.color = '#fca5a5';
+          statusEl.style.color = '#f87171';
           statusEl.textContent = `${tt('dash.dyn.error_prefix','오류: ')}${err.message}`;
         }
       });
@@ -6126,8 +6128,8 @@ def render_user_dashboard_html(
     /* ── On-demand 수집 (새로고침 버튼) ──────────────────────────────── */
     async function onDemandRefresh(source) {
       const statusEl = document.getElementById('assets_status');
-      statusEl.textContent = `🔄 ${source}${tt('dash.dyn.collecting',' 수집 중...')}`;
-      statusEl.style.color = '#fde68a';
+      statusEl.textContent = `${source}${tt('dash.dyn.collecting',' 수집 중...')}`;
+      statusEl.style.color = '#fbbf24';
       try {
         const res = await fetch('/assets/refresh', {
           method: 'POST',
@@ -6136,19 +6138,19 @@ def render_user_dashboard_html(
         });
         const data = await res.json();
         if (data.status === 'success') {
-          statusEl.style.color = '#86efac';
-          statusEl.textContent = `✅ ${source}${tt('dash.dyn.collect_done',' 수집 완료')}`;
+          statusEl.style.color = '#4ade80';
+          statusEl.textContent = `${source}${tt('dash.dyn.collect_done',' 수집 완료')}`;
         } else if (data.status === 'skipped') {
-          statusEl.style.color = '#fde68a';
-          statusEl.textContent = `⏭️ ${data.message}`;
+          statusEl.style.color = '#fbbf24';
+          statusEl.textContent = `${data.message}`;
         } else {
-          statusEl.style.color = '#fca5a5';
-          statusEl.textContent = `❌ ${source}${tt('dash.dyn.collect_err',' 수집 오류: ')}${data.message}`;
+          statusEl.style.color = '#f87171';
+          statusEl.textContent = `${source}${tt('dash.dyn.collect_err',' 수집 오류: ')}${data.message}`;
         }
         // 수집 후 자산 목록 새로고침
         await loadAssets();
       } catch(e) {
-        statusEl.style.color = '#fca5a5';
+        statusEl.style.color = '#f87171';
         statusEl.textContent = `${tt('dash.dyn.error_prefix','오류: ')}${e.message}`;
       }
     }
@@ -6161,7 +6163,7 @@ def render_user_dashboard_html(
       const categoryEl = document.getElementById('pdca_category_table');
       const cycleEl = document.getElementById('pdca_cycle_chart');
       const pendingEl = document.getElementById('pdca_pending_table');
-      if (cardsEl) cardsEl.innerHTML = '<div class=\"empty\" style=\"padding:16px;color:#64748b\">⏳ ' + tt('dash.dyn.loading','로딩 중…') + '</div>';
+      if (cardsEl) cardsEl.innerHTML = '<div class=\"empty\" style=\"padding:16px;color:#64748b\">' + tt('dash.dyn.loading','로딩 중…') + '</div>';
       try {
         const res = await fetch('/compliance/pdca');
         if (!res.ok) throw new Error(res.status);
@@ -6180,16 +6182,16 @@ def render_user_dashboard_html(
           const totalChecks = data.total_checks || 0;
           const weakCount = (sc.fail || 0) + (sc.warning || 0);
           const weakRateStr = totalChecks > 0 ? (Math.round(weakCount / totalChecks * 100) + '%') : '—';
-          const weakColor = totalChecks > 0 && (weakCount / totalChecks) >= 0.3 ? '#f43f5e' : '#fb923c';
+          const weakColor = totalChecks > 0 && (weakCount / totalChecks) >= 0.3 ? '#f43f5e' : '#fbbf24';
           const totalPending = data.pending_count || 0;
           const pendingSub = `${tt('dash.dyn.pdca.control','통제')} ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}`;
           const breakdownSub = totalChecks > 0
-            ? `❌ ${sc.fail||0} · ⚠️ ${sc.warning||0} / ${totalChecks} (✅ ${sc.pass||0})`
+            ? `${sc.fail||0} · ${sc.warning||0} / ${totalChecks} (${sc.pass||0})`
             : tt('dash.dyn.pdca.no_control_data','통제 점검 데이터 없음');
           cardsEl.innerHTML = [
-            _metricCard(tt('dash.dyn.pdca.pending_total_card','🔧 미조치 합계'), totalPending, '#fb923c', pendingSub, true),
-            _metricCard(tt('dash.dyn.pdca.overdue_card','🔴 기한초과'), data.overdue_count || 0, '#f43f5e', tt('dash.dyn.pdca.combined_sources','통제+Trivy+Alert'), true),
-            _metricCard(tt('dash.pdca.weakness_rate','⚠️ 취약률 (Fail/Weakness)'), weakRateStr, weakColor, breakdownSub, true),
+            _metricCard(tt('dash.dyn.pdca.pending_total_card','미조치 합계'), totalPending, '#fbbf24', pendingSub, true),
+            _metricCard(tt('dash.dyn.pdca.overdue_card','기한초과'), data.overdue_count || 0, '#f43f5e', tt('dash.dyn.pdca.combined_sources','통제+Trivy+Alert'), true),
+            _metricCard(tt('dash.pdca.weakness_rate','취약률 (Fail/Weakness)'), weakRateStr, weakColor, breakdownSub, true),
           ].join('');
         }
         // Status bars
@@ -6198,7 +6200,7 @@ def render_user_dashboard_html(
           const bars = ['pass','fail','warning','not_applicable','not_checked'].map(s => {
             const cnt = sc[s] || 0;
             const pct = (cnt / total * 100).toFixed(1);
-            const colors = {pass:'#22c55e',fail:'#ef4444',warning:'#f59e0b',not_applicable:'#64748b',not_checked:'#334155'};
+            const colors = {pass:'#4ade80',fail:'#f87171',warning:'#fbbf24',not_applicable:'#64748b',not_checked:'#334155'};
             const labels = {pass:'Pass',fail:'Fail',warning:'Warning',not_applicable:'N/A',not_checked:tt('dash.dyn.pdca.not_checked','미점검')};
             return `<div style=\"flex:1;min-width:100px\">
               <div style=\"font-size:12px;color:#94a3b8;margin-bottom:4px\">${labels[s]}</div>
@@ -6213,10 +6215,10 @@ def render_user_dashboard_html(
         // PDCA Cycle
         if (cycleEl) {
           const steps = [
-            {key:'plan',  label:'Plan',  desc:tt('dash.dyn.pdca.plan_desc','미점검 항목'),  val: pdca.plan || 0,  color:'#38bdf8', icon:'📝'},
-            {key:'do',    label:'Do',    desc:tt('dash.dyn.pdca.do_desc','조치 필요'),    val: pdca.do || 0,    color:'#f59e0b', icon:'🔧'},
-            {key:'check', label:'Check', desc:tt('dash.dyn.pdca.check_desc','점검 완료'),    val: pdca.check || 0, color:'#a78bfa', icon:'🔍'},
-            {key:'act',   label:'Act',   desc:tt('dash.dyn.pdca.act_desc','통과 (Pass)'),  val: pdca.act || 0,   color:'#22c55e', icon:'✅'},
+            {key:'plan',  label:'Plan',  desc:tt('dash.dyn.pdca.plan_desc','미점검 항목'),  val: pdca.plan || 0,  color:'#38bdf8', icon:''},
+            {key:'do',    label:'Do',    desc:tt('dash.dyn.pdca.do_desc','조치 필요'),    val: pdca.do || 0,    color:'#fbbf24', icon:''},
+            {key:'check', label:'Check', desc:tt('dash.dyn.pdca.check_desc','점검 완료'),    val: pdca.check || 0, color:'#38bdf8', icon:''},
+            {key:'act',   label:'Act',   desc:tt('dash.dyn.pdca.act_desc','통과 (Pass)'),  val: pdca.act || 0,   color:'#4ade80', icon:''},
           ];
           cycleEl.innerHTML = `<div style=\"display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center\">`
             + steps.map(s => {
@@ -6251,9 +6253,9 @@ def render_user_dashboard_html(
               </tr></thead><tbody>`
               + cats.map(c => `<tr style=\"border-bottom:1px solid #1e293b\">
                 <td style=\"padding:6px 8px;color:#e2e8f0;font-weight:600\">${escapeHtml(c.category)}</td>
-                <td style=\"text-align:right;padding:6px 8px;color:#22c55e\">${c.pass}</td>
-                <td style=\"text-align:right;padding:6px 8px;color:#ef4444\">${c.fail}</td>
-                <td style=\"text-align:right;padding:6px 8px;color:#f59e0b\">${c.warning}</td>
+                <td style=\"text-align:right;padding:6px 8px;color:#4ade80\">${c.pass}</td>
+                <td style=\"text-align:right;padding:6px 8px;color:#f87171\">${c.fail}</td>
+                <td style=\"text-align:right;padding:6px 8px;color:#fbbf24\">${c.warning}</td>
                 <td style=\"text-align:right;padding:6px 8px;color:#64748b\">${c.not_checked}</td>
                 <td style=\"text-align:right;padding:6px 8px;color:#94a3b8\">${c.total}</td>
               </tr>`).join('')
@@ -6265,17 +6267,17 @@ def render_user_dashboard_html(
           const items = data.pending_remediations || [];
           const ps = data.pending_sources || {};
           const breakdown = `<div style=\"margin-bottom:8px;font-size:12px;color:#94a3b8\">
-            ${tt('dash.dyn.pdca.by_source','출처별: ')}<span style=\"color:#7dd3fc\">${tt('dash.dyn.pdca.control_checks','통제 점검')} ${ps.control_check||0}</span> ·
-            <span style=\"color:#fdba74\">Trivy ${tt('dash.dyn.pdca.vulns','취약점')} ${ps.trivy||0}</span> ·
-            <span style=\"color:#fca5a5\">Alert ${ps.alert||0}</span>
+            ${tt('dash.dyn.pdca.by_source','출처별: ')}<span style=\"color:#38bdf8\">${tt('dash.dyn.pdca.control_checks','통제 점검')} ${ps.control_check||0}</span> ·
+            <span style=\"color:#fbbf24\">Trivy ${tt('dash.dyn.pdca.vulns','취약점')} ${ps.trivy||0}</span> ·
+            <span style=\"color:#f87171\">Alert ${ps.alert||0}</span>
           </div>`;
           if (items.length === 0) {
-            pendingEl.innerHTML = breakdown + '<div class=\"empty\" style=\"color:#64748b;padding:12px\">' + tt('dash.dyn.pdca.no_pending','미조치 항목이 없습니다. 🎉') + '</div>';
+            pendingEl.innerHTML = breakdown + '<div class=\"empty\" style=\"color:#64748b;padding:12px\">' + tt('dash.dyn.pdca.no_pending','미조치 항목이 없습니다. ') + '</div>';
           } else {
             const sourceBadge = (s) => {
-              if (s === 'trivy') return '<span style=\"background:#3b1f00;color:#fdba74;padding:2px 6px;border-radius:4px;font-size:10px\">🛡️ Trivy</span>';
-              if (s === 'alert') return '<span style=\"background:#450a0a;color:#fca5a5;padding:2px 6px;border-radius:4px;font-size:10px\">🚨 Alert</span>';
-              return '<span style=\"background:#0c2a4a;color:#7dd3fc;padding:2px 6px;border-radius:4px;font-size:10px\">' + tt('dash.dyn.pdca.control_badge','📋 통제') + '</span>';
+              if (s === 'trivy') return '<span style=\"background:#3b1f00;color:#fbbf24;padding:2px 6px;border-radius:4px;font-size:10px\">Trivy</span>';
+              if (s === 'alert') return '<span style=\"background:#450a0a;color:#f87171;padding:2px 6px;border-radius:4px;font-size:10px\">Alert</span>';
+              return '<span style=\"background:#0f172a;color:#38bdf8;padding:2px 6px;border-radius:4px;font-size:10px\">' + tt('dash.dyn.pdca.control_badge','통제') + '</span>';
             };
             pendingEl.innerHTML = breakdown + `<table style=\"width:100%;border-collapse:collapse;font-size:13px\">
               <thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155\">
@@ -6289,10 +6291,10 @@ def render_user_dashboard_html(
               </tr></thead><tbody>`
               + items.map(i => {
                 const statusBadge = i.status === 'fail'
-                  ? '<span style=\"background:#450a0a;color:#fca5a5;padding:2px 8px;border-radius:999px;font-size:11px\">Fail</span>'
+                  ? '<span style=\"background:#450a0a;color:#f87171;padding:2px 8px;border-radius:999px;font-size:11px\">Fail</span>'
                   : '<span style=\"background:#451a03;color:#fbbf24;padding:2px 8px;border-radius:999px;font-size:11px\">Warning</span>';
                 const due = i.remediation_due_at ? new Date(i.remediation_due_at).toLocaleDateString('ko-KR') : '-';
-                const overdueFlag = i.overdue ? ' 🔴' : '';
+                const overdueFlag = i.overdue ? ' ' : '';
                 return `<tr style=\"border-bottom:1px solid #1e293b\">
                   <td style=\"text-align:center;padding:6px 8px\">${sourceBadge(i.source)}</td>
                   <td style=\"padding:6px 8px;color:#38bdf8;font-weight:600\">${escapeHtml(i.control_id)}</td>
@@ -6308,7 +6310,7 @@ def render_user_dashboard_html(
           }
         }
       } catch(e) {
-        if (cardsEl) cardsEl.innerHTML = '<div class=\"empty\" style=\"color:#f87171;padding:16px\">' + tt('dash.dyn.pdca.load_fail','❌ Compliance 데이터를 불러올 수 없습니다.') + '</div>';
+        if (cardsEl) cardsEl.innerHTML = '<div class=\"empty\" style=\"color:#f87171;padding:16px\">' + tt('dash.dyn.pdca.load_fail','Compliance 데이터를 불러올 수 없습니다.') + '</div>';
       }
       // Load report download cards & crosscheck
       loadReportCards();
@@ -6322,15 +6324,15 @@ def render_user_dashboard_html(
         const res = await fetch('/compliance/reports');
         if (!res.ok) throw new Error(res.status);
         const data = await res.json();
-        const icons = {asset_inspection:'🖥️', account_privilege:'👤', log_collection_status:'📋', vulnerability_assessment:'🛡️', monthly_operations:'📊'};
+        const icons = {asset_inspection:'', account_privilege:'', log_collection_status:'', vulnerability_assessment:'', monthly_operations:''};
         area.innerHTML = (data.report_types || []).map(rt => `
-          <div style=\"background:#0b1220;border:1px solid #233046;border-radius:12px;padding:16px\">
-            <div style=\"font-size:20px;margin-bottom:8px\">${icons[rt.id] || '📄'}</div>
+          <div style=\"background:#0b1220;border:1px solid #1e293b;border-radius:12px;padding:16px\">
+            <div style=\"font-size:20px;margin-bottom:8px\">${icons[rt.id] || ''}</div>
             <div style=\"font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:4px\">${escapeHtml(rt.label)}</div>
             <div style=\"display:flex;gap:6px;margin-top:12px;flex-wrap:wrap\">
-              <button onclick=\"openReportPreview('${rt.id}', '${escapeHtml(rt.label)}')\" style=\"flex:1;min-width:80px;padding:6px 10px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer\">${tt('dash.dyn.preview_btn','🔍 미리보기')}</button>
-              <a href=\"${rt.url_csv}\" download style=\"flex:1;min-width:60px;text-align:center;padding:6px 10px;background:#164e63;color:#67e8f9;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none\">📥 CSV</a>
-              <a href=\"${rt.url_pdf || (rt.url_json + '?format=pdf')}\" download style=\"flex:1;min-width:60px;text-align:center;padding:6px 10px;background:#7c2d12;color:#fed7aa;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none\">📄 PDF</a>
+              <button onclick=\"openReportPreview('${rt.id}', '${escapeHtml(rt.label)}')\" style=\"flex:1;min-width:80px;padding:6px 10px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer\">${tt('dash.dyn.preview_btn','미리보기')}</button>
+              <a href=\"${rt.url_csv}\" download style=\"flex:1;min-width:60px;text-align:center;padding:6px 10px;background:#164e63;color:#38bdf8;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none\">CSV</a>
+              <a href=\"${rt.url_pdf || (rt.url_json + '?format=pdf')}\" download style=\"flex:1;min-width:60px;text-align:center;padding:6px 10px;background:#7c2d12;color:#fed7aa;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none\">PDF</a>
             </div>
           </div>
         `).join('');
@@ -6368,11 +6370,11 @@ def render_user_dashboard_html(
       const bodyEl = document.getElementById('report_preview_body');
       const dlEl = document.getElementById('report_preview_download');
       if (!modal || !bodyEl) return;
-      titleEl.textContent = `📄 ${label}${tt('dash.dyn.preview_suffix',' — 미리보기')}`;
+      titleEl.textContent = `${label}${tt('dash.dyn.preview_suffix',' — 미리보기')}`;
       dlEl.href = `/compliance/reports/${reportType}?format=csv`;
       const dlPdfEl = document.getElementById('report_preview_download_pdf');
       if (dlPdfEl) dlPdfEl.href = `/compliance/reports/${reportType}?format=pdf`;
-      bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:24px;text-align:center\">' + tt('dash.dyn.loading_fetch','⏳ 불러오는 중…') + '</div>';
+      bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:24px;text-align:center\">' + tt('dash.dyn.loading_fetch','불러오는 중…') + '</div>';
       modal.style.display = 'flex';
       try {
         const res = await fetch(`/compliance/reports/${reportType}?format=csv`);
@@ -6390,7 +6392,7 @@ def render_user_dashboard_html(
         const overflowNote = dataRows.length > limit
           ? `<div style=\"color:#94a3b8;font-size:12px;margin-top:10px\">${tt('dash.dyn.report_overflow','… 총 {n}행 중 상위 {limit}행만 표시됩니다. 전체는 CSV 다운로드로 확인하세요.').replace('{n}','<strong style=\\\"color:#e2e8f0\\\">'+dataRows.length+'</strong>').replace('{limit}',limit)}</div>`
           : `<div style=\"color:#94a3b8;font-size:12px;margin-top:10px\">${tt('dash.dyn.report_total_rows','총 {n}행').replace('{n}','<strong style=\\\"color:#e2e8f0\\\">'+dataRows.length+'</strong>')}</div>`;
-        const head = '<thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155;background:#0b1322;position:sticky;top:0\">'
+        const head = '<thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155;background:#0b1220;position:sticky;top:0\">'
           + headers.map(h => `<th style=\"text-align:left;padding:6px 10px;font-size:12px;white-space:nowrap\">${escapeHtml(h)}</th>`).join('')
           + '</tr></thead>';
         const body = shown.map(r => '<tr style=\"border-bottom:1px solid #1e293b\">'
@@ -6398,7 +6400,7 @@ def render_user_dashboard_html(
           + '</tr>').join('');
         bodyEl.innerHTML = `<div style=\"max-height:60vh;overflow:auto;border:1px solid #1e293b;border-radius:6px\"><table style=\"width:100%;border-collapse:collapse\">${head}<tbody>${body}</tbody></table></div>${overflowNote}`;
       } catch (e) {
-        bodyEl.innerHTML = `<div class=\"empty\" style=\"color:#f87171;padding:24px;text-align:center\">${tt('dash.dyn.report_load_fail','❌ 리포트를 불러올 수 없습니다: ')}${escapeHtml(String(e.message || e))}</div>`;
+        bodyEl.innerHTML = `<div class=\"empty\" style=\"color:#f87171;padding:24px;text-align:center\">${tt('dash.dyn.report_load_fail','리포트를 불러올 수 없습니다: ')}${escapeHtml(String(e.message || e))}</div>`;
       }
     }
     function closeReportPreview() { document.getElementById('report_preview_modal').style.display = 'none'; }
@@ -6419,9 +6421,9 @@ def render_user_dashboard_html(
       if (!rows || !rows.length) {
         return '<div class=\"empty\" style=\"padding:12px;color:#94a3b8\">' + tt('dash.dyn.cc.no_assets','해당 자산이 없습니다.') + '</div>';
       }
-      const head = '<thead><tr><th style=\"text-align:left;padding:6px 8px;border-bottom:1px solid #233046;color:#94a3b8;font-size:12px\">' + tt('dash.dyn.lbl.hostname','호스트명') + '</th><th style=\"text-align:left;padding:6px 8px;border-bottom:1px solid #233046;color:#94a3b8;font-size:12px\">' + tt('dash.dyn.cc.host_id','호스트 ID') + '</th><th style=\"text-align:left;padding:6px 8px;border-bottom:1px solid #233046;color:#94a3b8;font-size:12px\">' + tt('dash.dyn.cc.source','소스') + '</th></tr></thead>';
+      const head = '<thead><tr><th style=\"text-align:left;padding:6px 8px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:12px\">' + tt('dash.dyn.lbl.hostname','호스트명') + '</th><th style=\"text-align:left;padding:6px 8px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:12px\">' + tt('dash.dyn.cc.host_id','호스트 ID') + '</th><th style=\"text-align:left;padding:6px 8px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:12px\">' + tt('dash.dyn.cc.source','소스') + '</th></tr></thead>';
       const body = rows.map(r => {
-        const sources = (r.sources && r.sources.length) ? r.sources.join(', ') : '<span style=\"color:#fca5a5\">' + tt('dash.dyn.cc.none','없음') + '</span>';
+        const sources = (r.sources && r.sources.length) ? r.sources.join(', ') : '<span style=\"color:#f87171\">' + tt('dash.dyn.cc.none','없음') + '</span>';
         return `<tr><td style=\"padding:6px 8px;border-bottom:1px solid #1f2937;font-size:13px\">${escapeHtml(r.hostname || '-')}</td><td style=\"padding:6px 8px;border-bottom:1px solid #1f2937;font-size:12px;color:#94a3b8\">${escapeHtml(r.host_id || '-')}</td><td style=\"padding:6px 8px;border-bottom:1px solid #1f2937;font-size:12px\">${sources}</td></tr>`;
       }).join('');
       return `<table style=\"width:100%;border-collapse:collapse\">${head}<tbody>${body}</tbody></table>`;
@@ -6464,11 +6466,11 @@ def render_user_dashboard_html(
             detail = `
               <div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0\">
                 <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#38bdf8\">${chk.zabbix_count}</div><div style=\"font-size:11px;color:#94a3b8\">Zabbix</div></div>
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#22c55e\">${chk.both_count}</div><div style=\"font-size:11px;color:#94a3b8\">${tt('dash.dyn.cc.both','양쪽 모두')}</div></div>
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#f59e0b\">${chk.fleet_count}</div><div style=\"font-size:11px;color:#94a3b8\">Fleet</div></div>
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#4ade80\">${chk.both_count}</div><div style=\"font-size:11px;color:#94a3b8\">${tt('dash.dyn.cc.both','양쪽 모두')}</div></div>
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#fbbf24\">${chk.fleet_count}</div><div style=\"font-size:11px;color:#94a3b8\">Fleet</div></div>
               </div>
-              ${chk.zabbix_only_count > 0 ? '<div style=\"font-size:12px;color:#fca5a5;margin:4px 0\">' + tt('dash.dyn.cc.zabbix_only','⚠️ Zabbix에만 있는 자산: ') + chk.zabbix_only_count + tt('dash.dyn.cc.unit','대') + '</div>' : ''}
-              ${chk.fleet_only_count > 0 ? '<div style=\"font-size:12px;color:#fbbf24;margin:4px 0\">' + tt('dash.dyn.cc.fleet_only','⚠️ Fleet에만 있는 자산: ') + chk.fleet_only_count + tt('dash.dyn.cc.unit','대') + '</div>' : ''}
+              ${chk.zabbix_only_count > 0 ? '<div style=\"font-size:12px;color:#f87171;margin:4px 0\">' + tt('dash.dyn.cc.zabbix_only','Zabbix에만 있는 자산: ') + chk.zabbix_only_count + tt('dash.dyn.cc.unit','대') + '</div>' : ''}
+              ${chk.fleet_only_count > 0 ? '<div style=\"font-size:12px;color:#fbbf24;margin:4px 0\">' + tt('dash.dyn.cc.fleet_only','Fleet에만 있는 자산: ') + chk.fleet_only_count + tt('dash.dyn.cc.unit','대') + '</div>' : ''}
             `;
           } else if (chk.id === 'source_coverage') {
             const covPct = chk.total_hosts > 0 ? (chk.covered_hosts / chk.total_hosts * 100).toFixed(1) : '0.0';
@@ -6479,12 +6481,12 @@ def render_user_dashboard_html(
                   <div style=\"font-size:22px;font-weight:800;color:#38bdf8\">${chk.total_hosts}</div>
                   <div style=\"font-size:11px;color:#94a3b8;text-decoration:underline;text-decoration-style:dotted\">${tt('dash.dyn.cc.total_title','전체 자산')}</div>
                 </div>
-                <div role=\"button\" tabindex=\"0\" onclick=\"showCrosscheckHosts('covered')\" style=\"text-align:center;cursor:pointer;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 6px;transition:border-color .15s\" onmouseover=\"this.style.borderColor='#22c55e'\" onmouseout=\"this.style.borderColor='#334155'\">
-                  <div style=\"font-size:22px;font-weight:800;color:#22c55e\">${chk.covered_hosts}</div>
+                <div role=\"button\" tabindex=\"0\" onclick=\"showCrosscheckHosts('covered')\" style=\"text-align:center;cursor:pointer;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 6px;transition:border-color .15s\" onmouseover=\"this.style.borderColor='#4ade80'\" onmouseout=\"this.style.borderColor='#334155'\">
+                  <div style=\"font-size:22px;font-weight:800;color:#4ade80\">${chk.covered_hosts}</div>
                   <div style=\"font-size:11px;color:#94a3b8;text-decoration:underline;text-decoration-style:dotted\">${tt('dash.dyn.cc.covered_title','소스 커버됨')}</div>
                 </div>
-                <div role=\"button\" tabindex=\"0\" onclick=\"showCrosscheckHosts('uncovered')\" style=\"text-align:center;cursor:pointer;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 6px;transition:border-color .15s\" onmouseover=\"this.style.borderColor='#fca5a5'\" onmouseout=\"this.style.borderColor='#334155'\">
-                  <div style=\"font-size:22px;font-weight:800;color:${chk.uncovered_hosts > 0 ? '#fca5a5' : '#94a3b8'}\">${chk.uncovered_hosts}</div>
+                <div role=\"button\" tabindex=\"0\" onclick=\"showCrosscheckHosts('uncovered')\" style=\"text-align:center;cursor:pointer;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 6px;transition:border-color .15s\" onmouseover=\"this.style.borderColor='#f87171'\" onmouseout=\"this.style.borderColor='#334155'\">
+                  <div style=\"font-size:22px;font-weight:800;color:${chk.uncovered_hosts > 0 ? '#f87171' : '#94a3b8'}\">${chk.uncovered_hosts}</div>
                   <div style=\"font-size:11px;color:#94a3b8;text-decoration:underline;text-decoration-style:dotted\">${tt('dash.dyn.cc.uncovered','미관측')}</div>
                 </div>
               </div>
@@ -6493,30 +6495,30 @@ def render_user_dashboard_html(
                   <span>${tt('dash.dyn.cc.coverage','커버리지')}</span><span>${covPct}% (${chk.covered_hosts}/${chk.total_hosts})</span>
                 </div>
                 <div style=\"background:#0f172a;border-radius:6px;height:14px;overflow:hidden\">
-                  <div style=\"background:#22c55e;width:${covPct}%;height:100%;border-radius:6px;transition:width .5s\"></div>
+                  <div style=\"background:#4ade80;width:${covPct}%;height:100%;border-radius:6px;transition:width .5s\"></div>
                 </div>
               </div>
-              <div style=\"font-size:11px;color:#64748b;margin-top:8px\">${tt('dash.dyn.cc.click_hint','💡 숫자를 클릭하면 해당 자산 목록을 볼 수 있습니다.')}</div>
+              <div style=\"font-size:11px;color:#64748b;margin-top:8px\">${tt('dash.dyn.cc.click_hint','숫자를 클릭하면 해당 자산 목록을 볼 수 있습니다.')}</div>
             `;
           } else if (chk.id === 'vuln_vs_observation') {
             detail = `
               <div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0\">
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#ef4444\">${chk.vuln_hosts}</div><div style=\"font-size:11px;color:#94a3b8\">${tt('dash.dyn.cc.vuln_hosts','취약점 자산')}</div></div>
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#22c55e\">${chk.recent_obs_hosts}</div><div style=\"font-size:11px;color:#94a3b8\">${tt('dash.dyn.cc.recent_obs','최근 관측')}</div></div>
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#f59e0b\">${chk.vuln_no_observation_count}</div><div style=\"font-size:11px;color:#94a3b8\">${tt('dash.dyn.cc.no_obs','관측 없음')}</div></div>
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#f87171\">${chk.vuln_hosts}</div><div style=\"font-size:11px;color:#94a3b8\">${tt('dash.dyn.cc.vuln_hosts','취약점 자산')}</div></div>
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#4ade80\">${chk.recent_obs_hosts}</div><div style=\"font-size:11px;color:#94a3b8\">${tt('dash.dyn.cc.recent_obs','최근 관측')}</div></div>
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#fbbf24\">${chk.vuln_no_observation_count}</div><div style=\"font-size:11px;color:#94a3b8\">${tt('dash.dyn.cc.no_obs','관측 없음')}</div></div>
               </div>
-              ${chk.vuln_no_observation_count > 0 ? '<div style=\"font-size:12px;color:#fca5a5\">' + tt('dash.dyn.cc.vuln_no_obs','⚠️ 취약점이 있으나 최근 30일간 관측 없는 자산: ') + chk.vuln_no_observation_count + tt('dash.dyn.cc.unit','대') + '</div>' : '<div style=\"font-size:12px;color:#22c55e\">' + tt('dash.dyn.cc.all_vuln_obs','✅ 모든 취약점 자산이 최근 관측됨') + '</div>'}
+              ${chk.vuln_no_observation_count > 0 ? '<div style=\"font-size:12px;color:#f87171\">' + tt('dash.dyn.cc.vuln_no_obs','취약점이 있으나 최근 30일간 관측 없는 자산: ') + chk.vuln_no_observation_count + tt('dash.dyn.cc.unit','대') + '</div>' : '<div style=\"font-size:12px;color:#4ade80\">' + tt('dash.dyn.cc.all_vuln_obs','모든 취약점 자산이 최근 관측됨') + '</div>'}
             `;
           } else if (chk.id === 'ldap_summary') {
             detail = `
               <div style=\"display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0\">
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#a78bfa\">${chk.total_accounts}</div><div style=\"font-size:11px;color:#94a3b8\">${tt('dash.dyn.cc.total_accounts','전체 계정')}</div></div>
-                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#f59e0b\">${chk.privileged_accounts}</div><div style=\"font-size:11px;color:#94a3b8\">${tt('dash.dyn.cc.privileged_accounts','특권 계정')}</div></div>
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#38bdf8\">${chk.total_accounts}</div><div style=\"font-size:11px;color:#94a3b8\">${tt('dash.dyn.cc.total_accounts','전체 계정')}</div></div>
+                <div style=\"text-align:center\"><div style=\"font-size:20px;font-weight:800;color:#fbbf24\">${chk.privileged_accounts}</div><div style=\"font-size:11px;color:#94a3b8\">${tt('dash.dyn.cc.privileged_accounts','특권 계정')}</div></div>
               </div>
               <div style=\"font-size:12px;color:#94a3b8\">${tt('dash.dyn.cc.ldap_summary','권한 바인딩: {b}건 · 그룹 멤버십: {g}건').replace('{b}',chk.total_privilege_bindings).replace('{g}',chk.total_group_memberships)}</div>
             `;
           }
-          return `<div style=\"background:#0b1220;border:1px solid #233046;border-radius:12px;padding:16px;margin-bottom:12px\">
+          return `<div style=\"background:#0b1220;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:12px\">
             <div style=\"font-size:15px;font-weight:700;color:#e2e8f0;margin-bottom:4px\">${escapeHtml(chk.title)}</div>
             <div style=\"font-size:12px;color:#64748b\">${escapeHtml(chk.description)}</div>
             ${detail}
@@ -6573,14 +6575,14 @@ def render_user_dashboard_html(
     function renderMarkdownLite(text) {
       // 매우 간단한 마크다운 렌더러: 헤더/볼드/코드블록/체크박스 지원
       return escapeHtml(text)
-        .replace(/^### (.+)$/gm, '<h3 style="color:#a3e635;margin:16px 0 6px;font-size:14px">$1</h3>')
+        .replace(/^### (.+)$/gm, '<h3 style="color:#4ade80;margin:16px 0 6px;font-size:14px">$1</h3>')
         .replace(/^## (.+)$/gm, '<h2 style="color:#38bdf8;margin:20px 0 8px;font-size:16px">$1</h2>')
         .replace(/^#### (.+)$/gm, '<h4 style="color:#94a3b8;margin:12px 0 4px;font-size:13px">$1</h4>')
         .replace(/\\*\\*(.+?)\\*\\*/g, '<strong style="color:#f1f5f9">$1</strong>')
-        .replace(/`([^`]+)`/g, '<code style="background:#1e293b;padding:1px 6px;border-radius:4px;color:#a3e635;font-size:12px">$1</code>')
-        .replace(/^```[\\s\\S]*?```/gm, m => `<pre style="background:#0f2035;border:1px solid #334155;border-radius:6px;padding:12px 14px;overflow-x:auto;font-size:12px;color:#86efac;margin:8px 0">${m.slice(m.indexOf('\\n')+1, m.lastIndexOf('\\n'))}</pre>`)
-        .replace(/^- \\[ \\] (.+)$/gm, '<div style="display:flex;gap:8px;align-items:flex-start;padding:2px 0"><span style="color:#fde68a;margin-top:1px">☐</span><span>$1</span></div>')
-        .replace(/^- \\[x\\] (.+)$/gm, '<div style="display:flex;gap:8px;align-items:flex-start;padding:2px 0"><span style="color:#86efac;margin-top:1px">☑</span><span style="color:#64748b;text-decoration:line-through">$1</span></div>')
+        .replace(/`([^`]+)`/g, '<code style="background:#1e293b;padding:1px 6px;border-radius:4px;color:#4ade80;font-size:12px">$1</code>')
+        .replace(/^```[\\s\\S]*?```/gm, m => `<pre style="background:#0f172a;border:1px solid #334155;border-radius:6px;padding:12px 14px;overflow-x:auto;font-size:12px;color:#4ade80;margin:8px 0">${m.slice(m.indexOf('\\n')+1, m.lastIndexOf('\\n'))}</pre>`)
+        .replace(/^- \\[ \\] (.+)$/gm, '<div style="display:flex;gap:8px;align-items:flex-start;padding:2px 0"><span style="color:#fbbf24;margin-top:1px"></span><span>$1</span></div>')
+        .replace(/^- \\[x\\] (.+)$/gm, '<div style="display:flex;gap:8px;align-items:flex-start;padding:2px 0"><span style="color:#4ade80;margin-top:1px"></span><span style="color:#64748b;text-decoration:line-through">$1</span></div>')
         .replace(/^- (.+)$/gm, '<div style="padding:2px 0 2px 12px;color:#cbd5e1">• $1</div>')
         .replace(/^---$/gm, '<hr style="border:none;border-top:1px solid #334155;margin:16px 0">')
         .replace(/\\n/g, '\\n');
@@ -6600,7 +6602,7 @@ def render_user_dashboard_html(
         updatedEl.textContent = g.updated_at ? `${tt('dash.dyn.guide_updated_prefix','수정: ')}${g.updated_at.slice(0,10)}` : tt('dash.dyn.default_content','(기본 내용)');
         bodyEl.innerHTML = renderMarkdownLite(g.content || '');
       } catch(e) {
-        bodyEl.innerHTML = `<span style="color:#fca5a5">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`;
+        bodyEl.innerHTML = `<span style="color:#f87171">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`;
       }
     }
 
@@ -6643,9 +6645,9 @@ def render_user_dashboard_html(
       document.querySelectorAll('[data-tab="accounts"]').forEach(btn => btn.style.display = show ? '' : 'none');
     }
     window._applyAccountGating = _applyAccountGating;
-    const _CTL_SOURCE_COLOR = { zabbix:'#38bdf8', trivy:'#f59e0b', wazuh:'#a78bfa', fleet:'#34d399', loki:'#f472b6', mori:'#94a3b8' };
+    const _CTL_SOURCE_COLOR = { zabbix:'#38bdf8', trivy:'#fbbf24', wazuh:'#38bdf8', fleet:'#4ade80', loki:'#f87171', mori:'#94a3b8' };
     // M2-7: 통제 이행 상태 색상/배지
-    const _CTL_STATUS_COLOR = { '이행':'#16a34a', '부분이행':'#d97706', '미이행':'#dc2626', '해당없음':'#64748b', '미정':'#475569' };
+    const _CTL_STATUS_COLOR = { '이행':'#4ade80', '부분이행':'#fbbf24', '미이행':'#f87171', '해당없음':'#64748b', '미정':'#475569' };
     const _CTL_STATUSES = ['미정','이행','부분이행','미이행','해당없음'];
     function _ctlStatusBadge(s) {
       const c = _CTL_STATUS_COLOR[s] || '#475569';
@@ -6680,8 +6682,8 @@ def render_user_dashboard_html(
           const clickable = 'cursor:pointer';  // M2-7: 상태 편집 위해 전 항목 클릭 가능
           const st = smap[c.id];
           const stBadge = (st && st.status && st.status !== '미정') ? _ctlStatusBadge(st.status) : '';
-          const pdf = c.mapped ? `<a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" title=\"${tt('dash.ctl.pdf','증적 팩 PDF')}\" style=\"margin-left:6px;text-decoration:none;font-size:11px\">📄</a>` : '';
-          const editBtns = _ctlCanEdit ? `<span onclick=\"openControlEditor('${enc}')\" title=\"${tt('dash.ctl.edit','수정')}\" style=\"cursor:pointer;margin-left:6px;font-size:11px\">✏️</span><span onclick=\"deleteControl('${enc}')\" title=\"${tt('dash.ctl.del','삭제')}\" style=\"cursor:pointer;margin-left:3px;font-size:11px\">🗑️</span>` : '';
+          const pdf = c.mapped ? `<a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" title=\"${tt('dash.ctl.pdf','증적 팩 PDF')}\" style=\"margin-left:6px;text-decoration:none;font-size:11px\"></a>` : '';
+          const editBtns = _ctlCanEdit ? `<span onclick=\"openControlEditor('${enc}')\" title=\"${tt('dash.ctl.edit','수정')}\" style=\"cursor:pointer;margin-left:6px;font-size:11px\"></span><span onclick=\"deleteControl('${enc}')\" title=\"${tt('dash.ctl.del','삭제')}\" style=\"cursor:pointer;margin-left:3px;font-size:11px\"></span>` : '';
           return `<div style=\"padding:3px 0;${dim}\"><span onclick=\"toggleControlDetail('${enc}', this)\" style=\"${clickable}\"><span style=\"color:#64748b;font-size:11px\">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${stBadge}${srcs}</span>${pdf}${editBtns}<div class=\"ctl-detail\" style=\"display:none;margin:4px 0 8px 16px;padding:6px 10px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;font-size:12px\"></div></div>`;
         };
         let html = '';
@@ -6716,7 +6718,7 @@ def render_user_dashboard_html(
         const lang = (window.lang === 'en') ? 'en' : 'ko';
         let h = '';
         if ((d.evidence_live||[]).length) {
-          h += `<div style=\"font-weight:700;color:#5eead4;margin-bottom:2px\">${tt('dash.ctl.live','실증적 (현재)')}</div>`;
+          h += `<div style=\"font-weight:700;color:#38bdf8;margin-bottom:2px\">${tt('dash.ctl.live','실증적 (현재)')}</div>`;
           h += d.evidence_live.map(e => {
             const lbl = (lang==='en'?e.label_en:e.label_ko) || e.source;
             const sm = (lang==='en'?e.summary_en:e.summary_ko) || '-';
@@ -6731,12 +6733,12 @@ def render_user_dashboard_html(
           }).join('');
         }
         if ((d.mapped_to||[]).length) {
-          h += `<div style=\"font-weight:700;color:#93c5fd;margin:6px 0 2px\">${tt('dash.ctl.map','매핑')}</div>`;
+          h += `<div style=\"font-weight:700;color:#38bdf8;margin:6px 0 2px\">${tt('dash.ctl.map','매핑')}</div>`;
           h += d.mapped_to.map(m => `<div style=\"color:#94a3b8\">↔ ${escapeHtml(m.id)} ${escapeHtml((lang==='en'?m.title_en:m.title_ko)||'')} <span style=\"font-size:10px\">(${escapeHtml(m.relation)})</span></div>`).join('');
         }
         if ((d.defects||[]).length) {
-          h += `<div style=\"font-weight:700;color:#f59e0b;margin:6px 0 2px\">${tt('dash.ctl.def','관련 결함')}</div>`;
-          h += d.defects.map(x => { const gc=(typeof x.gap_count==='number')?` · ${tt('dash.ctl.gap','현재 공백')} ${x.gap_count}`:''; return `<div style=\"color:#cbd5e1\">⚠ ${escapeHtml((lang==='en'?x.title_en:x.title_ko)||'')}${escapeHtml(gc)}</div>`; }).join('');
+          h += `<div style=\"font-weight:700;color:#fbbf24;margin:6px 0 2px\">${tt('dash.ctl.def','관련 결함')}</div>`;
+          h += d.defects.map(x => { const gc=(typeof x.gap_count==='number')?` · ${tt('dash.ctl.gap','현재 공백')} ${x.gap_count}`:''; return `<div style=\"color:#cbd5e1\">${escapeHtml((lang==='en'?x.title_en:x.title_ko)||'')}${escapeHtml(gc)}</div>`; }).join('');
         }
         // M2-8: 수기 증적 레코드 (admin·security 문서화)
         h += _evRecordsHtml(enc, d.evidence_records || []);
@@ -6745,8 +6747,8 @@ def render_user_dashboard_html(
         // M2-8: 증적 팩 다운로드 — CSV / PDF 선택
         h += `<div style=\"margin-top:8px;padding-top:6px;border-top:1px solid #1e293b;display:flex;gap:12px;align-items:center;flex-wrap:wrap\">
           <span style=\"color:#94a3b8\">${tt('dash.ctl.download','증적 팩 다운로드')}:</span>
-          <a href=\"/controls/detail/${enc}/evidence.csv\" style=\"color:#5eead4;text-decoration:none\">📊 CSV</a>
-          <a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" style=\"color:#38bdf8;text-decoration:none\">📄 PDF</a>
+          <a href=\"/controls/detail/${enc}/evidence.csv\" style=\"color:#38bdf8;text-decoration:none\">CSV</a>
+          <a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" style=\"color:#38bdf8;text-decoration:none\">PDF</a>
         </div>`;
         box.innerHTML = h || `<span class=\"empty\">—</span>`;
       } catch(e) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.err','통제 카탈로그를 불러오지 못했습니다.')}</span>`; }
@@ -6763,7 +6765,7 @@ def render_user_dashboard_html(
       const opts = _CTL_STATUSES.map(s => `<option value=\"${s}\"${(rs.status||'미정')===s?' selected':''}>${s}</option>`).join('');
       const upd = rs.updated_at ? `<span style=\"color:#64748b;font-size:11px;margin-left:8px\">${tt('dash.ctl.updated','수정')}: ${escapeHtml(String(rs.updated_at).slice(0,10))} · ${escapeHtml(rs.updated_by||'')}</span>` : '';
       return `<div style=\"margin-top:8px;padding-top:8px;border-top:1px solid #1e293b\">
-        <div style=\"font-weight:700;color:#a3e635;margin-bottom:6px\">✍️ ${tt('dash.ctl.status_edit','이행 상태 편집')}${upd}</div>
+        <div style=\"font-weight:700;color:#4ade80;margin-bottom:6px\">${tt('dash.ctl.status_edit','이행 상태 편집')}${upd}</div>
         <div style=\"display:flex;gap:8px;flex-wrap:wrap;align-items:center\">
           <select id=\"cst_status_${enc}\" style=\"${inp}\">${opts}</select>
           <input id=\"cst_owner_${enc}\" placeholder=\"${tt('dash.ctl.owner','담당자')}\" value=\"${escapeHtml(rs.owner||'')}\" style=\"${inp};width:110px\" />
@@ -6792,7 +6794,7 @@ def render_user_dashboard_html(
         const res = await fetch('/controls/status/' + enc, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         if (!res.ok) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color = '#f87171'; } return; }
-        if (msg) { msg.textContent = tt('dash.ctl.saved','✓ 저장됨 (재시작 후에도 유지)'); msg.style.color = '#4ade80'; }
+        if (msg) { msg.textContent = tt('dash.ctl.saved','저장됨 (재시작 후에도 유지)'); msg.style.color = '#4ade80'; }
         loadControlTree();  // 트리 상태 배지 갱신
       } catch (e) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color = '#f87171'; } }
     }
@@ -6802,12 +6804,12 @@ def render_user_dashboard_html(
     // ── M2-8: 수기 증적 레코드 (문서화) ────────────────────────────────────────
     function _evRecordsHtml(enc, records) {
       const canEdit = _canViewEvidence();
-      let h = `<div style=\"margin-top:8px;padding-top:6px;border-top:1px solid #1e293b\"><div style=\"font-weight:700;color:#fbbf24;margin-bottom:4px\">📎 ${tt('dash.ctl.ev_title','수기 증적')}</div>`;
+      let h = `<div style=\"margin-top:8px;padding-top:6px;border-top:1px solid #1e293b\"><div style=\"font-weight:700;color:#fbbf24;margin-bottom:4px\">${tt('dash.ctl.ev_title','수기 증적')}</div>`;
       if (records.length) {
         const SHOW = 3;
         const rowHtml = (r, idx) => {
           const isAuto = r.source === 'auto';
-          const autoBadge = isAuto ? ` <span style=\"background:#0e7490;color:#a5f3fc;padding:0 5px;border-radius:4px;font-size:10px\">⚡${tt('dash.ctl.ev_auto','자동')}</span>` : '';
+          const autoBadge = isAuto ? ` <span style=\"background:#0e7490;color:#38bdf8;padding:0 5px;border-radius:4px;font-size:10px\">${tt('dash.ctl.ev_auto','자동')}</span>` : '';
           const meta = [r.collected_at, r.collected_by].filter(Boolean).map(escapeHtml).join(' · ');
           const ref = (r.reference && !isAuto) ? ` <a href=\"${escapeHtml(r.reference)}\" target=\"_blank\" style=\"color:#38bdf8\">↗</a>` : '';
           const del = canEdit ? `<span onclick=\"deleteEvidenceRecord('${enc}','${escapeHtml(r.id)}')\" style=\"cursor:pointer;color:#f87171;margin-left:6px\">×</span>` : '';
@@ -6818,7 +6820,7 @@ def render_user_dashboard_html(
             if (isAuto) {
               const summ = _evSummary(r.body);
               bodyToggle = ` <span onclick=\"_toggleBody('${bid}',this)\" data-lbl=\"${tt('dash.ctl.ev_detail','상세')}\" style=\"cursor:pointer;color:#38bdf8;font-size:11px;white-space:nowrap\">▾ ${tt('dash.ctl.ev_detail','상세')}</span>`;
-              body = (summ ? `<div style=\"color:#7dd3fc;font-size:11px;margin-left:12px;margin-top:1px\">${summ}</div>` : '')
+              body = (summ ? `<div style=\"color:#38bdf8;font-size:11px;margin-left:12px;margin-top:1px\">${summ}</div>` : '')
                    + `<div id=\"${bid}\" style=\"display:none;color:#94a3b8;font-size:11px;margin:4px 0 2px 12px;white-space:pre-wrap;padding:7px 9px;background:#0f172a;border:1px solid #1e293b;border-radius:6px\">${escapeHtml(r.body)}</div>`;
             } else {
               body = `<div style=\"color:#94a3b8;font-size:11px;margin-left:12px;white-space:pre-wrap\">${escapeHtml(r.body)}</div>`;
@@ -6837,7 +6839,7 @@ def render_user_dashboard_html(
       }
       if (canEdit) {
         const inp = 'background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:5px;padding:4px 7px;font-size:12px';
-        h += `<div style=\"margin-top:6px\"><button onclick=\"autoEvidence('${enc}')\" class=\"secondary\" style=\"width:auto;padding:4px 12px;font-size:12px\" title=\"${tt('dash.ctl.ev_auto_tip','현재 실증적(라이브 집계)을 날짜 찍힌 증적으로 자동 생성')}\">⚡ ${tt('dash.ctl.ev_auto_btn','실증적 자동 기록')}</button> <span id=\"evr_auto_msg_${enc}\" style=\"font-size:11px;color:#64748b\"></span></div>
+        h += `<div style=\"margin-top:6px\"><button onclick=\"autoEvidence('${enc}')\" class=\"secondary\" style=\"width:auto;padding:4px 12px;font-size:12px\" title=\"${tt('dash.ctl.ev_auto_tip','현재 실증적(라이브 집계)을 날짜 찍힌 증적으로 자동 생성')}\">${tt('dash.ctl.ev_auto_btn','실증적 자동 기록')}</button> <span id=\"evr_auto_msg_${enc}\" style=\"font-size:11px;color:#64748b\"></span></div>
         <div style=\"margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center\">
           <input id=\"evr_title_${enc}\" placeholder=\"${tt('dash.ctl.ev_ttl_ph','증적 제목(예: 접근권한 검토 회의록)')}\" style=\"${inp};width:220px\" />
           <input type=\"date\" id=\"evr_date_${enc}\" style=\"${inp}\" />
@@ -6916,7 +6918,7 @@ def render_user_dashboard_html(
       const scope = document.getElementById('snap_scope').value;
       try {
         const res = await fetch('/controls/evidence-snapshot/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({schedule, scope}) });
-        if (msg) { msg.textContent = res.ok ? tt('dash.ctl.saved','✓ 저장됨') : tt('dash.ctl.save_fail','저장 실패'); msg.style.color = res.ok ? '#4ade80' : '#f87171'; }
+        if (msg) { msg.textContent = res.ok ? tt('dash.ctl.saved','저장됨') : tt('dash.ctl.save_fail','저장 실패'); msg.style.color = res.ok ? '#4ade80' : '#f87171'; }
       } catch(e) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } }
     }
     window.saveSnapshotConfig = saveSnapshotConfig;
@@ -6928,7 +6930,7 @@ def render_user_dashboard_html(
         const res = await fetch('/controls/evidence-snapshot/run', { method:'POST' });
         if (!res.ok) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } return; }
         const d = await res.json();
-        if (msg) { msg.textContent = `✓ ${d.count}${tt('dash.ctl.snap_done','건 스냅샷됨')}`; msg.style.color='#4ade80'; }
+        if (msg) { msg.textContent = `${d.count}${tt('dash.ctl.snap_done','건 스냅샷됨')}`; msg.style.color='#4ade80'; }
       } catch(e) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; } }
     }
     window.runBulkSnapshot = runBulkSnapshot;
@@ -6961,7 +6963,7 @@ def render_user_dashboard_html(
         } catch(e) {}
       }
       const inp = 'background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 9px;font-size:13px';
-      box.innerHTML = `<div style=\"font-weight:700;color:#a3e635;margin-bottom:8px\">${isEdit?tt('dash.ctl.edit_ttl','통제 수정'):tt('dash.ctl.add_ttl','통제 추가')}</div>
+      box.innerHTML = `<div style=\"font-weight:700;color:#4ade80;margin-bottom:8px\">${isEdit?tt('dash.ctl.edit_ttl','통제 수정'):tt('dash.ctl.add_ttl','통제 추가')}</div>
         <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px\">
           <input id=\"ce_id\" placeholder=\"ID (예: PIPA-5)\" value=\"${escapeHtml(c.id)}\" ${isEdit?'readonly':''} style=\"${inp}\" />
           <input id=\"ce_framework\" placeholder=\"framework\" value=\"${escapeHtml(c.framework||'custom')}\" style=\"${inp}\" />
@@ -7010,7 +7012,7 @@ def render_user_dashboard_html(
       const box = document.getElementById('ctl_nlp');
       document.getElementById('ctl_editor').style.display = 'none';
       const inp = 'background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:6px 9px;font-size:13px';
-      box.innerHTML = `<div style=\"font-weight:700;color:#38bdf8;margin-bottom:6px\">📥 ${tt('dash.ctl.nlp_ttl','법령/고시 텍스트 → 통제 초안')}</div>
+      box.innerHTML = `<div style=\"font-weight:700;color:#38bdf8;margin-bottom:6px\">${tt('dash.ctl.nlp_ttl','법령/고시 텍스트 → 통제 초안')}</div>
         <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.ctl.nlp_help','규정 텍스트를 붙여넣으면 통제 초안(draft)으로 변환·저장됩니다. Claude API 키가 있으면 정밀 구조화, 없으면 조항 단위 휴리스틱.')}</div>
         <div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px\">
           <input id=\"nlp_framework\" placeholder=\"${tt('dash.ctl.nlp_fw','프레임워크(예: 개인정보보호법)')}\" style=\"${inp};width:220px\" />
@@ -7036,7 +7038,7 @@ def render_user_dashboard_html(
         if (!res.ok) { msg.textContent = tt('dash.ctl.save_fail','저장 실패') + ' (' + res.status + ')'; msg.style.color='#f87171'; return; }
         const d = await res.json();
         const via = d.method === 'claude' ? 'Claude API' : (d.method === 'heuristic' ? tt('dash.ctl.nlp_heur','휴리스틱') : d.method);
-        msg.textContent = `✓ ${d.count}${tt('dash.ctl.nlp_done','건 저장됨')} (${via})`; msg.style.color='#4ade80';
+        msg.textContent = `${d.count}${tt('dash.ctl.nlp_done','건 저장됨')} (${via})`; msg.style.color='#4ade80';
         loadControlTree();
       } catch(e) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#f87171'; }
     }
@@ -7045,7 +7047,7 @@ def render_user_dashboard_html(
     // ── 계정 거버넌스 (admin·security) ─────────────────────────────────────────
     let _accData = { accounts: [], counts: {}, summary: {}, ip_list: [], dormant_days: 90 };
     let _accApprovals = [];
-    const _ACC_FIND = { leaver:['퇴사자 잔존','#f87171','🚨'], orphan_priv:['미등록 특권','#fb923c','🛡️'], unapproved_sudo:['미승인 sudo','#facc15','⚡'], dormant:['휴면','#a78bfa','💤'] };
+    const _ACC_FIND = { leaver:['퇴사자 잔존','#f87171',''], orphan_priv:['미등록 특권','#fbbf24',''], unapproved_sudo:['미승인 sudo','#fbbf24',''], dormant:['휴면','#38bdf8',''] };
     async function loadAccountsGov() {
       const tableEl = document.getElementById('acc_table');
       if (!tableEl) return;
@@ -7082,16 +7084,16 @@ def render_user_dashboard_html(
       });
       if (!rows.length) { tableEl.innerHTML = `<div class=\"empty\">${tt('dash.acc.none','해당 계정이 없습니다. (osquery push 전이거나 필터)')}</div>`; return; }
       const dd = _accData.dormant_days||90;
-      tableEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\"><thead><tr style=\"background:#0f2035\">
+      tableEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px\"><thead><tr style=\"background:#0f172a\">
         <th style=\"padding:8px;text-align:left\">${tt('dash.acc.col.host','호스트')}</th><th style=\"padding:8px;text-align:left\">${tt('dash.acc.col.user','계정')}</th><th style=\"padding:8px\">UID</th><th style=\"padding:8px\">${tt('dash.acc.col.priv','특권')}</th><th style=\"padding:8px\">${tt('dash.acc.col.dir','디렉터리')}</th><th style=\"padding:8px\">${tt('dash.acc.col.login','최근 로그인')}</th><th style=\"padding:8px;text-align:left\">${tt('dash.acc.col.find','이상')}</th></tr></thead><tbody>
         ${rows.map(a => `<tr>
-          <td style=\"padding:6px 8px\"><strong>${escapeHtml(a.host_key)}</strong> <span style=\"color:#64748b;font-size:11px\">${a.host_type==='pc'?'🖥️PC':'🖧'+tt('dash.mine.server','서버')}</span></td>
+          <td style=\"padding:6px 8px\"><strong>${escapeHtml(a.host_key)}</strong> <span style=\"color:#64748b;font-size:11px\">${a.host_type==='pc'?'PC':''+tt('dash.mine.server','서버')}</span></td>
           <td style=\"padding:6px 8px;font-family:monospace\">${escapeHtml(a.username)}${a.disabled?' <span style=\"color:#64748b\">(disabled)</span>':''}</td>
           <td style=\"padding:6px 8px;text-align:center;color:#94a3b8\">${escapeHtml(a.uid||'-')}</td>
-          <td style=\"padding:6px 8px;text-align:center\">${a.is_privileged?`<span style=\"color:#fca5a5\">●${a.is_sudo?' sudo':''}</span>`:'-'}</td>
-          <td style=\"padding:6px 8px;text-align:center\">${a.in_directory?'✅':'—'}</td>
-          <td style=\"padding:6px 8px;text-align:center;color:${(a.login_age_days!=null&&a.login_age_days>dd)?'#a78bfa':'#94a3b8'};font-size:12px\">${a.login_age_days!=null?a.login_age_days+'d':(a.last_login?'-':'never')}</td>
-          <td style=\"padding:6px 8px\">${a.findings.map(_accFindBadge).join('')||'<span style=\"color:#4ade80\">✓</span>'}</td>
+          <td style=\"padding:6px 8px;text-align:center\">${a.is_privileged?`<span style=\"color:#f87171\">●${a.is_sudo?' sudo':''}</span>`:'-'}</td>
+          <td style=\"padding:6px 8px;text-align:center\">${a.in_directory?'':'—'}</td>
+          <td style=\"padding:6px 8px;text-align:center;color:${(a.login_age_days!=null&&a.login_age_days>dd)?'#38bdf8':'#94a3b8'};font-size:12px\">${a.login_age_days!=null?a.login_age_days+'d':(a.last_login?'-':'never')}</td>
+          <td style=\"padding:6px 8px\">${a.findings.map(_accFindBadge).join('')||'<span style=\"color:#4ade80\"></span>'}</td>
         </tr>`).join('')}</tbody></table>`;
       _pgApply(tableEl);
     }
@@ -7101,8 +7103,8 @@ def render_user_dashboard_html(
       const el = document.getElementById('acc_approvals'); if (!el) return;
       if (!_accApprovals.length) { el.innerHTML = `<span class=\"empty\">${tt('dash.acc.appr_none','등록된 승인이 없습니다.')}</span>`; return; }
       el.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><tbody>${_accApprovals.map(a => `<tr style=\"border-bottom:1px solid #1e293b\">
-        <td style=\"padding:5px 6px;font-family:monospace;color:#7dd3fc\">${escapeHtml(a.username)}</td>
-        <td style=\"padding:5px 6px\"><span style=\"background:${a.kind==='sudo'?'#facc1522':'#1e3a5f'};color:${a.kind==='sudo'?'#facc15':'#93c5fd'};padding:1px 6px;border-radius:4px\">${escapeHtml(a.kind)}</span></td>
+        <td style=\"padding:5px 6px;font-family:monospace;color:#38bdf8\">${escapeHtml(a.username)}</td>
+        <td style=\"padding:5px 6px\"><span style=\"background:${a.kind==='sudo'?'#fbbf2422':'#334155'};color:${a.kind==='sudo'?'#fbbf24':'#38bdf8'};padding:1px 6px;border-radius:4px\">${escapeHtml(a.kind)}</span></td>
         <td style=\"padding:5px 6px;color:#94a3b8\">${a.scope==='host'?escapeHtml(a.host_key):tt('dash.acc.global','전역')}</td>
         <td style=\"padding:5px 6px;color:#cbd5e1\">${escapeHtml(a.reason||'')}</td>
         <td style=\"padding:5px 6px;text-align:right\"><button class=\"danger\" style=\"width:auto;padding:2px 8px;font-size:11px\" onclick=\"deleteAccApproval('${escapeHtml(a.id)}')\">${tt('dash.acc.appr_del','삭제')}</button></td>
@@ -7153,7 +7155,7 @@ def render_user_dashboard_html(
       const rows = _ipFiltered();
       const cnt = document.getElementById('ip_count'); if (cnt) cnt.textContent = `${rows.length}/${all.length}`;
       if (!rows.length) { el.innerHTML = `<span class=\"empty\">${tt('dash.acc.ip_none','호스트 없음')}</span>`; return; }
-      el.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"background:#0f2035\">
+      el.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"background:#0f172a\">
         <th style=\"padding:6px;text-align:left\">${tt('dash.dyn.lbl.hostname','호스트명')}</th>
         <th style=\"padding:6px;text-align:left\">IP</th>
         <th style=\"padding:6px;text-align:left\">${tt('dash.mine.importance','중요도')}</th>
@@ -7189,12 +7191,12 @@ def render_user_dashboard_html(
         const tsEl = document.getElementById('evidence_gap_ts');
         if (tsEl && data.generated_at) tsEl.textContent = tt('dash.gap.updated','기준 ') + String(data.generated_at).slice(0,16).replace('T',' ');
         const tiles = [
-          { key:'vuln_pending', icon:'⚠️', label: tt('dash.gap.vuln','조치 안 된 Critical/High'), tab:'compliance', color:'#f87171' },
-          { key:'exceptions_expiring', icon:'⏰', label: tt('dash.gap.exc','예외 만료 D-7 이내'), tab:'assets', color:'#fbbf24' },
-          { key:'untriaged_alerts', icon:'🚨', label: tt('dash.gap.alert','미트리아지 alert'), tab:'triage', color:'#fb923c' },
-          { key:'overdue', icon:'⌛', label: tt('dash.gap.overdue','조치 기한 초과'), tab:'compliance', color:'#f472b6' },
-          { key:'unmapped_assets', icon:'🧭', label: tt('dash.gap.unmapped','미매핑 자산 (자산 대사)'), tab:'assets', color:'#5eead4' },
-          { key:'control_pending', icon:'📋', label: tt('dash.gap.control','미조치 통제'), tab:'compliance', color:'#60a5fa' },
+          { key:'vuln_pending', icon:'', label: tt('dash.gap.vuln','조치 안 된 Critical/High'), tab:'compliance', color:'#f87171' },
+          { key:'exceptions_expiring', icon:'', label: tt('dash.gap.exc','예외 만료 D-7 이내'), tab:'assets', color:'#fbbf24' },
+          { key:'untriaged_alerts', icon:'', label: tt('dash.gap.alert','미트리아지 alert'), tab:'triage', color:'#fbbf24' },
+          { key:'overdue', icon:'', label: tt('dash.gap.overdue','조치 기한 초과'), tab:'compliance', color:'#f87171' },
+          { key:'unmapped_assets', icon:'', label: tt('dash.gap.unmapped','미매핑 자산 (자산 대사)'), tab:'assets', color:'#38bdf8' },
+          { key:'control_pending', icon:'', label: tt('dash.gap.control','미조치 통제'), tab:'compliance', color:'#38bdf8' },
         ];
         box.innerHTML = `<div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px\">` +
           tiles.map(t => {
@@ -7236,7 +7238,7 @@ def render_user_dashboard_html(
         const roleLabel = ROLE_LABELS[me.role] || me.role;
         const heroP = document.querySelector('.hero p');
         if (heroP && me.username) {
-          heroP.innerHTML = `${tt('dash.dyn.welcome_prefix','환영합니다, ')}<strong style="color:#38bdf8">${escapeHtml(me.username)}</strong> <span style="background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:6px;font-size:12px">${escapeHtml(roleLabel)}</span>`;
+          heroP.innerHTML = `${tt('dash.dyn.welcome_prefix','환영합니다, ')}<strong style="color:#38bdf8">${escapeHtml(me.username)}</strong> <span style="background:#334155;color:#38bdf8;padding:2px 8px;border-radius:6px;font-size:12px">${escapeHtml(roleLabel)}</span>`;
         }
         const badge = document.getElementById('ui_user_badge');
         if (badge && me.username) { badge.removeAttribute('data-i18n'); badge.textContent = me.username; }
@@ -7291,8 +7293,8 @@ def render_user_dashboard_html(
           department: data.department || '',
           assigned_servers: Array.isArray(data.assigned_servers) ? data.assigned_servers : [],
         };
-        st.style.color = '#34d399';
-        st.textContent = tt('dash.profile.saved', '저장 완료 ✓');
+        st.style.color = '#4ade80';
+        st.textContent = tt('dash.profile.saved', '저장 완료 ');
         if (typeof renderMyServers === 'function') renderMyServers();
         setTimeout(closeProfileModal, 700);
       } catch(e) {
@@ -7323,7 +7325,7 @@ def render_user_dashboard_html(
           const data = await res.json();
           if (!res.ok) { nlqInterpretResult.textContent = `${tt('dash.dyn.error_prefix','오류: ')}${data.detail || res.status}`; return; }
           lastInterpretedPayload = { intent: data.intent, scope: data.scope || {time_range:'24h'}, filters: data.filters || {} };
-          nlqInterpretResult.textContent = `${tt('dash.dyn.nlq.interpret_result','해석 결과')}: ${data.intent} (${data.recognized ? tt('dash.dyn.nlq.recognized','인식됨') : tt('dash.dyn.nlq.fuzzy','유사 매칭')})${data.warnings?.length ? ' ⚠ ' + data.warnings.join(', ') : ''}`;
+          nlqInterpretResult.textContent = `${tt('dash.dyn.nlq.interpret_result','해석 결과')}: ${data.intent} (${data.recognized ? tt('dash.dyn.nlq.recognized','인식됨') : tt('dash.dyn.nlq.fuzzy','유사 매칭')})${data.warnings?.length ? ' ' + data.warnings.join(', ') : ''}`;
           logUserAction('INTERPRET', text.substring(0, 200));
           if (!data.recognized) { openNlqGuideModal(); }
         } catch (err) { nlqInterpretResult.textContent = `${tt('dash.dyn.error_prefix','오류: ')}${err.message}`; }
@@ -7357,13 +7359,13 @@ def render_user_dashboard_html(
       try { await applyRoleBasedTabs(); } catch(e) { console.error('[MORI] applyRoleBasedTabs error:', e); }
       try { await loadDashboard(); } catch(e) {
         console.error('[MORI] loadDashboard error:', e);
-        dashboardStatusEl.textContent = `${tt('dash.dyn.dash_load_fail', '❌ 대시보드 로드 실패')}: ${e.message}`;
+        dashboardStatusEl.textContent = `${tt('dash.dyn.dash_load_fail', '대시보드 로드 실패')}: ${e.message}`;
         // 빈 데이터라도 placeholder 표시
         if (!sourceCoverageEl.children.length) sourceCoverageEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_source_connected','데이터 소스가 아직 연결되지 않았습니다.') + '</div>';
         if (!latestStatusEl.children.length || latestStatusEl.querySelector('.empty')) latestStatusEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_host_api','호스트 데이터 없음 — API 연결을 확인하세요.') + '</div>';
         if (!riskSummaryEl.children.length || riskSummaryEl.querySelector('.empty')) riskSummaryEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_risk_summary','위험 요약 데이터 없음') + '</div>';
         if (!recentActivityEl.children.length || recentActivityEl.querySelector('.empty')) recentActivityEl.innerHTML = '<div class=\"empty\">' + tt('dash.dyn.empty.no_recent_activity','최근 활동 데이터 없음') + '</div>';
-        overviewCardsEl.innerHTML = '<div class=\"empty\" style=\"padding:16px;color:#fca5a5\">' + tt('dash.dyn.dash_load_fail_full','⚠️ 대시보드 데이터를 불러올 수 없습니다. 서버 상태를 확인하세요.') + '</div>';
+        overviewCardsEl.innerHTML = '<div class=\"empty\" style=\"padding:16px;color:#f87171\">' + tt('dash.dyn.dash_load_fail_full','대시보드 데이터를 불러올 수 없습니다. 서버 상태를 확인하세요.') + '</div>';
       }
     }
 
@@ -7371,17 +7373,17 @@ def render_user_dashboard_html(
   </script>
 
   <!-- ── NLQ Floating Action Button ───────────────────────────────────── -->
-  <button class=\"nlq-fab\" id=\"nlq_fab_btn\" title=\"자연어 질의 (NLQ)\" data-i18n=\"dash.nlq.fab_btn\" data-i18n-title=\"dash.nlq.fab_title\">💬 NLQ 질의</button>
+  <button class=\"nlq-fab\" id=\"nlq_fab_btn\" title=\"자연어 질의 (NLQ)\" data-i18n=\"dash.nlq.fab_btn\" data-i18n-title=\"dash.nlq.fab_title\">NLQ 질의</button>
 
   <dialog id=\"nlq_fab_dialog\" class=\"nlq-dialog\">
     <div class=\"nlq-dialog-body\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px\">
-        <h3 style=\"margin:0;font-size:18px\" data-i18n=\"dash.nlq.dialog_title\">💬 자연어 질의 (NLQ)</h3>
+        <h3 style=\"margin:0;font-size:18px\" data-i18n=\"dash.nlq.dialog_title\">자연어 질의 (NLQ)</h3>
         <button id=\"nlq_fab_close\" class=\"secondary\" style=\"padding:4px 12px\" data-i18n=\"dash.f.close\">닫기</button>
       </div>
-      <div style=\"color:#94a3b8;font-size:13px;margin-bottom:10px\"><span data-i18n=\"dash.nlq.dialog_desc\">자연스럽게 질문하거나 예시 형식으로 입력하면 해석합니다.</span> <a href=\"#\" id=\"nlq_guide_link\" style=\"color:#7dd3fc;\" data-i18n=\"dash.nlq.guide_link\">가이드 ↗</a></div>
+      <div style=\"color:#94a3b8;font-size:13px;margin-bottom:10px\"><span data-i18n=\"dash.nlq.dialog_desc\">자연스럽게 질문하거나 예시 형식으로 입력하면 해석합니다.</span> <a href=\"#\" id=\"nlq_guide_link\" style=\"color:#38bdf8;\" data-i18n=\"dash.nlq.guide_link\">가이드 ↗</a></div>
       <textarea id=\"nlq_textarea\" rows=\"3\" style=\"width:100%;box-sizing:border-box;background:#0b1220;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:10px;font-size:14px;resize:vertical;\" placeholder=\"예: 오프라인 호스트 보여줘 / 최근 24시간 wazuh high alert 요약\" data-i18n-placeholder=\"dash.nlq.textarea_ph\"></textarea>
-      <div id=\"nlq_interpret_result\" style=\"margin:8px 0;color:#7dd3fc;font-size:13px;\"></div>
+      <div id=\"nlq_interpret_result\" style=\"margin:8px 0;color:#38bdf8;font-size:13px;\"></div>
       <div style=\"display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;\">
         <button type=\"button\" id=\"nlq_interpret_btn\" class=\"secondary\">Interpret</button>
         <button type=\"button\" id=\"nlq_run_btn\">Run Query</button>
@@ -7422,26 +7424,26 @@ def render_login_html(error: str = "", next_url: str = "/ui") -> str:
   <title data-i18n-doctitle="login.doctitle">MORI SOC — 로그인</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ background: #0a1628; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif;
+    body {{ background: #0b1220; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif;
            display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
-    .login-card {{ background: #0f2035; border: 1px solid #1e3a5f; border-radius: 16px; padding: 40px 36px;
+    .login-card {{ background: #0f172a; border: 1px solid #334155; border-radius: 16px; padding: 40px 36px;
                    width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }}
     .login-logo {{ text-align: center; margin-bottom: 28px; }}
-    .login-logo h1 {{ font-size: 28px; font-weight: 800; color: #7dd3fc; letter-spacing: -0.5px; }}
+    .login-logo h1 {{ font-size: 28px; font-weight: 800; color: #38bdf8; letter-spacing: -0.5px; }}
     .login-logo p {{ font-size: 13px; color: #64748b; margin-top: 6px; }}
     label {{ display: block; font-size: 12px; color: #94a3b8; margin-bottom: 5px; font-weight: 600; letter-spacing: .5px; }}
-    input {{ width: 100%; background: #0a1628; border: 1px solid #1e3a5f; border-radius: 8px;
+    input {{ width: 100%; background: #0b1220; border: 1px solid #334155; border-radius: 8px;
              color: #e2e8f0; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s; }}
-    input:focus {{ border-color: #3b82f6; }}
+    input:focus {{ border-color: #38bdf8; }}
     .field {{ margin-bottom: 16px; }}
     .btn {{ width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
             cursor: pointer; transition: all .2s; margin-top: 8px; }}
-    .btn-primary {{ background: #2563eb; color: #fff; }}
+    .btn-primary {{ background: #38bdf8; color: #fff; }}
     .btn-primary:hover {{ background: #1d4ed8; }}
-    .login-error {{ background: #450a0a; border: 1px solid #991b1b; color: #fca5a5; border-radius: 8px;
+    .login-error {{ background: #450a0a; border: 1px solid #991b1b; color: #f87171; border-radius: 8px;
                     padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }}
     .login-footer {{ text-align: center; margin-top: 20px; font-size: 13px; color: #64748b; }}
-    .login-footer a {{ color: #7dd3fc; text-decoration: none; }}
+    .login-footer a {{ color: #38bdf8; text-decoration: none; }}
     .status-line {{ font-size: 12px; color: #94a3b8; min-height: 18px; margin-top: 6px; text-align: center; }}
   </style>
 </head>
@@ -7449,7 +7451,7 @@ def render_login_html(error: str = "", next_url: str = "/ui") -> str:
   {toggle_widget}
   <div class="login-card">
     <div class="login-logo">
-      <h1>🛡️ MORI SOC</h1>
+      <h1>MORI SOC</h1>
       <p data-i18n="login.brand_sub">Audit-Ready Security Operations</p>
     </div>
     {error_html}
@@ -7499,7 +7501,7 @@ def render_signup_request_html(success: bool = False) -> str:
     <div class="field"><label data-i18n="signup.label.username">로그인 아이디</label><input id="req_username" placeholder="hong" autocomplete="off" data-i18n-placeholder="signup.placeholder.username" /></div>
     <div class="field"><label data-i18n="signup.label.email">이메일 *</label><input id="req_email" type="email" placeholder="hong@company.com" /></div>
     <div class="field"><label data-i18n="signup.label.dept">부서</label><input id="req_dept" placeholder="보안팀" data-i18n-placeholder="signup.placeholder.dept" /></div>
-    <div class="field"><label data-i18n="signup.label.reason">요청 사유</label><textarea id="req_reason" style="width:100%;background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;color:#e2e8f0;padding:10px 14px;font-size:14px;min-height:80px;outline:none;" placeholder="업무 목적 및 필요 권한을 간략히 작성해주세요." data-i18n-placeholder="signup.placeholder.reason"></textarea></div>
+    <div class="field"><label data-i18n="signup.label.reason">요청 사유</label><textarea id="req_reason" style="width:100%;background:#0b1220;border:1px solid #334155;border-radius:8px;color:#e2e8f0;padding:10px 14px;font-size:14px;min-height:80px;outline:none;" placeholder="업무 목적 및 필요 권한을 간략히 작성해주세요." data-i18n-placeholder="signup.placeholder.reason"></textarea></div>
     <button class="btn btn-primary" id="submit_btn" data-i18n="signup.button.submit">가입 요청 제출</button>
     <div class="status-line" id="status"></div>
     <div class="login-footer"><a href="/login" data-i18n="signup.back">← 로그인으로 돌아가기</a></div>
@@ -7522,14 +7524,14 @@ def render_signup_request_html(success: bool = False) -> str:
             const title = window.t('signup.success.title');
             const bodyHtml = window.t('signup.success.body');
             const back = window.t('signup.back');
-            document.querySelector('.login-card').innerHTML = '<div style="text-align:center;padding:40px 0"><div style="font-size:48px">✅</div><h2 style="color:#22c55e;margin:16px 0 8px">' + title + '</h2><p style="color:#94a3b8">' + bodyHtml + '</p><div style="margin-top:24px"><a href="/login" style="color:#7dd3fc">' + back + '</a></div></div>';
+            document.querySelector('.login-card').innerHTML = '<div style="text-align:center;padding:40px 0"><div style="font-size:48px"></div><h2 style="color:#4ade80;margin:16px 0 8px">' + title + '</h2><p style="color:#94a3b8">' + bodyHtml + '</p><div style="margin-top:24px"><a href="/login" style="color:#38bdf8">' + back + '</a></div></div>';
           } else {
             const d = await res.json().catch(() => ({}));
             statusEl.textContent = d.detail || window.t('signup.error.generic');
           }
         } catch(e) { statusEl.textContent = window.t('signup.error.network') + e.message; }
       });
-    </script>""" if not success else '<div style="text-align:center;padding:40px 0"><div style="font-size:48px">✅</div><h2 data-i18n="signup.success.title" style="color:#22c55e">가입 요청 완료</h2><p data-i18n-html="signup.success.body" style="color:#94a3b8;margin-top:8px">운영자 승인 후 계정이 생성됩니다.<br>이메일로 안내드리겠습니다.</p><div style="margin-top:24px"><a href="/login" data-i18n="signup.back" style="color:#7dd3fc">← 로그인으로 돌아가기</a></div></div>'
+    </script>""" if not success else '<div style="text-align:center;padding:40px 0"><div style="font-size:48px"></div><h2 data-i18n="signup.success.title" style="color:#4ade80">가입 요청 완료</h2><p data-i18n-html="signup.success.body" style="color:#94a3b8;margin-top:8px">운영자 승인 후 계정이 생성됩니다.<br>이메일로 안내드리겠습니다.</p><div style="margin-top:24px"><a href="/login" data-i18n="signup.back" style="color:#38bdf8">← 로그인으로 돌아가기</a></div></div>'
     i18n_runtime = _i18n_script(_SIGNUP_I18N)
     toggle_widget = _i18n_toggle_html()
     return f"""<!DOCTYPE html>
@@ -7540,30 +7542,30 @@ def render_signup_request_html(success: bool = False) -> str:
   <title data-i18n-doctitle="signup.doctitle">MORI SOC — 가입 요청</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ background: #0a1628; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif;
+    body {{ background: #0b1220; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif;
            display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
-    .login-card {{ background: #0f2035; border: 1px solid #1e3a5f; border-radius: 16px; padding: 40px 36px;
+    .login-card {{ background: #0f172a; border: 1px solid #334155; border-radius: 16px; padding: 40px 36px;
                    width: 100%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }}
     .login-logo {{ text-align: center; margin-bottom: 24px; }}
-    .login-logo h1 {{ font-size: 24px; font-weight: 800; color: #7dd3fc; }}
+    .login-logo h1 {{ font-size: 24px; font-weight: 800; color: #38bdf8; }}
     label {{ display: block; font-size: 12px; color: #94a3b8; margin-bottom: 5px; font-weight: 600; letter-spacing: .5px; }}
-    input {{ width: 100%; background: #0a1628; border: 1px solid #1e3a5f; border-radius: 8px;
+    input {{ width: 100%; background: #0b1220; border: 1px solid #334155; border-radius: 8px;
              color: #e2e8f0; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s; }}
-    input:focus {{ border-color: #3b82f6; }}
+    input:focus {{ border-color: #38bdf8; }}
     .field {{ margin-bottom: 14px; }}
     .btn {{ width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
             cursor: pointer; transition: all .2s; margin-top: 4px; }}
-    .btn-primary {{ background: #2563eb; color: #fff; }}
+    .btn-primary {{ background: #38bdf8; color: #fff; }}
     .btn-primary:hover {{ background: #1d4ed8; }}
     .login-footer {{ text-align: center; margin-top: 20px; font-size: 13px; }}
-    .login-footer a {{ color: #7dd3fc; text-decoration: none; }}
-    .status-line {{ font-size: 12px; color: #ef4444; min-height: 18px; margin-top: 6px; text-align: center; }}
+    .login-footer a {{ color: #38bdf8; text-decoration: none; }}
+    .status-line {{ font-size: 12px; color: #f87171; min-height: 18px; margin-top: 6px; text-align: center; }}
   </style>
 </head>
 <body>
   {toggle_widget}
   <div class="login-card">
-    <div class="login-logo"><h1 data-i18n="signup.brand_title">🛡️ MORI SOC 가입 요청</h1></div>
+    <div class="login-logo"><h1 data-i18n="signup.brand_title">MORI SOC 가입 요청</h1></div>
     {body_html}
   </div>
   {i18n_runtime}

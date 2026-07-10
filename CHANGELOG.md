@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.18.0-alpha.1] — 2026-07-09 — 디자인 통일: 단일 액센트 + 이모지 제거
+
+### Changed
+- **색상 통일** — 흩어져 있던 스카이/시안/틸/블루/보라 등 액센트 계열을 **단일 액센트
+  `#38bdf8`** 로 수렴. 의미색은 위험 `#f87171`·경고 `#fbbf24`·정상 `#4ade80` 각 1색으로,
+  슬레이트 근접값도 정규화(고유 색 30여 종 → 지배 팔레트 = 액센트1+의미3+슬레이트). 다크 테마 유지.
+- **이모지 전면 제거** — 탭·헤더·버튼·상태 표시의 이모지(약 1,000개)를 모두 제거하고, 상태는
+  기존 색 배지(CSS)로만 표현. 닫기 표시는 `×` 로 정리, 빈 아이콘 슬롯은 `:empty` 로 숨김.
+  화살표·캐럿(◀ ▶ ▾ ↗ ↔) 등 기능성 글리프는 유지. 로그인·대시보드·어드민 전 페이지 적용.
+
 ## [v0.17.5-alpha.1] — 2026-07-09 — 전체 증적 한방에 ZIP 다운로드
 
 ### Added
