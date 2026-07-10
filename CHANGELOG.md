@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.18.4-alpha.1] — 2026-07-09 — 어드민 콘솔도 슬림 상단바로 통일
+
+### Changed
+- **어드민 콘솔 큰 타이틀 제거** — "MORI 점검·통제 운영 콘솔" 히어로를 없애고 대시보드와 동일한
+  슬림 상단바(브랜드 "MORI 콘솔" + 탭 + 우측 액션)로 통일. 개발용 링크(API 문서·Health/Dashboard/
+  Catalog JSON)와 Query Guide는 계정 메뉴로 이동해 상단을 정리. (탭 CSS·토스 상단바 스타일을 어드민
+  스타일 블록에도 추가)
+
 ## [v0.18.3-alpha.1] — 2026-07-09 — 대시보드 헤더 → 토스식 슬림 상단바 (타이틀 제거)
 
 ### Changed

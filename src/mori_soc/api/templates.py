@@ -212,9 +212,21 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     /* Admin tabs */
     .atab-panel { display: none; margin-top: 16px; }
     .atab-panel.active { display: block; }
-    #admin_tabs_nav { margin: 16px 0 0; }
-    /* Tab nav buttons must never stretch to 100% width */
-    .tabs-nav button { width: auto; display: inline-flex; align-items: center; white-space: nowrap; }
+    #admin_tabs_nav { margin: 0; }
+    /* Tab nav (dashboard와 동일) + 토스식 슬림 상단바 */
+    .tabs-nav { display: flex; gap: 0; border-bottom: 1px solid #1e293b; margin-bottom: 12px; overflow-x: auto; }
+    .tabs-nav button { width: auto; display: inline-flex; align-items: center; background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 16px; color: #94a3b8; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: -1px; border-radius: 0; white-space: nowrap; }
+    .tabs-nav button.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+    .topbar { display: flex; align-items: flex-end; gap: 18px; border-bottom: 1px solid #1e293b; margin-bottom: 16px; }
+    .topbar .brand { font-size: 18px; font-weight: 800; letter-spacing: -0.03em; color: #f1f5f9; padding-bottom: 10px; white-space: nowrap; }
+    .topbar .tabs-nav { flex: 1 1 auto; border-bottom: none; margin-bottom: 0; }
+    .topbar .top-actions { padding-bottom: 8px; align-items: center; flex: 0 0 auto; }
+    .topbar .portal-link { color: #94a3b8; text-decoration: none; font-size: 12px; padding: 6px 11px; border: 1px solid #334155; border-radius: 999px; background: #0f172a; white-space: nowrap; }
+    .topbar .portal-link:hover { color: #cbd5e1; border-color: #38bdf8; }
+    @media (max-width: 1000px) {
+      .topbar { flex-wrap: wrap; align-items: center; gap: 10px; }
+      .topbar .tabs-nav { order: 3; flex-basis: 100%; }
+    }
     /* Bottom nav (mobile only) */
     .admin-bottom-nav { display: none; }
     @media (max-width: 1240px) {
@@ -275,26 +287,31 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
 </head>
 <body>
   <div class=\"wrap\">
-    <section class=\"hero\">
-      <div>
-        <h1 data-i18n=\"admin.hero.title\">MORI 점검·통제 운영 콘솔</h1>
-        <p data-i18n=\"admin.hero.intro\">통제 항목 점검 결과를 관리하고, 수집 데이터를 교차 검증하며, 사용자 대시보드 노출 범위를 제어하는 관리자 운영 콘솔입니다.</p>
-        <div class=\"links\">
-          <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"admin.links.docs\">운영 문서 / 포털</a>
-          <a href=\"/docs\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"admin.links.api\">API 문서 (Swagger)</a>
-          <a href=\"/health\" target=\"_blank\" rel=\"noreferrer\">Health JSON</a>
-          <a href=\"/dashboard/summary\" target=\"_blank\" rel=\"noreferrer\">Dashboard JSON</a>
-          <a href=\"/catalog\" target=\"_blank\" rel=\"noreferrer\">Query Catalog JSON</a>
-        </div>
-      </div>
+    <header class=\"topbar\">
+      <span class=\"brand\">MORI 콘솔</span>
+      <nav class=\"tabs-nav\" id=\"admin_tabs_nav\">
+        <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\" data-i18n=\"admin.tab.overview\">Overview</button>
+        <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\" data-i18n=\"admin.tab.remediation\">Remediation</button>
+        <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\" data-i18n=\"admin.tab.assets\">자산 / Owners</button>
+        <button data-atab=\"access\" onclick=\"switchAdminTab('access')\" data-i18n=\"admin.tab.access\">Access Control</button>
+        <button data-atab=\"logs\" onclick=\"switchAdminTab('logs')\" data-i18n=\"admin.tab.logs\">Audit &amp; Logs</button>
+        <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\" data-i18n=\"admin.tab.settings\">Settings</button>
+      </nav>
       <div class=\"top-actions\">
         <span id=\"admin_user_badge\" style=\"font-size:13px;color:#94a3b8\"></span>
-        <a href=\"/ui\" data-i18n=\"admin.actions.user_dashboard\">사용자 대시보드</a>
-        <button id=\"query_guide\" class=\"ghost\" data-i18n=\"admin.actions.query_guide\">Query Guide</button>
-        <button id=\"refresh_dashboard\" class=\"ghost\" data-i18n=\"admin.actions.refresh\">Refresh Dashboard</button>
+        <a class=\"portal-link\" href=\"/ui\" data-i18n=\"admin.actions.user_dashboard\">사용자 대시보드</a>
+        <button id=\"refresh_dashboard\" class=\"secondary\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"admin.actions.refresh\">Refresh Dashboard</button>
         <div class=\"account-wrap\" style=\"position:relative\">
-          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" class=\"ghost\" data-i18n=\"admin.actions.account\">계정</button>
-          <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
+          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" class=\"ghost\" style=\"width:auto;padding:6px 12px;border-radius:999px\" data-i18n=\"admin.actions.account\">계정</button>
+          <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;min-width:230px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
+            <button id=\"query_guide\" type=\"button\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"admin.actions.query_guide\">Query Guide</button>
+            <div style=\"border-top:1px solid #334155;margin:8px 0\"></div>
+            <a href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\" style=\"display:block;color:#94a3b8;font-size:12px;padding:5px 4px;text-decoration:none\" data-i18n=\"admin.links.docs\">운영 문서 / 포털</a>
+            <a href=\"/docs\" target=\"_blank\" rel=\"noreferrer\" style=\"display:block;color:#94a3b8;font-size:12px;padding:5px 4px;text-decoration:none\" data-i18n=\"admin.links.api\">API 문서 (Swagger)</a>
+            <a href=\"/health\" target=\"_blank\" rel=\"noreferrer\" style=\"display:block;color:#94a3b8;font-size:12px;padding:5px 4px;text-decoration:none\">Health JSON</a>
+            <a href=\"/dashboard/summary\" target=\"_blank\" rel=\"noreferrer\" style=\"display:block;color:#94a3b8;font-size:12px;padding:5px 4px;text-decoration:none\">Dashboard JSON</a>
+            <a href=\"/catalog\" target=\"_blank\" rel=\"noreferrer\" style=\"display:block;color:#94a3b8;font-size:12px;padding:5px 4px;text-decoration:none\">Query Catalog JSON</a>
+            <div style=\"border-top:1px solid #334155;margin:8px 0\"></div>
             <div style=\"font-size:12px;color:#94a3b8;margin-bottom:6px\" data-i18n=\"admin.account.language\">언어 / Language</div>
             __I18N_TOGGLE__
             <div style=\"border-top:1px solid #334155;margin:10px 0\"></div>
@@ -302,17 +319,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           </div>
         </div>
       </div>
-    </section>
-
-    <!-- ── Admin Tab Nav (8 tabs, Phase 2 정렬) ────────────────────────── -->
-    <nav class=\"tabs-nav\" id=\"admin_tabs_nav\">
-      <button class=\"active\" data-atab=\"overview\" onclick=\"switchAdminTab('overview')\" data-i18n=\"admin.tab.overview\">Overview</button>
-      <button data-atab=\"remediation\" onclick=\"switchAdminTab('remediation')\" data-i18n=\"admin.tab.remediation\">Remediation</button>
-      <button data-atab=\"assets\" onclick=\"switchAdminTab('assets')\" data-i18n=\"admin.tab.assets\">자산 / Owners</button>
-      <button data-atab=\"access\" onclick=\"switchAdminTab('access')\" data-i18n=\"admin.tab.access\">Access Control</button>
-      <button data-atab=\"logs\" onclick=\"switchAdminTab('logs')\" data-i18n=\"admin.tab.logs\">Audit &amp; Logs</button>
-      <button data-atab=\"settings\" onclick=\"switchAdminTab('settings')\" data-i18n=\"admin.tab.settings\">Settings</button>
-    </nav>
+    </header>
 
     <!-- ── Tab: Overview ──────────────────────────────────────────────────── -->
     <div class=\"atab-panel active\" id=\"atab_overview\">
@@ -2931,41 +2938,49 @@ def render_user_dashboard_html(
             <input type=\"date\" id=\"inc_date_to\" style=\"background:#1e293b;border:1px solid #334155;color:#f1f5f9;border-radius:6px;padding:5px 8px;font-size:13px\" />
           </div>
           <button id=\"inc_filter_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px\" data-i18n=\"dash.inc.filter_btn\">조회</button>
+          <button id=\"inc_new_btn\" style=\"padding:5px 14px;font-size:13px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600\" data-i18n=\"dash.inc.new_btn\">+ 새 인시던트</button>
           <button id=\"inc_csv_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px;background:#1d3a5f;color:#38bdf8\" data-i18n=\"dash.inc.csv_btn\">CSV 다운로드</button>
         </div>
         <div id=\"incidents_list\" class=\"list\" style=\"margin-bottom:14px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
-        <div style=\"background:#0c1827;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:10px\">
-          <div style=\"font-size:13px;font-weight:600;color:#38bdf8;margin-bottom:10px\" data-i18n=\"dash.inc.create_title\">새 인시던트 생성</div>
-          <div class=\"row\">
-            <label for=\"inc_title\" data-i18n=\"dash.f.title\">제목</label>
-            <input id=\"inc_title\" placeholder=\"예: 특정 서버 무단 접근 시도\" data-i18n-placeholder=\"dash.inc.title_ph\" />
-          </div>
-          <div class=\"row\" style=\"position:relative\">
-            <label for=\"inc_hostname\"><span data-i18n=\"dash.inc.host\">관련 호스트</span> <span style=\"color:#64748b;font-size:11px\" data-i18n=\"dash.inc.host_hint\">(검색)</span></label>
-            <input id=\"inc_hostname\" placeholder=\"호스트명 입력…\" data-i18n-placeholder=\"dash.inc.host_ph\" autocomplete=\"off\" oninput=\"_incHostSearch(this.value)\" />
-            <div id=\"inc_host_suggestions\" style=\"display:none;position:absolute;top:100%;left:0;right:0;background:#1e293b;border:1px solid #334155;border-radius:6px;max-height:160px;overflow-y:auto;z-index:100\"></div>
-          </div>
-          <div class=\"row\">
-            <label for=\"inc_analyst\"><span data-i18n=\"dash.f.analyst\">담당자</span> <span style=\"color:#64748b;font-size:11px\" data-i18n=\"dash.inc.analyst_hint\">(호스트 담당자 자동 입력)</span></label>
-            <input id=\"inc_analyst\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"dash.ph.name_example\" />
-          </div>
-          <div style=\"margin:8px 0\">
-            <label style=\"display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#94a3b8\">
-              <input type=\"checkbox\" id=\"inc_diff_handler\" onchange=\"document.getElementById('inc_handler_row').style.display=this.checked?'':'none'\" />
-              <span data-i18n=\"dash.inc.diff_handler\">담당자와 조치자가 다름</span>
-            </label>
-          </div>
-          <div class=\"row\" id=\"inc_handler_row\" style=\"display:none\">
-            <label for=\"inc_handler\" data-i18n=\"dash.f.handler\">조치자</label>
-            <input id=\"inc_handler\" placeholder=\"예: 김보안\" data-i18n-placeholder=\"dash.ph.handler_example\" />
-          </div>
-          <div class=\"actions\">
-            <button id=\"create_incident\" data-i18n=\"dash.inc.create_btn\">인시던트 생성</button>
-            <button id=\"reload_incidents\" class=\"secondary\" data-i18n=\"dash.btn.reload\">새로고침</button>
-          </div>
+      </section>
+    </div>
+
+    <!-- 새 인시던트 생성 모달 (버튼 클릭 시 팝업) -->
+    <div id=\"incident_create_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center\">
+      <div style=\"background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px 28px;width:560px;max-width:95vw;max-height:90vh;overflow:auto\">
+        <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
+          <h3 style=\"color:#38bdf8;margin:0\" data-i18n=\"dash.inc.create_title\">새 인시던트 생성</h3>
+          <button onclick=\"closeIncidentCreateModal()\" style=\"background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer\">×</button>
+        </div>
+        <div class=\"row\">
+          <label for=\"inc_title\" data-i18n=\"dash.f.title\">제목</label>
+          <input id=\"inc_title\" placeholder=\"예: 특정 서버 무단 접근 시도\" data-i18n-placeholder=\"dash.inc.title_ph\" />
+        </div>
+        <div class=\"row\" style=\"position:relative\">
+          <label for=\"inc_hostname\"><span data-i18n=\"dash.inc.host\">관련 호스트</span> <span style=\"color:#64748b;font-size:11px\" data-i18n=\"dash.inc.host_hint\">(검색)</span></label>
+          <input id=\"inc_hostname\" placeholder=\"호스트명 입력…\" data-i18n-placeholder=\"dash.inc.host_ph\" autocomplete=\"off\" oninput=\"_incHostSearch(this.value)\" />
+          <div id=\"inc_host_suggestions\" style=\"display:none;position:absolute;top:100%;left:0;right:0;background:#1e293b;border:1px solid #334155;border-radius:6px;max-height:160px;overflow-y:auto;z-index:100\"></div>
+        </div>
+        <div class=\"row\">
+          <label for=\"inc_analyst\"><span data-i18n=\"dash.f.analyst\">담당자</span> <span style=\"color:#64748b;font-size:11px\" data-i18n=\"dash.inc.analyst_hint\">(호스트 담당자 자동 입력)</span></label>
+          <input id=\"inc_analyst\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"dash.ph.name_example\" />
+        </div>
+        <div style=\"margin:8px 0\">
+          <label style=\"display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#94a3b8\">
+            <input type=\"checkbox\" id=\"inc_diff_handler\" onchange=\"document.getElementById('inc_handler_row').style.display=this.checked?'':'none'\" />
+            <span data-i18n=\"dash.inc.diff_handler\">담당자와 조치자가 다름</span>
+          </label>
+        </div>
+        <div class=\"row\" id=\"inc_handler_row\" style=\"display:none\">
+          <label for=\"inc_handler\" data-i18n=\"dash.f.handler\">조치자</label>
+          <input id=\"inc_handler\" placeholder=\"예: 김보안\" data-i18n-placeholder=\"dash.ph.handler_example\" />
+        </div>
+        <div class=\"actions\" style=\"margin-top:14px;display:flex;gap:10px;justify-content:flex-end\">
+          <button onclick=\"closeIncidentCreateModal()\" class=\"secondary\" style=\"width:auto;padding:8px 18px\" data-i18n=\"dash.f.cancel\">취소</button>
+          <button id=\"create_incident\" style=\"width:auto;padding:8px 18px\" data-i18n=\"dash.inc.create_btn\">인시던트 생성</button>
         </div>
         <div class=\"status-line\" id=\"incident_status\"></div>
-      </section>
+      </div>
     </div>
 
     <!-- ── Tab: 자산 현황 ─────────────────────────────────────────────── -->
@@ -4731,6 +4746,7 @@ def render_user_dashboard_html(
           document.getElementById('inc_handler').value = '';
           document.getElementById('inc_diff_handler').checked = false;
           document.getElementById('inc_handler_row').style.display = 'none';
+          closeIncidentCreateModal();
           loadIncidents();
         }
         else { const d = await res.json(); incidentStatusEl.textContent = `${tt('dash.dyn.error_prefix', '오류: ')}${d.detail || res.status}`; }
@@ -4739,26 +4755,33 @@ def render_user_dashboard_html(
 
     document.getElementById('reload_incidents')?.addEventListener('click', loadIncidents);
 
+    // 새 인시던트 생성 모달 열기/닫기 (버튼 클릭 시 팝업)
+    function openIncidentCreateModal() {
+      incidentStatusEl.textContent = '';
+      incTitleEl.value = '';
+      const h = document.getElementById('inc_hostname'); if (h) h.value = '';
+      const a = document.getElementById('inc_analyst'); if (a) a.value = '';
+      const hd = document.getElementById('inc_handler'); if (hd) hd.value = '';
+      const df = document.getElementById('inc_diff_handler'); if (df) df.checked = false;
+      const hr = document.getElementById('inc_handler_row'); if (hr) hr.style.display = 'none';
+      document.getElementById('incident_create_modal').style.display = 'flex';
+      setTimeout(() => incTitleEl.focus(), 30);
+    }
+    function closeIncidentCreateModal() { document.getElementById('incident_create_modal').style.display = 'none'; }
+    window.closeIncidentCreateModal = closeIncidentCreateModal;
+    document.getElementById('inc_new_btn')?.addEventListener('click', openIncidentCreateModal);
+    document.getElementById('incident_create_modal')?.addEventListener('click', e => {
+      if (e.target.id === 'incident_create_modal') closeIncidentCreateModal();
+    });
+
     // 검색 + 날짜 필터 조회 버튼
     document.getElementById('inc_filter_btn')?.addEventListener('click', loadIncidents);
     // 검색창 Enter 키
     document.getElementById('inc_search')?.addEventListener('keydown', e => { if (e.key === 'Enter') loadIncidents(); });
 
-    // CSV 다운로드 변경 이력은 미포함 안내 모달 표시 후 다운로드
+    // CSV 다운로드 — 미리보기 모달로 먼저 보여준 뒤 다운로드
     if (document.getElementById('inc_csv_btn')) {
-      document.getElementById('inc_csv_btn')?.addEventListener('click', () => {
-        const params = buildIncidentParams();
-        params.set('format', 'csv');
-        const url = '/incidents?' + params.toString();
-        showIncidentCsvNotice(() => {
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'incidents.csv';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        });
-      });
+      document.getElementById('inc_csv_btn')?.addEventListener('click', openIncidentCsvPreview);
     }
 
     /* ── 인시던트 호스트 검색 자동완성 ──────────────────────────────────── */
@@ -6280,7 +6303,10 @@ def render_user_dashboard_html(
       titleEl.textContent = `${label}${tt('dash.dyn.preview_suffix',' 미리보기')}`;
       dlEl.href = `/compliance/reports/${reportType}?format=csv`;
       const dlPdfEl = document.getElementById('report_preview_download_pdf');
-      if (dlPdfEl) dlPdfEl.href = `/compliance/reports/${reportType}?format=pdf`;
+      if (dlPdfEl) { dlPdfEl.href = `/compliance/reports/${reportType}?format=pdf`; dlPdfEl.style.display = ''; }
+      dlEl.setAttribute('download', '');
+      const subEl0 = document.getElementById('report_preview_subtitle');
+      if (subEl0) subEl0.textContent = tt('dash.modal.report_preview_sub', 'CSV 파일이 아래와 같은 형태로 생성됩니다. (상위 50행만 표시)');
       bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:24px;text-align:center\">' + tt('dash.dyn.loading_fetch','불러오는 중…') + '</div>';
       modal.style.display = 'flex';
       try {
@@ -6312,15 +6338,52 @@ def render_user_dashboard_html(
     }
     function closeReportPreview() { document.getElementById('report_preview_modal').style.display = 'none'; }
 
-    /* ── 인시던트 CSV 다운로드 안내 ────────────────────────────────────────── */
-    function showIncidentCsvNotice(downloadFn) {
-      const modal = document.getElementById('incident_csv_notice_modal');
-      const btn = document.getElementById('incident_csv_confirm_btn');
-      if (!modal || !btn) { downloadFn(); return; }
-      btn.onclick = () => { closeIncidentCsvNotice(); downloadFn(); };
+    /* ── 인시던트 CSV 미리보기 후 다운로드 (리포트 미리보기 모달 재사용) ────────── */
+    async function openIncidentCsvPreview() {
+      const modal = document.getElementById('report_preview_modal');
+      const titleEl = document.getElementById('report_preview_title');
+      const bodyEl = document.getElementById('report_preview_body');
+      const dlEl = document.getElementById('report_preview_download');
+      const dlPdfEl = document.getElementById('report_preview_download_pdf');
+      const subEl = document.getElementById('report_preview_subtitle');
+      if (!modal || !bodyEl) return;
+      const params = buildIncidentParams();
+      params.set('format', 'csv');
+      const url = '/incidents?' + params.toString();
+      titleEl.textContent = tt('dash.modal.incident_csv_preview_title', '인시던트 CSV 미리보기');
+      dlEl.href = url;
+      dlEl.setAttribute('download', 'incidents.csv');
+      if (dlPdfEl) dlPdfEl.style.display = 'none';   // 인시던트는 PDF 없음
+      if (subEl) subEl.textContent = tt('dash.modal.incident_csv_preview_sub', '변경 이력(history)은 CSV에 포함되지 않습니다. 각 인시던트는 최신 상태 1행으로 표시됩니다. (상위 50행 미리보기)');
+      bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:24px;text-align:center\">' + tt('dash.dyn.loading_fetch', '불러오는 중…') + '</div>';
       modal.style.display = 'flex';
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(res.status);
+        const text = await res.text();
+        const rows = _parseSimpleCsv(text);
+        if (rows.length === 0) {
+          bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#64748b;padding:24px;text-align:center\">' + tt('dash.dyn.no_data', '데이터가 없습니다.') + '</div>';
+          return;
+        }
+        const headers = rows[0] || [];
+        const dataRows = rows.slice(1).filter(r => r.length > 0 && !(r.length === 1 && r[0] === ''));
+        const limit = 50;
+        const shown = dataRows.slice(0, limit);
+        const overflowNote = dataRows.length > limit
+          ? `<div style=\"color:#94a3b8;font-size:12px;margin-top:10px\">${tt('dash.dyn.report_overflow','… 총 {n}행 중 상위 {limit}행만 표시됩니다. 전체는 CSV 다운로드로 확인하세요.').replace('{n}','<strong style=\\\"color:#e2e8f0\\\">'+dataRows.length+'</strong>').replace('{limit}',limit)}</div>`
+          : `<div style=\"color:#94a3b8;font-size:12px;margin-top:10px\">${tt('dash.dyn.report_total_rows','총 {n}행').replace('{n}','<strong style=\\\"color:#e2e8f0\\\">'+dataRows.length+'</strong>')}</div>`;
+        const head = '<thead><tr style=\"color:#94a3b8;border-bottom:1px solid #334155;background:#0b1220;position:sticky;top:0\">'
+          + headers.map(h => `<th style=\"text-align:left;padding:6px 10px;font-size:12px;white-space:nowrap\">${escapeHtml(h)}</th>`).join('')
+          + '</tr></thead>';
+        const body = shown.map(r => '<tr style=\"border-bottom:1px solid #1e293b\">'
+          + headers.map((_, idx) => `<td style=\"padding:6px 10px;font-size:12px;color:#e2e8f0;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis\" title=\"${escapeHtml(r[idx] || '')}\">${escapeHtml(r[idx] || '')}</td>`).join('')
+          + '</tr>').join('');
+        bodyEl.innerHTML = `<div style=\"max-height:60vh;overflow:auto;border:1px solid #1e293b;border-radius:6px\"><table style=\"width:100%;border-collapse:collapse\">${head}<tbody>${body}</tbody></table></div>${overflowNote}`;
+      } catch (e) {
+        bodyEl.innerHTML = `<div class=\"empty\" style=\"color:#f87171;padding:24px;text-align:center\">${tt('dash.dyn.report_load_fail','불러올 수 없습니다: ')}${escapeHtml(String(e.message || e))}</div>`;
+      }
     }
-    function closeIncidentCsvNotice() { document.getElementById('incident_csv_notice_modal').style.display = 'none'; }
 
     let _crosscheckData = null;
 
