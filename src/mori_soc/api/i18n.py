@@ -72,10 +72,10 @@ def _i18n_toggle_html(fixed: bool = True) -> str:
         'display:flex;gap:4px;background:#ffffff;border:1px solid #111827;'
         'border-radius:8px;padding:3px;">'
         '<button data-i18n-toggle data-lang="ko" onclick="setLang(\'ko\')" '
-        'style="background:transparent;border:none;color:#e5e7eb;font-size:12px;'
+        'style="background:transparent;border:none;color:#111827;font-size:12px;'
         'font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer;">KO</button>'
         '<button data-i18n-toggle data-lang="en" onclick="setLang(\'en\')" '
-        'style="background:transparent;border:none;color:#e5e7eb;font-size:12px;'
+        'style="background:transparent;border:none;color:#111827;font-size:12px;'
         'font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer;">EN</button>'
         '</div>'
         '<style>.lang-toggle button.active{background:#2563eb!important;color:#fff!important;}</style>'
@@ -751,7 +751,7 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.assets.all_severity": "전체 심각도",
         "dash.assets.detected_date": "탐지일:",
         "dash.assets.trivy_sub": "Trivy가 탐지한 취약점을 호스트별로 집계한 현황입니다. Critical/High 우선 정렬.",
-        "dash.compliance.sub": 'ISMS-P / ISO 27001 통제 항목 점검 현황을 PDCA(Plan-Do-Check-Act) 관점으로 요약합니다.<br/><span style="color:#e5e7eb;font-size:12px">※ <strong>Pass Rate</strong>(부제 Pass·Fail·Warning)는 <strong>통제 점검(control_checks)</strong> 결과만 집계합니다. <strong>미조치 합계</strong>와 <strong>기한초과</strong>는 통제 점검 + Trivy 취약점(critical/high) + Alert(critical/high, 7일) 미조치 항목을 통합 집계합니다. 세부 상태·카테고리는 아래 “상세 분석”에서 확인하세요.</span>',
+        "dash.compliance.sub": 'ISMS-P / ISO 27001 통제 항목 점검 현황을 PDCA(Plan-Do-Check-Act) 관점으로 요약합니다.<br/><span style="color:#111827;font-size:12px">※ <strong>Pass Rate</strong>(부제 Pass·Fail·Warning)는 <strong>통제 점검(control_checks)</strong> 결과만 집계합니다. <strong>미조치 합계</strong>와 <strong>기한초과</strong>는 통제 점검 + Trivy 취약점(critical/high) + Alert(critical/high, 7일) 미조치 항목을 통합 집계합니다. 세부 상태·카테고리는 아래 “상세 분석”에서 확인하세요.</span>',
         "dash.pdca.status_title": "통제 항목 상태",
         "dash.pdca.category_title": "카테고리별 현황",
         "dash.pdca.pending_title": "미조치 / 기한 초과 항목",
@@ -1383,7 +1383,7 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.assets.all_severity": "All severities",
         "dash.assets.detected_date": "Detected:",
         "dash.assets.trivy_sub": "Vulnerabilities detected by Trivy, aggregated per host. Critical/High first.",
-        "dash.compliance.sub": 'Summarizes ISMS-P / ISO 27001 control-check status from a PDCA (Plan-Do-Check-Act) perspective.<br/><span style="color:#e5e7eb;font-size:12px">※ <strong>Pass Rate</strong> (sub: Pass·Fail·Warning) aggregates <strong>control checks</strong> only. <strong>Open total</strong> and <strong>Overdue</strong> aggregate control checks + Trivy vulnerabilities (critical/high) + alerts (critical/high, 7 days) that are unresolved. See “Detailed analysis” below for status/category breakdown.</span>',
+        "dash.compliance.sub": 'Summarizes ISMS-P / ISO 27001 control-check status from a PDCA (Plan-Do-Check-Act) perspective.<br/><span style="color:#111827;font-size:12px">※ <strong>Pass Rate</strong> (sub: Pass·Fail·Warning) aggregates <strong>control checks</strong> only. <strong>Open total</strong> and <strong>Overdue</strong> aggregate control checks + Trivy vulnerabilities (critical/high) + alerts (critical/high, 7 days) that are unresolved. See “Detailed analysis” below for status/category breakdown.</span>',
         "dash.pdca.status_title": "Control Status",
         "dash.pdca.category_title": "By Category",
         "dash.pdca.pending_title": "Open / Overdue Items",
