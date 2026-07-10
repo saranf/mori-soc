@@ -143,16 +143,20 @@ def _via_claude(text: str, framework: str, prefix: str, api_key: str) -> list[di
 
 
 def parse_regulation_text(text: str, framework: str = "custom",
-                          id_prefix: str = "REG") -> dict[str, Any]:
+                          id_prefix: str = "REG",
+                          api_key: str | None = None) -> dict[str, Any]:
     """규정 텍스트 → 통제 초안 목록. 반환: {controls, method, count}.
 
     ``method`` 는 'claude' | 'heuristic' — 어느 경로로 만들었는지 UI에 표시.
+    ``api_key`` 를 주면 그 키를 우선 사용(어드민 저장 키 등), 없으면 환경변수
+    ``MORI_ANTHROPIC_API_KEY``/``ANTHROPIC_API_KEY`` 를 읽는다. 키가 없으면 휴리스틱.
     """
     text = (text or "").strip()
     prefix = re.sub(r"[^A-Za-z0-9]", "", (id_prefix or "REG")).upper()[:12] or "REG"
     if not text:
         return {"controls": [], "method": "none", "count": 0}
-    api_key = (os.getenv("MORI_ANTHROPIC_API_KEY", "") or os.getenv("ANTHROPIC_API_KEY", "")).strip()
+    api_key = (api_key or "").strip() or (
+        os.getenv("MORI_ANTHROPIC_API_KEY", "") or os.getenv("ANTHROPIC_API_KEY", "")).strip()
     if api_key:
         try:
             controls = _via_claude(text, framework, prefix, api_key)

@@ -601,6 +601,8 @@ def render_user_dashboard_html(
           <div id=\"ctl_admin_bar\" style=\"display:none;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0\">
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openControlEditor()\" data-i18n=\"dash.ctl.add\">통제 추가</button>
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openNlpImport()\" data-i18n=\"dash.ctl.nlp\">법령 텍스트 임포트(NLP)</button>
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openClaudeKey()\" data-i18n=\"dash.ctl.key_btn\">Claude 키</button>
+            <span id=\"ctl_key_status\" style=\"font-size:11px;color:#111827\"></span>
             <span style=\"width:1px;height:20px;background:#e5e7eb\"></span>
             <span style=\"font-size:12px;color:#111827\" data-i18n=\"dash.ctl.snap_sched\">정기 증적 스냅샷</span>
             <select id=\"snap_schedule\" onchange=\"saveSnapshotConfig()\" style=\"background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:5px 8px;font-size:12px\">
@@ -3953,7 +3955,7 @@ def render_user_dashboard_html(
         _ctlCanEdit = !!data.can_edit;
         const abar = document.getElementById('ctl_admin_bar');
         if (abar) abar.style.display = _ctlCanEdit ? 'flex' : 'none';
-        if (_ctlCanEdit) loadSnapshotConfig();
+        if (_ctlCanEdit) { loadSnapshotConfig(); loadClaudeKeyStatus(); }
         const badge = (s) => { const c=_CTL_SOURCE_COLOR[s]||'#111827'; return `<span style=\"background:${c}22;color:${c};border:1px solid ${c}55;padding:0 6px;border-radius:5px;font-size:10px;margin-left:3px\">${escapeHtml(s)}</span>`; };
         const ctrlRow = (c) => {
           const title = (lang==='en' ? c.title_en : c.title_ko) || c.title_ko || c.title_en || '';
@@ -4324,6 +4326,61 @@ def render_user_dashboard_html(
       } catch(e) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#dc2626'; }
     }
     window.runNlpImport = runNlpImport;
+
+    // ── M2-8: Claude API 키 관리 (admin, env 우선 → DB 폴백) ────────────────────
+    async function loadClaudeKeyStatus() {
+      const el = document.getElementById('ctl_key_status'); if (!el) return;
+      try {
+        const r = await fetch('/controls/claude-key');
+        if (!r.ok) { el.textContent = ''; return; }
+        const d = await r.json();
+        if (!d.configured) {
+          el.innerHTML = `<span style=\"color:#ea580c\">${tt('dash.ctl.key_none','키 없음 · 휴리스틱')}</span>`;
+        } else {
+          const src = d.source === 'env' ? tt('dash.ctl.key_env','환경변수') : tt('dash.ctl.key_db','저장됨');
+          el.innerHTML = `<span style=\"color:#16a34a\">Claude ${tt('dash.ctl.key_on','연결됨')} · ${src} ${escapeHtml(d.masked||'')}</span>`;
+        }
+      } catch(e) { el.textContent = ''; }
+    }
+    window.loadClaudeKeyStatus = loadClaudeKeyStatus;
+    async function openClaudeKey() {
+      const box = document.getElementById('ctl_nlp');
+      document.getElementById('ctl_editor').style.display = 'none';
+      const inp = 'background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 9px;font-size:13px';
+      let st = { configured:false, source:'none', masked:'', env_locked:false };
+      try { const r = await fetch('/controls/claude-key'); if (r.ok) st = await r.json(); } catch(e) {}
+      const statusLine = st.configured
+        ? `<span style=\"color:#16a34a\">${tt('dash.ctl.key_on','연결됨')} · ${st.source==='env'?tt('dash.ctl.key_env','환경변수'):tt('dash.ctl.key_db','저장됨')} ${escapeHtml(st.masked||'')}</span>`
+        : `<span style=\"color:#ea580c\">${tt('dash.ctl.key_none','키 없음 · 휴리스틱')}</span>`;
+      const envNote = st.env_locked ? `<div class=\"subtext\" style=\"color:#ea580c;margin-top:6px\">${tt('dash.ctl.key_envlock','환경변수 키가 설정돼 있어 UI 저장값보다 우선합니다.')}</div>` : '';
+      box.innerHTML = `<div style=\"font-weight:700;color:#2563eb;margin-bottom:6px\">${tt('dash.ctl.key_ttl','Claude API 키 설정')}</div>
+        <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.ctl.key_help','키를 저장하면 법령 변환이 Claude로 더 정확해져요. 키는 서버에만 저장되고 화면엔 마스킹돼 보여요.')}</div>
+        <div style=\"margin-bottom:8px;font-size:12px\">${tt('dash.ctl.key_cur','현재 상태')}: ${statusLine}</div>
+        <input id=\"claude_key_input\" type=\"password\" autocomplete=\"off\" placeholder=\"sk-ant-...\" style=\"${inp};width:100%;box-sizing:border-box\" ${st.env_locked?'disabled':''} />
+        ${envNote}
+        <div style=\"margin-top:8px;display:flex;gap:8px;align-items:center\">
+          <button onclick=\"saveClaudeKey()\" style=\"width:auto;padding:6px 16px\" ${st.env_locked?'disabled':''}>${tt('dash.ctl.key_save','저장')}</button>
+          <button onclick=\"saveClaudeKey(true)\" class=\"secondary\" style=\"width:auto;padding:6px 16px\" ${(!st.configured||st.env_locked)?'disabled':''}>${tt('dash.ctl.key_clear','삭제')}</button>
+          <button onclick=\"document.getElementById('ctl_nlp').style.display='none'\" class=\"secondary\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.cancel','취소')}</button>
+          <span id=\"claude_key_msg\" style=\"font-size:12px;color:#111827\"></span>
+        </div>`;
+      box.style.display = 'block';
+    }
+    window.openClaudeKey = openClaudeKey;
+    async function saveClaudeKey(clear) {
+      const msg = document.getElementById('claude_key_msg');
+      const val = clear ? '' : (document.getElementById('claude_key_input').value || '').trim();
+      if (!clear && !val) { msg.textContent = tt('dash.ctl.key_need','키를 입력하세요'); msg.style.color='#dc2626'; return; }
+      msg.textContent = tt('dash.dyn.saving','저장 중…'); msg.style.color='#111827';
+      try {
+        const r = await fetch('/controls/claude-key', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ api_key: val }) });
+        if (!r.ok) { msg.textContent = tt('dash.ctl.save_fail','저장 실패') + ' (' + r.status + ')'; msg.style.color='#dc2626'; return; }
+        msg.textContent = clear ? tt('dash.ctl.key_cleared','삭제됨') : tt('dash.ctl.key_saved','저장됨'); msg.style.color='#16a34a';
+        loadClaudeKeyStatus();
+        setTimeout(() => { const b=document.getElementById('ctl_nlp'); if (b) b.style.display='none'; }, 800);
+      } catch(e) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#dc2626'; }
+    }
+    window.saveClaudeKey = saveClaudeKey;
 
     // ── 계정 거버넌스 (admin·security) ─────────────────────────────────────────
     let _accData = { accounts: [], counts: {}, summary: {}, ip_list: [], dormant_days: 90 };

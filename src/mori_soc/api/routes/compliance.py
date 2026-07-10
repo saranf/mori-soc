@@ -8,6 +8,7 @@ unpacking preamble (binding shared stores + the ``get_query_service`` helper fro
 from __future__ import annotations
 
 import logging
+import os
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
@@ -28,6 +29,10 @@ logger = logging.getLogger("mori_soc.api.compliance")
 
 # M2-7: 통제 이행 상태 허용값 (ISMS-P 자율점검 관점)
 _CONTROL_STATUSES = {"미정", "이행", "부분이행", "미이행", "해당없음"}
+
+# M2-8: 법령 NLP 임포트용 Claude API 키를 어드민이 저장하는 ui_settings 키.
+# env(MORI_ANTHROPIC_API_KEY/ANTHROPIC_API_KEY) 가 있으면 그게 우선한다.
+ANTHROPIC_KEY_SETTING = "anthropic_api_key"
 
 
 def register_compliance(ctx: RouteContext) -> None:
@@ -611,6 +616,40 @@ def register_compliance(ctx: RouteContext) -> None:
             ctx.log_action(actor, "CATALOG_CONTROL_DELETE", f"{control_id} ({action})")
         return {"ok": True, "id": control_id, "action": action}
 
+    def _env_claude_key() -> str:
+        return (os.getenv("MORI_ANTHROPIC_API_KEY", "") or os.getenv("ANTHROPIC_API_KEY", "")).strip()
+
+    def _resolved_claude_key() -> str:
+        """env 우선 → 없으면 어드민이 저장한 DB 키(ui_settings)."""
+        return _env_claude_key() or str((ctx.settings or {}).get(ANTHROPIC_KEY_SETTING, "") or "").strip()
+
+    @app.get("/controls/claude-key", tags=["Compliance"])
+    def get_claude_key(request: Request) -> dict[str, Any]:
+        """Claude API 키 설정 상태(마스킹). admin 전용. 실제 키는 절대 반환하지 않음."""
+        _require_catalog_admin(request)
+        env_key = _env_claude_key()
+        db_key = str((ctx.settings or {}).get(ANTHROPIC_KEY_SETTING, "") or "").strip()
+        key = env_key or db_key
+        source = "env" if env_key else ("db" if db_key else "none")
+        return {
+            "configured": bool(key),
+            "source": source,
+            "masked": (("…" + key[-4:]) if len(key) >= 4 else "····") if key else "",
+            "env_locked": bool(env_key),  # env 로 잠겨 있으면 UI 저장은 비활성(env가 이김)
+        }
+
+    @app.put("/controls/claude-key", tags=["Compliance"])
+    def put_claude_key(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """Claude API 키 저장/삭제(ui_settings). admin 전용. 빈 문자열이면 삭제."""
+        actor = _require_catalog_admin(request)
+        key = str(payload.get("api_key", "") or "").strip()
+        ctx.settings[ANTHROPIC_KEY_SETTING] = key
+        if ctx.persist_setting:
+            ctx.persist_setting(ANTHROPIC_KEY_SETTING, actor)
+        if ctx.log_action:
+            ctx.log_action(actor, "CATALOG_CLAUDE_KEY", "set" if key else "cleared")
+        return {"ok": True, "configured": bool(key)}
+
     @app.post("/controls/import-nlp", tags=["Compliance"])
     def import_controls_nlp(payload: dict[str, Any], request: Request) -> dict[str, Any]:
         """법령/고시 자연어 텍스트 → 통제 초안 변환 & 저장(draft). admin 전용.
@@ -625,7 +664,8 @@ def register_compliance(ctx: RouteContext) -> None:
             raise HTTPException(status_code=400, detail="text 가 필요합니다.")
         framework = str(payload.get("framework", "custom")).strip() or "custom"
         prefix = str(payload.get("id_prefix", "REG")).strip() or "REG"
-        result = parse_regulation_text(text, framework=framework, id_prefix=prefix)
+        result = parse_regulation_text(text, framework=framework, id_prefix=prefix,
+                                       api_key=_resolved_claude_key())
         saved = []
         for c in result["controls"]:
             saved.append(_save_catalog_control(c, actor, origin="nlp"))
