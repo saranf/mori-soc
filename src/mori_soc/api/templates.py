@@ -5227,8 +5227,6 @@ def render_user_dashboard_html(
           <td style=\"text-align:center\">${totalCell}</td>
           <td style=\"font-size:12px;color:#94a3b8\">${escapeHtml(r.latest_cve || '-')}</td>
           <td style=\"font-size:12px;color:#64748b\">${escapeHtml(formatTime(r.latest_detected_at))}</td>
-          <td style=\"min-width:130px\">${planCell}</td>
-          <td style=\"min-width:110px\">${exCell}</td>
         </tr>`;
       }).join('');
       containerEl.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">
@@ -5240,8 +5238,6 @@ def render_user_dashboard_html(
           <th style=\"padding:8px;color:#38bdf8\">${tt('dash.dyn.lbl.total','합계')}</th>
           <th style=\"padding:8px;color:#94a3b8\">${tt('dash.dyn.lbl.latest_cve','최근 CVE')}</th>
           <th style=\"padding:8px;color:#64748b\">${tt('dash.dyn.lbl.detected_date','탐지일')}</th>
-          <th style=\"padding:8px;color:#4ade80\">${tt('dash.dyn.lbl.action_plan','조치 계획')}</th>
-          <th style=\"padding:8px;color:#fbbf24\">${tt('dash.dyn.lbl.action_exception','조치 예외')}</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
       </table>`;
@@ -5266,6 +5262,40 @@ def render_user_dashboard_html(
     function closePlanModal() { document.getElementById('plan_modal').style.display = 'none'; }
 
     /* ── 호스트별 취약점 리스트 모달 ──────────────────────────────────────── */
+    let _currentVulnListHostId = null, _vulnBulkIds = [];
+    function _vulnBulkBarHtml() {
+      return `<div style=\"display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:8px 12px;background:#0f172a;border:1px solid #334155;border-radius:8px\">
+        <span style=\"font-size:12px;color:#94a3b8\">${tt('dash.dyn.bulk_selected','선택')} <b id=\"vuln_bulk_count\" style=\"color:#38bdf8\">0</b>${tt('dash.dyn.cases_unit','건')}</span>
+        <button onclick=\"openVulnBulkAction(\'plan\')\" style=\"width:auto;padding:5px 12px;font-size:12px;background:#0f3a1d;border:1px solid #14532d;color:#4ade80;border-radius:6px;cursor:pointer\">${tt('dash.dyn.bulk_plan','일괄 조치 계획')}</button>
+        <button onclick=\"openVulnBulkAction(\'exception\')\" style=\"width:auto;padding:5px 12px;font-size:12px;background:#3b1f00;border:1px solid #78350f;color:#fbbf24;border-radius:6px;cursor:pointer\">${tt('dash.dyn.bulk_exception','일괄 조치 예외')}</button>
+        <span style=\"font-size:11px;color:#64748b\">${tt('dash.dyn.bulk_hint','체크한 CVE에 한 번에 적용')}</span>
+      </div>`;
+    }
+    function _updateVulnBulkCount() {
+      const n = document.querySelectorAll('.vuln_bulk_cb:checked').length;
+      const el = document.getElementById('vuln_bulk_count'); if (el) el.textContent = n;
+      const total = document.querySelectorAll('.vuln_bulk_cb').length;
+      const all = document.getElementById('vuln_bulk_all'); if (all) { all.checked = n>0 && n===total; all.indeterminate = n>0 && n<total; }
+    }
+    window._updateVulnBulkCount = _updateVulnBulkCount;
+    function _toggleVulnBulkAll(cb) {
+      document.querySelectorAll('.vuln_bulk_cb').forEach(x => { x.checked = cb.checked; });
+      _updateVulnBulkCount();
+    }
+    window._toggleVulnBulkAll = _toggleVulnBulkAll;
+    function openVulnBulkAction(mode) {
+      const ids = [...document.querySelectorAll('.vuln_bulk_cb:checked')].map(cb => cb.value);
+      if (!ids.length) { alert(tt('dash.dyn.bulk_none','CVE를 하나 이상 선택하세요.')); return; }
+      _vulnBulkIds = ids; _vulnActionId = null; _vulnActionMode = mode; _vulnActionHostId = _currentVulnListHostId;
+      document.getElementById('vuln_action_modal_meta').innerHTML = `<div><strong style=\"color:#38bdf8\">${tt('dash.dyn.bulk_title','일괄 설정')}</strong> · ${ids.length}${tt('dash.dyn.cases_unit','건')} CVE</div><div style=\"margin-top:3px;color:#64748b\">${tt('dash.dyn.bulk_apply_note','선택한 모든 CVE에 동일하게 적용됩니다.')}</div>`;
+      document.getElementById('vuln_action_modal_status').textContent = '';
+      const planSec = document.getElementById('vuln_plan_section'), exSec = document.getElementById('vuln_exception_section'), clearBtn = document.getElementById('vuln_action_modal_clear');
+      if (mode === 'exception') { document.getElementById('vuln_action_modal_title').textContent = tt('dash.dyn.bulk_exception','일괄 조치 예외'); planSec.style.display='none'; exSec.style.display='flex'; clearBtn.style.display='none'; }
+      else { document.getElementById('vuln_action_modal_title').textContent = tt('dash.dyn.bulk_plan','일괄 조치 계획'); planSec.style.display='flex'; exSec.style.display='none'; clearBtn.style.display='none'; }
+      ['vuln_plan_text','vuln_plan_target_date','vuln_plan_updated_by','vuln_exception_until','vuln_exception_reason','vuln_exception_updated_by'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+      document.getElementById('vuln_action_modal').style.display='flex';
+    }
+    window.openVulnBulkAction = openVulnBulkAction;
     function _renderVulnListBody(hostRow) {
       const sevColor = { critical:'#f87171', high:'#fbbf24', medium:'#fbbf24', low:'#4ade80', info:'#94a3b8' };
       const showRisk = _canAssessRisk();  // 위험등급 열은 어드민/보안만
@@ -5323,6 +5353,7 @@ def render_user_dashboard_html(
           ? `<td style=\"padding:6px 8px;text-align:center;white-space:nowrap\">${riskCell}<br><button onclick=\"openRiskModal('${escapeHtml(v.vuln_id)}')\" style=\"font-size:10px;padding:1px 6px;background:#2a1852;border:1px solid #4c1d95;border-radius:3px;color:#38bdf8;cursor:pointer;margin-top:3px\">${tt('dash.risk.btn','평가')}</button></td>`
           : '';
         return `<tr>
+          <td style=\"padding:6px 8px;text-align:center\"><input type=\"checkbox\" class=\"vuln_bulk_cb\" value=\"${escapeHtml(v.vuln_id)}\" onclick=\"_updateVulnBulkCount()\" style=\"cursor:pointer\"></td>
           <td style=\"padding:6px 8px\"><strong style=\"color:#38bdf8\">${escapeHtml(v.cve||'-')}</strong></td>
           <td style=\"padding:6px 8px;text-align:center\"><span style=\"color:${sevColor[v.severity]||'#94a3b8'};font-weight:700;text-transform:uppercase;font-size:11px\">${escapeHtml(v.severity)}</span></td>
           ${riskTd}
@@ -5333,8 +5364,9 @@ def render_user_dashboard_html(
           <td style=\"padding:6px 8px;min-width:140px\">${exLabel}<br><button onclick=\"openVulnActionModal('${escapeHtml(v.vuln_id)}','exception')\" style=\"font-size:10px;padding:1px 6px;background:#3b1f00;border:1px solid #78350f;border-radius:3px;color:#fbbf24;cursor:pointer;margin-top:3px\">${tt('dash.dyn.edit_exception_btn','조치 예외')}</button></td>
         </tr>`;
       }).join('');
-      return hostBanner + `<table style=\"width:100%;border-collapse:collapse;font-size:12px\">
+      return hostBanner + _vulnBulkBarHtml() + `<table style=\"width:100%;border-collapse:collapse;font-size:12px\">
         <thead><tr style=\"background:#0f172a\">
+          <th style=\"padding:8px;width:30px;text-align:center\"><input type=\"checkbox\" id=\"vuln_bulk_all\" onclick=\"_toggleVulnBulkAll(this)\" style=\"cursor:pointer\"></th>
           <th style=\"padding:8px;color:#38bdf8;text-align:left\">CVE</th>
           <th style=\"padding:8px;color:#fbbf24\">${tt('dash.dyn.lbl.severity','심각도')}</th>
           ${showRisk?`<th style=\"padding:8px;color:#38bdf8\">${tt('dash.risk.col','위험등급')}</th>`:''}
@@ -5351,6 +5383,7 @@ def render_user_dashboard_html(
     function openVulnListModal(hostId) {
       const row = (_assetCache.trivy || []).find(r => r.host_id === hostId);
       if (!row) { alert(tt('dash.dyn.host_not_found','호스트 데이터를 찾을 수 없습니다. 자산 새로고침 후 다시 시도해 주세요.')); return; }
+      _currentVulnListHostId = hostId;
       document.getElementById('vuln_list_modal_title').textContent = `${row.hostname}${tt('dash.dyn.vuln_count_suffix',' 취약점 ')}${row.total}${tt('dash.dyn.unit_count','건')}`;
       document.getElementById('vuln_list_modal_subtitle').textContent =
         `Critical ${row.critical} · High ${row.high} · Medium ${row.medium} · Low ${row.low}`;
@@ -5436,7 +5469,7 @@ def render_user_dashboard_html(
     /* ── 취약점별 조치 계획 / 조치 예외 모달 ─────────────────────────────── */
     let _vulnActionId = null, _vulnActionMode = 'plan', _vulnActionHostId = null;
     function openVulnActionModal(vulnId, mode) {
-      _vulnActionId = vulnId; _vulnActionMode = mode;
+      _vulnActionId = vulnId; _vulnActionMode = mode; _vulnBulkIds = [];
       // 현재 보고 있던 host row 찾기 (모달 닫혀도 list 갱신용)
       let foundVuln = null, foundHost = null;
       for (const row of (_assetCache.trivy || [])) {
@@ -5822,32 +5855,22 @@ def render_user_dashboard_html(
       // 취약점별 조치 계획/예외 저장
       const vulnSaveBtn = document.getElementById('vuln_action_modal_save');
       if (vulnSaveBtn) vulnSaveBtn.addEventListener('click', async () => {
-        if (!_vulnActionId) return;
+        const ids = (_vulnBulkIds && _vulnBulkIds.length && !_vulnActionId) ? _vulnBulkIds : (_vulnActionId ? [_vulnActionId] : []);
+        if (!ids.length) return;
         const statusEl = document.getElementById('vuln_action_modal_status');
         statusEl.style.color = '#94a3b8'; statusEl.textContent = tt('dash.dyn.saving','저장 중...');
+        const _path = _vulnActionMode === 'exception' ? 'exception' : 'plan';
+        const _body = _vulnActionMode === 'exception'
+          ? { exception_until: document.getElementById('vuln_exception_until').value, exception_reason: document.getElementById('vuln_exception_reason').value, exception_updated_by: document.getElementById('vuln_exception_updated_by').value || tt('dash.dyn.operator','운영자') }
+          : { plan_text: document.getElementById('vuln_plan_text').value, plan_target_date: document.getElementById('vuln_plan_target_date').value, plan_updated_by: document.getElementById('vuln_plan_updated_by').value || tt('dash.dyn.operator','운영자') };
         try {
-          let res;
-          if (_vulnActionMode === 'exception') {
-            res = await fetch(`/vulnerabilities/${encodeURIComponent(_vulnActionId)}/exception`, {
-              method: 'PUT', headers: {'Content-Type':'application/json'},
-              body: JSON.stringify({
-                exception_until: document.getElementById('vuln_exception_until').value,
-                exception_reason: document.getElementById('vuln_exception_reason').value,
-                exception_updated_by: document.getElementById('vuln_exception_updated_by').value || tt('dash.dyn.operator','운영자'),
-              })
-            });
-          } else {
-            res = await fetch(`/vulnerabilities/${encodeURIComponent(_vulnActionId)}/plan`, {
-              method: 'PUT', headers: {'Content-Type':'application/json'},
-              body: JSON.stringify({
-                plan_text: document.getElementById('vuln_plan_text').value,
-                plan_target_date: document.getElementById('vuln_plan_target_date').value,
-                plan_updated_by: document.getElementById('vuln_plan_updated_by').value || tt('dash.dyn.operator','운영자'),
-              })
-            });
+          let okc = 0, failc = 0;
+          for (const id of ids) {
+            const res = await fetch(`/vulnerabilities/${encodeURIComponent(id)}/${_path}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(_body) });
+            if (res.ok) okc++; else failc++;
           }
-          if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.detail || res.status); }
-          const hostId = _vulnActionHostId;
+          if (failc) throw new Error(`${okc}${tt('dash.dyn.cases_unit','건')} ${tt('dash.dyn.bulk_ok','성공')}, ${failc}${tt('dash.dyn.cases_unit','건')} ${tt('dash.dyn.bulk_fail','실패')}`);
+          const hostId = _vulnActionHostId; _vulnBulkIds = [];
           closeVulnActionModal();
           await loadAssets();
           if (hostId) openVulnListModal(hostId);

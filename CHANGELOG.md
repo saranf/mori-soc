@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.18.6-alpha.1] — 2026-07-09 — Trivy: 호스트별 조치계획/예외 → 팝업 일괄 설정
+
+### Changed
+- **메인 취약점 표에서 호스트별 "조치 계획"·"조치 예외" 컬럼 제거** — 표를 간결하게.
+- **CVE 상세 팝업에 전체선택 + 일괄 설정** — 헤더 체크박스(전체선택)·행별 체크박스로 CVE를 골라
+  "일괄 조치 계획"·"일괄 조치 예외" 한 번에 적용(선택 건수 표시). 저장은 선택 CVE마다
+  `PUT /vulnerabilities/{id}/plan|exception`을 순회, 성공/실패 건수 안내. 개별 CVE 편집도 그대로.
+
 ## [v0.18.5-alpha.1] — 2026-07-09 — Alert Triage: 소스 클릭 링크 · 최근 10건 · 30초 자동새로고침
 
 ### Changed
