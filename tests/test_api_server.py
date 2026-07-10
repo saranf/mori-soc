@@ -662,7 +662,8 @@ class BuildPdcaPayloadTests(unittest.TestCase):
         self.assertEqual(pdca["check"], 3)  # total - not_checked - not_applicable
         self.assertEqual(pdca["act"], 1)    # pass
 
-    def test_categories_grouped_by_control_prefix(self) -> None:
+    def test_categories_grouped_by_catalog_section(self) -> None:
+        # 카탈로그의 섹션/도메인명으로 그룹핑 (A.8.x → "A.8 Technological controls").
         checks = [
             self._make_check("c1", "A.8.1", "pass"),
             self._make_check("c2", "A.8.2", "fail"),
@@ -670,12 +671,11 @@ class BuildPdcaPayloadTests(unittest.TestCase):
         ]
         store = InMemoryQueryStore(control_checks=checks)
         payload = build_pdca_payload(QueryService(store))
-        cats = {c["category"]: c for c in payload["categories"]}
-        self.assertIn("A.8", cats)
-        self.assertIn("A.9", cats)
-        self.assertEqual(cats["A.8"]["pass"], 1)
-        self.assertEqual(cats["A.8"]["fail"], 1)
-        self.assertEqual(cats["A.9"]["pass"], 1)
+        a8 = next(c for c in payload["categories"] if c["category"].startswith("A.8"))
+        self.assertEqual(a8["pass"], 1)
+        self.assertEqual(a8["fail"], 1)
+        a9 = next(c for c in payload["categories"] if c["category"].startswith("A.9"))
+        self.assertEqual(a9["pass"], 1)
 
     def test_pending_remediations_includes_fail_and_warning(self) -> None:
         from datetime import timedelta

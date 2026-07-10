@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.request
 import urllib.error
 from urllib.parse import quote as _url_quote
@@ -153,18 +154,43 @@ def build_pdca_payload(
     checked = total - status_counts["not_checked"] - status_counts["not_applicable"]
     pass_rate = round(status_counts["pass"] / checked * 100, 1) if checked > 0 else 0.0
 
-    # Control category 별 집계 (control_id 첫 부분 — e.g. "A.8" or "2.5")
+    # Control category 별 집계 — 통제 카탈로그의 '섹션명'으로 그룹핑해 카탈로그 트리와 매칭시킴.
+    # (기존엔 control_id 프리픽스 "2.5"만 써서 이름 없음·문자열정렬로 카탈로그와 불일치)
+    from mori_soc.services.control_catalog import load_catalog
+    _catalog = load_catalog()
+    _sec_of: dict[str, str] = {}
+    _fw_of: dict[str, str] = {}
+    for cc in _catalog.get("controls", []):
+        cid = str(cc.get("id", ""))
+        _sec_of[cid] = cc.get("section") or cc.get("domain") or cid.rsplit(".", 1)[0]
+        _fw_of[cid] = cc.get("framework", "")
+
+    def _cat_of(control_id: str) -> str:
+        sec = _sec_of.get(control_id)
+        if sec:
+            return sec
+        parts = control_id.rsplit(".", 1)
+        return parts[0] if len(parts) > 1 else control_id
+
     by_category: dict[str, dict[str, int]] = {}
+    cat_fw: dict[str, str] = {}
     for c in checks:
-        parts = c.control_id.rsplit(".", 1)
-        cat = parts[0] if len(parts) > 1 else c.control_id
+        cat = _cat_of(c.control_id)
+        cat_fw.setdefault(cat, _fw_of.get(c.control_id, ""))
         bucket = by_category.setdefault(cat, {"pass": 0, "fail": 0, "warning": 0, "not_applicable": 0, "not_checked": 0, "total": 0})
         bucket[c.status] = bucket.get(c.status, 0) + 1
         bucket["total"] += 1
 
+    def _sort_key(cat: str):
+        # 프레임워크(ISMS-P 먼저) → 섹션 번호 자연 정렬 ("2.5"가 "2.10"보다 앞)
+        fw_rank = 0 if cat_fw.get(cat, "") == "isms-p" else 1
+        head = cat.split(" ", 1)[0]  # "2.5" 또는 "A.8"
+        key = [(0, int(p)) if p.isdigit() else (1, p) for p in re.split(r"[.\-]", head)]
+        return (fw_rank, key)
+
     categories = [
         {"category": cat, **counts}
-        for cat, counts in sorted(by_category.items())
+        for cat, counts in sorted(by_category.items(), key=lambda kv: _sort_key(kv[0]))
     ]
 
     # 미조치 항목 (fail + warning, remediation_due_at 기준 정렬)
