@@ -3233,7 +3233,7 @@ def render_user_dashboard_html(
       <section class=\"card\">
         <div style=\"display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap\">
           <h2 style=\"margin:0\" data-i18n=\"dash.pdca.pending_title\">미조치 / 기한 초과 항목</h2>
-          <a id=\"pdca_pending_csv_btn\" href=\"/compliance/pdca/pending.csv\" download style=\"background:#f9fafb;border:1px solid #e5e7eb;color:#2563eb;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer\">CSV</a>
+          <button id=\"pdca_pending_csv_btn\" onclick=\"openCsvPreview({title:tt(\'dash.pdca.pending_csv_preview_title\',\'PDCA 미조치 CSV 미리보기\'),filename:\'mori-pdca-pending.csv\',url:\'/compliance/pdca/pending.csv\'})\" style=\"background:#f9fafb;border:1px solid #e5e7eb;color:#2563eb;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer\">CSV</button>
         </div>
         <div class=\"subtext\" data-i18n=\"dash.pdca.pending_sub\">점검에서 실패·경고가 뜬 통제예요. 기한이 지난 항목은 빨간색으로 보여요.</div>
         <div id=\"pdca_pending_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
@@ -5499,7 +5499,7 @@ def render_user_dashboard_html(
         + `<span style=\"color:#2563eb\">${tt('dash.dyn.pdca.control','통제')} ${ps.control_check||0}</span> ·
         <span style=\"color:#ea580c\">Trivy ${ps.trivy||0}</span> ·
         <span style=\"color:#dc2626\">Alert ${ps.alert||0}</span>
-        <a href=\"/compliance/pdca/pending.csv\" download style=\"margin-left:12px;background:#f9fafb;border:1px solid #e5e7eb;color:#2563eb;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none\">CSV</a>`;
+        <button onclick=\"openCsvPreview({title:tt(\'dash.pdca.pending_csv_preview_title\',\'PDCA 미조치 CSV 미리보기\'),filename:\'mori-pdca-pending.csv\',url:\'/compliance/pdca/pending.csv\'})\" style=\"margin-left:12px;background:#f9fafb;border:1px solid #e5e7eb;color:#2563eb;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer\">CSV</button>`;
       if (items.length === 0) {
         bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#111827;padding:24px;text-align:center\">' + tt('dash.dyn.pdca.do_no_items','조치가 필요한 항목이 없습니다. ') + '</div>';
       } else {

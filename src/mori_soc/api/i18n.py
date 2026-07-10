@@ -164,6 +164,7 @@ _SIGNUP_I18N: dict[str, dict[str, str]] = {
 
 _DASHBOARD_I18N: dict[str, dict[str, str]] = {
     "ko": {
+        "dash.pdca.pending_csv_preview_title": "PDCA 미조치 CSV 미리보기",
         "dash.acc.impf.high": "상 (3)",
         "dash.acc.impf.mid": "중 (2)",
         "dash.acc.impf.low": "하 (1)",
@@ -885,6 +886,7 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.nlq.textarea_ph": "예: 오프라인 호스트 보여줘 / 최근 24시간 wazuh high alert 요약",
     },
     "en": {
+        "dash.pdca.pending_csv_preview_title": "PDCA pending CSV preview",
         "dash.acc.impf.high": "High (3)",
         "dash.acc.impf.mid": "Medium (2)",
         "dash.acc.impf.low": "Low (1)",
