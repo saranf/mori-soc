@@ -6428,49 +6428,14 @@ def render_user_dashboard_html(
 
     /* ── 인시던트 CSV 미리보기 후 다운로드 (리포트 미리보기 모달 재사용) ────────── */
     async function openIncidentCsvPreview() {
-      const modal = document.getElementById('report_preview_modal');
-      const titleEl = document.getElementById('report_preview_title');
-      const bodyEl = document.getElementById('report_preview_body');
-      const dlEl = document.getElementById('report_preview_download');
-      const dlPdfEl = document.getElementById('report_preview_download_pdf');
-      const subEl = document.getElementById('report_preview_subtitle');
-      if (!modal || !bodyEl) return;
       const params = buildIncidentParams();
       params.set('format', 'csv');
-      const url = '/incidents?' + params.toString();
-      titleEl.textContent = tt('dash.modal.incident_csv_preview_title', '인시던트 CSV 미리보기');
-      dlEl.href = url;
-      dlEl.setAttribute('download', 'incidents.csv');
-      if (dlPdfEl) dlPdfEl.style.display = 'none';   // 인시던트는 PDF 없음
-      if (subEl) subEl.textContent = tt('dash.modal.incident_csv_preview_sub', '변경 이력(history)은 CSV에 포함되지 않습니다. 각 인시던트는 최신 상태 1행으로 표시됩니다. (상위 50행 미리보기)');
-      bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#111827;padding:24px;text-align:center\">' + tt('dash.dyn.loading_fetch', '불러오는 중…') + '</div>';
-      modal.style.display = 'flex';
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(res.status);
-        const text = await res.text();
-        const rows = _parseSimpleCsv(text);
-        if (rows.length === 0) {
-          bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#111827;padding:24px;text-align:center\">' + tt('dash.dyn.no_data', '데이터가 없습니다.') + '</div>';
-          return;
-        }
-        const headers = rows[0] || [];
-        const dataRows = rows.slice(1).filter(r => r.length > 0 && !(r.length === 1 && r[0] === ''));
-        const limit = 50;
-        const shown = dataRows.slice(0, limit);
-        const overflowNote = dataRows.length > limit
-          ? `<div style=\"color:#111827;font-size:12px;margin-top:10px\">${tt('dash.dyn.report_overflow','… 총 {n}행 중 상위 {limit}행만 표시됩니다. 전체는 CSV 다운로드로 확인하세요.').replace('{n}','<strong style=\\\"color:#111827\\\">'+dataRows.length+'</strong>').replace('{limit}',limit)}</div>`
-          : `<div style=\"color:#111827;font-size:12px;margin-top:10px\">${tt('dash.dyn.report_total_rows','총 {n}행').replace('{n}','<strong style=\\\"color:#111827\\\">'+dataRows.length+'</strong>')}</div>`;
-        const head = '<thead><tr style=\"color:#111827;border-bottom:1px solid #e5e7eb;background:#ffffff;position:sticky;top:0\">'
-          + headers.map(h => `<th style=\"text-align:left;padding:6px 10px;font-size:12px;white-space:nowrap\">${escapeHtml(h)}</th>`).join('')
-          + '</tr></thead>';
-        const body = shown.map(r => '<tr style=\"border-bottom:1px solid #e5e7eb\">'
-          + headers.map((_, idx) => `<td style=\"padding:6px 10px;font-size:12px;color:#111827;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis\" title=\"${escapeHtml(r[idx] || '')}\">${escapeHtml(r[idx] || '')}</td>`).join('')
-          + '</tr>').join('');
-        bodyEl.innerHTML = `<div style=\"max-height:60vh;overflow:auto;border:1px solid #e5e7eb;border-radius:6px\"><table style=\"width:100%;border-collapse:collapse\">${head}<tbody>${body}</tbody></table></div>${overflowNote}`;
-      } catch (e) {
-        bodyEl.innerHTML = `<div class=\"empty\" style=\"color:#dc2626;padding:24px;text-align:center\">${tt('dash.dyn.report_load_fail','불러올 수 없습니다: ')}${escapeHtml(String(e.message || e))}</div>`;
-      }
+      return openCsvPreview({
+        title: tt('dash.modal.incident_csv_preview_title', '인시던트 CSV 미리보기'),
+        subtitle: tt('dash.modal.incident_csv_preview_sub', '변경 이력(history)은 CSV에 포함되지 않습니다. 각 인시던트는 최신 상태 1행으로 표시됩니다. (상위 50행 미리보기)'),
+        filename: 'incidents.csv',
+        url: '/incidents?' + params.toString(),
+      });
     }
 
     let _crosscheckData = null;
