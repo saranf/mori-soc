@@ -69,7 +69,7 @@ def _i18n_toggle_html(fixed: bool = True) -> str:
     )
     return (
         '<div class="lang-toggle" style="' + wrap_style +
-        'display:flex;gap:4px;background:#ffffff;border:1px solid #4b5563;'
+        'display:flex;gap:4px;background:#ffffff;border:1px solid #111827;'
         'border-radius:8px;padding:3px;">'
         '<button data-i18n-toggle data-lang="ko" onclick="setLang(\'ko\')" '
         'style="background:transparent;border:none;color:#e5e7eb;font-size:12px;'
@@ -816,7 +816,7 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.modal.report_preview_sub": "CSV 파일이 아래와 같은 형태로 생성됩니다. (상위 50행만 표시)",
         "dash.modal.incident_csv_title": "인시던트 CSV 다운로드",
         "dash.modal.download": "다운로드",
-        "dash.modal.incident_csv_warn_html": "<strong style=\\\"color:#a16207\\\">변경 내역(history)은 CSV 내역에 포함되지 않습니다.</strong>",
+        "dash.modal.incident_csv_warn_html": "<strong style=\\\"color:#ea580c\\\">변경 내역(history)은 CSV 내역에 포함되지 않습니다.</strong>",
         "dash.modal.incident_csv_desc_html": "각 인시던트는 <strong style=\\\"color:#2563eb\\\">변경 일자</strong>와 <strong style=\\\"color:#2563eb\\\">최신 내역</strong>(현재 상태 / 담당자 / 영향도 등)만 1행으로 표시됩니다.",
         "dash.modal.incident_csv_hint_html": "전체 변경 이력은 어드민 <strong>통합 이력 로그</strong> 페이지 또는 <code style=\\\"background:#e5e7eb;padding:1px 6px;border-radius:3px\\\">/incidents/{id}/history</code> API를 이용해 주세요.",
         "dash.modal.vuln_action_title": "취약점 조치",
@@ -1448,7 +1448,7 @@ _DASHBOARD_I18N: dict[str, dict[str, str]] = {
         "dash.modal.report_preview_sub": "The CSV file will be generated in the form below. (top 50 rows only)",
         "dash.modal.incident_csv_title": "Download incident CSV",
         "dash.modal.download": "Download",
-        "dash.modal.incident_csv_warn_html": "<strong style=\\\"color:#a16207\\\">Change history is not included in the CSV.</strong>",
+        "dash.modal.incident_csv_warn_html": "<strong style=\\\"color:#ea580c\\\">Change history is not included in the CSV.</strong>",
         "dash.modal.incident_csv_desc_html": "Each incident is shown as a single row with only its <strong style=\\\"color:#2563eb\\\">change date</strong> and <strong style=\\\"color:#2563eb\\\">latest details</strong> (current status / owner / impact, etc.).",
         "dash.modal.incident_csv_hint_html": "For the full change history, use the admin <strong>Unified Activity Log</strong> page or the <code style=\\\"background:#e5e7eb;padding:1px 6px;border-radius:3px\\\">/incidents/{id}/history</code> API.",
         "dash.modal.vuln_action_title": "Vulnerability action",
