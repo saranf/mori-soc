@@ -1799,9 +1799,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       try {
         const res = await fetch('/auth/signup-requests');
         const data = await res.json();
-        const reqs = data.requests || [];
+        // 처리 대기(pending)만 표시 — 승인 계정은 아래 LDAP 사용자 관리로, 이력은 통합 로그에서 확인
+        const reqs = (data.requests || []).filter(r => r.status === 'pending');
         if (reqs.length === 0) {
-          signupListEl.innerHTML = `<span class="empty">${tt('admin.dyn.none_signup','가입 요청이 없습니다.')}</span>`;
+          signupListEl.innerHTML = `<span class="empty">${tt('admin.dyn.none_signup_pending','처리할 가입 요청이 없습니다.')}</span>`;
           return;
         }
         const statusBadge = s => ({pending:tt('admin.dyn.signup.pending','대기중'), approved:tt('admin.dyn.signup.approved','승인됨'), rejected:tt('admin.dyn.signup.rejected','거절됨')}[s] || s);
