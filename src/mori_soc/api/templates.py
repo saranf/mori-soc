@@ -37,6 +37,7 @@ USER_DASHBOARD_CARD_LABELS = {
 USER_DASHBOARD_SECTION_LABELS = {
     "security_hero": "Security Overview",
     "infra_status": "Infra Status (24h/12h)",
+    "fleet_status": "PC Assets (Fleet)",
     "source_coverage": "Source Coverage",
     "latest_status": "Latest Host Status",
     "risk_summary": "Risk Summary",
@@ -2882,6 +2883,18 @@ def render_user_dashboard_html(
             </div>
             <div id=\"infra_status_body\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.status.loading\">로딩 중…</span></div>
           </section>
+          <!-- PC 자산 현황 (Fleet: 전체/온라인/오프라인) — 자산 탭에서 이동 -->
+          <section class=\"card\" id=\"fleet_status_section\">
+            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+              <h2 style=\"margin:0\" data-i18n=\"dash.fleet.title\">PC 자산 현황</h2>
+              <button onclick=\"switchTab('assets')\" style=\"background:none;border:none;color:#38bdf8;font-size:12px;cursor:pointer\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
+            </div>
+            <div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-top:10px\">
+              <div style=\"flex:1;min-width:100px;background:#0b1220;border:1px solid #1e293b;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#94a3b8\" data-i18n=\"dash.assets.fleet_total\">전체 PC</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"fleet_total\">-</div></div>
+              <div style=\"flex:1;min-width:100px;background:#0b1220;border:1px solid #1e293b;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#94a3b8\" data-i18n=\"dash.assets.online\">온라인</div><div style=\"font-size:24px;font-weight:800;color:#4ade80;margin-top:2px\" id=\"fleet_online\">-</div></div>
+              <div style=\"flex:1;min-width:100px;background:#0b1220;border:1px solid #1e293b;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#94a3b8\" data-i18n=\"dash.assets.offline\">오프라인</div><div style=\"font-size:24px;font-weight:800;color:#f87171;margin-top:2px\" id=\"fleet_offline\">-</div></div>
+            </div>
+          </section>
           <section class=\"card\" id=\"source_coverage_section\">
             <h2 data-i18n=\"dash.card.source_coverage\">Source Coverage</h2>
             <div class=\"subtext\" data-i18n=\"dash.card.source_coverage.sub\">운영자가 노출을 허용한 경우에만 source 상태를 표시합니다.</div>
@@ -2993,13 +3006,8 @@ def render_user_dashboard_html(
         <button id=\"asset_tab_mine\" onclick=\"switchAssetTab('mine')\"><span data-i18n=\"dash.assets.tab.mine\">내 서버</span></button>
       </nav>
 
-      <!-- Fleet PC Section -->
+      <!-- Fleet PC Section (전체/온라인/오프라인 요약은 대시보드 'PC 자산 현황' 패널로 이동) -->
       <div id=\"assets_fleet_section\">
-        <div class=\"summary-grid-3\">
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.fleet_total\">전체 PC</div><div class=\"metric-value\" id=\"fleet_total\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.online\">온라인</div><div class=\"metric-value\" style=\"color:#4ade80\" id=\"fleet_online\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.offline\">오프라인</div><div class=\"metric-value\" style=\"color:#f87171\" id=\"fleet_offline\">-</div></section>
-        </div>
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
             <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.fleet\">PC 자산 목록 (Fleet)</h2>
@@ -4468,6 +4476,19 @@ def render_user_dashboard_html(
       applyUserPreferences();
     }
 
+    // 'PC 자산 현황' 패널용 경량 로더 — /assets 에서 Fleet 카운트만 채운다.
+    async function loadFleetStatus() {
+      try {
+        const res = await fetch('/assets');
+        if (!res.ok) return;
+        const data = await res.json();
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? '-'; };
+        set('fleet_total', data.fleet?.total);
+        set('fleet_online', data.fleet?.online);
+        set('fleet_offline', data.fleet?.offline);
+      } catch (e) {}
+    }
+
     async function loadDashboard() {
       dashboardStatusEl.textContent = tt('dash.dyn.dash_requesting', '대시보드 데이터 요청 중…');
       try {
@@ -4487,6 +4508,7 @@ def render_user_dashboard_html(
         renderRiskSummary(data.risk_summary || []);
         renderRecentActivity(data.recent_activity || []);
         applyUserPreferences();
+        loadFleetStatus();  // PC 자산 현황 패널 채우기
         dashboardStatusEl.textContent = `dashboard updated at ${formatTime(data.generated_at)}`;
       } catch (error) {
         console.error('[MORI] loadDashboard fetch error:', error);
