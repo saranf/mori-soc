@@ -3088,19 +3088,29 @@ def render_user_dashboard_html(
           <div class=\"subtext\" data-i18n=\"dash.gap.sub\">아직 증적이 안 남은 미조치 항목이에요. 카드를 누르면 해당 탭으로 가요.</div>
           <div id=\"evidence_gap_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
-        <!-- 위험성 평가 매트릭스 (R-4) -->
-        <section class=\"card\" id=\"risk_matrix_card\">
+        <!-- 위험성 평가 매트릭스 (R-4) — 더블클릭 시 팝업 (카드 요약은 여기, 매트릭스는 모달) -->
+        <section class=\"card\" id=\"risk_matrix_card\" ondblclick=\"openRiskMatrixModal()\" style=\"cursor:pointer\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
             <h2 style=\"margin:0\" data-i18n=\"dash.risk.matrix_title\">위험성 평가 매트릭스</h2>
             <div style=\"display:flex;align-items:center;gap:10px\">
-              <span id=\"risk_matrix_assessed\" style=\"font-size:12px;color:#4b5563\"></span>
-              <button id=\"risk_matrix_toggle\" onclick=\"toggleRiskMatrix()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" data-i18n=\"dash.risk.collapse_show\">▼ 펼치기</button>
+              <span id=\"risk_matrix_assessed\" style=\"font-size:12px;color:#64748b\"></span>
+              <button onclick=\"event.stopPropagation();openRiskMatrixModal()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" data-i18n=\"dash.risk.open_modal\">매트릭스 열기</button>
             </div>
           </div>
           <div class=\"subtext\" data-i18n=\"dash.risk.matrix_sub\">위험도는 영향도 × 발생가능성으로 계산해요. 아직 평가 안 한 건 자동 제안 등급으로 잡아요.</div>
-          <div id=\"risk_doa_ctl\" style=\"margin-top:8px\"></div>
-          <div id=\"risk_matrix_box\" style=\"margin-top:10px;display:none\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+          <div id=\"risk_doa_ctl\" style=\"margin-top:8px\" ondblclick=\"event.stopPropagation()\"></div>
+          <div style=\"font-size:11px;color:#64748b;margin-top:8px\" data-i18n=\"dash.risk.dblclick_hint\">카드를 더블클릭하거나 '매트릭스 열기'를 누르면 3×3 매트릭스가 팝업으로 열립니다.</div>
         </section>
+        <!-- 위험성 평가 매트릭스 팝업 -->
+        <div id=\"risk_matrix_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:center;justify-content:center\">
+          <div style=\"background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:24px 28px;width:1080px;max-width:96vw;max-height:90vh;overflow:auto\">
+            <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px\">
+              <h3 style=\"color:#0284c7;margin:0\" data-i18n=\"dash.risk.matrix_title\">위험성 평가 매트릭스</h3>
+              <button onclick=\"closeRiskMatrixModal()\" style=\"background:none;border:none;color:#64748b;font-size:20px;cursor:pointer\">×</button>
+            </div>
+            <div id=\"risk_matrix_box\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+          </div>
+        </div>
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
             <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.trivy\">취약점 현황 (Trivy)</h2>
@@ -5614,15 +5624,19 @@ def render_user_dashboard_html(
     }
     window.saveRiskDoa = saveRiskDoa;
 
-    let _riskMatrixOpen = false;  // C: 기본 접힘 대시보드 최소화, '펼치기'로 상세 노출
-    function toggleRiskMatrix() {
-      _riskMatrixOpen = !_riskMatrixOpen;
-      const box = document.getElementById('risk_matrix_box');
-      const btn = document.getElementById('risk_matrix_toggle');
-      if (box) box.style.display = _riskMatrixOpen ? '' : 'none';
-      if (btn) btn.textContent = _riskMatrixOpen ? tt('dash.risk.collapse_hide','▲ 접기') : tt('dash.risk.collapse_show','▼ 펼치기');
+    // 위험성 매트릭스는 더블클릭 팝업 모달로 열림 (openRiskMatrixModal)
+    function openRiskMatrixModal() {
+      const modal = document.getElementById('risk_matrix_modal');
+      if (!modal) return;
+      modal.style.display = 'flex';
+      loadRiskMatrix();  // 최신 데이터로 매트릭스 갱신
     }
-    window.toggleRiskMatrix = toggleRiskMatrix;
+    function closeRiskMatrixModal() {
+      const modal = document.getElementById('risk_matrix_modal');
+      if (modal) modal.style.display = 'none';
+    }
+    window.openRiskMatrixModal = openRiskMatrixModal;
+    window.closeRiskMatrixModal = closeRiskMatrixModal;
 
     /* 매트릭스 셀/칩 클릭 → 해당 버킷의 실제 취약점·호스트 목록 모달 */
     function _riskBucketRows(items) {
