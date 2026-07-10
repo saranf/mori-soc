@@ -6066,16 +6066,17 @@ def render_user_dashboard_html(
             r.latest_cve||'', r.latest_detected_at||'', '"'+(r.action_plan||'').replace(/"/g,'""')+'"',
             r.action_target_date||'', r.action_updated_by||'', r.exception_until||ownerData.exception_until||'', '"'+exOwner.replace(/"/g,'""')+'"'].join(','));
         });
-        const blob = new Blob(['\\uFEFF' + csvRows.join('\\n')], {type:'text/csv;charset=utf-8'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `mori-trivy-filtered-${new Date().toISOString().slice(0,10)}.csv`;
-        a.click(); URL.revokeObjectURL(url);
+        openCsvPreview({
+          title: tt('dash.modal.assets_csv_preview_title','자산 CSV 미리보기'),
+          filename: `mori-trivy-filtered-${new Date().toISOString().slice(0,10)}.csv`,
+          text: csvRows.join('\\n'),
+        });
       } else {
-        const a = document.createElement('a');
-        a.href = `/assets?format=csv&source=${encodeURIComponent(source)}`;
-        a.download = '';
-        a.click();
+        openCsvPreview({
+          title: tt('dash.modal.assets_csv_preview_title','자산 CSV 미리보기'),
+          filename: `mori-${source}-${new Date().toISOString().slice(0,10)}.csv`,
+          url: `/assets?format=csv&source=${encodeURIComponent(source)}`,
+        });
       }
     }
 
@@ -7165,13 +7166,71 @@ def render_user_dashboard_html(
         </tr>`).join('')}</tbody></table>`;
       _pgApply(el);
     }
+    function _renderCsvPreviewBody(bodyEl, text) {
+      const rows = _parseSimpleCsv((text || '').replace(/^\\uFEFF/, ''));
+      if (rows.length === 0) {
+        bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#6b7280;padding:24px;text-align:center\">' + tt('dash.dyn.no_data', '데이터가 없습니다.') + '</div>';
+        return;
+      }
+      const headers = rows[0] || [];
+      const dataRows = rows.slice(1).filter(r => r.length > 0 && !(r.length === 1 && r[0] === ''));
+      const limit = 50;
+      const shown = dataRows.slice(0, limit);
+      const overflowNote = dataRows.length > limit
+        ? `<div style=\"color:#6b7280;font-size:12px;margin-top:10px\">${tt('dash.dyn.report_overflow','… 총 {n}행 중 상위 {limit}행만 표시됩니다. 전체는 CSV 다운로드로 확인하세요.').replace('{n}','<strong style=\\\"color:#374151\\\">'+dataRows.length+'</strong>').replace('{limit}',limit)}</div>`
+        : `<div style=\"color:#6b7280;font-size:12px;margin-top:10px\">${tt('dash.dyn.report_total_rows','총 {n}행').replace('{n}','<strong style=\\\"color:#374151\\\">'+dataRows.length+'</strong>')}</div>`;
+      const head = '<thead><tr style=\"color:#6b7280;border-bottom:1px solid #374151;background:#ffffff;position:sticky;top:0\">'
+        + headers.map(h => `<th style=\"text-align:left;padding:6px 10px;font-size:12px;white-space:nowrap\">${escapeHtml(h)}</th>`).join('')
+        + '</tr></thead>';
+      const body = shown.map(r => '<tr style=\"border-bottom:1px solid #e2e8f0\">'
+        + headers.map((_, idx) => `<td style=\"padding:6px 10px;font-size:12px;color:#374151;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis\" title=\"${escapeHtml(r[idx] || '')}\">${escapeHtml(r[idx] || '')}</td>`).join('')
+        + '</tr>').join('');
+      bodyEl.innerHTML = `<div style=\"max-height:60vh;overflow:auto;border:1px solid #e2e8f0;border-radius:6px\"><table style=\"width:100%;border-collapse:collapse\">${head}<tbody>${body}</tbody></table></div>${overflowNote}`;
+    }
+
+    /* 범용 CSV 미리보기+다운로드 (report_preview_modal 재사용). opts:{title,subtitle,filename,url|text} */
+    async function openCsvPreview(opts) {
+      opts = opts || {};
+      const modal = document.getElementById('report_preview_modal');
+      const titleEl = document.getElementById('report_preview_title');
+      const bodyEl = document.getElementById('report_preview_body');
+      const dlEl = document.getElementById('report_preview_download');
+      const dlPdfEl = document.getElementById('report_preview_download_pdf');
+      const subEl = document.getElementById('report_preview_subtitle');
+      if (!modal || !bodyEl) return;
+      titleEl.textContent = opts.title || tt('dash.modal.csv_preview_title', 'CSV 미리보기');
+      if (dlPdfEl) dlPdfEl.style.display = 'none';   // CSV 전용(PDF 없음)
+      if (subEl) subEl.textContent = opts.subtitle || tt('dash.modal.csv_preview_sub', 'CSV 파일이 아래와 같은 형태로 생성됩니다. (상위 50행 미리보기)');
+      dlEl.setAttribute('download', opts.filename || 'export.csv');
+      bodyEl.innerHTML = '<div class=\"empty\" style=\"color:#6b7280;padding:24px;text-align:center\">' + tt('dash.dyn.loading_fetch', '불러오는 중…') + '</div>';
+      modal.style.display = 'flex';
+      try {
+        let text = opts.text;
+        if (opts.url) {
+          const res = await fetch(opts.url);
+          if (!res.ok) throw new Error(res.status);
+          text = await res.text();
+          dlEl.href = opts.url;
+        } else {
+          const blob = new Blob(['\\uFEFF' + (text || '')], { type: 'text/csv;charset=utf-8' });
+          dlEl.href = URL.createObjectURL(blob);
+        }
+        _renderCsvPreviewBody(bodyEl, text || '');
+      } catch (e) {
+        bodyEl.innerHTML = `<div class=\"empty\" style=\"color:#dc2626;padding:24px;text-align:center\">${tt('dash.dyn.report_load_fail','불러올 수 없습니다: ')}${escapeHtml(String(e.message || e))}</div>`;
+      }
+    }
+    window.openCsvPreview = openCsvPreview;
+
     function exportIpCsv() {
       const rows = _ipFiltered();
       const head = ['hostname','ip','importance','team','category','status'];
       const csv = [head.join(',')].concat(rows.map(h => [h.hostname, h.primary_ip||'', h.importance||'', h.team||'', h.category||'', h.status||''].map(v => `\"${String(v).replaceAll('\"','\"\"')}\"`).join(','))).join('\\n');
-      const blob = new Blob(['\\ufeff'+csv], {type:'text/csv;charset=utf-8'});
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-      a.download = 'mori-ip-list.csv'; a.click(); URL.revokeObjectURL(a.href);
+      openCsvPreview({
+          title: tt('dash.modal.assets_csv_preview_title','자산 CSV 미리보기'),
+          filename: `mori-trivy-filtered-${new Date().toISOString().slice(0,10)}.csv`,
+          text: csvRows.join('\\n'),
+        });
     }
     window.exportIpCsv = exportIpCsv;
     async function loadEvidenceGaps() {
