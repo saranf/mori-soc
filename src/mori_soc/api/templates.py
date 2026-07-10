@@ -2896,6 +2896,31 @@ def render_user_dashboard_html(
               <div style=\"flex:1;min-width:100px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#4b5563\" data-i18n=\"dash.assets.offline\">오프라인</div><div style=\"font-size:24px;font-weight:800;color:#dc2626;margin-top:2px\" id=\"fleet_offline\">-</div></div>
             </div>
           </section>
+          <!-- 서버 자산 현황 (Zabbix) — 자산 탭에서 이동 -->
+          <section class=\"card\" id=\"zabbix_status_section\">
+            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+              <h2 style=\"margin:0\" data-i18n=\"dash.zabbix.title\">서버 자산 현황</h2>
+              <button onclick=\"switchTab('assets');switchAssetTab('zabbix')\" style=\"background:none;border:none;color:#2563eb;font-size:12px;cursor:pointer\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
+            </div>
+            <div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-top:10px\">
+              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#4b5563\" data-i18n=\"dash.assets.zabbix_total\">전체 서버</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"zabbix_total\">-</div></div>
+              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#4b5563\" data-i18n=\"dash.assets.online\">온라인</div><div style=\"font-size:24px;font-weight:800;color:#16a34a;margin-top:2px\" id=\"zabbix_online\">-</div></div>
+              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#4b5563\" data-i18n=\"dash.assets.offline\">오프라인</div><div style=\"font-size:24px;font-weight:800;color:#dc2626;margin-top:2px\" id=\"zabbix_offline\">-</div></div>
+            </div>
+          </section>
+          <!-- 취약점 현황 (Trivy) — 자산 탭에서 이동 -->
+          <section class=\"card\" id=\"trivy_status_section\">
+            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+              <h2 style=\"margin:0\" data-i18n=\"dash.vuln.title\">취약점 현황</h2>
+              <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" style=\"background:none;border:none;color:#2563eb;font-size:12px;cursor:pointer\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
+            </div>
+            <div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-top:10px\">
+              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#4b5563\" data-i18n=\"dash.assets.trivy_affected\">영향받는 호스트</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"trivy_affected_hosts\">-</div></div>
+              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#4b5563\" data-i18n=\"dash.assets.trivy_total\">전체 취약점</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"trivy_total_vulns\">-</div></div>
+              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#4b5563\">Critical</div><div style=\"font-size:24px;font-weight:800;color:#dc2626;margin-top:2px\" id=\"trivy_critical\">-</div></div>
+              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#4b5563\">High</div><div style=\"font-size:24px;font-weight:800;color:#a16207;margin-top:2px\" id=\"trivy_high\">-</div></div>
+            </div>
+          </section>
           <section class=\"card\" id=\"source_coverage_section\">
             <h2 data-i18n=\"dash.card.source_coverage\">Source Coverage</h2>
             <div class=\"subtext\" data-i18n=\"dash.card.source_coverage.sub\">운영자가 노출을 허용한 경우에만 source 상태를 표시합니다.</div>
@@ -3031,11 +3056,6 @@ def render_user_dashboard_html(
 
       <!-- Zabbix Server Section -->
       <div id=\"assets_zabbix_section\" class=\"hidden\">
-        <div class=\"summary-grid-3\">
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.zabbix_total\">전체 서버</div><div class=\"metric-value\" id=\"zabbix_total\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.online\">온라인</div><div class=\"metric-value\" style=\"color:#16a34a\" id=\"zabbix_online\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.offline\">오프라인</div><div class=\"metric-value\" style=\"color:#dc2626\" id=\"zabbix_offline\">-</div></section>
-        </div>
         <section class=\"card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
             <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.zabbix\">서버 자산 목록 (Zabbix)</h2>
@@ -3059,12 +3079,6 @@ def render_user_dashboard_html(
 
       <!-- Trivy Vulnerability Section -->
       <div id=\"assets_trivy_section\" class=\"hidden\">
-        <div class=\"summary-grid-4\">
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.trivy_affected\">영향받는 호스트</div><div class=\"metric-value\" id=\"trivy_affected_hosts\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\" data-i18n=\"dash.assets.trivy_total\">전체 취약점</div><div class=\"metric-value\" id=\"trivy_total_vulns\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">Critical</div><div class=\"metric-value\" style=\"color:#dc2626\" id=\"trivy_critical\">-</div></section>
-          <section class=\"card\" style=\"padding:14px;\"><div class=\"metric-label\">High</div><div class=\"metric-value\" style=\"color:#a16207\" id=\"trivy_high\">-</div></section>
-        </div>
         <!-- 증적 공백 / 오늘의 작업 큐 (admin·security 전용) -->
         <section class=\"card\" id=\"evidence_gap_card\">
           <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
@@ -4487,6 +4501,13 @@ def render_user_dashboard_html(
         set('fleet_total', data.fleet?.total);
         set('fleet_online', data.fleet?.online);
         set('fleet_offline', data.fleet?.offline);
+        set('zabbix_total', data.zabbix?.total);
+        set('zabbix_online', data.zabbix?.online);
+        set('zabbix_offline', data.zabbix?.offline);
+        set('trivy_affected_hosts', data.trivy?.affected_hosts);
+        set('trivy_total_vulns', data.trivy?.total_vulns);
+        set('trivy_critical', data.trivy?.critical);
+        set('trivy_high', data.trivy?.high);
       } catch (e) {}
     }
 

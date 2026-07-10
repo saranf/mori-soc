@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
 versions are `x.y.z-alpha.n`.
 
+## [v0.18.8-alpha.1] — 2026-07-10 — 서버자산·취약점 요약을 대시보드 패널로 복원
+
+### Changed
+- **서버 자산 현황(Zabbix)·취약점 현황(Trivy) 요약을 대시보드 패널로 이동** — PC 자산(Fleet) 패널과
+  동일한 패턴으로 대시보드에 배치(전체/온라인/오프라인, 영향호스트/전체/Critical/High) + "자산 현황에서
+  상세 →" 링크. 자산 탭의 중복 요약 그리드는 제거. 대시보드 로더(`loadFleetStatus`)가 값 채움.
+  (동시 편집 중 유실됐던 작업을 백업에서 라이트테마·최신 코드 위에 재이식.)
+
 ## [v0.18.7-alpha.1] — 2026-07-09 — Trivy 표 정리: Critical·최근CVE 컬럼 제거 + 담당자 이동 + 행 더블클릭
 
 ### Changed
