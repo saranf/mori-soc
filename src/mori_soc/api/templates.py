@@ -2933,6 +2933,19 @@ def render_user_dashboard_html(
             <div class=\"subtext\" data-i18n=\"dash.gap.sub\">아직 증적이 안 남은 미조치 항목이에요. 카드를 누르면 해당 탭으로 가요.</div>
             <div id=\"evidence_gap_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
           </section>
+          <!-- 계정 거버넌스 요약 (admin·security 전용) — 계정 탭에서 이동 -->
+          <section class=\"card\" id=\"acc_gov_dash_section\" style=\"display:none\">
+            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+              <h2 style=\"margin:0\" data-i18n=\"dash.acc.title\">계정 거버넌스 (접근권한 검토)</h2>
+              <div style=\"display:flex;gap:8px;align-items:center;flex-wrap:wrap\">
+                <span id=\"acc_summary\" style=\"font-size:12px;color:#111827\"></span>
+                <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openCsvPreview({title:tt('dash.acc.csv_preview_title','계정 거버넌스 CSV 미리보기'),filename:'mori-accounts-overview.csv',url:'/accounts/overview.csv'})\" data-i18n=\"dash.acc.csv\">CSV</button>
+                <button onclick=\"switchTab('accounts')\" style=\"background:none;border:none;color:#2563eb;font-size:12px;cursor:pointer\" data-i18n=\"dash.acc.detail\">계정 탭에서 상세 →</button>
+              </div>
+            </div>
+            <div class=\"subtext\" data-i18n=\"dash.acc.sub\">서버·PC의 로컬 계정을 LDAP·승인 대장과 대조해 이상 계정을 찾아요. ISMS-P 2.5.1·2.5.5·2.5.6 접근권한 검토 증적이에요.</div>
+            <div class=\"metrics\" id=\"acc_finding_cards\" style=\"margin-top:12px\"></div>
+          </section>
           <section class=\"card\" id=\"fleet_status_section\">
             <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
               <h2 style=\"margin:0\" data-i18n=\"dash.fleet.title\">PC 자산 현황</h2>
@@ -3294,17 +3307,6 @@ def render_user_dashboard_html(
 
     <!-- ── Tab: 계정 거버넌스 (admin·security 전용) ──────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_accounts\">
-      <section class=\"card\">
-        <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-          <h2 style=\"margin:0\" data-i18n=\"dash.acc.title\">계정 거버넌스 (접근권한 검토)</h2>
-          <div style=\"display:flex;gap:8px;align-items:center\">
-            <span id=\"acc_summary\" style=\"font-size:12px;color:#111827\"></span>
-            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openCsvPreview({title:tt('dash.acc.csv_preview_title','계정 거버넌스 CSV 미리보기'),filename:'mori-accounts-overview.csv',url:'/accounts/overview.csv'})\" data-i18n=\"dash.acc.csv\">CSV</button>
-          </div>
-        </div>
-        <div class=\"subtext\" data-i18n=\"dash.acc.sub\">서버·PC의 로컬 계정을 LDAP·승인 대장과 대조해 이상 계정을 찾아요. ISMS-P 2.5.1·2.5.5·2.5.6 접근권한 검토 증적이에요.</div>
-        <div class=\"metrics\" id=\"acc_finding_cards\" style=\"margin-top:12px\"></div>
-      </section>
 
       <section class=\"card\">
         <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
@@ -6686,6 +6688,9 @@ def render_user_dashboard_html(
     function _applyAccountGating() {
       const show = _canViewAccounts();
       document.querySelectorAll('[data-tab="accounts"]').forEach(btn => btn.style.display = show ? '' : 'none');
+      const dash = document.getElementById('acc_gov_dash_section');
+      if (dash) dash.style.display = show ? '' : 'none';
+      if (show) loadAccountsGov();  // 대시보드 요약 + 계정 탭 데이터 로딩
     }
     window._applyAccountGating = _applyAccountGating;
     const _CTL_SOURCE_COLOR = { zabbix:'#2563eb', trivy:'#ea580c', wazuh:'#2563eb', fleet:'#16a34a', loki:'#dc2626', mori:'#111827' };
@@ -7105,7 +7110,7 @@ def render_user_dashboard_html(
         if (sumEl) sumEl.textContent = `${tt('dash.acc.hosts','호스트')} ${s.hosts||0} · ${tt('dash.acc.accounts','계정')} ${s.accounts||0} · ${tt('dash.acc.priv','특권')} ${s.privileged||0} · ${tt('dash.acc.dir','디렉터리')} ${s.directory||0}`;
         const c = _accData.counts || {};
         const cardsEl = document.getElementById('acc_finding_cards');
-        cardsEl.innerHTML = Object.keys(_ACC_FIND).map(k => { const [lbl,col,em] = _ACC_FIND[k]; const v = c[k]||0; return `<section class=\"card metric-card\" onclick=\"document.getElementById('acc_filter_finding').value='${k}';renderAccounts()\" style=\"padding:14px;cursor:pointer\"><div class=\"metric-label\">${em} ${tt('dash.acc.find.'+k, lbl)}</div><div class=\"metric-value\" style=\"color:${v?col:'#d1d5db'}\">${v}</div></section>`; }).join('');
+        cardsEl.innerHTML = Object.keys(_ACC_FIND).map(k => { const [lbl,col,em] = _ACC_FIND[k]; const v = c[k]||0; return `<section class=\"card metric-card\" onclick=\"document.getElementById('acc_filter_finding').value='${k}';renderAccounts()\" style=\"padding:14px;cursor:pointer\"><div class=\"metric-label\">${em} ${tt('dash.acc.find.'+k, lbl)}</div><div class=\"metric-value\" style=\"color:${v?col:'#111827'}\">${v}</div></section>`; }).join('');
         renderAccounts(); renderAccApprovals(); renderAccIpList();
       } catch(e) { tableEl.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`; }
     }
