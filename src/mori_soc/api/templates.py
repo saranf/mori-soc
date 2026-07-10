@@ -3527,7 +3527,7 @@ def render_user_dashboard_html(
       <div style=\"color:#e2e8f0;font-size:13px;line-height:1.7;margin-bottom:18px\">
         <div style=\"margin-bottom:10px\" data-i18n-html=\"dash.modal.incident_csv_warn_html\"><strong style=\"color:#fbbf24\">변경 내역(history)은 CSV 내역에 포함되지 않습니다.</strong></div>
         <div style=\"color:#cbd5e1\" data-i18n-html=\"dash.modal.incident_csv_desc_html\">각 인시던트는 <strong style=\"color:#38bdf8\">변경 일자</strong>와 <strong style=\"color:#38bdf8\">최신 내역</strong>(현재 상태 / 담당자 / 영향도 등)만 1행으로 표시됩니다.</div>
-        <div style=\"color:#94a3b8;margin-top:10px;font-size:12px\" data-i18n-html=\"dash.modal.incident_csv_hint_html\">전체 변경 이력은 인시던트 상세 모달의 \"변경 이력\" 섹션 또는 <code style=\"background:#1e293b;padding:1px 6px;border-radius:3px\">/incidents/{id}/history</code> API를 이용해 주세요.</div>
+        <div style=\"color:#94a3b8;margin-top:10px;font-size:12px\" data-i18n-html=\"dash.modal.incident_csv_hint_html\">전체 변경 이력은 어드민 <strong>통합 이력 로그</strong> 페이지 또는 <code style=\"background:#1e293b;padding:1px 6px;border-radius:3px\">/incidents/{id}/history</code> API를 이용해 주세요.</div>
       </div>
       <div style=\"display:flex;gap:10px;justify-content:flex-end\">
         <button onclick=\"closeIncidentCsvNotice()\" style=\"background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px\" data-i18n=\"dash.f.cancel\">취소</button>
