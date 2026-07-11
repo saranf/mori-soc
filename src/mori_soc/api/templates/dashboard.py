@@ -745,6 +745,16 @@ def render_user_dashboard_html(
     <div class=\"dialog-body\" id=\"nlq_guide_list\" style=\"display:flex;flex-wrap:wrap;gap:8px;padding:16px;\"></div>
   </dialog>
 
+  <dialog id=\"evidence_modal\">
+    <div class=\"guide-dialog\">
+      <div class=\"guide-dialog-head\">
+        <h3 id=\"evidence_modal_title\" data-i18n=\"dash.ctl.ev_title\">수기 증적</h3>
+        <form method=\"dialog\"><button class=\"secondary\" data-i18n=\"dash.f.close\">닫기</button></form>
+      </div>
+      <div class=\"guide-dialog-copy\" id=\"evidence_modal_body\"></div>
+    </div>
+  </dialog>
+
   <dialog id=\"triage_modal\">
     <div class=\"guide-dialog\">
       <div class=\"guide-dialog-head\">
@@ -3995,8 +4005,12 @@ def render_user_dashboard_html(
           h += `<div style=\"font-weight:700;color:#ea580c;margin:6px 0 2px\">${tt('dash.ctl.def','관련 결함')}</div>`;
           h += d.defects.map(x => { const gc=(typeof x.gap_count==='number')?` · ${tt('dash.ctl.gap','현재 공백')} ${x.gap_count}`:''; return `<div style=\"color:#111827\">${escapeHtml((lang==='en'?x.title_en:x.title_ko)||'')}${escapeHtml(gc)}</div>`; }).join('');
         }
-        // M2-8: 수기 증적 레코드 (admin·security 문서화)
-        h += _evRecordsHtml(enc, d.evidence_records || []);
+        // 수기 증적: 인라인 누적 목록 대신 별도 팝업으로 (데이터는 그대로 보유)
+        const _evN = (d.evidence_records || []).length;
+        h += `<div style=\"margin-top:8px;padding-top:6px;border-top:1px solid #e5e7eb;display:flex;align-items:center;gap:10px;flex-wrap:wrap\">
+          <span style=\"font-weight:700;color:#ea580c\">${tt('dash.ctl.ev_title','수기 증적')}</span>
+          <button onclick=\"openEvidenceModal('${enc}')\" class=\"secondary\" style=\"width:auto;padding:4px 12px;font-size:12px\">${tt('dash.ctl.ev_open','증적 누적 보기·기록')} (${_evN})</button>
+        </div>`;
         // M2-7: 이행 상태 편집 폼 (admin·security) 저장 시 영속 + audit-log
         h += _ctlStatusForm(enc, d.runtime_status || {});
         // M2-8: 증적 팩 다운로드 CSV / PDF 선택
@@ -4130,6 +4144,23 @@ def render_user_dashboard_html(
       } catch(e) { if (msg) { msg.textContent = tt('dash.ctl.save_fail','저장 실패'); msg.style.color='#dc2626'; } }
     }
     window.autoEvidence = autoEvidence;
+    // 수기 증적 누적을 별도 팝업으로 표시(+기록/자동/삭제도 여기서). 데이터는 서버 보유.
+    async function openEvidenceModal(enc) {
+      const modal = document.getElementById('evidence_modal');
+      if (!modal) return;
+      modal.dataset.enc = enc;
+      const titleEl = document.getElementById('evidence_modal_title');
+      const bodyEl = document.getElementById('evidence_modal_body');
+      if (titleEl) titleEl.textContent = decodeURIComponent(enc) + ' · ' + tt('dash.ctl.ev_title','수기 증적');
+      if (bodyEl) bodyEl.innerHTML = `<span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span>`;
+      if (!modal.open) modal.showModal();
+      try {
+        const res = await fetch('/controls/detail/' + enc);
+        const recs = res.ok ? ((await res.json()).evidence_records || []) : [];
+        if (bodyEl) bodyEl.innerHTML = _evRecordsHtml(enc, recs);
+      } catch(e) { if (bodyEl) bodyEl.innerHTML = `<span class=\"empty\">${tt('dash.ctl.err','불러오지 못했습니다.')}</span>`; }
+    }
+    window.openEvidenceModal = openEvidenceModal;
     function _toggleEvMore(enc) {
       const box = document.getElementById('evmore_' + enc);
       const tog = document.getElementById('evmoretog_' + enc);
@@ -4199,6 +4230,10 @@ def render_user_dashboard_html(
     window.deleteEvidenceRecord = deleteEvidenceRecord;
     // 상세 패널 재렌더(열린 상태에서 갱신) 해당 통제의 detail div를 다시 로드
     function _refreshControlDetail(enc) {
+      // 증적 팝업이 열려 있으면 그걸 갱신
+      const modal = document.getElementById('evidence_modal');
+      if (modal && modal.open && modal.dataset.enc === enc) { openEvidenceModal(enc); }
+      // 인라인 상세가 열려 있으면 버튼 카운트 갱신 위해 재렌더
       const anchor = document.querySelector(`[onclick*=\"toggleControlDetail('${enc}'\"]`);
       if (!anchor) { return; }
       const box = anchor.parentElement.querySelector('.ctl-detail');
