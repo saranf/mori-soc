@@ -50,6 +50,7 @@ flowchart LR
     TRV[Trivy]:::s --> POLL
     WZ[Wazuh]:::s --> POLL
     FLEET[Fleet/osquery]:::s -.-> POLL
+    CR[Code review<br/>GitHub Actions]:::s -->|OIDC-signed| POLL
     subgraph MORI["MORI — read-only evidence layer"]
         POLL[Pollers / ingest]:::m --> DB[(PostgreSQL)]:::db --> API[FastAPI /ui]:::m
         API --> J[Triage · Risk · Control status]:::m --> E[Evidence PDF/CSV/ZIP + audit log]:::m
@@ -79,6 +80,7 @@ flowchart LR
 | **Unified operations UI** | Dashboard · Alert Triage · Incidents · Assets/Vulns · Compliance PDCA on one screen (`/ui`) |
 | **Risk assessment** | Per-CVE 3×3 matrix = impact (asset criticality) × likelihood → **score (1–9)** + treatment decision, residual risk, DoA auto-classify (admin·security) |
 | **Control catalog** | ISMS-P 101 + ISO 27001:2022 93 = **194 controls** (KO/EN) — **58 reviewed · 136 draft** (drafts labeled in UI; coverage counts reviewed+evidence-wired only) — tree + editable/persisted status + **admin direct edit (add/edit/delete)** + **regulation-text NLP import** (Claude/heuristic) + **documented manual evidence + detailed live-evidence snapshot (scheduled/bulk)** + **evidence document** (asset-inventory tables) **CSV/PDF** |
+| **Code-review evidence (SDLC / 2.8)** | A 6th evidence source for **secure development** (ISMS-P 2.8.1·2.8.5 · ISO A.8.25·A.8.28) — each repo's CI runs an AI code security review and pushes findings to `/ingest/code-review`; **MORI never fetches code**. Findings become hostless `code_review` alerts (reused in Triage); the scan run itself is recorded as evidence (even 0 findings = "control operated"). Provenance (repo·commit·PR·run) is **verified by GitHub OIDC signature**, not self-asserted — forgery-resistant. On-demand scan from the UI via `workflow_dispatch` (paste repo URL + token). |
 | **Account governance** | Server/PC local accounts (osquery) × LDAP × approval ledger → detects leavers, unregistered privilege, unapproved sudo, dormant · IP team/purpose CSV export (defaults to admin·security, admin configures view roles) |
 | **Automatic evidence** | Asset owner/criticality, CVE remediation/exception, risk assessment, triage & incident changes accrued as _who/when/what_ → **6 CSV/PDF reports** |
 | **Role-based views** | Risk & controls are admin·security only; infra/help-desk see **only their own servers'remediation rate** |
@@ -92,6 +94,7 @@ flowchart LR
 |---|---|---|
 | **Zabbix live polling → alert (real-API verified)** | Trivy collector local polling | **FleetDM live poller** |
 | **Trivy/CSOP remote push evidence ingest** (token) | Source freshness / worker cycle | **Wazuh live poller** |
+| **Code-review evidence ingest** — GitHub OIDC-verified provenance (2.8/A.8.25) | Live GitHub Actions run (E2E via real Postgres; first CI run pending) | Reusable workflow · multi-repo dashboard |
 | **Brownfield connect** — via `.env` config only | | LDAP/AD operational sync |
 | Alert Triage / Incidents / **risk assessment** | | Slack / Email alerts |
 | Login·RBAC · PostgreSQL persistence · CSV/PDF evidence | | Live-query caching |
@@ -202,6 +205,7 @@ view roles"** (admin is always included). Target users see the Accounts tab afte
 | [Getting Started](docs/GETTING_STARTED.en.md) | Demo boot → first operations → production (KO/EN) |
 | [Brownfield Connect](docs/BROWNFIELD_CONNECT.en.md) | Read-only connect via `.env` only (KO/EN) |
 | [LDAP Integration](docs/LDAP_INTEGRATION.en.md) | One account for MORI·Grafana·Zabbix·Fleet (KO/EN) |
+| [Code-review evidence](docs/CODE_REVIEW_EVIDENCE.md) | SDLC/2.8 evidence source · OIDC provenance · customer setup · roadmap |
 | [Deployment](docs/DEPLOYMENT.md) | Server deploy · operations · troubleshooting |
 | [Functional Spec](docs/FUNCTIONAL_SPEC.md) · [Roadmap](docs/IMPLEMENTATION_ROADMAP.md) | Feature spec / Phase 0–5 roadmap |
 

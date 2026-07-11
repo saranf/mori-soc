@@ -50,6 +50,7 @@ flowchart LR
     TRV[Trivy]:::s --> POLL
     WZ[Wazuh]:::s --> POLL
     FLEET[Fleet/osquery]:::s -.-> POLL
+    CR[Code review<br/>GitHub Actions]:::s -->|OIDC 서명| POLL
     subgraph MORI["MORI — read-only 증적 레이어"]
         POLL[Pollers / ingest]:::m --> DB[(PostgreSQL)]:::db --> API[FastAPI /ui]:::m
         API --> J[트리아지 · 위험성 · 통제 이행상태]:::m --> E[증적 PDF/CSV/ZIP + 감사로그]:::m
@@ -79,6 +80,7 @@ flowchart LR
 | **통합 운영 UI** | 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · Compliance PDCA를 한 화면(`/ui`)에서 |
 | **위험성 평가** | CVE별 3×3 매트릭스 = 영향도(자산 중요도) × 발생가능성 → **점수(1~9)** + 위험처리 결정·잔여위험·DoA 자동분류 (admin·security) |
 | **통제 카탈로그** | ISMS-P 101 + ISO 27001:2022 93 = **194 인증기준**(한/영) — **58 검토완료 · 136 초안**(초안은 UI에 라벨; 커버리지는 검토완료+증적 연결만 집계) — 트리 + 이행상태 편집·영속 + **admin 직접 편집(추가/수정/삭제)** + **법령 텍스트 NLP 임포트**(Claude/휴리스틱) + **수기 증적 문서화 + 실증적 상세 자동 스냅샷(정기·일괄)** + **증적 문서**(자산 인벤토리 표) **CSV/PDF 다운로드** |
+| **코드 보안 리뷰 증적 (SDLC / 2.8)** | 개발보안(ISMS-P 2.8.1·2.8.5 · ISO A.8.25·A.8.28)용 6번째 증적 소스 — 각 레포 CI가 AI 코드 보안 리뷰를 돌려 `/ingest/code-review`로 결과를 보냄. **MORI는 코드를 가져오지 않음.** findings는 호스트 없는 `code_review` alert(트리아지 재사용)로, 스캔 런 자체도 증적(0건이어도 "통제 작동"). 출처(repo·commit·PR·run)는 **GitHub OIDC 서명으로 검증**(자기신고 아님) — 위조 차단. UI에서 repo URL+토큰으로 `workflow_dispatch` 원격 스캔. |
 | **계정 거버넌스** | 서버·PC 로컬 계정(osquery) × LDAP × 승인대장 대조 → 퇴사자 잔존·미등록 특권·미승인 sudo·휴면 검출 · IP 팀/용도 선별 CSV (기본 admin·security, admin이 열람 역할 조정) |
 | **자동 증적** | 자산 담당자·중요도, CVE 조치·예외, 위험성 평가, Triage·인시던트 변경을 _who/when/what_ 으로 누적 → **6종 CSV/PDF** |
 | **역할별 화면** | 위험성 평가·통제는 admin·security 전용, 인프라·헬프데스크는 **내 담당 서버 조치율**만 |
@@ -92,6 +94,7 @@ flowchart LR
 |---|---|---|
 | **Zabbix 실시간 폴링 → alert (실 API 검증)** | Trivy collector 로컬 폴링 | **FleetDM 라이브 폴러** |
 | **Trivy/CSOP 원격 push 증적 인제스트** (토큰) | Source freshness / Worker cycle | **Wazuh 라이브 폴러** |
+| **코드 리뷰 증적 인제스트** — GitHub OIDC 검증 provenance (2.8/A.8.25) | 실 GitHub Actions 런(실 Postgres E2E 검증, 첫 CI 런 대기) | Reusable workflow · 다중 레포 대시보드 |
 | **브라운필드 연결** — `.env` config만으로 | | LDAP/AD 운영 연동 |
 | Alert Triage / 인시던트 / **위험성 평가** | | Slack / Email 알림 |
 | 로그인·RBAC · PostgreSQL 영속 · CSV/PDF 증적 | | 라이브 조회 캐싱 |
@@ -183,6 +186,7 @@ docker compose up -d mori-worker      # 재적용
 | [시작하기 (신규 사용자)](docs/GETTING_STARTED.md) | 데모 기동 → 첫 운영 → 운영 전환 (한/영) |
 | [기존 스택 연결 (브라운필드)](docs/BROWNFIELD_CONNECT.md) | `.env`만으로 read-only 연결 (한/영) |
 | [LDAP 통합 인증](docs/LDAP_INTEGRATION.md) | 계정 하나로 MORI·Grafana·Zabbix·Fleet (한/영) |
+| [코드 리뷰 증적](docs/CODE_REVIEW_EVIDENCE.md) | SDLC/2.8 증적 소스 · OIDC provenance · 고객 셋업 · 로드맵 |
 | [배포 가이드](docs/DEPLOYMENT.md) | 서버 배포·운영·트러블슈팅 |
 | [기능 정의서](docs/FUNCTIONAL_SPEC.md) · [로드맵](docs/IMPLEMENTATION_ROADMAP.md) | 기능 명세 / Phase 0~5 구현 로드맵 |
 
