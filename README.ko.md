@@ -16,6 +16,10 @@
 
 > **"보는 층"이 아니라 "증적 층"** — 시계열·로그 시각화는 Grafana/Loki에 위임하고, MORI는 그 위에서 **판단·기록·증명**(트리아지 → 조치 → 통제 매핑 → 증적 PDF → 감사 로그)을 담당합니다.
 
+> **대상 — 한 플랫폼, 두 청중**: **(1) ISMS-P를 준비하는 국내 팀** — 국내 인증 실무 흐름, 한국어 우선. **(2) 자체 호스팅 ISO 27001 증적 레이어가 필요한 해외 팀** — 이미 쓰는 도구 위에 read-only로 얹는, Vanta/Drata의 오픈·셀프호스트 대안.
+
+> **정직함이 기본** — 카탈로그는 현재 **194개 중 58개 검토완료(reviewed)**, 나머지 136개는 초안(draft)으로 **UI에 `draft` 라벨** 표시됩니다. 커버리지 %는 검토완료 **+ 증적 연결** 통제만 집계 — 부풀리지 않습니다. 감사 신뢰성이 핵심이라 숫자는 정직하게 둡니다.
+
 <!-- ═══════════════════════════════════════════════════════════════════════
       스크린샷 가이드 ① — 대표 이미지(README 맨 위에 크게 들어가는 첫 화면)
      "히어로 이미지"라고도 부릅니다. README를 열면 가장 먼저 보이는 한 장이라,
@@ -38,6 +42,30 @@
 
 ---
 
+## 아키텍처 한눈에
+
+```mermaid
+flowchart LR
+    ZBX[Zabbix]:::s --> POLL
+    TRV[Trivy]:::s --> POLL
+    WZ[Wazuh]:::s --> POLL
+    FLEET[Fleet/osquery]:::s -.-> POLL
+    subgraph MORI["MORI — read-only 증적 레이어"]
+        POLL[Pollers / ingest]:::m --> DB[(PostgreSQL)]:::db --> API[FastAPI /ui]:::m
+        API --> J[트리아지 · 위험성 · 통제 이행상태]:::m --> E[증적 PDF/CSV/ZIP + 감사로그]:::m
+    end
+    API -.->|딥링크| GRAF[Grafana/Loki<br/>보는 층]:::v
+    J -->|write-back| ZBX
+    classDef s fill:#dbeafe,stroke:#2563eb,color:#111827
+    classDef m fill:#dcfce7,stroke:#16a34a,color:#111827
+    classDef db fill:#fef9c3,stroke:#a16207,color:#111827
+    classDef v fill:#f3f4f6,stroke:#6b7280,color:#111827
+```
+
+> **설계 문서:** [아키텍처 & DB ERD](docs/DB_ERD.md) · [API 설계](docs/API_DESIGN.md) · [수집 기준](docs/collection-standards.md). 상세 → [상세 가이드](./README_FULL.md).
+
+---
+
 ## 한눈에
 
 - **대상** — 보안 담당자 1~2명 + IT 헬프데스크로 ISMS-P / ISO 27001을 준비하는 중소형 조직
@@ -50,7 +78,7 @@
 |---|---|
 | **통합 운영 UI** | 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · Compliance PDCA를 한 화면(`/ui`)에서 |
 | **위험성 평가** | CVE별 3×3 매트릭스 = 영향도(자산 중요도) × 발생가능성 → **점수(1~9)** + 위험처리 결정·잔여위험·DoA 자동분류 (admin·security) |
-| **통제 카탈로그** | ISMS-P 101 + ISO 27001:2022 93 = **194 인증기준**(한/영) 트리 + 이행상태 편집·영속 + **admin 직접 편집(추가/수정/삭제)** + **법령 텍스트 NLP 임포트**(Claude/휴리스틱) + **수기 증적 문서화 + 실증적 상세 자동 스냅샷(정기·일괄)** + **증적 문서**(자산 인벤토리 표) **CSV/PDF 다운로드** |
+| **통제 카탈로그** | ISMS-P 101 + ISO 27001:2022 93 = **194 인증기준**(한/영) — **58 검토완료 · 136 초안**(초안은 UI에 라벨; 커버리지는 검토완료+증적 연결만 집계) — 트리 + 이행상태 편집·영속 + **admin 직접 편집(추가/수정/삭제)** + **법령 텍스트 NLP 임포트**(Claude/휴리스틱) + **수기 증적 문서화 + 실증적 상세 자동 스냅샷(정기·일괄)** + **증적 문서**(자산 인벤토리 표) **CSV/PDF 다운로드** |
 | **계정 거버넌스** | 서버·PC 로컬 계정(osquery) × LDAP × 승인대장 대조 → 퇴사자 잔존·미등록 특권·미승인 sudo·휴면 검출 · IP 팀/용도 선별 CSV (기본 admin·security, admin이 열람 역할 조정) |
 | **자동 증적** | 자산 담당자·중요도, CVE 조치·예외, 위험성 평가, Triage·인시던트 변경을 _who/when/what_ 으로 누적 → **6종 CSV/PDF** |
 | **역할별 화면** | 위험성 평가·통제는 admin·security 전용, 인프라·헬프데스크는 **내 담당 서버 조치율**만 |

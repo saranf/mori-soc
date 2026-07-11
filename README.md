@@ -16,6 +16,10 @@ It sits **read-only on top of your existing** **Zabbix · FleetDM · Wazuh · Tr
 
 > **An "evidence layer," not a "viewing layer"** — time-series and log visualization are delegated to Grafana/Loki; MORI sits above them to handle **judge → record → prove** (triage → remediation → control mapping → evidence PDF → audit log).
 
+> **Who it's for** — two audiences, one platform: **(1) Korean teams preparing ISMS-P** — the domestic certification workflow, Korean-first; **(2) overseas teams wanting a self-hosted ISO 27001 evidence layer** — an open, self-host alternative to Vanta/Drata that runs read-only on the tools you already have.
+
+> **Honest by design** — the catalog is **58 / 194 controls reviewed** today; the other 136 are draft skeletons, **labeled `draft` in the UI**. Coverage % counts only reviewed **and** evidence-wired controls — no inflation. Audit trust is the whole point, so the numbers stay honest.
+
 <!-- ═══════════════════════════════════════════════════════════════════════
       SCREENSHOT GUIDE ① — hero image (the big first screen at the top of the README)
      It's the first thing readers see, so this one shot is MORI's "explained in a
@@ -38,6 +42,30 @@ It sits **read-only on top of your existing** **Zabbix · FleetDM · Wazuh · Tr
 
 ---
 
+## Architecture in one look
+
+```mermaid
+flowchart LR
+    ZBX[Zabbix]:::s --> POLL
+    TRV[Trivy]:::s --> POLL
+    WZ[Wazuh]:::s --> POLL
+    FLEET[Fleet/osquery]:::s -.-> POLL
+    subgraph MORI["MORI — read-only evidence layer"]
+        POLL[Pollers / ingest]:::m --> DB[(PostgreSQL)]:::db --> API[FastAPI /ui]:::m
+        API --> J[Triage · Risk · Control status]:::m --> E[Evidence PDF/CSV/ZIP + audit log]:::m
+    end
+    API -.->|deep link| GRAF[Grafana/Loki<br/>viewing layer]:::v
+    J -->|write-back| ZBX
+    classDef s fill:#dbeafe,stroke:#2563eb,color:#111827
+    classDef m fill:#dcfce7,stroke:#16a34a,color:#111827
+    classDef db fill:#fef9c3,stroke:#a16207,color:#111827
+    classDef v fill:#f3f4f6,stroke:#6b7280,color:#111827
+```
+
+> **Design docs:** [Architecture & DB ERD](docs/DB_ERD.md) · [API design](docs/API_DESIGN.md) · [collection standards](docs/collection-standards.md). Deep dive → [Full Guide](./README_FULL.md).
+
+---
+
 ## At a glance
 
 - **Who it's for** — small/mid orgs preparing ISMS-P / ISO 27001 with 1–2 security staff + IT help desk
@@ -50,7 +78,7 @@ It sits **read-only on top of your existing** **Zabbix · FleetDM · Wazuh · Tr
 |---|---|
 | **Unified operations UI** | Dashboard · Alert Triage · Incidents · Assets/Vulns · Compliance PDCA on one screen (`/ui`) |
 | **Risk assessment** | Per-CVE 3×3 matrix = impact (asset criticality) × likelihood → **score (1–9)** + treatment decision, residual risk, DoA auto-classify (admin·security) |
-| **Control catalog** | ISMS-P 101 + ISO 27001:2022 93 = **194 controls** (KO/EN) tree + editable/persisted status + **admin direct edit (add/edit/delete)** + **regulation-text NLP import** (Claude/heuristic) + **documented manual evidence + detailed live-evidence snapshot (scheduled/bulk)** + **evidence document** (asset-inventory tables) **CSV/PDF** |
+| **Control catalog** | ISMS-P 101 + ISO 27001:2022 93 = **194 controls** (KO/EN) — **58 reviewed · 136 draft** (drafts labeled in UI; coverage counts reviewed+evidence-wired only) — tree + editable/persisted status + **admin direct edit (add/edit/delete)** + **regulation-text NLP import** (Claude/heuristic) + **documented manual evidence + detailed live-evidence snapshot (scheduled/bulk)** + **evidence document** (asset-inventory tables) **CSV/PDF** |
 | **Account governance** | Server/PC local accounts (osquery) × LDAP × approval ledger → detects leavers, unregistered privilege, unapproved sudo, dormant · IP team/purpose CSV export (defaults to admin·security, admin configures view roles) |
 | **Automatic evidence** | Asset owner/criticality, CVE remediation/exception, risk assessment, triage & incident changes accrued as _who/when/what_ → **6 CSV/PDF reports** |
 | **Role-based views** | Risk & controls are admin·security only; infra/help-desk see **only their own servers'remediation rate** |
