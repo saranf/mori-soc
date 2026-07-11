@@ -1,8 +1,8 @@
-# MORI SOC — 상세 가이드 (전체 레퍼런스)
+# MORI SOC — Full Guide (Complete Reference)
 
-> 이 문서는 **전체 상세 레퍼런스**입니다. 한눈에 보는 요약은 [**간결 README**](./README.md)를 먼저 보세요.
+> This is the **complete detailed reference**. For the at-a-glance summary, start with the [**concise README**](./README.md).
 
-**한국어 (this page)** · [English (full)](./README_FULL.en.md) · [간결 README](./README.md)
+[한국어 (full)](./README_FULL.ko.md) · **English (this page)** · [Concise README](./README.md)
 
 [![tests](https://github.com/saranf/mori-soc/actions/workflows/test.yml/badge.svg)](https://github.com/saranf/mori-soc/actions/workflows/test.yml)
 ![Status](https://img.shields.io/badge/status-alpha-orange)
@@ -14,90 +14,89 @@
 
 ## TL;DR
 
-`docker compose up -d` 한 줄로 띄우는 **ISMS-P / ISO 27001 감사 증적 누적 플랫폼**. Zabbix · FleetDM · Wazuh · Trivy · Loki를 통합하여 자산·취약점·경보·인시던트 + 통제 점검을 한 화면(`/ui`)에서 운영하고, 모든 변경을 *who / when / what* 단위로 자동 누적합니다.
+A one-line (`docker compose up -d`) **ISMS-P / ISO 27001 audit-evidence accumulation platform**. Integrates Zabbix · FleetDM · Wazuh · Trivy · Loki to operate assets / vulnerabilities / alerts / incidents + control checks on a single screen (`/ui`), automatically accumulating every change with *who / when / what* metadata.
 
-- **대상** — 보안 담당자 1~2명 + IT 헬프데스크로 ISMS-P / ISO 27001을 준비해야 하는 중소형 조직
-- **한 줄 시작** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, 데모 전용)
-- **설치·운영 가이드** — 처음이면 [**시작하기(신규 사용자)**](docs/GETTING_STARTED.md), 이미 Zabbix/Wazuh/Fleet를 운영 중이면 [**기존 스택 연결**](docs/BROWNFIELD_CONNECT.md), 계정 통합은 [**LDAP 통합**](docs/LDAP_INTEGRATION.md) (모두 한/영)
-- **LDAP 통합 인증 (선택)** — 기본은 로컬 계정, **원하면** `MORI_LDAP_ENABLED=true`로 켜면 로그인이 LDAP으로 되고 **가입 승인 시 LDAP 계정이 생성**되어 같은 LDAP을 보는 **Grafana/Zabbix/Fleet에서도 같은 계정으로 로그인**. **어드민 콘솔에서 LDAP 사용자를 직접 관리**(추가·삭제·비번 재설정·역할 변경). 기존 사내 LDAP/AD도 URL만 바꿔 연결. → [가이드](docs/LDAP_INTEGRATION.md)
-- **계정 거버넌스 (접근권한 검토, 기본 admin·security · admin이 열람 역할 조정)** — 서버·PC **로컬 계정**을 osquery로 수집(`POST /ingest/accounts`)해 **LDAP 디렉터리 × 승인 대장**과 대조 → **퇴사자 잔존·미등록 특권·미승인 sudo·휴면 계정** 자동 검출. 전용 **계정 탭**(통합 목록 + **IP 팀/용도 선별 CSV** + 승인 대장 + CSV 증적) + 호스트 상세 계정 섹션. **열람 역할은 어드민 콘솔 권한 탭에서 조정**(`account_view_roles`, admin 항상 포함). ISMS-P 2.5.1·2.5.5·2.5.6 / ISO A.5.16·A.5.18·A.8.2. 예: `osquery "SELECT * FROM users"→ POST /ingest/accounts`
-- **화면** — 통합 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · **위험성 평가 매트릭스** · Compliance PDCA + **통제 카탈로그(ISMS-P 101 × ISO)** · 6종 감사 증적 CSV/PDF
-- **위험성 평가 (R-series)** — 취약점(CVE)별 **위험도 = 영향도(자산 중요도 상/중/하) × 발생가능성(심각도)** 를 3×3 매트릭스로 **점수(1~9)** 산정(라벨보다 점수 우선), 위험처리 결정(조치/수용/이관/회피)·잔여위험·재평가일 기록. **어드민 전용 산정 근거(provenance)** 패널. **위험 수용 기준(DoA)** — admin이 임계 점수를 입력하면 그 이하 위험은 **기본 수용가능**으로 자동 분류. ISMS-P 위험관리 / ISO 27001 6.1.2·8.8 기반
-- **통제 카탈로그 (Phase 2)** — ISMS-P 101 + ISO 27001:2022 93 = **194개 인증기준**(한/영) 트리를 **컴플라이언스 탭**에 표시. 통제별 **이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 편집**하면 `control_status`(`schema/009`)에 **영속(재시작 유지)** + 변경 이력 기록. **admin은 카탈로그 정본을 직접 편집**(통제 추가/수정/삭제) — base(`controls/*.yaml`)와 분리된 오버레이(`schema/011`)에 쌓여 재싱크에도 유지. **법령/고시 텍스트 NLP 임포트**(`POST /controls/import-nlp`) — `MORI_ANTHROPIC_API_KEY`가 있으면 Claude로 정밀 구조화, 없으면 조항 단위 휴리스틱 → 통제 초안(draft) 저장. 통제별 **수기 증적 문서화**(`control_evidence`, 제목·내용·수집자·수집일·참조) 또는 **실증적 상세 자동 스냅샷**(통제 취지·이행상태 + 라이브 **실제 호스트 목록**(hostname·IP·상태)을 캡처, `POST …/evidence-records/auto`, `source=auto`). **정기 스냅샷**(admin 설정 off/daily/weekly/monthly, `evidence_snapshot_schedule|scope`)은 **부팅·열람 시 도래분 일괄 실행** + **수동 일괄**(`POST /controls/evidence-snapshot/run`). **증적 문서 CSV/PDF 다운로드**(통제 팩이 아니라 자산 인벤토리 표+문서화 증적 표만, `evidence_document_csv/pdf`; 화면은 3건까지+더보기, 다운로드는 전체) + **전 통제 증적 ZIP 한방 다운로드**(`GET /controls/evidence-bundle.zip?scope=mapped|all`, 프레임워크/통제 폴더별 pdf+csv + `INDEX.csv`). 편집=admin, 증적 문서화·열람=admin·security
-- **역할별 화면** — 위험성 평가·통제 카탈로그는 **admin·security 전용**, 인프라·헬프데스크는 **내 담당 서버 취약점·조치율**만 열람. **내 담당 서버**는 `호스트명·중요도·상태·IP`로 간소화, 행 **더블클릭 → 상세 모달**에서 미조치를 **예외 만료·조치기한 초과·기타 위험** 3버킷으로 표시 + **Zabbix/Grafana/Fleet 딥링크**(자산 종류별). 자산 표엔 **팀별·'내 자산만'필터**. 취약점(Trivy) 표는 심각도 대신 **위험점수(1~9)** 표기. 대시보드는 **역할별 보안 히어로 + 24h/12h 인프라 현황(Zabbix/Wazuh 딥링크)** 로 구성, **패널 편집**으로 개인별 위젯 선택·영속화
-- **다국어 UI** — 로그인·대시보드·어드민 콘솔 전 페이지 한국어/영어 토글 (우상단 고정 위젯 → **계정 메뉴()**로 이동, 쿠키·localStorage 저장, 새로고침 없이 즉시 전환)
-- **사용자 프로필 + 내 서버** — 이름·부서·담당 서버를 계정에 저장하고, 담당 자산만 모아 보는 **내 서버** 뷰(프로필 메뉴 바로가기) 제공
-- **자동 증적** — 자산 담당자·중요도, 호스트/CVE 단위 조치 계획·예외, **CVE별 위험성 평가**, Triage·인시던트 상태 변경
-- **영속화 (M2-1 + R-2 + M2-7)** — UI 운영 상태 store(자산 담당자·감사로그·취약점 조치·Triage·인시던트·프로필 + **위험성 평가 대장 `ui_risk_register`** + **조직 설정 `ui_settings`**(위험 DoA) + **통제 이행상태 `control_status`**)는 PostgreSQL에 **write-through 영속화**되어 재시작 후에도 유지. (스키마 `001`~`009`)
-- **실데이터 연동** — **Zabbix 실시간 폴링은 실 API로 검증됨**(problem→Triage→Incident→증적→해소). **Trivy/CSOP는 원격 토큰 push**(`/ingest/trivy`·`/ingest/evidence`)로 연동. **Fleet / Wazuh 라이브 연동은 다음 단계(Next)**.
-- **브라운필드** — 기존 Zabbix/Wazuh/Fleet 환경이면 **MORI 코어만 띄우고 `.env` 설정만으로** 연결(번들 소스 불필요). `docker compose up` = 코어만, `--profile bundled` = 번들 데모 포함. → [가이드](docs/BROWNFIELD_CONNECT.md)
-- **소스 딥링크 자유 설정** — 화면의 `Zabbix/Fleet/Wazuh/Grafana ↗` 버튼은 각 소스 콘솔로 연결됩니다. 기본값은 MORI 데모지만 `.env`의 `MORI_ZABBIX_UI_URL`·`MORI_FLEET_UI_URL`·`MORI_WAZUH_UI_URL`·`MORI_GRAFANA_URL`을 **내 서버 URL로 자유롭게 교체**(비우면 해당 링크만 숨김, 자산 종류에 맞는 링크만 노출)
+- **Target audience** — Small to mid-sized organizations with 1–2 security staff + IT helpdesk preparing for ISMS-P / ISO 27001
+- **One-line start** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, demo only)
+- **Install & operate guides** — new here? [**Getting Started (new users)**](docs/GETTING_STARTED.en.md); already running Zabbix/Wazuh/Fleet? [**Connect an existing stack**](docs/BROWNFIELD_CONNECT.en.md); single sign-on? [**LDAP integration**](docs/LDAP_INTEGRATION.en.md) (all KO/EN)
+- **LDAP integration (optional)** — local accounts by default; **opt in** with `MORI_LDAP_ENABLED=true` and login goes through LDAP, and **approving a signup creates an LDAP account** so the same login works in **Grafana/Zabbix/Fleet** pointed at the same directory. **Manage LDAP users right from the admin console** (add/delete/reset password/change role). Point it at your existing corporate LDAP/AD by changing the URL. → [guide](docs/LDAP_INTEGRATION.en.md)
+- **Account governance (access review; defaults to admin·security, admin configures view roles)** — collect server/PC **local accounts** via osquery (`POST /ingest/accounts`) and reconcile them against the **LDAP directory × approval list** → auto-detect **leaver-remains · unmanaged privileged · unapproved sudo · dormant** accounts. Dedicated **Accounts tab** (unified list + **IP team/purpose CSV export** + approval list + CSV evidence) + per-host account section. **View roles are configured from the admin console Access tab** (`account_view_roles`, admin always included). ISMS-P 2.5.1·2.5.5·2.5.6 / ISO A.5.16·A.5.18·A.8.2. e.g. `osquery "SELECT * FROM users"→ POST /ingest/accounts`
+- **Screens** — Unified dashboard · Alert Triage · Incidents · Assets / Vulnerabilities · **Risk Assessment Matrix** · Compliance PDCA + **Control catalog (ISMS-P 101 × ISO)** · 6 audit-evidence CSV/PDF reports
+- **Risk Assessment (R-series)** — Per-CVE **Risk = Impact (asset importance H/M/L) × Likelihood (severity)** as a **score (1–9)** on a 3×3 matrix (score-forward), with treatment decision (mitigate/accept/transfer/avoid) · residual risk · review date. **Admin-only assessment-basis (provenance)** panel. A single **risk-acceptance threshold (DoA)** auto-classifies risks at or below it as **auto-acceptable**. Based on ISMS-P risk management / ISO 27001 6.1.2·8.8
+- **Control catalog (Phase 2)** — ISMS-P 101 + ISO 27001:2022 93 = **194 criteria** (KO/EN) as a tree in the **Compliance tab**. Edit each control's **implementation status (implemented/partial/not-implemented/N-A) · owner · plan · due date** → persisted to `control_status` (`schema/009`, survives restarts) + change history. **Admins edit the catalog itself** (add/edit/delete controls) — an overlay (`schema/011`) kept separate from the base (`controls/*.yaml`) so it survives re-sync. **Regulation-text NLP import** (`POST /controls/import-nlp`) — precise structuring via Claude when `MORI_ANTHROPIC_API_KEY` is set, clause-level heuristic otherwise → saved as draft controls. Per control, **document manual evidence** (`control_evidence`: title, body, collector, date, reference) or **auto-snapshot the live evidence** into a dated detailed record (control intent, status + the actual live host list — hostname·IP·status; `POST …/evidence-records/auto`, `source=auto`). A **scheduled snapshot** (admin: off/daily/weekly/monthly, `evidence_snapshot_schedule|scope`) bulk-runs due controls **on boot / on view**, plus a **manual bulk run** (`POST /controls/evidence-snapshot/run`). **Download the evidence document as CSV or PDF** (not a catalog pack — asset-inventory table + documented-evidence table only, `evidence_document_csv/pdf`; on-screen shows 3 + "show more", the download is always complete) + **one-click all-controls evidence ZIP** (`GET /controls/evidence-bundle.zip?scope=mapped|all`, per framework/control folder with pdf+csv + `INDEX.csv`). Editing = admin; evidence documentation/view = admin·security
+- **Role-aware screens** — Risk assessment & control catalog are **admin·security only**; infra/helpdesk see only **their servers'vulnerabilities & remediation rate**. **My servers** is trimmed to `hostname·importance·status·IP`; **double-click a row** opens a detail modal that buckets open items into **exception-expired / overdue / other risks** + **Zabbix/Grafana/Fleet deep-links** (per asset kind). Asset tables have **team & 'my assets only'filters**. The Trivy table shows a **risk score (1–9)** instead of severity counts. The dashboard is a **role-aware security hero + 24h/12h infra status (Zabbix/Wazuh deep links)**, with **panel editing** for per-user widget selection (persisted)
+- **Multi-language UI** — Korean / English toggle on every page (login, dashboard, admin console); moved from a fixed top-right widget into the **account menu ()**, persisted in a cookie + localStorage and switches instantly without a reload
+- **User profile + My Servers** — Save name · department · assigned servers to your account, and view only your assets in a dedicated **My Servers** view (profile-menu shortcut)
+- **Automatic evidence** — Asset owner/importance, host/CVE-level remediation plans & exceptions, **per-CVE risk assessment**, Triage & Incident state changes
+- **Persistence (M2-1 + R-2 + M2-7)** — UI operational state stores (asset owners · audit log · vuln actions · Triage · Incidents · profiles + the **risk register `ui_risk_register`** + **org settings `ui_settings`** (risk DoA) + **control status `control_status`**) are **write-through persisted** to PostgreSQL and survive restarts. (schema `001`–`009`)
+- **Live data integration** — **Zabbix real-time polling is verified against the real API** (problem→Triage→Incident→evidence→resolve). **Trivy/CSOP integrate via remote token push** (`/ingest/trivy`·`/ingest/evidence`). **Fleet / Wazuh live integration is Next**.
+- **Brownfield** — for existing Zabbix/Wazuh/Fleet, run **MORI core only and connect via `.env`** (no bundled sources). `docker compose up` = core only, `--profile bundled` = bundled demo. → [guide](docs/BROWNFIELD_CONNECT.en.md)
+- **Configurable source deep-links** — the `Zabbix/Fleet/Wazuh/Grafana ↗` buttons open each source's console. Defaults point to the MORI demo, but set `MORI_ZABBIX_UI_URL`·`MORI_FLEET_UI_URL`·`MORI_WAZUH_UI_URL`·`MORI_GRAFANA_URL` in `.env` to **your own server URLs** (empty = that link is hidden; only the link matching the asset kind is shown)
 
-> **Alpha / Work in Progress** — 일상 보안 운영 + 감사 증적 누적 시나리오가 동작하고, **UI 운영 상태는 PostgreSQL에 영속화(M2-1·R-2)** 되어 재시작 후에도 유지됩니다. **Zabbix 는 실시간 폴링이 실 API로 검증**되어 problem→alert→Triage 가 재시작 없이 흐릅니다(다른 시드 데이터는 데모용). **Fleet / Wazuh 라이브 연동은 다음 단계**입니다.
+> **Alpha / Work in Progress** — Day-to-day security operations + audit-evidence accumulation work, and **UI operational state is persisted to PostgreSQL (M2-1 · R-2)** across restarts. **Zabbix real-time polling is verified against the real API**, so problem→alert→Triage flows live with no restart (other seed data is for demo). **Fleet / Wazuh live integration is the next step.**
 
-## Status — 30초 요약
+## Status — 30-second overview
 
-| 지금 되는 것 (Works now) | 부분 통합 (Partially integrated) | 다음 (Next) |
+| Works now | Partially integrated | Next |
 |---|---|---|
-| **Zabbix 실시간 폴링 → alert (검증됨)** | Trivy collector 로컬 폴링(수집 구현) | **FleetDM 라이브 API 폴러** |
-| **Trivy/CSOP 원격 push + 증적 인제스트** (`/ingest/trivy`·`/ingest/evidence`, 토큰) | Source freshness / Worker cycle | **Wazuh 라이브 API 폴러** |
-| **브라운필드 연결** — 기존 Zabbix/Trivy에 `.env` config만으로 (번들 소스 불필요) | | LDAP/AD 운영 연동 |
-| Alert Triage / Incident 워크플로우 · CVE별 **위험성 평가** | | Slack / Email 알림 |
-| 로그인 / RBAC · PostgreSQL 영속 UI 상태 · CSV/PDF 증적 export | | 라이브 조회 캐싱(성능) |
+| **Zabbix real-time polling → alerts (verified)** | Trivy collector local polling (ingest done) | **FleetDM live API poller** |
+| **Trivy/CSOP remote push + evidence ingest** (`/ingest/trivy`·`/ingest/evidence`, token) | Source freshness / Worker cycle | **Wazuh live API poller** |
+| **Brownfield connect** — existing Zabbix/Trivy via `.env` config only (no bundled sources) | | LDAP/AD production integration |
+| Alert triage / Incident workflow · per-CVE **risk assessment** | | Slack / Email notifications |
+| Login / RBAC · PostgreSQL-backed UI state · CSV/PDF evidence export | | Live-read caching (perf) |
 
-> **Zabbix**는 실제 API로 *problem → 수집 → Triage → Incident → 증적 → 해소* 전 구간이 **검증됨** ([실전 시나리오](#-실전-시나리오--zabbix-운영-문제--감사-증적-실제-api-연동-검증됨)). **Fleet / Wazuh**는 컬렉터·파서는 준비됐으나 **라이브 연동은 다음 단계**입니다.
+> **Zabbix** is **verified end-to-end** against the real API (*problem → collect → Triage → Incident → evidence → resolve*, see [scenario](#-end-to-end-scenario--zabbix-operational-problem--audit-evidence-verified-against-the-live-api)). **Fleet / Wazuh** collectors/parsers are ready but **live integration is the next step**.
 
-> **데모 자격증명 안내** — 데모 계정(`admin` / `security` / `monitor`, 비밀번호 `1234`)은 **격리된 데모 전용**으로 의도적으로 단순합니다. 데모 인스턴스는 **시드 샘플 데이터만** 포함하며 **실제 비밀·고객 데이터를 저장하지 않습니다.** 데모가 아닌 배포에서는 **즉시 자격증명과 RBAC를 변경**하세요. (`.env`의 `MORI_ADMIN_PASSWORD` · `MORI_DEMO_MODE=false`)
+> **Demo credentials notice** — Demo credentials (`admin` / `security` / `monitor`, password `1234`) are **intentionally simple for isolated demo use only**. The demo instance contains **seeded sample data only**; **no production secrets or real customer data are stored.** For any non-demo deployment, **change credentials and RBAC settings immediately** (`.env`: `MORI_ADMIN_PASSWORD`, `MORI_DEMO_MODE=false`).
 
-## 실전 시나리오 — Zabbix 운영 문제 → 감사 증적 (실제 API 연동 검증됨)
+## End-to-end scenario — Zabbix operational problem → audit evidence (verified against the live API)
 
-MORI의 핵심 가치: **기존 Zabbix가 이미 만들어내는 운영 데이터를 ISMS-P / ISO 27001 감사 증적으로 전환.** 아래 파이프라인이 **실제 Zabbix API 연동으로 end-to-end 동작**합니다(API 재시작 불필요 — 매 요청 PostgreSQL 라이브 조회).
+MORI's core value: **turn the operational data Zabbix already produces into ISMS-P / ISO 27001 audit evidence.** The pipeline below works **end-to-end against the real Zabbix API** (no API restart — the API reads PostgreSQL live on every request).
 
-> 이 시나리오는 번들 Zabbix가 필요합니다. 브라운필드 기본(`docker compose up`)은 코어만 띄우므로, 데모 Zabbix를 함께 올리려면 `docker compose --profile zabbix up -d`(또는 `--profile bundled`). 기존 Zabbix를 쓰면 `.env`의 `MORI_ZABBIX_API_URL`만 바꾸면 됩니다 → [브라운필드 가이드](docs/BROWNFIELD_CONNECT.md).
+> This scenario needs the bundled Zabbix. The brownfield default (`docker compose up`) starts core only, so bring up the demo Zabbix with `docker compose --profile zabbix up -d` (or `--profile bundled`). With an existing Zabbix, just repoint `MORI_ZABBIX_API_URL` in `.env` → [brownfield guide](docs/BROWNFIELD_CONNECT.en.md).
 
-1. **Zabbix problem 발생** — 데모: `./scripts/mori-zabbix-demo-problem.sh` (Zabbix 서버에 트리거 발화 → 실제 problem 이벤트)
-2. **MORI worker 수집** — `mori-worker` 가 30초 주기로 `problem.get` 폴링 → 정규화(severity/host/timestamp 매핑) → PostgreSQL `alerts` 적재 + source freshness 기록
-3. **Alert Triage 노출** — `/ui` → Alert Triage 에 `source=zabbix` 로 **즉시** 표시
-4. **상태 처리** — 3단계 상태() + 분석관·변경자(actor)·변경이력 기록
-5. **Incident 생성** — alert 를 인시던트로 승격, 담당자·상태·노트 관리
-6. **증적 export** — 인시던트 / 월간 / **위험성 평가 대장** CSV·PDF 내보내기
+1. **A Zabbix problem occurs** — demo: `./scripts/mori-zabbix-demo-problem.sh` (fires a trigger on the Zabbix server → a real problem event)
+2. **MORI worker collects** — `mori-worker` polls `problem.get` every 30s → normalizes (severity/host/timestamp) → upserts into PostgreSQL `alerts` + records source freshness
+3. **Surfaces in Alert Triage** — `/ui` → Alert Triage shows it **immediately** with `source=zabbix`
+4. **Triage** — 3-tier state () + analyst · actor · change history
+5. **Incident** — promote the alert into an incident with owner / status / notes
+6. **Evidence export** — incidents / monthly / **risk register** as CSV·PDF
 
-> 즉, MORI 는 "새 보안 도구"가 아니라 **Zabbix 운영 데이터를 *누가·언제·무엇을·어떤 근거로* 형태의 ISMS-P / ISO 27001 감사 증적으로 바꾸는 read-only 레이어**입니다.
+> In other words, MORI is not "another security tool" — it is a **read-only layer that turns Zabbix operational data into ISMS-P / ISO 27001 audit evidence (who · when · what · on what basis).**
 
-오픈소스 보안 도구를 통합하여 **ISMS-P / ISO 27001 인증 심사에 필요한 증적·통제 점검·조치 이력**을 한 곳에서 수집·관리·내보내기 할 수 있도록 만든 경량 SOC 플랫폼입니다.
+A lightweight SOC platform built by integrating open-source security tools so that **evidence, control checks, and remediation history required for ISMS-P / ISO 27001 audits** can be collected, managed, and exported in one place.
 
-> **목표:** 중소형 조직에서 IT 헬프데스크 + 담당자 1명이 `docker compose` 한 줄로 배포하여 ISMS-P / ISO 27001 준비와 일상 보안 운영을 같이 할 수 있는 **"Compliance-Evidence Platform"**
+> **Goal:** A "Compliance-Evidence Platform" that lets IT helpdesk + 1 designated owner at a small/mid-sized organization deploy with a single `docker compose` command, running ISMS-P / ISO 27001 preparation alongside daily security operations.
 
-> **기존 도구 위에 얹는 read-only 증적 레이어** — MORI-SOC는 운영 중인 모니터링·보안 도구를 **대체하지 않습니다.** 기존 Zabbix / Wazuh / FleetDM / Trivy에 **config만으로(에이전트 설치·기존 도구 설정 변경 없이) read-only로 연결**해 운영 증적·인시던트 이력·취약점 조치·컴플라이언스 뷰를 정리합니다.
-> *(MORI-SOC is designed to sit on top of existing monitoring and security tools, not replace them.)*
+> **A read-only evidence layer on top of your existing tools** — **MORI-SOC is designed to sit on top of existing monitoring and security tools, not replace them.** It connects to your running Zabbix / Wazuh / FleetDM / Trivy in **read-only mode via configuration only** (no agent installation, no change to existing tool configuration) and organizes operational evidence, incident history, vulnerability actions, and compliance views.
 
-### 제품 포지셔닝 — "보는 층"이 아니라 "증적 층"
+### Product positioning — not the "viewing layer", the "evidence layer"
 
-MORI는 **통합 관제 대시보드가 아닙니다.** 시계열·로그 탐색·실시간 시각화는 이미 잘하는 도구(**Grafana/Loki**)에 위임하고, MORI는 그 위층에서 **"판단·기록·증명"**을 담당합니다.
+MORI is **not a unified monitoring dashboard.** Time-series, log exploration, and real-time visualization are delegated to the tools that already do them well (**Grafana/Loki**); MORI sits one layer above and owns **"judge, record, prove."**
 
-| 층 | 담당 | 도구 |
+| Layer | Owns | Tool |
 |---|---|---|
-| **보는 층** | 시계열·로그·실시간 시각화 | Grafana · Loki *(딥링크로 위임)* |
-| **증적 층 (MORI의 자리)** | 트리아지 → 조치 워크플로 → 통제 매핑 → 증적 PDF → 감사 로그 | **MORI API** (`/ui`) |
+| **Viewing layer** | time-series · logs · real-time visualization | Grafana · Loki *(delegated via deep links)* |
+| **Evidence layer (MORI's place)** | triage → remediation workflow → control mapping → evidence PDF → audit log | **MORI API** (`/ui`) |
 
-> 핵심 명제: **"통합 관제"가 제품이 아니라, "관제가 그대로 ISMS-P / ISO 27001 증적이 되는 것"**이 제품입니다.
+> Core thesis: the product is **not "unified monitoring" — it's "monitoring that becomes ISMS-P / ISO 27001 evidence as you look at it."**
 
-### 왜 이 다섯 개를 묶었나 — 소스별 ISMS-P 담당 구역
+### Why these five — per-source ISMS-P coverage
 
-각 소스가 **서로 겹치지 않는 인증기준**을 담당합니다. 이 매핑이 스택 구성의 근거이자, 폴러 개발 순서("증적 공백이 큰 통제부터")의 기준입니다.
+Each source owns a **non-overlapping set of certification controls.** This mapping is both the rationale for the stack and the basis for poller ordering ("fill the largest evidence gap first").
 
-| 데이터 소스 | 담당 ISMS-P 인증기준(대표) | ISO 27001 Annex A | 증적 형태 | MORI 연동 상태 |
+| Data source | ISMS-P controls (representative) | ISO 27001 Annex A | Evidence form | MORI status |
 |---|---|---|---|---|
-| **Fleet** (osquery) | 1.2.1 자산 식별 · 2.1.3 자산 관리 · 2.10.6 단말기 보안 | A.5.9 · A.8.9 | 자산 인벤토리·구성 상태 | Phase 3 |
-| **Zabbix** | 2.9.x 운영·모니터링 · 가용성 관리 | A.8.6 · A.8.16 | 가동률·임계치 알림+처리 이력 | 라이브(검증) |
-| **Trivy** | 2.10.8 패치관리 · 2.11.2 취약점 점검·조치 | A.8.8 | 스캔 이력·조치계획·예외 승인 | 원격 push |
-| **Wazuh** | 2.9.4~5 로그 관리 · 2.10.9 악성코드 · 2.11.3 이상행위 | A.8.7 · A.8.15 · A.8.16 | 탐지 이벤트·룰 매칭·대응 기록 | Phase 3 |
-| **Loki** | 2.9.4 로그 보존(접속기록 법정 보존기간) | A.8.15 | 로그 보존 정책+보관 증빙 | 수집 |
-| **MORI 자체** | 1.x 관리체계 · 2.11.4~5 사고 대응 | A.5.24~27 | 인시던트 티켓·감사 로그·PDCA | 코어 |
+| **Fleet** (osquery) | 1.2.1 asset ID · 2.1.3 asset mgmt · 2.10.6 endpoint | A.5.9 · A.8.9 | Asset inventory / config state | Phase 3 |
+| **Zabbix** | 2.9.x operations/monitoring · availability | A.8.6 · A.8.16 | Uptime · threshold alerts + handling history | Live (verified) |
+| **Trivy** | 2.10.8 patch mgmt · 2.11.2 vuln check/remediate | A.8.8 | Scan history · remediation plans · exception approvals | Remote push |
+| **Wazuh** | 2.9.4~5 log mgmt · 2.10.9 malware · 2.11.3 anomaly | A.8.7 · A.8.15 · A.8.16 | Detection events · rule matches · response records | Phase 3 |
+| **Loki** | 2.9.4 log retention (statutory access-log retention) | A.8.15 | Retention policy + storage proof | Collect |
+| **MORI itself** | 1.x management system · 2.11.4~5 incident response | A.5.24~27 | Incident tickets · audit log · PDCA | Core |
 
-> **Fleet = 기초 공사**: ISMS-P 심사는 **자산 식별에서 시작**한다. 자산목록이 부실하면 취약점 관리·접근통제·로그관리가 전부 "대상 범위 불명확"결함으로 연쇄된다. Zabbix×Fleet×Trivy **자산 대사(reconciliation)**는 대부분 조직이 못 하는, 심사에서 가장 강한 자산 증적이다.
+> **Fleet = foundation work**: an ISMS-P audit **starts with asset identification.** A weak asset list cascades into "unclear scope"defects across vulnerability management, access control, and logging. The Zabbix×Fleet×Trivy **reconciliation** is the strongest asset evidence there is — and something most orgs can't do.
 >
-> 통제 카탈로그(Phase 2)가 붙으면 이 매핑에서 **"lite = 통제 커버리지 N% / full = M%"** 수치가 자동 산출됩니다.
+> Once the control catalog (Phase 2) lands, this mapping auto-derives **"lite = N% control coverage / full = M%"**.
 
 ---
 
@@ -105,7 +104,7 @@ MORI는 **통합 관제 대시보드가 아닙니다.** 시계열·로그 탐색
 
 ```mermaid
 flowchart LR
-    subgraph SRC["데이터 소스"]
+    subgraph SRC["Data Sources"]
         Z[Zabbix]
         F[FleetDM]
         W[Wazuh]
@@ -114,42 +113,42 @@ flowchart LR
         D["LDAP / AD"]
     end
 
-    subgraph COL["수집 계층 (src/mori_soc/collectors, pollers)"]
+    subgraph COL["Collection layer (src/mori_soc/collectors, pollers)"]
         C1[zabbix_collector]
         C2[fleet_collector]
         C3[wazuh_collector]
         C4[trivy_collector]
         C5[ldap_collector]
-        WK["worker.py<br/>(주기 폴링)"]
+        WK["worker.py<br/>(periodic polling)"]
     end
 
-    subgraph SVC["서비스 계층 (services)"]
+    subgraph SVC["Service layer (services)"]
         N[normalization<br/>EnvelopeEntityMapper]
         I[ingestion]
         R[risk_score]
-        AC[asset_classifier<br/>중요도 산출]
+        AC[asset_classifier<br/>importance scoring]
         QC[query_catalog<br/>12 intents]
         QS[query_service<br/>_INTENT_HANDLERS]
         V[views<br/>latest/risk/timeline]
-        RP[reports<br/>6종 CSV/PDF]
+        RP[reports<br/>6 CSV/PDF types]
     end
 
-    subgraph REPO["저장소 (repositories)"]
-        PG["PostgreSQL<br/>정규화 시드 데이터<br/>(hosts/alerts/vulns/observations…)"]
-        MEM["InMemoryRepository<br/>(질의 캐시 — 현재 운영)"]
-        STR["UI 운영 상태<br/>PostgreSQL-backed cache<br/>asset_owners / asset_audit_log / vuln_actions<br/>triage_store / incident_store / user_profiles"]
+    subgraph REPO["Repositories"]
+        PG["PostgreSQL<br/>normalized seed data<br/>(hosts/alerts/vulns/observations…)"]
+        MEM["InMemoryRepository<br/>(query cache — current)"]
+        STR["UI operational state<br/>PostgreSQL-backed cache<br/>asset_owners / asset_audit_log / vuln_actions<br/>triage_store / incident_store / user_profiles"]
     end
 
     subgraph API["MORI API (api/)"]
-        SRV["server.py<br/>오케스트레이터 (888줄)<br/>RouteContext 조립 + 모듈 등록"]
-        RT["routes/ 패키지 (16 도메인 모듈)<br/>auth · assets · alerts · vulnerabilities<br/>incidents · compliance · query · pages<br/>rbac · audit · plans · guides · sources<br/>webhooks · dashboard_prefs"]
-        UI["통합 운영 UI (/ui)<br/>Overview · Assets · Trivy · Triage<br/>Incidents · Compliance · Reports"]
+        SRV["server.py<br/>orchestrator (888 lines)<br/>builds RouteContext + registers modules"]
+        RT["routes/ package (16 domain modules)<br/>auth · assets · alerts · vulnerabilities<br/>incidents · compliance · query · pages<br/>rbac · audit · plans · guides · sources<br/>webhooks · dashboard_prefs"]
+        UI["Unified ops UI (/ui)<br/>Overview · Assets · Trivy · Triage<br/>Incidents · Compliance · Reports"]
     end
 
-    subgraph OUT["출력 / 증적"]
-        G[Grafana 대시보드]
-        CSV["감사 증적 CSV<br/>5종 + PDCA pending"]
-        AUD["변경 이력<br/>(호스트·CVE·Triage·Incident)"]
+    subgraph OUT["Outputs / Evidence"]
+        G[Grafana dashboards]
+        CSV["Audit-evidence CSV<br/>5 types + PDCA pending"]
+        AUD["Change history<br/>(host·CVE·Triage·Incident)"]
     end
 
     Z --> C1
@@ -175,226 +174,228 @@ flowchart LR
     UI --> AUD
 
     PG --> MEM
-    STR -- M2-1 write-through 영속화 --> PG
+    STR -- M2-1 write-through persistence --> PG
 ```
 
-> 실선은 현재 운영 중인 흐름. `MORI_QUERY_BACKEND=postgres` 환경에서 **API는 매 요청마다 PostgreSQL의 최신 스냅샷을 읽어(InMemoryQueryStore로 매 요청 materialize)** 질의에 사용합니다 — 즉 **부팅 스냅샷이 아니라 라이브 조회**입니다. 따라서 `mori-worker`가 폴링해 적재한 실데이터(예: **실제 Zabbix problem → alerts**)는 **API 재시작 없이 다음 요청에 바로** 반영됩니다. UI 운영 상태(triage / incidents / asset owners / vuln actions / asset audit log / user profiles + risk register)는 **cache-aside + write-through**로 PostgreSQL에 영속화됩니다(M2-1·R-2). **Zabbix 실시간 폴링은 동작 검증됨**([실전 시나리오](#-실전-시나리오--zabbix-운영-문제--감사-증적-실제-api-연동-검증됨)); Fleet/Wazuh 라이브 연동은 다음 단계입니다.
+> Solid lines = current operating flow. With `MORI_QUERY_BACKEND=postgres`, the **API reads a fresh PostgreSQL snapshot on every request** (materialized into an InMemoryQueryStore per request) — i.e. a **live read, not a boot snapshot**. So data ingested by `mori-worker` (e.g. **real Zabbix problems → alerts**) surfaces on the **next request with no API restart**. UI operational state (triage / incidents / asset owners / vuln actions / asset audit log / user profiles + risk register) is persisted to PostgreSQL via **cache-aside + write-through** (M2-1 · R-2). **Zabbix real-time polling is verified working** (see [end-to-end scenario](#-end-to-end-scenario--zabbix-operational-problem--audit-evidence-verified-against-the-live-api)); Fleet/Wazuh live integration is the next step.
 >
-> **API 구조(Task J 완료):** `server.py`는 인메모리 상태와 헬퍼 클로저를 `RouteContext`로 조립한 뒤 16개 도메인 모듈을 등록하는 **얇은 오케스트레이터(888줄)** 로 슬림화되었습니다. 각 엔드포인트는 `routes/<domain>.py`의 `register_<domain>(ctx)`가 소유하며, 인메모리 운영 store(10종)는 `RouteContext`를 통해 모듈 간 공유됩니다.
+> **API structure (Task J done):** `server.py` is now a **thin orchestrator (888 lines)** that assembles in-memory state and helper closures into a `RouteContext`, then registers 16 domain modules. Each endpoint is owned by `register_<domain>(ctx)` in `routes/<domain>.py`, and the 6 in-memory stores are shared across modules via the `RouteContext`.
 
 ---
 
-## 핵심 컨셉 — Audit-Ready
+## Core Concept — Audit-Ready
 
-심사에서 자주 요구되는 **"누가, 언제, 어떤 데이터로, 어떤 결정을 내렸는가"** 를 모든 컴플라이언스 민감 영역에서 자동으로 누적합니다.
+The "who, when, with what data, made what decision" trail that audits frequently require is automatically accumulated across every compliance-sensitive area.
 
-| 영역 | 기록되는 변경 | 저장 위치 |
+| Area | Recorded change | Storage |
 |---|---|---|
-| 자산 담당자 / 팀 / 카테고리 / **중요도** | `field`, `old_value`, `new_value`, `changed_by`, `changed_at` | `asset_audit_log` (호스트별) |
-| 호스트 단위 조치 계획 / 조치 예외 | 동일 (계획 내용·목표일·예외 만료일·사유) | `asset_audit_log` |
-| **CVE별 조치 계획 / 조치 예외** | `vuln_plan_text [CVE-…]` / `vuln_exception_until [CVE-…]` 등 라벨로 동일 호스트 이력에 통합 | `asset_audit_log` (호스트별 이력 모달에서 일괄 조회) |
-| Alert Triage 상태 변경 () | `status`, `note`, `analyst`, `changed_by`, `changed_at` | `triage_store` + history |
-| 인시던트 변경 이력 | 상태·담당자·영향도·노트 변경 + 작성자/시각 | 인시던트 history (`/incidents/{id}/history`) |
+| Asset owner / team / category / **importance** | `field`, `old_value`, `new_value`, `changed_by`, `changed_at` | `asset_audit_log` (per host) |
+| Host-level remediation plan / exception | Same (plan text, target date, exception expiry, reason) | `asset_audit_log` |
+| **CVE-level remediation plan / exception** | Labels like `vuln_plan_text [CVE-…]` / `vuln_exception_until [CVE-…]` consolidated into the same host history | `asset_audit_log` (viewed per-host via history modal) |
+| Alert Triage state change () | `status`, `note`, `analyst`, `changed_by`, `changed_at` | `triage_store` + history |
+| Incident change history | State / assignee / impact / note changes + author/time | Incident history (`/incidents/{id}/history`) |
 
-### 호스트 단위 vs CVE별 — UX 일관성
+### Host-level vs CVE-level — UX consistency
 
-호스트 단위 일괄 계획과 CVE별 상세 계획이 충돌하지 않도록 안내 모달이 자동 노출됩니다.
+A guidance modal automatically surfaces so that host-level bulk plans don't conflict with CVE-level detailed plans.
 
-- 호스트에 **CVE별 조치 계획/예외**가 1건이라도 있으면, 호스트 단위 편집 시 *"상세 계획이 정해져 있습니다. 합계 탭을 확인해 주세요"* 모달이 떠서 합계 탭(CVE별 편집 화면)으로 이동을 권유합니다.
-- 변경 이력은 호스트의 이력 모달 하나에서 호스트 단위 + CVE별 변경이 시간순으로 통합 표시됩니다.
+- If a host has **any CVE-level remediation plan/exception**, host-level edits trigger a *"Detailed plans are configured. Please check the totals tab."* modal that directs the user to the totals tab (CVE-level edit screen).
+- Change history is consolidated chronologically — host-level + CVE-level changes appear together in a single history modal per host.
 
 ---
 
-## 현재 상태 한눈에 보기
 
-### What works now — 시드 보안 데이터 + PostgreSQL 영속 UI 운영 상태
+## Current Status at a Glance
 
-| 카테고리 | 기능 | 비고 |
+### What works now — Seed security data + PostgreSQL-backed UI operational state
+
+| Category | Feature | Notes |
 |---|---|---|
-| **인증/권한** | 로그인 / 세션 / RBAC (역할별 탭 on·off) / 가입 요청·승인 | 데모 계정 `admin` / `security` / `monitor` (비밀번호 `1234`) — **seeded sample data only · 데모 전용. 운영 배포 시 반드시 변경** |
-| **개요 (Overview)** | 자산·경보·취약점 요약 카드 + Critical 취약점 상세 모달에 **조치 계획 / 조치 예외** 컬럼 노출 | 호스트별 진행 상태를 대시보드에서 즉시 확인 |
-| **자산 (서버 / PC / Trivy)** | 호스트별 담당자·팀·카테고리 편집 + **서버 자산 중요도 수동 재정의** | 자동 분류(asset_classifier)보다 우선 적용. 변경분 감사 로그 |
-| **취약점 관리 (Trivy)** | 호스트 단위 조치 계획 / 조치 예외 + **CVE별 상세 조치 계획 / 조치 예외** | 작성자·목표일·만료일·사유 기록. 충돌 안내 모달 |
-| **원격 인제스트 (v0.7)** | `POST /ingest/trivy`(원본 리포트, `?hostname=` 호스트 매핑) · `POST /ingest/evidence`(CSOP 조치 전/후 diff envelope) — `MORI_INGEST_TOKEN` 토큰으로 **무세션 push** | 증적은 `ui_evidence_events`(`schema/006`). 조회 `GET /evidence` admin·security 전용 |
-| **브라운필드 모드 (v0.7)** | `docker compose up` = MORI 코어만 → 기존 Zabbix/Trivy에 `.env`로 연결. 번들 소스는 `--profile bundled`/`zabbix`/`fleet`/`wazuh` | [docs/BROWNFIELD_CONNECT.md](docs/BROWNFIELD_CONNECT.md) |
-| **위험성 평가 (R-series)** | CVE별 **3×3 위험 매트릭스**(영향도×발생가능성) **점수(1~9)** + 위험처리 결정(조치/수용/이관/회피)·승인자·잔여위험·재평가일. **위험 수용 기준(DoA)** 이하는 기본 수용가능 자동 분류(`ui_settings`). 매트릭스 셀/등급 클릭 → 해당 버킷 드릴다운. **어드민 전용 산정 근거** | ISMS-P 위험관리 / ISO 27001 6.1.2·8.8. **admin·security 전용**. `ui_risk_register`·`ui_settings` 영속화 |
-| **역할별 대시보드** | 역할별 보안 히어로(위험 KPI/TOP ↔ 내 서버 조치율) + **24h/12h 인프라 현황**(Zabbix/Wazuh 딥링크) + **패널 편집**(위젯 on/off 개인 영속화) | 반응형 그리드. 인프라/헬프데스크는 위험등급 대신 조치율만 |
-| **Alert Triage** | 3단계 상태() 변경, 분석관·**변경자(actor)** 분리 기록, 이력 표시 | UI에서 actor 미입력 시 세션 사용자 → "unknown"fallback |
-| **인시던트 관리** | 생성·상태변경·노트·날짜필터·텍스트검색·CSV 다운로드 + 변경 이력 | CSV 다운로드 시 "변경 내역 미포함"안내 모달 표시 |
-| **Compliance PDCA** | Plan/Do/Check/Act 4단계 카드, 카테고리별 Pass/Fail/Warning 표 | **Do 카드 클릭 → 미조치 항목 모달** (통제 + Trivy + Alert 통합) |
-| **미조치 / 기한 초과** | 통제 점검(fail/warning) + Trivy critical/high + Alert critical/high(7일) 통합 표시 | **CSV 다운로드** (`/compliance/pdca/pending.csv`) |
-| **감사 증적 리포트** | 자산·계정·로그·취약점·월간·**위험성 평가 대장 6종 CSV + PDF** (NanumGothic 임베드) | **미리보기 모달**(상위 50행 + CSV/PDF 다운로드 버튼) |
-| **Source Freshness · Collector Lag** | 수집기별 마지막 성공 시각·lag·SLA 임계 시각화 (`/dashboard` `source_coverage`) | Admin Overview + 사용자 대시보드에 카드/표 노출 |
-| **교차 검증** | Zabbix × Fleet × Trivy 호스트 매핑 차이 / 미매핑 자산 검출 | source_coverage / orphan check |
-| **자연어 질의 (FAB)** | 12개 인텐트 디스패치 (alert_summary, offline_hosts, top_vulnerable_hosts, host_timeline …) | `/interpret` + `/query` |
-| **가이드 시스템** | 7종 가이드 어드민 on/off + 직접 편집 | ISMS-P / ISO 27001 운영 가이드 |
-| **다국어 (KO/EN)** | 로그인·대시보드·어드민 전 페이지 **계정 메뉴 내** 토글 + `data-i18n` 정적 치환 + `window.t()` 동적 메시지 | 쿠키·localStorage 저장, 토글 시 활성 탭 즉시 재렌더 |
-| **사용자 프로필 / 내 서버** | 계정 메뉴 → 프로필 편집(이름·부서·담당 서버) + 자산 탭 **내 서버** 서브탭 | `assigned_servers` 또는 `owner == display_name` 인 Fleet+Zabbix 호스트만 필터링 |
-| **API 문서** | Swagger `/docs` | FastAPI 자동 생성 |
+| **Auth/RBAC** | Login / session / RBAC (per-role tab on·off) / signup request & approval | Demo accounts `admin` / `security` / `monitor` (password `1234`) — **seeded sample data only · demo only. Must be changed for production** |
+| **Overview** | Asset/alert/vuln summary cards + Critical vulnerability detail modal exposing **plan / exception** columns | Per-host progress visible right on the dashboard |
+| **Assets (Server / PC / Trivy)** | Per-host owner/team/category edits + **manual override of server asset importance** | Takes priority over auto-classification (asset_classifier). Audit log records every change |
+| **Vulnerability management (Trivy)** | Host-level remediation plan / exception + **per-CVE detailed plan / exception** | Author / target date / expiry / reason recorded. Conflict guidance modal |
+| **Remote ingest (v0.7)** | `POST /ingest/trivy` (raw report, `?hostname=` host mapping) · `POST /ingest/evidence` (CSOP before/after diff envelope) — **session-less push** via `MORI_INGEST_TOKEN` | Evidence in `ui_evidence_events` (`schema/006`). `GET /evidence` admin·security only |
+| **Brownfield mode (v0.7)** | `docker compose up` = MORI core only → connect to existing Zabbix/Trivy via `.env`. Bundled sources behind `--profile bundled`/`zabbix`/`fleet`/`wazuh` | [docs/BROWNFIELD_CONNECT.en.md](docs/BROWNFIELD_CONNECT.en.md) |
+| **Risk Assessment (R-series)** | Per-CVE **3×3 risk matrix** (impact × likelihood) as a **score (1–9)** + treatment decision (mitigate/accept/transfer/avoid) · approver · residual risk · review date. A single **risk-acceptance threshold (DoA)** auto-classifies risks at or below it as **auto-acceptable** (`ui_settings`). Click a matrix cell/level → drill-down. **Admin-only assessment basis** | ISMS-P risk mgmt / ISO 27001 6.1.2·8.8. **admin·security only**. Persisted in `ui_risk_register`·`ui_settings` |
+| **Role-aware dashboard** | Role-aware security hero (risk KPIs/TOP ↔ my-servers remediation) + **24h/12h infra status** (Zabbix/Wazuh deep links) + **panel editing** (per-user widget on/off, persisted) | Responsive grid. Infra/helpdesk see remediation rate, not risk grades |
+| **Alert Triage** | 3-tier state () change, analyst·**actor** separation, history display | If actor is omitted on UI, falls back to session user → "unknown"|
+| **Incident management** | Create / state change / note / date filter / text search / CSV download + change history | CSV download triggers "history not included"guidance modal |
+| **Compliance PDCA** | Plan/Do/Check/Act 4-stage cards, per-category Pass/Fail/Warning table | **Click Do card → unified pending items modal** (controls + Trivy + Alerts) |
+| **Pending / overdue** | Control checks (fail/warning) + Trivy critical/high + Alerts critical/high (7-day) unified view | **CSV download** (`/compliance/pdca/pending.csv`) |
+| **Audit-evidence reports** | 6 types (asset/account/log/vuln/risk_register/monthly) CSV + **PDF** (NanumGothic embedded) | **Preview modal** (top 50 rows + CSV/PDF download buttons) |
+| **Source Freshness · Collector Lag** | Per-collector last-success timestamp · lag · SLA threshold visualization (`/dashboard` `source_coverage`) | Card/table shown on Admin Overview + user dashboard |
+| **Cross-validation** | Zabbix × Fleet × Trivy host mapping diff / unmapped asset detection | source_coverage / orphan check |
+| **Natural language queries (FAB)** | 12-intent dispatch (alert_summary, offline_hosts, top_vulnerable_hosts, host_timeline, …) | `/interpret` + `/query` |
+| **Guide system** | 7 guide types with admin on/off + direct editing | ISMS-P / ISO 27001 operations guides |
+| **Multi-language (KO/EN)** | **In-account-menu** toggle on login, dashboard, and admin pages + `data-i18n` static substitution + `window.t()` dynamic messages | Persisted in cookie / localStorage; active tab re-renders instantly on toggle |
+| **User profile / My Servers** | Account menu → profile edit (name · department · assigned servers) + **My Servers** sub-tab in Assets | Filters Fleet+Zabbix hosts where `assigned_servers` matches or `owner == display_name` |
+| **API docs** | Swagger `/docs` | Auto-generated by FastAPI |
 
-> **저장소 영속화 안내 (M2-1 + R-2 완료)** — PostgreSQL은 **정규화된 시드 보안 데이터**(hosts/alerts/vulnerabilities/observations 등)를 부팅 시 InMemoryRepository로 로드해 질의에 사용합니다. 또한 **UI 운영 상태 store**(triage / incidents / asset owners / vuln actions / asset audit log / user profiles + **위험성 평가 대장 risk register**)는 `schema/003_*` · `schema/004_risk_register.sql` + `repositories/state_*.py`(StateRepository 계층)를 통해 **cache-aside + write-through**로 영속화되어 **재시작 후에도 유지**됩니다. (`MORI_QUERY_BACKEND=memory` 또는 `MORI_DATABASE_URL` 미설정 시 인메모리로 폴백.)
+> **Storage persistence notice (M2-1 + R-2 done)** — PostgreSQL holds **normalized seed security data** (hosts/alerts/vulnerabilities/observations etc.), loaded into InMemoryRepository at boot for queries. The **UI operational state stores** (triage / incidents / asset owners / vuln actions / asset audit log / user profiles + the **risk register**) are persisted via `schema/003_*` · `schema/004_risk_register.sql` + `repositories/state_*.py` (the StateRepository layer) using **cache-aside + write-through**, so they **survive restarts**. (Falls back to in-memory when `MORI_QUERY_BACKEND=memory` or `MORI_DATABASE_URL` is unset.)
 
-### In progress / 다음 단계 (다음 마일스톤)
+### In progress / Next steps (next milestone)
 
-| 항목 | 현황 | 우선순위 |
+| Item | Status | Priority |
 |---|---|---|
-| **UI 운영 상태 → PostgreSQL 영속화 (M2-1 → 10종 확장)** | 완료 — `schema/003~009_*` + `repositories/state_*.py`(StateRepository) cache-aside + write-through. M2-1 6종 → R-2/증적/설정/통제상태 포함 **10종** 재시작 후 유지, 통합 테스트(`tests/test_state_persistence.py`)로 검증 | 완료 |
-| **Zabbix API polling** | **검증 완료** — 실 Zabbix API로 problem→수집→Triage→Incident→증적→해소 end-to-end 동작 (`collectors/zabbix_events.py`, `tests/test_zabbix_events.py`) | 완료 |
-| **통제 카탈로그 (Phase 2)** | ISMS-P/ISO N:M 매핑 + 결함사례 + 인증기준 트리 화면 — **제품 정체성 전환의 핵심, 폴러보다 우선** | 최우선 |
-| **Trivy 인제스트** | 원격 토큰 push(`/ingest/trivy`·`/ingest/evidence`) 완료 · 로컬 정기 스캔 자동화(스케줄)만 남음 | 중 |
-| **Fleet / Wazuh API poller** | Parser·Collector 준비됨, REST poller 미연결 — **Phase 3**(통제 카탈로그 이후). 완료 기준 = 데이터 유입이 아니라 MORI 워크플로에 물림 | 높음 |
+| **UI operational state → PostgreSQL persistence (M2-1 → 10 stores)** | Done — `schema/003~009_*` + `repositories/state_*.py` (StateRepository) cache-aside + write-through. M2-1 6 stores → expanded to 10 (R-2/evidence/settings/control status); survive restarts, verified by an integration test (`tests/test_state_persistence.py`) | Done |
+| **Zabbix API polling** | **Verified** — real Zabbix API, problem→collect→Triage→Incident→evidence→resolve end-to-end (`collectors/zabbix_events.py`, `tests/test_zabbix_events.py`) | Done |
+| **Control catalog (Phase 2)** | ISMS-P/ISO N:M mapping + common defects + control-tree screen — **the product-identity pivot; comes before pollers** | Top |
+| **Trivy ingest** | Remote token push (`/ingest/trivy`·`/ingest/evidence`) done · only local scheduled scan automation remains | Medium |
+| **Fleet / Wazuh API poller** | Parser·Collector ready, REST poller not yet connected — **Phase 3** (after the control catalog). Done = wired into MORI workflow, not just data arriving | High |
 
-### Planned / 추후 작업
+### Planned / Future work
 
-| 항목 | 현황 | 우선순위 |
+| Item | Status | Priority |
 |---|---|---|
-| LDAP 인증 운영 적용 | 코드 준비됨, `LDAP_URL` 설정 시 활성화 | 중간 |
-| Slack / Email 알림 webhook | 미연결 (`SLACK_WEBHOOK_URL` 설정점만 존재) | 중간 |
+| LDAP authentication operational adoption | Code ready, activates when `LDAP_URL` is set | Medium |
+| Slack / Email webhook notifications | Not connected (`SLACK_WEBHOOK_URL` slot exists only) | Medium |
 
 ---
 
 ## Quick Start
 
-### 데모 모드 (샘플 데이터)
+### Demo mode (sample data)
 
 ```bash
-# 한 줄로 .env 생성 → API 기동 → 스키마/시드 → 데모 인시던트 → 워커
+# One line: generate .env → start API → schema/seed → demo incidents → worker
 ./scripts/mori-start-demo.sh
 ```
 
-→ `http://localhost:18000/ui` 에서 `admin / 1234` 로 로그인.
+→ Log in at `http://localhost:18000/ui` with `admin / 1234`.
 
-### 브라운필드 모드 — 기존 Zabbix/Wazuh/Fleet 위에 얹기
+### Brownfield mode — sit on top of existing Zabbix/Wazuh/Fleet
 
-이미 운영 중인 Zabbix·Wazuh·FleetDM·Trivy가 있으면 **MORI 코어만 띄우고 `.env`로 연결**합니다(번들 소스 불필요). 자세한 절차는 [docs/BROWNFIELD_CONNECT.md](docs/BROWNFIELD_CONNECT.md).
+If you already run Zabbix·Wazuh·FleetDM·Trivy, start **MORI core only and connect via `.env`** (no bundled sources needed). Full guide: [docs/BROWNFIELD_CONNECT.en.md](docs/BROWNFIELD_CONNECT.en.md).
 
 ```bash
-# 1) MORI 코어만 기동 (api + worker + postgres, 번들 Zabbix/Fleet/Wazuh 제외)
+# 1) Start MORI core only (api + worker + postgres; bundled sources excluded)
 docker compose up -d
 
-# 2) .env 에서 기존 인프라로 연결 (예: Zabbix)
+# 2) Point .env at your existing infra (e.g. Zabbix)
 #    MORI_ZABBIX_API_URL=https://zabbix.your-corp.com/api_jsonrpc.php
-#    MORI_ZABBIX_API_TOKEN=<토큰>   (또는 MORI_ZABBIX_USER/PASSWORD)
-docker compose up -d mori-worker      # 재적용
+#    MORI_ZABBIX_API_TOKEN=<token>   (or MORI_ZABBIX_USER/PASSWORD)
+docker compose up -d mori-worker      # re-apply
 
-# 3) Trivy/CSOP 는 토큰 push 로 연결 (MORI_INGEST_TOKEN 설정 후)
+# 3) Trivy/CSOP connect via token push (set MORI_INGEST_TOKEN)
 #    POST /ingest/trivy  ·  POST /ingest/evidence
 ```
 
-> 연결 현황: **Zabbix**(라이브 REST) · **Trivy/CSOP**(토큰 push) 는 설정만으로 즉시 동작. **Fleet/Wazuh** 라이브 API 폴러는 Phase 3 예정(현재 `.env` 자리만 마련).
+> Connectivity today: **Zabbix** (live REST) and **Trivy/CSOP** (token push) work by config alone. **Fleet/Wazuh** live API pollers are Phase 3 (`.env` slots reserved for now).
 
-번들 데모 스택까지 함께 띄우려면:
-
-```bash
-docker compose --profile bundled up -d          # 전체(Zabbix+Fleet+Wazuh 데모)
-# 개별: --profile zabbix / --profile fleet / --profile wazuh
-```
-
-### 데모 종료
+To also bring up the bundled demo sources:
 
 ```bash
-./scripts/mori-stop-demo.sh             # 시드 데이터만 삭제 + 컨테이너 정지 (실제 폴러 데이터 보존)
-./scripts/mori-stop-demo.sh --keep      # 시드만 삭제, 컨테이너는 유지
-./scripts/mori-stop-demo.sh --purge     # 컨테이너 + 볼륨 통째로 제거
+docker compose --profile bundled up -d          # full stack (Zabbix+Fleet+Wazuh demo)
+# individual: --profile zabbix / --profile fleet / --profile wazuh
 ```
 
-### 데모 화면 미리보기
+### Stop demo
 
-데모 모드를 기동하면 아래와 같이 동작합니다.
+```bash
+./scripts/mori-stop-demo.sh             # Delete seed data + stop containers (preserve real poller data)
+./scripts/mori-stop-demo.sh --keep      # Delete seed only, keep containers
+./scripts/mori-stop-demo.sh --purge     # Remove containers + volumes entirely
+```
 
-#### 1) 통합 대시보드 — 자산·경보·취약점 현황 한눈에
+### Demo screen preview
+
+When demo mode is started, the platform behaves as follows.
+
+#### 1) Unified dashboard — Asset / alert / vuln status at a glance
 
 ![Dashboard](docs/images/demo-dashboard.png)
 
-- 상단 카드: Total Hosts / Offline Hosts / High Alerts 24h / Critical Vulns
-- Latest Host Status: offline / unknown 호스트를 우선 노출하여 즉시 확인 대상 식별
-- **Source Freshness · Collector Lag** 카드: Fleet/Wazuh/Zabbix/Trivy 수집기 last_sync + lag + SLA 표시
-- 사용자 대시보드 탭: **대시보드 / Alert Triage / 인시던트 / 자산 현황 / Compliance PDCA / 가이드 & 기준** (RBAC 역할별 on·off)
-- **어드민 콘솔(/admin) 6탭** (관리자 전용): Overview · Remediation · 자산 / Owners · Access Control(RBAC·가입 승인·**LDAP 사용자 관리**) · Audit & Logs · Settings. 운영 뷰(Compliance·Triage·인시던트)는 `/ui`로 일원화, 사용자 대시보드 계정 메뉴 → **관리자 콘솔** 링크로 진입
+- Top cards: Total Hosts / Offline Hosts / High Alerts 24h / Critical Vulns
+- Latest Host Status: prioritizes offline / unknown hosts for immediate attention
+- **Source Freshness · Collector Lag** card: Fleet/Wazuh/Zabbix/Trivy collector last_sync + lag + SLA
+- User dashboard tabs: **Dashboard / Alert Triage / Incidents / Asset status / Compliance PDCA / Guides & Standards** (RBAC per-role on·off)
+- **Admin console (/admin) 6 tabs** (admin-only): Overview · Remediation · Assets / Owners · Access Control (RBAC · signup approval · **LDAP user management**) · Audit & Logs · Settings. Operational views (Compliance · Triage · Incidents) live only in `/ui`; reach the console from the dashboard account menu → **Admin console**
 
-#### 2) 자연어 질의 (NLQ) — `interpret` → `query`
+#### 2) Natural language queries (NLQ) — `interpret` → `query`
 
 ![NLQ Modal](docs/images/demo-nlq.png)
 
-- "오프라인 호스트 보여줘" 같은 한국어 질문을 입력하면 12개 인텐트 중 매칭되는 항목으로 해석
-- **Interpret** → 의도 표시(`offline_hosts`) / **Run Query** → 결과 + 요약 문장 / **Download CSV** → 증적용 다운로드
-- 결과 테이블: Source / Summary / Record ID
+- Enter a Korean question like "오프라인 호스트 보여줘" (Show offline hosts) and it maps to the matching intent out of 12
+- **Interpret** → intent shown (`offline_hosts`) / **Run Query** → results + summary text / **Download CSV** → evidence-purpose download
+- Result table: Source / Summary / Record ID
 
-#### 3) 취약점 (Trivy) — CVE별 조치 계획·예외
+#### 3) Vulnerabilities (Trivy) — Per-CVE remediation plans & exceptions
 
 ![Trivy Vulnerabilities](docs/images/demo-trivy.png)
 
-- 호스트별 Critical / High / Medium / Low 합계와 최근 CVE / 탐지일
-- **조치 계획** / **조치 예외** 컬럼: `+ 계획 추가` / `+ 예외 설정` 버튼 또는 설정된 값 표시
-- 호스트에 호스트 단위 계획·예외가 설정되면 "CVE별 상세 계획"·만료일이 즉시 노출되며, **CVE 상세 모달(N건 ↗ 버튼)** 안에서도 호스트 단위 계획/예외 배너 + 각 CVE 행에 "호스트 단위 적용"표시로 확인 가능
-- **이력** 버튼으로 호스트별 변경 이력(자산·계획·예외·CVE별 조치) 통합 조회
+- Per-host Critical / High / Medium / Low totals + recent CVEs / detection date
+- **Plan** / **Exception** columns: `+ Add plan` / `+ Set exception` buttons or current value display
+- When a host has host-level plan/exception set, "Per-CVE detailed plans"/ expiry surfaces immediately, and within the **CVE detail modal (N items ↗ button)** a host-level plan/exception banner + per-CVE row marker ("host-level applied") confirms scope
+- **History** button shows unified per-host change history (asset · plan · exception · CVE-level actions)
 
-### 개별 스크립트
+### Individual scripts
 
 ```bash
-./scripts/mori-seed-sample-data.sh        # 샘플 데이터만 (재)삽입
-./scripts/mori-run-workers.sh start       # 워커 시작
-./scripts/mori-run-workers.sh status      # 상태 확인
-./scripts/mori-run-workers.sh cycle       # 수동 1회 수집 사이클
-./scripts/mori-run-workers.sh logs        # 로그 확인
-./scripts/mori-run-workers.sh stop        # 워커 중지
+./scripts/mori-seed-sample-data.sh        # (Re)insert sample data only
+./scripts/mori-run-workers.sh start       # Start workers
+./scripts/mori-run-workers.sh status      # Status
+./scripts/mori-run-workers.sh cycle       # Manual single collection cycle
+./scripts/mori-run-workers.sh logs        # Logs
+./scripts/mori-run-workers.sh stop        # Stop workers
 ./scripts/mori-backup.sh                  # pg_dump → backups/mori-soc-<ts>.dump
-./scripts/mori-restore.sh backups/<file>.dump  # pg_restore (확인 프롬프트, --force 로 생략)
-./scripts/trivy-fs-scan.sh .              # 파일시스템 취약점 스캔
-./scripts/trivy-image-scan.sh <image>     # 이미지 취약점 스캔
+./scripts/mori-restore.sh backups/<file>.dump  # pg_restore (confirmation prompt, --force to skip)
+./scripts/trivy-fs-scan.sh .              # Filesystem vulnerability scan
+./scripts/trivy-image-scan.sh <image>     # Image vulnerability scan
 ```
 
 ---
 
-## 아키텍처 / 모듈 구성
+
+## Architecture / Module Layout
 
 ```text
 src/mori_soc/
 ├── api/
-│   ├── server.py          ← 얇은 오케스트레이터(888줄): RouteContext 조립 + 모듈 등록
-│   ├── routes/            ← 16개 도메인 라우트 모듈 (register_<domain>(ctx))
-│   │   ├── context.py     ← RouteContext (store + 헬퍼 클로저 ~35 필드)
+│   ├── server.py          ← thin orchestrator (888 lines): builds RouteContext + registers modules
+│   ├── routes/            ← 16 domain route modules (register_<domain>(ctx))
+│   │   ├── context.py     ← RouteContext (stores + helper closures, ~35 fields)
 │   │   ├── auth.py · assets.py · alerts.py · vulnerabilities.py
 │   │   ├── incidents.py · compliance.py · query.py · pages.py
 │   │   ├── rbac.py · audit.py · plans.py · guides.py · sources.py
 │   │   └── webhooks.py · dashboard_prefs.py
-│   ├── templates.py       ← /ui · /login · 대시보드 · 콘솔 HTML/JS 렌더러
-│   ├── payloads.py        ← dashboard/pdca/query payload 빌더
-│   ├── i18n.py            ← UI 다국어 문자열
-│   ├── auth.py            ← 세션 미들웨어 · 자격증명 검증 · 역할 기본 권한
+│   ├── templates.py       ← /ui · /login · dashboard · console HTML/JS renderers
+│   ├── payloads.py        ← dashboard/pdca/query payload builders
+│   ├── i18n.py            ← UI localization strings
+│   ├── auth.py            ← session middleware · credential verify · default role perms
 │   └── contracts.py       ← QueryRequest/Response, EvidenceRef, QueryScope
-├── collectors/            ← Fleet · Wazuh · Zabbix · Trivy · LDAP 수집기
-├── pollers/               ← 각 소스별 주기 폴러 (worker.py 가 오케스트레이션)
+├── collectors/            ← Fleet · Wazuh · Zabbix · Trivy · LDAP collectors
+├── pollers/               ← Per-source periodic pollers (worker.py orchestrates)
 ├── services/
-│   ├── normalization.py   ← EnvelopeEntityMapper (host 자동 생성, alias 등록)
-│   ├── ingestion.py       ← 수집 인제스천 파이프라인
-│   ├── risk_score.py      ← Risk score 계산
-│   ├── query_catalog.py   ← 12 intent 정의 (TemplateQuery)
-│   ├── query_service.py   ← intent 디스패치 (_INTENT_HANDLERS 레지스트리)
-│   ├── views.py           ← 논리 뷰 집계 (latest_host_status / risk_summary / timeline)
-│   ├── reports.py         ← 6종 감사 증적 리포트 빌더(+ 위험성 평가 대장) + report_to_csv
-│   └── asset_classifier.py← 자산 자동 분류 + 중요도 산출 (manual override 가능)
+│   ├── normalization.py   ← EnvelopeEntityMapper (host auto-creation, alias registration)
+│   ├── ingestion.py       ← Collection ingestion pipeline
+│   ├── risk_score.py      ← Risk score calculation
+│   ├── query_catalog.py   ← 12 intent definitions (TemplateQuery)
+│   ├── query_service.py   ← Intent dispatch (_INTENT_HANDLERS registry)
+│   ├── views.py           ← Logical view aggregation (latest_host_status / risk_summary / timeline)
+│   ├── reports.py         ← 6-type audit-evidence report builder (+ risk register) + report_to_csv
+│   └── asset_classifier.py← Asset auto-classification + importance scoring (manual override supported)
 ├── repositories/
-│   ├── memory.py          ← InMemoryRepository / InMemoryQueryStore (시드 로드 후 질의용)
-│   ├── postgres.py        ← Postgres 저장소 (정규화 시드 보유 → 질의 스냅샷)
-│   ├── state_base.py      ← StateRepository ABC (UI 운영 상태 6종 인터페이스)
-│   ├── state_memory.py    ← InMemoryStateRepository (기본·테스트/데모, 순수 dict)
-│   └── state_postgres.py  ← PostgresStateRepository (10종 store write-through, schema/003~009)
+│   ├── memory.py          ← InMemoryRepository / InMemoryQueryStore (loaded from seed, used for queries)
+│   ├── postgres.py        ← Postgres repository (holds normalized seed → query snapshot)
+│   ├── state_base.py      ← StateRepository ABC (interface for the 6 UI operational stores)
+│   ├── state_memory.py    ← InMemoryStateRepository (default for tests/demo, pure dicts)
+│   └── state_postgres.py  ← PostgresStateRepository (write-through for the 10 stores, schema/003~009)
 ├── models/entities.py     ← Host, HostAlias, Alert, Vulnerability, ControlCheckResult …
-└── worker.py              ← 폴러 오케스트레이터
+└── worker.py              ← Poller orchestrator
 ```
 
-### 저장 영역 분리
+### Storage separation
 
-| 저장 영역 | 현재 상태 | 위치 |
+| Storage area | Current status | Location |
 |---|---|---|
-| **Normalized security data** (hosts / alerts / vulnerabilities / observations / fleet_query_results / control_checks / directory_accounts / source_syncs …) | PostgreSQL **시드 스키마 + 시드 데이터** 적재. 부팅 시 InMemoryRepository로 로드되어 질의에 사용 | `schema/001_phase1_initial.sql`, `repositories/postgres.py`, `repositories/memory.py` |
-| **UI operational state — 10종 store** (재시작 후 유지) | cache-aside + write-through로 PostgreSQL 영속화. 부팅 시 DB→인메모리 워밍, 변경 즉시 DB 기록 | `schema/003~009_*`, `repositories/state_*.py`, `api/server.py` → `api/routes/context.py` |
-| Phase 2 영속화 (store → Postgres) | M2-1(6종) 완료 → 이후 R-2/증적/설정/통제상태로 **10종 확장**. StateRepository 계층 + `schema/003~009`. 통합 테스트로 라운드트립 검증 | `tests/test_state_persistence.py` |
+| **Normalized security data** (hosts / alerts / vulnerabilities / observations / fleet_query_results / control_checks / directory_accounts / source_syncs …) | PostgreSQL **seed schema + seed data** loaded. Boot-time load into InMemoryRepository for queries | `schema/001_phase1_initial.sql`, `repositories/postgres.py`, `repositories/memory.py` |
+| **UI operational state — 10 stores** (survive restarts) | Persisted to PostgreSQL via cache-aside + write-through. Warm-loaded DB→memory at boot, written through to the DB on every mutation | `schema/003~009_*`, `repositories/state_*.py`, `api/server.py` → `api/routes/context.py` |
+| Phase 2 persistence (stores → Postgres) | M2-1 (6 stores) done → later expanded to **10** (R-2 / evidence / settings / control status). StateRepository layer + `schema/003~009`. Round-trip verified by an integration test | `tests/test_state_persistence.py` |
 
-#### 영속화된 운영 store 상세 (cache-aside + write-through, 10종)
+#### Persisted store detail (cache-aside + write-through, 10 stores)
 
-| 변수 | 내용 |
+| Variable | Content |
 |---|---|
 | `asset_owners` | hostname → {owner, team, importance, category, …} |
 | `asset_audit_log` | hostname → list of {field, old_value, new_value, changed_by, changed_at} |
@@ -403,97 +404,97 @@ src/mori_soc/
 | `incident_store` | incident_id → {…, history[]} |
 | `user_profiles` | username → {display_name, department, assigned_servers[], updated_at} |
 | `risk_register` (R-2) | vuln_id → {impact, likelihood, score, level, treatment, residual, review_due, assessed_by, …} |
-| `evidence_events` (v0.7) | id → CSOP 조치 전/후 diff envelope (host_id, cve, delta_type, …) |
-| `settings` (M2) | key → value (예: `risk_doa` 위험 수용 기준) |
+| `evidence_events` (v0.7) | id → CSOP before/after diff envelope (host_id, cve, delta_type, …) |
+| `settings` (M2) | key → value (e.g. `risk_doa` acceptance threshold) |
 | `control_status` (M2-7) | control_id → {status, owner, exception_reason, improvement_plan, due_date, updated_by} |
 
-→ 위 store들(M2-1 6종 → 10종)은 부팅 시 PostgreSQL에서 인메모리로 워밍 로드되고, 모든 변경이 즉시 DB로 write-through됩니다. 재시작 후에도 상태가 유지됩니다. (스키마 `001`~`009`)
+→ The stores above (M2-1 6 → 10) are warm-loaded from PostgreSQL into memory at boot, and every mutation is written through to the DB immediately. State survives restarts. (schema `001`–`009`)
 
-### 12개 자연어 질의 인텐트
+### 12 natural language query intents
 
-| # | intent | 설명 |
+| # | intent | Description |
 |---|---|---|
-| 1 | `alert_summary` | 지난 N시간 high/critical 경보 요약 |
-| 2 | `offline_hosts` | 현재 오프라인/unknown 호스트 |
-| 3 | `fleet_checkin_gap` | Fleet 체크인 누락 호스트 |
-| 4 | `top_vulnerable_hosts` | 취약점 상위 호스트 Top N |
-| 5 | `host_timeline` | 특정 호스트 타임라인 (alert+query+obs 병합) |
-| 6 | `host_wazuh_alerts` | 특정 호스트 Wazuh 경보만 조회 |
-| 7 | `host_fleet_queries` | 특정 호스트 Fleet 쿼리 결과 |
-| 8 | `new_high_vulns` | 최근 신규 high+ 취약점 |
-| 9 | `risky_hosts` | 경보 多 + offline/unknown 호스트 |
-| 10 | `unmapped_assets` | Fleet/Wazuh/Zabbix 미매핑 자산 |
-| 11 | `login_failure_spike` | 로그인 실패 급증 호스트 |
-| 12 | `collection_errors` | 수집 오류 반복 호스트 |
+| 1 | `alert_summary` | High/critical alert summary for last N hours |
+| 2 | `offline_hosts` | Currently offline/unknown hosts |
+| 3 | `fleet_checkin_gap` | Hosts missing Fleet check-ins |
+| 4 | `top_vulnerable_hosts` | Top N hosts by vulnerability count |
+| 5 | `host_timeline` | Host timeline (alert+query+obs merged) |
+| 6 | `host_wazuh_alerts` | Wazuh alerts for a specific host |
+| 7 | `host_fleet_queries` | Fleet query results for a specific host |
+| 8 | `new_high_vulns` | Recent newly-detected high+ vulnerabilities |
+| 9 | `risky_hosts` | Hosts with many alerts + offline/unknown |
+| 10 | `unmapped_assets` | Assets unmapped across Fleet/Wazuh/Zabbix |
+| 11 | `login_failure_spike` | Hosts with login failure spikes |
+| 12 | `collection_errors` | Hosts with repeated collection errors |
 
-#### 새 Intent 추가 방법
+#### Adding a new intent
 
-`QueryService._INTENT_HANDLERS` 딕셔너리로 intent → 핸들러 메서드를 디스패치합니다. 새 intent 추가는 3단계입니다.
+`QueryService._INTENT_HANDLERS` is a dict that dispatches intent → handler method. Adding a new intent is 3 steps.
 
-1. `services/query_catalog.py` — `PHASE1_QUERY_CATALOG`에 `TemplateQuery` 추가
-2. `services/query_service.py` — `_INTENT_HANDLERS`에 `"my_new_intent": "_my_new_intent"` 한 줄 + 핸들러 메서드 구현
-3. `tests/test_query_service.py` — 동작 테스트 추가
+1. `services/query_catalog.py` — Add `TemplateQuery` to `PHASE1_QUERY_CATALOG`
+2. `services/query_service.py` — Add `"my_new_intent": "_my_new_intent"` to `_INTENT_HANDLERS` + implement handler method
+3. `tests/test_query_service.py` — Add behavior test
 
-`execute()`는 수정 불필요 — 자동 라우팅됩니다.
+`execute()` requires no modification — auto-routes.
 
 ---
 
-## 주요 API 엔드포인트
+## Key API Endpoints
 
-| 카테고리 | 메서드 / 경로 | 설명 |
+| Category | Method / Path | Description |
 |---|---|---|
-| Health / Catalog | `GET /health`, `GET /catalog` | 헬스체크, 질의 카탈로그 |
-| Auth / Profile | `POST /auth/login`, `GET /auth/logout`, `GET /auth/me`, `GET/POST /auth/profile` | 로그인/세션 + 사용자 프로필(이름·부서·담당 서버) 조회·업서트. `/auth/me`에 프로필 병합 |
-| Query | `POST /query`, `POST /interpret` | 구조화 질의 / 자연어 해석 |
-| Dashboard | `GET /dashboard/summary` | 개요 카드 + Critical 취약점 상세(plan/exception 포함) |
-| Assets | `GET /assets`, `POST /assets/owners` | 자산 목록 / 담당자·중요도 변경(감사 로그) |
-| Alert Triage | `PATCH /alerts/{id}/triage` | 상태/분석관/노트 변경 + actor 기록 |
-| Vulnerability Actions | `PUT/DELETE /vulnerabilities/{id}/plan`, `/exception` | CVE별 조치 계획·예외 + 감사 로그 |
-| **Risk Assessment (R-series)** | `GET/PUT /vulnerabilities/{id}/risk`, `GET /vulnerabilities/risk-summary` | CVE별 위험성 평가(영향도×발생가능성) 조회·저장(자동 제안 + 근거 provenance) / 전체 3×3 매트릭스 집계 |
-| Incidents | `GET /incidents`, `POST /incidents`, `PATCH /incidents/{id}`, `GET /incidents/{id}/history`, `GET /incidents?format=csv` | 인시던트 CRUD + 이력 + CSV |
-| Compliance | `GET /compliance/pdca`, `GET /compliance/crosscheck` | PDCA 집계 / 교차 검증 |
-| **Compliance CSV** | `GET /compliance/pdca/pending.csv` | 미조치/기한초과 항목 CSV (출처/통제ID/대상/상태/담당자/조치기한/기한초과/비고) |
-| Reports | `GET /compliance/reports`, `GET /compliance/reports/{type}?format=csv\|pdf` | 6종 감사 증적 리포트 (asset/account/log/vuln/**risk_register**/monthly). PDF는 NanumGothic 임베드 |
+| Health / Catalog | `GET /health`, `GET /catalog` | Health check (DB ping + freshness + insecure defaults), query catalog |
+| Auth / Profile | `POST /auth/login`, `GET /auth/logout`, `GET /auth/me`, `GET/POST /auth/profile` | Login/session + user profile (name·department·assigned servers) get·upsert. `/auth/me` merges profile |
+| Query | `POST /query`, `POST /interpret` | Structured query / NL interpretation |
+| Dashboard | `GET /dashboard/summary` | Overview cards + Critical vulnerability detail (plan/exception included) |
+| Assets | `GET /assets`, `POST /assets/owners` | Asset list / owner·importance change (audit log) |
+| Alert Triage | `PATCH /alerts/{id}/triage` | State/analyst/note change + actor recording |
+| Vulnerability Actions | `PUT/DELETE /vulnerabilities/{id}/plan`, `/exception` | Per-CVE plan·exception + audit log |
+| **Risk Assessment (R-series)** | `GET/PUT /vulnerabilities/{id}/risk`, `GET /vulnerabilities/risk-summary` | Per-CVE risk assessment (impact × likelihood) read/write (auto-suggestion + provenance) / full 3×3 matrix aggregation |
+| Incidents | `GET /incidents`, `POST /incidents`, `PATCH /incidents/{id}`, `GET /incidents/{id}/history`, `GET /incidents?format=csv` | Incident CRUD + history + CSV |
+| Compliance | `GET /compliance/pdca`, `GET /compliance/crosscheck` | PDCA aggregation / cross-validation |
+| **Compliance CSV** | `GET /compliance/pdca/pending.csv` | Pending/overdue CSV (source/control_id/target/state/owner/due_date/overdue/note) |
+| Reports | `GET /compliance/reports`, `GET /compliance/reports/{type}?format=csv\|pdf` | 6-type audit-evidence reports (asset/account/log/vuln/**risk_register**/monthly). PDF embeds NanumGothic |
 
-전체 스펙은 Swagger `/docs` 참조.
+Full spec at Swagger `/docs`.
 
 ---
 
 
-## 테스트
+## Tests
 
-### 단위 테스트 (Docker)
+### Unit tests (Docker)
 
 ```bash
-# 실행 중인 컨테이너에서 전체 테스트 (가장 빠름)
+# Fastest: run all tests in the running container
 docker compose cp tests/test_api_server.py mori-api:/app/tests/test_api_server.py
 docker compose exec mori-api python -m unittest tests.test_api_server
 
-# 특정 테스트 클래스만
+# Specific test class only
 docker compose exec mori-api python -m unittest tests.test_api_server.FastAPIAppTests
 
-# 컨테이너가 없을 때 일회성 실행
+# One-shot when container is not running
 docker compose run --rm \
   -v "$(pwd)/tests:/app/tests:ro" \
   mori-api \
   python -m unittest discover -s /app/tests
 ```
 
-### 테스트 파일 목록
+### Test file list
 
-| 파일 | 대상 |
+| File | Target |
 |---|---|
-| `tests/test_api_server.py` | FastAPI 엔드포인트, PDCA payload, Triage actor, Compliance 통합 |
-| `tests/test_query_service.py` | 12개 질의 인텐트 + 뷰 집계 |
-| `tests/test_fleet_logs.py` | Fleet osquery 로그 수집기 |
-| `tests/test_wazuh_alerts.py` | Wazuh alert 수집기 |
-| `tests/test_zabbix_events.py` | Zabbix trigger/item 수집기 |
-| `tests/test_trivy_collector.py` | Trivy 취약점 수집기 |
-| `tests/test_ingestion.py` | 인제스천 파이프라인 |
-| `tests/test_intent_parser.py` | 자연어 → intent 파서 |
-| `tests/test_postgres_repository.py` | Postgres 저장소 (DB 필요) |
+| `tests/test_api_server.py` | FastAPI endpoints, PDCA payload, Triage actor, Compliance integration |
+| `tests/test_query_service.py` | 12 query intents + view aggregation |
+| `tests/test_fleet_logs.py` | Fleet osquery log collector |
+| `tests/test_wazuh_alerts.py` | Wazuh alert collector |
+| `tests/test_zabbix_events.py` | Zabbix trigger/item collector |
+| `tests/test_trivy_collector.py` | Trivy vulnerability collector |
+| `tests/test_ingestion.py` | Ingestion pipeline |
+| `tests/test_intent_parser.py` | NL → intent parser |
+| `tests/test_postgres_repository.py` | Postgres repository (requires DB) |
 
-### API 수동 테스트
+### Manual API tests
 
 ```bash
 curl http://localhost:18000/health
@@ -506,77 +507,77 @@ curl -OJ "http://localhost:18000/compliance/reports/asset_inspection?format=csv"
 
 curl -X POST http://localhost:18000/interpret \
   -H 'Content-Type: application/json' \
-  -d '{"text":"오프라인 호스트 보여줘"}'
+  -d '{"text":"Show offline hosts"}'
 
 curl -X POST http://localhost:18000/query \
   -H 'Content-Type: application/json' \
   -d '{"intent":"offline_hosts","scope":{"time_range":"24h"}}'
 
-# PDF 증적 리포트 (NanumGothic 임베드)
+# PDF audit-evidence report (NanumGothic embedded)
 curl -OJ "http://localhost:18000/compliance/reports/monthly_operations?format=pdf"
 ```
 
-### 백업 / 복원
+### Backup / restore
 
 ```bash
-./scripts/mori-backup.sh                          # backups/mori-soc-<timestamp>.dump 생성
-./scripts/mori-restore.sh backups/<file>.dump     # 확인 후 복원
-./scripts/mori-restore.sh backups/<file>.dump --force   # 확인 생략
-docker compose restart mori-api                   # 복원 후 snapshot 재로드
+./scripts/mori-backup.sh                          # Creates backups/mori-soc-<timestamp>.dump
+./scripts/mori-restore.sh backups/<file>.dump     # Restore after confirmation
+./scripts/mori-restore.sh backups/<file>.dump --force   # Skip confirmation
+docker compose restart mori-api                   # Reload snapshot after restore
 ```
 
-### 코드 검증 (라우트 / 템플릿 변경 시)
+### Code validation (when editing routes / templates)
 
-Task J로 라우트는 `api/routes/`로, HTML/JS 렌더러는 `api/templates.py`로 분리되었습니다. 무손실 리팩터를 보장하기 위해 변경 후 **3중 게이트**를 수행합니다.
+Task J split routes into `api/routes/` and HTML/JS renderers into `api/templates.py`. To guarantee a lossless refactor, run the **3-gate check** after changes:
 
 ```bash
-# 1) OpenAPI 라우트 diff — 등록된 경로/메서드/스키마가 baseline과 동일한지
-#    _routes_snapshot.py 출력과 _routes_baseline.json 비교 → IDENTICAL 이어야 함
-# 2) 렌더 템플릿 SHA — login/signup/dashboard/console 6종 해시가 baseline과 일치
+# 1) OpenAPI route diff — registered paths/methods/schema match the baseline
+#    compare _routes_snapshot.py output against _routes_baseline.json → must be IDENTICAL
+# 2) Rendered-template SHA — 6 hashes (login/signup/dashboard/console) match baseline
 #    python /app/_verify_templates.py
-# 3) 전체 단위 테스트
+# 3) Full unit-test suite
 docker compose run --rm --no-deps -e MORI_DEMO_SEED=0 \
   -v "$(pwd)/tests:/app/tests" -v "$(pwd)/src:/app/src" \
   mori-api python -m unittest discover -s tests   # → 115 OK (skipped=2)
 ```
 
-각 도메인 라우트는 `routes/<domain>.py`의 `register_<domain>(ctx)`가 소유하며, 공유 상태/헬퍼는 `routes/context.py`의 `RouteContext`를 통해 주입됩니다.
+Each domain's routes are owned by `register_<domain>(ctx)` in `routes/<domain>.py`; shared state/helpers are injected via the `RouteContext` in `routes/context.py`.
 
 ---
 
-## 배포 / 인프라
+## Deployment / Infrastructure
 
-### 공개 진입점
+### Public entry points
 
-| 포트 | 서비스 |
+| Port | Service |
 |---|---|
-| `37854` | Main Portal (Grafana / Zabbix / Fleet / MORI 링크 hub) |
-| `18000` | MORI API + 통합 운영 UI |
+| `37854` | Main Portal (Grafana / Zabbix / Fleet / MORI link hub) |
+| `18000` | MORI API + unified ops UI |
 | `13000` | Grafana |
 | `18081` | Zabbix Web |
 | `1337` | FleetDM |
-| `127.0.0.1:8443` | Wazuh Dashboard (내부) |
+| `127.0.0.1:8443` | Wazuh Dashboard (internal) |
 
-### 서비스 포트
+### Service ports
 
 `10051` Zabbix Server · `1514` Wazuh agent · `1515` Wazuh registration · `514/udp` Syslog · `55000` Wazuh API.
 
-### 배포 방식
+### Deployment flow
 
-GitHub Actions workflow가 다음 순서로 동작합니다.
+The GitHub Actions workflow runs in this order:
 
-1. 저장소 체크아웃
-2. 서버 경로 `/backup/rmstudio/mori` 생성/확인
-3. `rsync`로 코드 동기화
-4. GitHub Secret의 `.env` 업로드
-5. Wazuh 인증서 디렉터리 준비 (최초 1회 인증서 생성)
+1. Repo checkout
+2. Create/verify `/backup/rmstudio/mori` on the server
+3. `rsync` the code
+4. Upload `.env` from GitHub Secrets
+5. Prepare Wazuh certificates directory (first-run certificate generation)
 6. `docker compose pull` → `docker compose up -d --remove-orphans`
 
-**필요한 GitHub Secrets**: `DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_ENV_FILE`, `DEPLOY_KNOWN_HOSTS`(선택).
+**Required GitHub Secrets**: `DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_ENV_FILE`, `DEPLOY_KNOWN_HOSTS` (optional).
 
-### 필수 환경변수 (`.env`)
+### Required environment variables (`.env`)
 
-`cp .env.example .env` 후 아래 값을 반드시 변경합니다.
+Run `cp .env.example .env` and **change the following values** before deploying:
 
 - `GRAFANA_ADMIN_PASSWORD`
 - `ZABBIX_DB_PASSWORD`
@@ -584,15 +585,15 @@ GitHub Actions workflow가 다음 순서로 동작합니다.
 - `FLEET_DB_PASSWORD`
 - `FLEET_SERVER_PRIVATE_KEY`
 - `MORI_DB_PASSWORD`
-- `MORI_API_PORT` (기본 18000), `MORI_DB_NAME` (기본 mori_soc), `MORI_DB_USER` (기본 mori)
+- `MORI_API_PORT` (default 18000), `MORI_DB_NAME` (default mori_soc), `MORI_DB_USER` (default mori)
 
-### 서버 사전 준비
+### Server prerequisites
 
-- Docker Engine + Compose Plugin
-- 배포 디렉터리: `/backup/rmstudio/mori`
-- Wazuh Indexer용 커널: `vm.max_map_count=262144`
+- Docker Engine + Compose plugin
+- Deployment directory: `/backup/rmstudio/mori`
+- Wazuh Indexer kernel parameter: `vm.max_map_count=262144`
 
-### 캐시 재빌드 (데이터 볼륨 유지)
+### Rebuild without cache (preserve data volumes)
 
 ```bash
 docker builder prune -f
@@ -603,141 +604,146 @@ docker compose up -d mori-api
 ---
 
 
-## 시딩되는 샘플 데이터
+## Seeded sample data
 
-초기 시드 스크립트(`mori-seed-sample-data.sh`)로 **PostgreSQL에 적재**되는 항목 (이후 부팅 시 InMemoryRepository로 로드되어 질의에 사용):
+The seed script (`mori-seed-sample-data.sh`) **loads into PostgreSQL** (then loaded into InMemoryRepository at boot for queries):
 
-| 항목 | 수량 | 설명 |
+| Item | Count | Description |
 |---|---|---|
-| Hosts | 10 | 서버, PC, 방화벽, VPN 등 다양한 자산 |
-| Host Aliases | 13 | Zabbix/Fleet/Trivy 소스별 매핑 |
-| Alerts | 8 | Wazuh/Zabbix — SSH brute force, rootkit, disk/CPU 경보 등 |
-| Vulnerabilities | 8 | Trivy 6 + Fleet 2 — CVE 기반 critical~medium |
-| Observations | 9 | Zabbix/Fleet — CPU, Disk, Memory, 암호화 상태 |
-| Fleet Query Results | 8 | osquery — 설치앱, 디스크 암호화, 시작 프로그램 등 |
-| Control Checks | 12 | ISO 27001 / ISMS-P 통제 항목 점검 결과 |
-| Directory Accounts | 7 | LDAP 사용자 (관리자, 개발자, DBA 등) |
-| Privilege Bindings | 6 | sudo, domain_admin, db_admin 권한 |
-| Group Memberships | 8 | Domain Admins, Developers, DBA 등 |
-| Source Syncs | 4 | Zabbix/Fleet/Trivy/Wazuh 수집 상태 |
+| Hosts | 10 | Servers, PCs, firewall, VPN — mixed asset types |
+| Host Aliases | 13 | Per-source (Zabbix/Fleet/Trivy) mapping |
+| Alerts | 8 | Wazuh/Zabbix — SSH brute force, rootkit, disk/CPU alerts, etc. |
+| Vulnerabilities | 8 | Trivy 6 + Fleet 2 — CVE-based critical to medium |
+| Observations | 9 | Zabbix/Fleet — CPU, Disk, Memory, encryption status |
+| Fleet Query Results | 8 | osquery — installed apps, disk encryption, startup programs, etc. |
+| Control Checks | 12 | ISO 27001 / ISMS-P control check results |
+| Directory Accounts | 7 | LDAP users (admin, developer, DBA, etc.) |
+| Privilege Bindings | 6 | sudo, domain_admin, db_admin permissions |
+| Group Memberships | 8 | Domain Admins, Developers, DBA, etc. |
+| Source Syncs | 4 | Zabbix/Fleet/Trivy/Wazuh collection state |
 
-데모 시드 및 운영 중 생성되는 운영 상태 (6종 UI 운영 store는 PostgreSQL에 write-through 영속화 — 재시작 후에도 유지):
+Operational state generated by demo seed / during operation (the 6 UI operational stores are write-through persisted to PostgreSQL — survive restart):
 
-| 항목 | 수량 | 생성 시점 |
+| Item | Count | Generated when |
 |---|---|---|
-| Incidents | 3 | `mori-start-demo.sh`가 시드 후 `POST /incidents` 호출 |
-| Triage / 자산 담당자 / 사용자 프로필 | `MORI_DEMO_SEED=1` 시 시드 | 앱 기동 시 in-memory 주입 (아래 참조) |
-| 취약점 조치 / 인시던트 변경 | 0 | UI에서 직접 변경 시 누적 |
+| Incidents | 3 | `mori-start-demo.sh` calls `POST /incidents` after seeding |
+| Triage / asset owners / user profiles | Seeded when `MORI_DEMO_SEED=1` | Injected in-memory at app startup (see below) |
+| Vulnerability actions / incident changes | 0 | Accumulate as you edit in the UI |
 
-> **`MORI_DEMO_SEED`** — `1/true` 일 때 앱 기동 시점에 `triage_store`(4건, reviewing/resolved/pending 분포) · `asset_owners`(web-server-01·02 / db-primary / app-server-01) · `user_profiles`(`admin`=시스템관리자 / `security`=보안담당자, 담당 서버 매핑)를 in-memory로 주입합니다. hostname/alert_id는 SQL 시드 값과 일치하므로 **내 서버** 뷰가 실제 자산과 매칭됩니다. `docker-compose.yml` 기본값 `1`, **운영 배포 시 `0`으로 비활성화**하세요.
+> **`MORI_DEMO_SEED`** — When `1/true`, the app injects demo data in-memory at startup: `triage_store` (4 entries across reviewing/resolved/pending), `asset_owners` (web-server-01·02 / db-primary / app-server-01), and `user_profiles` (`admin`=System Admin / `security`=Security Officer with assigned-server mappings). Hostnames/alert IDs match the SQL seed so the **My Servers** view lines up with real assets. Default `1` in `docker-compose.yml`; **set to `0` for production deployments**.
 
 ---
 
-## 참고 문서
+## Reference documents
 
-| 문서 | 내용 |
+| Document | Content |
 |---|---|
-| **`docs/GETTING_STARTED.md`** (한/영) | **신규 사용자 설치·운영 가이드** — 데모 기동 → 첫 운영 → 운영 전환 (쉽게) |
-| **`docs/BROWNFIELD_CONNECT.md`** (한/영) | **기존 Zabbix/Wazuh/Fleet 연결 가이드** — `.env`만으로 read-only 연결 (단계별) |
-| **`docs/LDAP_INTEGRATION.md`** (한/영) | **LDAP 통합 인증(선택)** — 계정 하나로 MORI·Grafana·Zabbix·Fleet 로그인, 가입 승인 시 계정 생성 |
-| `docs/FUNCTIONAL_SPEC.md` | 기능 정의서 원문 |
-| `docs/SECURITY_CONTROL_MAPPING.md` | 보안 통제(Security Controls) 매핑 |
-| `docs/IMPLEMENTATION_ROADMAP.md` | 기능 정의서 기준 구현 로드맵 |
-| `docs/SECURITY_DATA_QUERY_PLATFORM.md` | 데이터 중심 보안 질의 플랫폼 설계 |
-| `docs/MORI_IMPLEMENTATION_SUMMARY.md` | 구현 현황·운영 전략·다음 단계 요약 |
-| `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md` | Phase 1 입력 소스·스키마·질의 명세 |
-| `docs/PHASE1_LOGICAL_SCHEMA.md` | Phase 1 논리 스키마·테이블 관계 |
-| `docs/DEPLOYMENT.md` | 서버 배포·운영·트러블슈팅 가이드 |
-| **`docs/DEPLOY_SSH_SETUP.md`** | 배포용 SSH 키 생성 + GitHub Actions 시크릿 설정 (단계별) |
-| **`docs/ZABBIX_AGENT_ACTIVE_SETUP.md`** | 실제 Zabbix Agent 2 설치 + Trivy 온보딩(원커맨드/curl) → MORI Triage 연동 (Zabbix 7.4) |
-| **`docs/COMMUNITY_TEMPLATE_PR.md`** | MORI Zabbix 템플릿을 zabbix/community-templates 에 PR 제출하는 절차 |
-| **`config/zabbix/templates/`** | Zabbix 공식 포맷 템플릿(YAML, LLD·매크로·태그) + 사용법 |
-| `docs/TRIVY_USAGE.md` | Trivy 파일시스템/이미지 스캔 가이드 |
-| **`docs/FLEET_SETUP_AND_OPERATIONS.md`** | FleetDM 설치·운영·단말 등록·라이브쿼리·정책 (상세) |
-| **`docs/WAZUH_SETUP_AND_OPERATIONS.md`** | Wazuh 이해(3컴포넌트)·에이전트 등록·경보 운영 |
-| `docs/FLEET_MACBOOK_ENROLLMENT_AND_TEST.md` | Fleet macOS 등록·검증 |
-| `docs/FLEET_RESET_AND_REINSTALL_GUIDE.md` | Fleet 초기화·재설치 |
-| `docs/collection-standards.md` | 수집 표준 |
-| `schema/001_phase1_initial.sql` | Phase 1 Postgres 초기 DDL |
-| `schema/002_phase2_compliance_identity.sql` | Phase 2 Compliance/Identity DDL |
+| **`docs/GETTING_STARTED.en.md`** (KO/EN) | **New-user install & operations guide** — demo start → first operations → production switch (easy) |
+| **`docs/BROWNFIELD_CONNECT.en.md`** (KO/EN) | **Connect existing Zabbix/Wazuh/Fleet** — read-only, `.env` only (step-by-step) |
+| **`docs/LDAP_INTEGRATION.en.md`** (KO/EN) | **LDAP integration (optional)** — one account for MORI·Grafana·Zabbix·Fleet; signup approval provisions the account |
+| `docs/FUNCTIONAL_SPEC.md` | Original functional spec (Korean) |
+| `docs/SECURITY_CONTROL_MAPPING.md` | Security controls mapping |
+| `docs/IMPLEMENTATION_ROADMAP.md` | Implementation roadmap against the functional spec |
+| `docs/SECURITY_DATA_QUERY_PLATFORM.md` | Data-centric security query platform design |
+| `docs/MORI_IMPLEMENTATION_SUMMARY.md` | Implementation status / ops strategy / next steps |
+| `docs/PHASE1_INPUT_SOURCES_AND_SCHEMA.md` | Phase 1 input sources, schema, query specs |
+| `docs/PHASE1_LOGICAL_SCHEMA.md` | Phase 1 logical schema, table relations |
+| `docs/DEPLOYMENT.md` | Server deployment / ops / troubleshooting |
+| `docs/ZABBIX_AGENT_ACTIVE_SETUP.md` | Zabbix Agent onboarding |
+| `docs/TRIVY_USAGE.md` | Trivy filesystem / image scanning guide |
+| `docs/FLEET_MACBOOK_ENROLLMENT_AND_TEST.md` | Fleet macOS enrollment + verification |
+| `docs/FLEET_RESET_AND_REINSTALL_GUIDE.md` | Fleet reset / reinstall |
+| `docs/collection-standards.md` | Collection standards |
+| `schema/001_phase1_initial.sql` | Phase 1 Postgres initial DDL |
+| `schema/002_phase2_compliance_identity.sql` | Phase 2 Compliance / Identity DDL |
+
+> Most documents under `docs/` are currently in Korean. Translation is on the roadmap; see [`docs/MORI_IMPLEMENTATION_SUMMARY.md`](docs/MORI_IMPLEMENTATION_SUMMARY.md) for the implementation summary that has been kept up to date in English-friendly form.
 
 ---
 
-## Integrations & 확장 방향
 
-MORI SOC는 오픈소스 보안 도구를 결합해 단일 운영 화면을 제공하며, 추후 **Zabbix 생태계 템플릿 / 경량 Agent 패키지로 배포**하는 방향까지 확장 예정입니다. Zabbix만 운영 중인 조직에서도 MORI의 자산·통제 점검·증적 누적 컨셉을 부분 도입할 수 있도록 하는 것이 목표입니다.
 
-### 현재 통합 (Phase 1 / Phase 2 Alpha)
+## Integrations & expansion roadmap
 
-| 도구 | 통합 방식 | 상태 |
+MORI SOC combines open-source security tools to provide a single ops screen, with the longer-term ambition to **distribute it as a Zabbix-ecosystem template / lightweight Agent package**. The goal is that organizations running Zabbix only can also partially adopt MORI's asset / control-check / evidence-accumulation concepts.
+
+### Current integrations (Phase 1 / Phase 2 Alpha)
+
+| Tool | Integration | Status |
 |---|---|---|
-| **Zabbix** | problem/trigger collector(`collectors/zabbix_events.py`) → ingestion → alert. problem→Triage→Incident→증적→해소 | **실 API end-to-end 검증됨** |
-| **FleetDM** | osquery 결과 + 호스트 등록 정보 normalization. 자산 식별 + 미매핑(orphan) 검출 | parser/collector 준비됨, REST poller 미연결 |
-| **Wazuh** | alert ingestion → 트리아지 파이프라인. SSH brute force / rootkit 등 보안 이벤트 증적 | parser/collector 준비됨, REST poller 미연결 |
-| **Trivy** | JSON 결과 ingest → CVE별 조치 계획·예외 + 호스트 단위 일괄 적용 | 자동 적재 패키징 중 |
-| **Loki + Fluent Bit** | 로그 중앙화 (Grafana 시각화 경유) | 동작 |
-| **LDAP / AD** | 디렉토리 계정 + 권한 바인딩 정합성 점검(시드) | 운영 적용 시 `LDAP_URL` 활성화 |
-| **Grafana** | Postgres / Loki를 직접 조회하는 운영 대시보드 | 동작 |
+| **Zabbix** | problem/trigger collector (`collectors/zabbix_events.py`) → ingestion → alert. problem→Triage→Incident→evidence→resolve | **Verified end-to-end against the real API** |
+| **FleetDM** | osquery results + host registration normalization. Asset identification + unmapped (orphan) detection | Parser/collector ready, REST poller not yet connected |
+| **Wazuh** | alert ingestion → triage pipeline. SSH brute force / rootkit and other security event evidence | Parser/collector ready, REST poller not yet connected |
+| **Trivy** | JSON result ingest → per-CVE remediation plan / exception + host-level bulk apply | Auto-ingestion packaging in progress |
+| **Loki + Fluent Bit** | Log centralization (Grafana visualization downstream) | Operational |
+| **LDAP / AD** | Directory account + privilege binding consistency checks (seed) | Activates with `LDAP_URL` in production |
+| **Grafana** | Operational dashboards that query Postgres / Loki directly | Operational |
 
-## 로드맵 (Phase 0 → 5)
+## Roadmap (Phase 0 → 5)
 
-> **정체성 전환의 축**: 현재 MORI는 "감사 대응 운영 UI"입니다. 목표는 **"통제 카탈로그를 중심으로, 다섯 소스의 관제가 그대로 ISMS-P/ISO 27001 증적이 되는 플랫폼"**입니다. 그래서 순서가 중요합니다 — **통제 카탈로그(Phase 2)를 폴러(Phase 3)보다 먼저.** 각 Phase에 **완료 기준**을 달아 혼자 개발 시 늘어짐을 방지합니다.
+> **The identity pivot**: today MORI is an "audit-ready ops UI." The goal is **"a platform where, centered on a control catalog, the monitoring of five sources becomes ISMS-P/ISO 27001 evidence as it happens."** Ordering matters — **the control catalog (Phase 2) comes before the pollers (Phase 3).** Each phase has a **done criterion** to prevent solo-dev drift.
 
-> **핵심 원칙 3**: ① **보는 건 Grafana에 위임** — MORI 안에 시계열 차트 만들지 않음(딥링크만). ② **수집 ≠ 증적** — 폴러 완료 기준은 "데이터가 들어온다"가 아니라 "MORI 워크플로(트리아지→조치→기록)에 물렸다". ③ **lite/full 패키징** — 1~2인 조직용 lite(Wazuh 제외)와 full을 병행.
+> **3 core principles**: ① **delegate viewing to Grafana** — no time-series charts inside MORI (deep links only). ② **collection ≠ evidence** — a poller is done when it's wired into the MORI workflow (triage→remediate→record), not when "data arrives." ③ **lite/full packaging** — a lite profile (no Wazuh) for 1–2 person orgs alongside full.
 
-> **read-only 통합 5원칙** — ① read-only 토큰 권장 ② 기존 시스템 설정 변경 없음 ③ 소스 장애 격리(MORI 전체로 번지지 않음) ④ source freshness 표시 ⑤ 마지막 수집 시각·실패 사유 저장
+> **5 read-only integration principles** — ① read-only token recommended ② no change to existing configuration ③ isolated source failure (won't break MORI) ④ source freshness shown ⑤ last sync time / failure reason stored
 
-### Phase 0 — 신뢰 기반 다지기 · *진행 중*
-- compose 프로파일 분리 — 브라운필드 기본(코어만) + `bundled`/`zabbix`/`fleet`/`wazuh` **(완료)**. → `lite`/`full`/`demo` 3종 명명 정리 **(예정)**
-- `MORI_ADMIN_PASSWORD`·`MORI_INGEST_TOKEN` 컨테이너 전달 + `/health` insecure 경고 **(완료)** → Wazuh 하드코딩 크리덴셜 제거, 약한 기본값 `:?required`화, `MORI_DEMO_SEED` 기본 0 **(예정)**
-- 루트 임시파일(`_scan_*`, `_routes_*` 등) → `tools/` 이동, README-코드 싱크(라우트 snapshot CI화)
-- **완료 기준**: 레포에 평문 비밀번호 0건 · `docker compose -f … lite up` 한 줄 기동
+> **Where we are now** — **Phase 1 done · Phase 2 core done · Phase 3 partial · Phase 4 substantially built.** Concretely: the 194-control catalog with admin editing, regulation-text NLP import, persisted implementation status, manual/auto evidence documentation, scheduled snapshots and one-click evidence ZIP are in (Phase 2); **Zabbix is verified end-to-end including write-back L1–L3** (acknowledge → comment → suppress/unsuppress on exception), Trivy push + **daily auto-collection for all assets**, and Wazuh HTTP ingest (`/ingest/wazuh`) landed — **Fleet/Wazuh live pollers are the next step** (Phase 3); risk-assessment UI (3×3), evidence-gap detector, evidence-pack PDF/CSV/ZIP, account governance (osquery × LDAP × ledger) and audit logs are built (Phase 4). Remaining: Phase 0 hardening (demo creds, secret cleanup), Phase 3 live pollers, Phase 4 SoA generator, Phase 5 adoption. Persistence runs through `schema/011` (10 stores).
 
-### Phase 1 — 구조 + 영속화 · *대부분 완료*
-- **J**: `server.py` 모듈 분리 — `routes/`(16 도메인) + `RouteContext`, 2,962→888줄(-70%), 무손실 검증(OpenAPI diff·SHA·테스트)
-- **M2-1 + R-2**: UI 운영 상태 6종 + 위험성 평가 대장 → PostgreSQL cache-aside + write-through(`schema/003·004`, `state_*.py`)
-- **완료 기준**: 재시작 후 트리아지/인시던트/소유자/조치계획 생존 라운드트립 테스트 통과
+### Phase 0 — Foundations of trust · *in progress*
+- compose profile split — brownfield default (core only) + `bundled`/`zabbix`/`fleet`/`wazuh` **(done)** → rename to `lite`/`full`/`demo` **(planned)**
+- pass `MORI_ADMIN_PASSWORD`·`MORI_INGEST_TOKEN` into the container + `/health` insecure warning **(done)** → remove Wazuh hard-coded creds, `:?required` on weak defaults, `MORI_DEMO_SEED` default 0 **(planned)**
+- move root temp files (`_scan_*`, `_routes_*`) → `tools/`, README-code sync (route snapshot in CI)
+- **Done when**: 0 plaintext passwords in the repo · `docker compose -f … lite up` boots in one line
 
-### Phase 2 — 통제 카탈로그 (제품 정체성 전환) · *골격 완료 — 채우는 중*
-> **폴러(Phase 3)와 병렬 독립 트랙.** 카탈로그는 코드 의존성이 없는 도메인 지식 작업이라, 폴러 코딩이 막히는 날 번갈아 채울 수 있고 완성되는 대로 즉시 커뮤니티에 공개 가능한 독립 자산이다. **P3-5(Control Mapping)·P4-3(Evidence Pack)의 전제조건.**
-- **전 항목 골격**([`controls/`](controls/)) — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 통제**(모두 한/영 제목) + **N:M 매핑 61** + 결함 5. **58건 `reviewed`**(증적 소스 연결). JSON Schema 검증(`validate.py`) + 런타임 JSON 아티팩트 빌드
-- `schema/007` 통제 테이블(한/영) + **기동 시 카탈로그→DB 싱크**(`services/control_catalog.py`)
-- **인증기준 트리 화면** — **컴플라이언스 탭**의 '통제 카탈로그'(admin·security), framework→domain→section 트리 + **lite/full 커버리지 % 자동 산출**(`GET /controls/tree`, 현재 **lite ~24%·full ~30%**)
-- **통제 이행 상태 편집·영속 (M2-7)** — 통제별 이행 상태(이행/부분이행/미이행/해당없음)·담당자·개선계획·기한을 트리에서 편집, `control_status`(`schema/009`)에 **write-through 영속(재시작 유지)** + action-audit-log 기록(`PUT /controls/status/{id}`, admin·security)
-- **통제 클릭 → 라이브 실증적 + 증적 팩 PDF(1클릭)** — 트리에서 통제를 열면 소스별 **실데이터 직결** + **호스트↔통제 breakdown**(예: 2.11.2 → `onboard-web-01: C1·H1`, `db-primary: C0·H1` 처럼 **어느 자산이 그 증적을 갖는지**). `GET /controls/detail/{id}`(+`/evidence.pdf`) — 매핑·관련 결함·**현재 증적 공백 수(live)**까지. 클릭 시 해당 탭 딥링크
-- 대시보드 **GRC 프리셋** — 오늘의 작업 큐(증적 공백) 카드(admin·security) · **카탈로그 CI**(검증 + JSON 신선도, GitHub Actions)
-- 남은 일: draft 통제 계속 채우기(커버리지 ↑) · Phase 3 라이브 폴러(Fleet/Wazuh)로 실증적 소스 확대
-- **커버리지 상한 정직 안내**: full ~25%는 5개 기술 소스가 **자동 증적**을 만드는 통제 비율. 나머지(정책·인적·물리·개인정보)는 문서 증적 영역으로, 억지 매핑하지 않는다
-- **완료 기준**: 자연어 "2.11.2 증적 보여줘"→ 실데이터 응답 · 통제 화면에서 PDF 1클릭
+### Phase 1 — Structure + persistence · *done*
+- **J**: `server.py` split into `routes/` (16 domains) + `RouteContext`, 2,962→888 lines (-70%), lossless-verified
+- **M2-1 + R-2**: 6 UI operational stores + risk register → PostgreSQL cache-aside + write-through (`schema/003·004`)
+- **Done when**: triage/incident/owner/plan survive a restart (round-trip test passes)
 
-### Phase 3 — 수집 완성, "한방에 보기"실현 · *부분*
-- **M2-2** Zabbix 폴러 실 API 검증 · Trivy/CSOP 원격 push(`/ingest/trivy`·`/ingest/evidence`)
-- Trivy 자동 스캔 기본화(`MORI_ENABLE_TRIVY` on + 스케줄)
-- **Wazuh 폴러 신규** — 탐지 이벤트 → MORI 알림 큐 → 처리 이력이 2.11.3 증적으로(compose 서비스 정의부터)
-- **Fleet 폴러 신규 (자산 식별 = 기초 공사)** — 자산목록이 부실하면 그 뒤 모든 통제가 "범위 불명확"결함으로 연쇄된다. **완료 기준 = 데이터 유입이 아니라 사이클이 증적으로 닫힘**: Fleet 신규 호스트 → MORI 자산 자동 생성 → **담당자 미지정 상태로 작업 큐 노출**(발견→지정→관리). 이미 있는 인텐트(`fleet_checkin_gap`·`host_fleet_queries`·`unmapped_assets`)가 자산관리 증적 생성기. 1.2.1 자산 식별 · 2.1.3 현행화 · 2.10.6 단말 보안
-- Loki retention 을 통제와 연결 — 접속기록 법정 보존기간(기본 1년, 고유식별정보 취급 시 2년) 설정값을 2.9.4 증적으로 노출
-- Grafana 대시보드 JSON 5종 동봉(소스별 1 + 통합 1) — 통제 화면 → Grafana 패널 딥링크
-- **완료 기준**: full 프로파일에서 5개 소스 데이터가 통제 화면에 매핑되어 표시
+### Phase 2 — Control catalog (identity pivot) · *core done — coverage filling in*
+> **A parallel, independent track from the pollers (Phase 3).** The catalog is domain-knowledge work with no code dependency, publishable to the community as it completes. **Prerequisite for P3-5 (Control Mapping) and P4-3 (Evidence Pack).**
+- **Full skeleton** ([`controls/`](controls/)) — ISMS-P 2023 **101** + ISO 27001:2022 Annex A **93** = **194 controls** (all KO/EN titles) + **61 N:M mappings** + 5 defects. **58 `reviewed`** (evidence sources wired). JSON Schema validation (`validate.py`) + runtime JSON artifact build
+- `schema/007` control tables (KO/EN) + **catalog→DB sync on boot** (`services/control_catalog.py`)
+- **Control-tree screen** — "Control catalog"in the **Compliance tab** (admin·security), framework→domain→section tree + **auto-derived lite/full coverage %** (`GET /controls/tree`, currently **lite ~24% / full ~30%**)
+- **Editable & persisted control status (M2-7)** — per-control implementation status (implemented/partial/not-implemented/N-A) · owner · plan · due date, edited in the tree and **write-through persisted** to `control_status` (`schema/009`, survives restarts) + action-audit-log (`PUT /controls/status/{id}`, admin·security)
+- **Click a control → live evidence + evidence-pack PDF (one click)** — opening a control wires it to **live per-source data** plus a **host↔control breakdown** (e.g. 2.11.2 → `onboard-web-01: C1·H1`, `db-primary: C0·H1` — **which asset holds that evidence**). `GET /controls/detail/{id}` (+`/evidence.pdf`) — with mappings, related defects, and **current live evidence-gap counts**; click to deep-link to the relevant tab
+- dashboard **GRC preset** — today's work queue (evidence gaps) card (admin·security) · **catalog CI** (validation + JSON freshness, GitHub Actions)
+- Remaining: keep filling draft controls (raises coverage) · Phase 3 live pollers (Fleet/Wazuh) to broaden evidence sources
+- **Honest coverage ceiling**: full ~25% is the share of controls the 5 technical sources produce **automated** evidence for. The rest (policy/HR/physical/privacy) are documentary-evidence territory — not force-mapped
+- **Done when**: NLQ "show me evidence for 2.11.2"→ real-data answer · one-click PDF from the control screen
 
-### Phase 4 — 심사 대응 완성 ·
-- 위험평가 UI(`schema/004` 활용): 자산 중요도 × 위협 × 실취약점 → 처리 결정 + 승인 기록
-- **Evidence Gap Detector**(신규 인텐트 `evidence_gaps`) — freshness 만료 / 예외 만료 임박 / 조치계획 없는 Critical
-- SoA 생성기 · **Evidence Pack**(P4-3): 통제 단위 증적 묶음 PDF · 심사 결함 트래커(지적 → 시정 → 완료 증적)
-- **완료 기준**: "모의 심사 시나리오"— 심사원 요구 문서 목록을 도구에서 전부 export
+### Phase 3 — Complete collection, realize "see it all in one place"· *partial — Zabbix done (incl. write-back L1–3), Fleet/Wazuh live pollers next*
+- **M2-2** Zabbix poller verified against real API · Trivy/CSOP remote push (`/ingest/trivy`·`/ingest/evidence`) · **Wazuh HTTP ingest** (`/ingest/wazuh`)
+- **Zabbix write-back L1–L3** — triage saved → `[MORI]` comment + event acknowledge; exception approved/withdrawn → event suppress/unsuppress
+- **Daily auto-collection for all assets** (Fleet/Trivy 24 h; Zabbix stays real-time for Alert Triage) + per-source on-demand refresh button (`POST /assets/refresh`)
+- Trivy auto-scan by default (`MORI_ENABLE_TRIVY` on + schedule)
+- **Wazuh poller (new)** — detection events → MORI alert queue → handling history as 2.11.3 evidence (compose service def first)
+- **Fleet poller (new) — asset ID = foundation work** — if the asset list is weak, every downstream control cascades into an "unclear scope"defect. **Done = the cycle closes as evidence, not data arriving**: new Fleet host → MORI asset auto-created → **surfaced in the work queue as unassigned** (discover→assign→manage). The existing intents (`fleet_checkin_gap`·`host_fleet_queries`·`unmapped_assets`) are the asset-management evidence generators. 1.2.1 asset ID · 2.1.3 currency · 2.10.6 endpoint
+- tie Loki retention to controls — statutory access-log retention (1yr default, 2yr for unique-ID data) surfaced as 2.9.4 evidence
+- ship 5 Grafana dashboard JSONs (1/source + 1 unified) — control screen → Grafana panel deep link
+- **Done when**: in the full profile, all 5 sources map onto control screens
 
-### Phase 5 — 확산 · *(병행 가능)*
-- 온보딩 마법사(범위 → 자산 → 담당자, 30분 내 첫 가치) · 한국어 우선 문서 + "ISMS-P 결함 Top N 대응법" 콘텐츠 · 파일럿 조직 2~3곳
+### Phase 4 — Complete audit readiness · *substantially built — SoA generator next*
+- **Risk assessment UI (done)** (`schema/004`): asset importance × threat × real vuln → 3×3 score → treatment decision + residual risk + approval record (admin·security)
+- **Evidence Gap Detector (done)** (intent `evidence_gaps`) — expired freshness / exceptions expiring / Critical without a plan
+- **Account governance (done)** (`schema/010`) — server/PC local accounts (osquery) × LDAP × approval ledger → leaver-residue / unregistered privilege / unapproved sudo / dormant detection
+- **Evidence Pack (done, P4-3)** — per-control CSV/PDF + **one-click all-controls evidence ZIP** (`/controls/evidence-bundle.zip`) · action-audit-log across every change
+- Remaining: **SoA generator** · defect tracker (finding → remediation → completion evidence)
+- **Done when**: a "mock audit scenario"— every document an auditor asks for is exportable from the tool
 
-> **AI 금지선**(수집·조사 보조까지만): 자동 패치 / 자동 예외 승인 / 자동 Incident close 금지.
+### Phase 5 — Adoption · *not started (can run in parallel)*
+- onboarding wizard (scope → assets → owners, first value in 30 min) · Korean-first docs + "Top-N ISMS-P defects & fixes" content · 2–3 pilot orgs
 
-### 그 외 백로그
-- **Webhook 연동** — Slack / Teams / Email(`SLACK_WEBHOOK_URL` 자리만 존재)
-- **CVE Lite collector** — JS/TS lockfile 의존성 취약점(`source=cve_lite`)
-- **MORI → Zabbix export** — critical/high/pending/lag metric → zabbix_sender(Zabbix-only 도입 팩)
-- **SQL 기반 읽기 최적화** — snapshot 조회를 Postgres view 로 점진 전환
+> **AI hard limits** (collection/investigation assistance only): no auto-patch / auto-exception-approval / auto-incident-close.
+
+### Other backlog
+- **Webhook integrations** — Slack / Teams / Email (`SLACK_WEBHOOK_URL` slot only)
+- **CVE Lite collector** — JS/TS lockfile dependency vulnerabilities (`source=cve_lite`)
+- **MORI → Zabbix export** — critical/high/pending/lag metrics → zabbix_sender (Zabbix-only adoption pack)
+- **SQL-based read optimization** — gradually move snapshot reads to Postgres views
 
 ---
 
 ---
 
-`./scripts/mori-start-demo.sh` 한 줄로 전체 기능(위험성 평가 · Zabbix 실전 시나리오 포함)을 체험할 수 있습니다. 운영 환경에서는 `docker compose down && docker compose up -d` 로 적용합니다. 요약은 상단 [Status](#-status--30초-요약) 표를 참고하세요.
+Try the full feature set (risk assessment · Zabbix end-to-end scenario included) with `./scripts/mori-start-demo.sh`. For production, apply changes with `docker compose down && docker compose up -d`. See the [Status](#-status--30-second-overview) table at the top for a summary.

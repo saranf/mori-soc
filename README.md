@@ -1,6 +1,6 @@
-# MORI SOC — 감사 대응형 보안 운영 플랫폼
+# MORI SOC — Audit-Ready Security Operations
 
-**한국어 (this page)** · [English](./README.en.md) · [상세 가이드](./README_FULL.md)
+**English (this page)** · [한국어](./README.ko.md) · [Full Guide](./README_FULL.md)
 
 [![tests](https://github.com/saranf/mori-soc/actions/workflows/test.yml/badge.svg)](https://github.com/saranf/mori-soc/actions/workflows/test.yml)
 ![Status](https://img.shields.io/badge/status-alpha-orange)
@@ -11,155 +11,174 @@
 
 ---
 
-`docker compose up -d` 한 줄로 띄우는 **ISMS-P / ISO 27001 증적 자동 누적 플랫폼**.
-기존 **Zabbix · FleetDM · Wazuh · Trivy · Loki** 위에 read-only로 얹혀, 자산·취약점·경보·인시던트·통제 점검을 한 화면(`/ui`)에서 운영하고 **모든 변경을 _누가·언제·무엇을·어떤 근거로_ 자동 기록**합니다.
+A one-command **ISMS-P / ISO 27001 audit-evidence platform** (`docker compose up -d`).
+It sits **read-only on top of your existing** **Zabbix · FleetDM · Wazuh · Trivy · Loki**, runs assets, vulnerabilities, alerts, incidents and control checks from a single screen (`/ui`), and **records every change as _who · when · what · on what basis_ automatically**.
 
-> **"보는 층"이 아니라 "증적 층"** — 시계열·로그 시각화는 Grafana/Loki에 위임하고, MORI는 그 위에서 **판단·기록·증명**(트리아지 → 조치 → 통제 매핑 → 증적 PDF → 감사 로그)을 담당합니다.
+> **An "evidence layer," not a "viewing layer"** — time-series and log visualization are delegated to Grafana/Loki; MORI sits above them to handle **judge → record → prove** (triage → remediation → control mapping → evidence PDF → audit log).
 
 <!-- ═══════════════════════════════════════════════════════════════════════
-      스크린샷 가이드 ① — 대표 이미지(README 맨 위에 크게 들어가는 첫 화면)
-     "히어로 이미지"라고도 부릅니다. README를 열면 가장 먼저 보이는 한 장이라,
-     이 스크린샷이 MORI를 "한 장으로 설명"하는 얼굴입니다. 가장 잘 나온 화면으로.
+      SCREENSHOT GUIDE ① — hero image (the big first screen at the top of the README)
+     It's the first thing readers see, so this one shot is MORI's "explained in a
+     single picture" face. Use your best-looking screen.
 
-     ▸ 어디서   : admin 계정으로 로그인 → /ui 첫 화면(통합 대시보드)
-     ▸ 무엇을   : 아래가 한 프레임(스크롤 없이)에 모두 보이게 캡처
-                  · 상단 KPI 카드 4개 — Total Hosts / Offline Hosts /
-                    High Alerts 24h / Critical Vulns (숫자가 0이 아닌 데모 시드 상태)
-                  · Latest Host Status 표 (offline/unknown 호스트가 위로)
-                  · 좌측(또는 상단) 탭 메뉴 — 대시보드/Triage/인시던트/자산/Compliance
-     ▸ 팁       : 브라우저 폭 ≈1280px, 라이트 테마, 실호스트명·개인정보 없는 데모 데이터.
-                  가로로 길게(파노라마)보다 상단 영역이 꽉 차게 찍어야 대표 이미지로 좋음.
-     ▸ 저장     : docs/images/01-dashboard.png  (지금 걸린 demo-dashboard.png 교체)
-     ▸ 넣는 법  : 위 경로에 저장 → 아래 27번째 줄의 이미지 경로에서
-                  demo-dashboard.png → 01-dashboard.png 로만 바꾸면 끝
+     ▸ Where    : log in as admin → /ui landing screen (unified dashboard)
+     ▸ What      : capture all of the below in one frame (no scrolling)
+                  · the 4 KPI cards — Total Hosts / Offline Hosts /
+                    High Alerts 24h / Critical Vulns (with non-zero demo-seed numbers)
+                  · the Latest Host Status table (offline/unknown hosts on top)
+                  · the left (or top) tab menu — Dashboard/Triage/Incidents/Assets/Compliance
+     ▸ Tips      : browser width ≈1280px, light theme, demo data (no real hostnames/PII).
+                  Fill the top area rather than a wide panorama — reads better as a hero.
+     ▸ Save as   : docs/images/01-dashboard.png  (replace the current demo-dashboard.png)
+     ▸ How to add: save to that path → on line 27 below, just change the image path
+                   demo-dashboard.png → 01-dashboard.png
      ═══════════════════════════════════════════════════════════════════════ -->
 
-![MORI 통합 대시보드](docs/images/demo-dashboard.png)
+![MORI unified dashboard](docs/images/demo-dashboard.png)
 
 ---
 
-## 한눈에
+## At a glance
 
-- **대상** — 보안 담당자 1~2명 + IT 헬프데스크로 ISMS-P / ISO 27001을 준비하는 중소형 조직
-- **한 줄 시작** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, 데모 전용)
-- **핵심 가치** — 기존 도구를 **대체하지 않고**, 그 운영 데이터를 감사 증적으로 전환하는 read-only 레이어
+- **Who it's for** — small/mid orgs preparing ISMS-P / ISO 27001 with 1–2 security staff + IT help desk
+- **One-line start** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, demo only)
+- **Core value** — a read-only layer that **does not replace** your tools; it turns their operational data into audit evidence
 
-## 핵심 기능
+## Key features
 
-| 기능 | 요약 |
+| Feature | Summary |
 |---|---|
-| **통합 운영 UI** | 대시보드 · Alert Triage · 인시던트 · 자산/취약점 · Compliance PDCA를 한 화면(`/ui`)에서 |
-| **위험성 평가** | CVE별 3×3 매트릭스 = 영향도(자산 중요도) × 발생가능성 → **점수(1~9)** + 위험처리 결정·잔여위험·DoA 자동분류 (admin·security) |
-| **통제 카탈로그** | ISMS-P 101 + ISO 27001:2022 93 = **194 인증기준**(한/영) 트리 + 이행상태 편집·영속 + **admin 직접 편집(추가/수정/삭제)** + **법령 텍스트 NLP 임포트**(Claude/휴리스틱) + **수기 증적 문서화 + 실증적 상세 자동 스냅샷(정기·일괄)** + **증적 문서**(자산 인벤토리 표) **CSV/PDF 다운로드** |
-| **계정 거버넌스** | 서버·PC 로컬 계정(osquery) × LDAP × 승인대장 대조 → 퇴사자 잔존·미등록 특권·미승인 sudo·휴면 검출 · IP 팀/용도 선별 CSV (기본 admin·security, admin이 열람 역할 조정) |
-| **자동 증적** | 자산 담당자·중요도, CVE 조치·예외, 위험성 평가, Triage·인시던트 변경을 _who/when/what_ 으로 누적 → **6종 CSV/PDF** |
-| **역할별 화면** | 위험성 평가·통제는 admin·security 전용, 인프라·헬프데스크는 **내 담당 서버 조치율**만 |
-| **LDAP 통합 (선택)** | 계정 하나로 MORI·Grafana·Zabbix·Fleet 로그인, 가입 승인 시 LDAP 계정 생성, 어드민 콘솔에서 직접 관리 |
-| **다국어 UI** | 로그인·대시보드·어드민 전 페이지 한국어/영어 즉시 토글 |
-| **영속화** | UI 운영 상태 10종 store를 PostgreSQL에 write-through — 재시작 후에도 유지 |
+| **Unified operations UI** | Dashboard · Alert Triage · Incidents · Assets/Vulns · Compliance PDCA on one screen (`/ui`) |
+| **Risk assessment** | Per-CVE 3×3 matrix = impact (asset criticality) × likelihood → **score (1–9)** + treatment decision, residual risk, DoA auto-classify (admin·security) |
+| **Control catalog** | ISMS-P 101 + ISO 27001:2022 93 = **194 controls** (KO/EN) tree + editable/persisted status + **admin direct edit (add/edit/delete)** + **regulation-text NLP import** (Claude/heuristic) + **documented manual evidence + detailed live-evidence snapshot (scheduled/bulk)** + **evidence document** (asset-inventory tables) **CSV/PDF** |
+| **Account governance** | Server/PC local accounts (osquery) × LDAP × approval ledger → detects leavers, unregistered privilege, unapproved sudo, dormant · IP team/purpose CSV export (defaults to admin·security, admin configures view roles) |
+| **Automatic evidence** | Asset owner/criticality, CVE remediation/exception, risk assessment, triage & incident changes accrued as _who/when/what_ → **6 CSV/PDF reports** |
+| **Role-based views** | Risk & controls are admin·security only; infra/help-desk see **only their own servers'remediation rate** |
+| **LDAP SSO (optional)** | One account for MORI·Grafana·Zabbix·Fleet; approval creates the LDAP account; manage users from the admin console |
+| **Bilingual UI** | Instant KO/EN toggle across login, dashboard and admin |
+| **Persistence** | 10 UI operational-state stores write-through to PostgreSQL — survive restarts |
 
-## 지금 되는 것 / 다음 — 30초 요약
+## Works now / Next — 30-second status
 
-| 지금 되는 것 | 부분 통합 | 다음 |
+| Works now | Partially integrated | Next |
 |---|---|---|
-| **Zabbix 실시간 폴링 → alert (실 API 검증)** | Trivy collector 로컬 폴링 | **FleetDM 라이브 폴러** |
-| **Trivy/CSOP 원격 push 증적 인제스트** (토큰) | Source freshness / Worker cycle | **Wazuh 라이브 폴러** |
-| **브라운필드 연결** — `.env` config만으로 | | LDAP/AD 운영 연동 |
-| Alert Triage / 인시던트 / **위험성 평가** | | Slack / Email 알림 |
-| 로그인·RBAC · PostgreSQL 영속 · CSV/PDF 증적 | | 라이브 조회 캐싱 |
+| **Zabbix live polling → alert (real-API verified)** | Trivy collector local polling | **FleetDM live poller** |
+| **Trivy/CSOP remote push evidence ingest** (token) | Source freshness / worker cycle | **Wazuh live poller** |
+| **Brownfield connect** — via `.env` config only | | LDAP/AD operational sync |
+| Alert Triage / Incidents / **risk assessment** | | Slack / Email alerts |
+| Login·RBAC · PostgreSQL persistence · CSV/PDF evidence | | Live-query caching |
 
-> **Zabbix**는 _problem → 수집 → Triage → Incident → 증적 → 해소_ 전 구간이 실 API로 검증됨. **Fleet / Wazuh**는 컬렉터·파서는 준비됐고 라이브 연동은 다음 단계입니다.
+> **Zabbix** is verified end-to-end via the real API (_problem → collect → triage → incident → evidence → resolve_). **Fleet / Wazuh** collectors/parsers are ready; live integration is next.
 
 ---
 
-## 빠른 시작
+## Quick start
 
-**데모 (샘플 데이터)**
+**Demo (sample data)**
 ```bash
-./scripts/mori-start-demo.sh          # .env 생성 → 기동 → 스키마/시드 → 워커
-# → http://localhost:18000/ui  (admin / 1234, 데모 전용)
+./scripts/mori-start-demo.sh          # .env → boot → schema/seed → worker
+# → http://localhost:18000/ui  (admin / 1234, demo only)
 ```
 
-**브라운필드 (기존 Zabbix/Wazuh/Fleet 위에 얹기)**
+**Brownfield (on top of existing Zabbix/Wazuh/Fleet)**
 ```bash
-docker compose up -d                  # MORI 코어만 (api + worker + postgres)
-# .env 에서 기존 인프라 연결:
+docker compose up -d                  # MORI core only (api + worker + postgres)
+# Wire existing infra in .env:
 #   MORI_ZABBIX_API_URL=https://zabbix.your-corp.com/api_jsonrpc.php
-#   MORI_ZABBIX_API_TOKEN=<토큰>
-docker compose up -d mori-worker      # 재적용
+#   MORI_ZABBIX_API_TOKEN=<token>
+docker compose up -d mori-worker      # re-apply
 ```
 
-> 번들 데모 스택까지: `docker compose --profile bundled up -d` (개별: `--profile zabbix`/`fleet`/`wazuh`)
-> 자세한 절차는 [브라운필드 연결 가이드](docs/BROWNFIELD_CONNECT.md).
+> Bundled demo stack: `docker compose --profile bundled up -d` (individual: `--profile zabbix`/`fleet`/`wazuh`)
+> Full steps in the [Brownfield connect guide](docs/BROWNFIELD_CONNECT.en.md).
 
-> **데모 자격증명** — `admin`/`security`/`monitor` (비번 `1234`)는 격리된 **데모 전용**입니다. 운영 배포 시 `.env`의 `MORI_ADMIN_PASSWORD` 변경 + `MORI_DEMO_MODE=false`로 반드시 교체하세요.
-
----
-
-## 화면 미리보기
-
-> 아래는 데모 모드 기준 화면입니다. `<!-- -->` 블록은 **캡처해서 넣을 스크린샷 가이드**입니다(대상·구도·저장 파일명). 캡처 후 바로 아래 이미지 태그의 주석을 해제하세요.
-
-### 1) 자연어 질의 (NLQ)
-"오프라인 호스트 보여줘" 같은 한국어 질문 → 12개 인텐트 중 매칭 → 결과 + 요약 + CSV.
-
-![자연어 질의](docs/images/demo-nlq.png)
-
-### 2) 취약점 (Trivy) — CVE별 조치 계획·예외
-호스트별 Critical/High 합계 + CVE별 조치 계획/예외/만료일 + 변경 이력.
-
-![취약점 관리](docs/images/demo-trivy.png)
-
-### 3) 위험성 평가 매트릭스
-<img width="647" height="367" alt="image" src="https://github.com/user-attachments/assets/a3190b6f-aa5a-4153-b25c-734452f7120f" />
-
-
-### 4) 통제 카탈로그 (ISMS-P × ISO 27001)
-<img width="858" height="682" alt="image" src="https://github.com/user-attachments/assets/7b2c7fa3-98ff-4041-8fb5-07bc1592efd2" />
-
-
-**admin은 카탈로그를 직접 편집**합니다 — 트리에서 통제 수정/삭제, "통제 추가", 그리고
-**"법령 텍스트 임포트(NLP)"** 로 CISA·개인정보보호법·고시 전문을 붙여넣으면 통제 초안(draft)으로
-자동 변환·저장됩니다(Claude API 키가 있으면 정밀 구조화, 없으면 조항 단위 휴리스틱). 키는
-**어드민 UI("Claude 키" 버튼)** 에서 저장하거나 `MORI_ANTHROPIC_API_KEY` 환경변수로 지정합니다 —
-**환경변수가 우선**하고, 화면엔 마스킹(`…abcd`)해 보여줍니다. 통제별로 **수기 증적을 문서화**하거나, **"실증적 자동 기록"** 으로 현재 라이브 집계를
-**날짜 찍힌 상세 증적으로 스냅샷**할 수 있습니다(통제 취지·이행상태 + 라이브 **실제 호스트 목록**(hostname·IP·상태)까지 캡처).
-**정기 스냅샷**(off/매일/매주/매월)을 admin이 설정하면 **부팅·열람 시 도래분을 전 통제 일괄 스냅샷**하고,
-**"지금 일괄 스냅샷"** 수동 실행도 됩니다. **증적 문서**는 **CSV 또는 PDF**로 내려받습니다 — 통제 팩이 아니라 **자산 인벤토리 표**(호스트명·IP·상태·소스,
-전체) + **문서화 증적 표**만 깔끔하게(화면에선 3건까지만 보이고 "더보기", 다운로드는 항상 전체). 상단
-**"전체 증적 ZIP"** 로 전 통제 증적을 **폴더별(프레임워크/통제)로 묶어 한방에 ZIP**(+`INDEX.csv`).
-편집·정기설정은 admin 전용, 증적 문서화·ZIP은 admin·security.
-
-### 5) 계정 거버넌스 (접근권한 검토)
-<img width="1287" height="694" alt="image" src="https://github.com/user-attachments/assets/274b5b78-1ee5-439b-9b37-452daa4ba1f4" />
-
-
-계정 탭의 **IP 리스트**는 **팀·용도(자산 소유자 메타)로 선별** 후 **CSV로 내보내기**를 지원합니다
-(호스트/IP 검색 + 팀·용도 드롭다운 → `hostname,ip,importance,team,category,status`).
-
-**열람 권한은 admin이 조정합니다.** 기본은 **admin·security** 전용이지만, 어드민 콘솔 **권한 탭 →
-"계정 거버넌스 열람 역할"** 에서 인프라(monitor)·감사자 등 다른 역할에게도 열어줄 수 있습니다
-(admin은 항상 포함). 저장 후 대상 사용자가 재로그인하면 계정 탭이 보입니다.
-
-### 6) 어드민 콘솔 (/admin)
-<img width="1411" height="744" alt="image" src="https://github.com/user-attachments/assets/73bd715d-c610-4271-91e2-653bbbecea3c" />
-
+> **Demo credentials** — `admin`/`security`/`monitor` (password `1234`) are for the **isolated demo only**. For any real deployment, change `MORI_ADMIN_PASSWORD` in `.env` and set `MORI_DEMO_MODE=false`.
 
 ---
 
-## 문서
+## Screenshots
 
-| 문서 | 내용 |
+> Screens below are from demo mode. The `<!-- -->` blocks are **capture guides** (what to shoot, framing, target filename). Uncomment the image tag right below each once you've captured it.
+
+### 1) Natural-language query (NLQ)
+Ask a question ("show offline hosts") → matched to one of 12 intents → results + summary + CSV.
+
+![Natural-language query](docs/images/demo-nlq.png)
+
+### 2) Vulnerabilities (Trivy) — per-CVE plans & exceptions
+Per-host Critical/High counts + per-CVE remediation plan/exception/expiry + change history.
+
+![Vulnerability management](docs/images/demo-trivy.png)
+
+### 3) Risk assessment matrix
+<!-- SCREENSHOT GUIDE ②
+     Capture : /ui → Risk Assessment tab (log in as admin or security)
+     Include : the 3×3 matrix (impact × likelihood, counts per cell) + treatment-decision column
+     Save as : docs/images/02-risk-matrix.png -->
+<!-- ![Risk assessment matrix](docs/images/02-risk-matrix.png) -->
+> _Put the **risk assessment matrix** screenshot here — `docs/images/02-risk-matrix.png`_
+
+### 4) Control catalog (ISMS-P × ISO 27001)
+<!-- SCREENSHOT GUIDE ③
+     Capture : /ui → Compliance tab → Control Catalog (admin·security)
+     Include : framework→domain→section tree + lite/full coverage % + one control's status-edit panel
+     Save as : docs/images/03-controls-catalog.png -->
+<!-- ![Control catalog](docs/images/03-controls-catalog.png) -->
+> _Put the **control catalog tree + coverage %** screenshot here — `docs/images/03-controls-catalog.png`_
+
+**Admins edit the catalog directly** — edit/delete controls inline, "Add control", and
+**"Import regulation text (NLP)"**: paste CISA / privacy-law / notice text and it's auto-converted
+and saved as draft controls (precise structuring via Claude when `MORI_ANTHROPIC_API_KEY` is set,
+clause-level heuristic otherwise). Per control you can **document manual evidence**, or use
+**"Auto-capture live evidence"** to snapshot the current live aggregation into a **dated detailed
+evidence record** (control intent, status + the actual **live host list** — hostname·IP·status). Set a
+**scheduled snapshot** (off/daily/weekly/monthly) and MORI bulk-snapshots all controls when due **on
+boot / on view**, plus a **"Snapshot all now"** manual run. Download the **evidence document** as
+**CSV or PDF** — not a catalog pack but clean tables: **asset inventory** (hostname·IP·status·source,
+full) + **documented evidence** (on-screen shows 3 with "show more"; the download is always complete).
+A top **"All evidence ZIP"** bundles every control's evidence **into one ZIP by folder**
+(framework/control) with an `INDEX.csv`. Editing & scheduling are admin-only; evidence
+documentation & ZIP are admin·security.
+
+### 5) Account governance (access review)
+<!-- SCREENSHOT GUIDE ④
+     Capture : /ui → Accounts tab (admin·security)
+     Include : unified account list + findings badges (leaver, unapproved sudo…) + approval ledger
+     Save as : docs/images/04-accounts.png -->
+<!-- ![Account governance](docs/images/04-accounts.png) -->
+> _Put the **account governance (Accounts tab)** screenshot here — `docs/images/04-accounts.png`_
+
+The **IP list** in the Accounts tab lets you **filter by team/purpose (asset-owner metadata)**
+and **export the filtered rows as CSV** (host/IP search + team & purpose dropdowns →
+`hostname,ip,importance,team,category,status`).
+
+**View access is admin-configurable.** It defaults to **admin·security**, but an admin can open it up
+to other roles (infra/monitor, auditor, …) from the admin console **Access tab → "Account governance
+view roles"** (admin is always included). Target users see the Accounts tab after re-login.
+
+### 6) Admin console (/admin)
+<!-- SCREENSHOT GUIDE ⑤
+     Capture : /admin, 6 tabs (log in as admin)
+     Include : the tab bar — Overview · Remediation · Assets/Owners · Access Control (RBAC·approvals·LDAP·account view roles) · Audit & Logs · Settings
+     Save as : docs/images/05-admin-console.png -->
+<!-- ![Admin console](docs/images/05-admin-console.png) -->
+> _Put the **admin console (6 tabs)** screenshot here — `docs/images/05-admin-console.png`_
+
+---
+
+## Documentation
+
+| Doc | Contents |
 |---|---|
-| [**상세 가이드 (README_FULL)**](./README_FULL.md) | 아키텍처·API·테스트·배포·로드맵 전체 레퍼런스 |
-| [시작하기 (신규 사용자)](docs/GETTING_STARTED.md) | 데모 기동 → 첫 운영 → 운영 전환 (한/영) |
-| [기존 스택 연결 (브라운필드)](docs/BROWNFIELD_CONNECT.md) | `.env`만으로 read-only 연결 (한/영) |
-| [LDAP 통합 인증](docs/LDAP_INTEGRATION.md) | 계정 하나로 MORI·Grafana·Zabbix·Fleet (한/영) |
-| [배포 가이드](docs/DEPLOYMENT.md) | 서버 배포·운영·트러블슈팅 |
-| [기능 정의서](docs/FUNCTIONAL_SPEC.md) · [로드맵](docs/IMPLEMENTATION_ROADMAP.md) | 기능 명세 / Phase 0~5 구현 로드맵 |
+| [**Full Guide (README_FULL)**](./README_FULL.md) | Complete reference — architecture · API · testing · deployment · roadmap |
+| [Getting Started](docs/GETTING_STARTED.en.md) | Demo boot → first operations → production (KO/EN) |
+| [Brownfield Connect](docs/BROWNFIELD_CONNECT.en.md) | Read-only connect via `.env` only (KO/EN) |
+| [LDAP Integration](docs/LDAP_INTEGRATION.en.md) | One account for MORI·Grafana·Zabbix·Fleet (KO/EN) |
+| [Deployment](docs/DEPLOYMENT.md) | Server deploy · operations · troubleshooting |
+| [Functional Spec](docs/FUNCTIONAL_SPEC.md) · [Roadmap](docs/IMPLEMENTATION_ROADMAP.md) | Feature spec / Phase 0–5 roadmap |
 
 ---
 
-> **Alpha / Work in Progress** — 일상 보안 운영 + 감사 증적 시나리오가 동작하며 UI 운영 상태는 PostgreSQL에 영속화됩니다. Zabbix 실시간 폴링은 실 API로 검증됨(다른 시드 데이터는 데모용). Fleet / Wazuh 라이브 연동은 다음 단계입니다.
+> **Alpha / Work in Progress** — daily security operations + audit-evidence scenarios work, and UI operational state persists to PostgreSQL. Zabbix live polling is real-API verified (other seed data is for demo). Fleet / Wazuh live integration is next.
 >
-> 라이선스: Apache 2.0 · 전체 기능 체험은 `./scripts/mori-start-demo.sh` 한 줄로.
+> License: Apache 2.0 · Try the full feature set with a single `./scripts/mori-start-demo.sh`.
