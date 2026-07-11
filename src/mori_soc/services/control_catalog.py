@@ -126,11 +126,21 @@ def build_tree(catalog: dict[str, Any] | None = None) -> dict[str, Any]:
             domains.append({"domain": dnode["domain"], "sections": sections})
         tree.append({"framework": fw, "domains": domains})
 
+    # 카탈로그 검토 진척도(정직성): reviewed vs draft. 커버리지 %는 reviewed+증적 연결
+    # 통제만 집계되지만, 전체 194 중 몇 %가 실제 검토됐는지를 별도로 노출한다.
+    total = len(controls)
+    reviewed = sum(1 for c in controls if str(c.get("status", "draft")) == "reviewed")
     return {
         "meta": cat.get("meta", {}),
         "coverage": {
             "lite": _coverage(controls, _LITE_SOURCES),
             "full": _coverage(controls, _FULL_SOURCES),
+            "review": {
+                "reviewed": reviewed,
+                "draft": total - reviewed,
+                "total": total,
+                "pct": round(reviewed / total * 100, 1) if total else 0.0,
+            },
         },
         "tree": tree,
     }

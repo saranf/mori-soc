@@ -3915,7 +3915,9 @@ def render_user_dashboard_html(
         const cov = data.coverage || {};
         const covEl = document.getElementById('control_tree_coverage');
         if (covEl && cov.lite && cov.full) {
-          covEl.textContent = `lite ${cov.lite.pct}% (${cov.lite.covered}/${cov.lite.total}) · full ${cov.full.pct}% (${cov.full.covered}/${cov.full.total})`;
+          let t = `lite ${cov.lite.pct}% (${cov.lite.covered}/${cov.lite.total}) · full ${cov.full.pct}% (${cov.full.covered}/${cov.full.total})`;
+          covEl.innerHTML = escapeHtml(t)
+            + (cov.review ? ` · <span style=\"color:#a16207\" title=\"${tt('dash.ctl.review_tip','커버리지 %는 검토완료(reviewed)+증적 연결 통제만 집계합니다. 나머지는 초안(draft)이며 공식 고시 대비 검토 전입니다.')}\">${tt('dash.ctl.reviewed','검토완료')} ${cov.review.reviewed}/${cov.review.total} (${cov.review.pct}%)</span>` : '');
         }
         const fwLabel = { 'isms-p': 'ISMS-P', 'iso27001': 'ISO 27001:2022', 'custom': 'Custom / 법령' };
         const smap = data.status_map || {};
@@ -3932,9 +3934,10 @@ def render_user_dashboard_html(
           const clickable = 'cursor:pointer';  // M2-7: 상태 편집 위해 전 항목 클릭 가능
           const st = smap[c.id];
           const stBadge = (st && st.status && st.status !== '미정') ? _ctlStatusBadge(st.status) : '';
+          const draftBadge = (c.status && c.status !== 'reviewed') ? `<span title=\"${tt('dash.ctl.draft_tip','초안 — 공식 고시 대비 검토 전')}\" style=\"background:#fef9c3;color:#a16207;border:1px solid #a1620733;padding:0 5px;border-radius:5px;font-size:9px;margin-left:4px;vertical-align:middle\">${tt('dash.ctl.draft','draft')}</span>` : '';
           const pdf = c.mapped ? `<a href=\"/controls/detail/${enc}/evidence.pdf\" target=\"_blank\" title=\"${tt('dash.ctl.pdf','증적 팩 PDF')}\" style=\"margin-left:6px;text-decoration:none;font-size:11px\"></a>` : '';
           const editBtns = _ctlCanEdit ? `<span onclick=\"openControlEditor('${enc}')\" title=\"${tt('dash.ctl.edit','수정')}\" style=\"cursor:pointer;margin-left:6px;font-size:11px\"></span><span onclick=\"deleteControl('${enc}')\" title=\"${tt('dash.ctl.del','삭제')}\" style=\"cursor:pointer;margin-left:3px;font-size:11px\"></span>` : '';
-          return `<div style=\"padding:3px 0;${dim}\"><span onclick=\"toggleControlDetail('${enc}', this)\" style=\"${clickable}\"><span style=\"color:#111827;font-size:11px\">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${stBadge}${srcs}</span>${pdf}${editBtns}<div class=\"ctl-detail\" style=\"display:none;margin:4px 0 8px 16px;padding:6px 10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:12px\"></div></div>`;
+          return `<div style=\"padding:3px 0;${dim}\"><span onclick=\"toggleControlDetail('${enc}', this)\" style=\"${clickable}\"><span style=\"color:#111827;font-size:11px\">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${draftBadge}${stBadge}${srcs}</span>${pdf}${editBtns}<div class=\"ctl-detail\" style=\"display:none;margin:4px 0 8px 16px;padding:6px 10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:12px\"></div></div>`;
         };
         let html = '';
         (data.tree || []).forEach(fw => {
