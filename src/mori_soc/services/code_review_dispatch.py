@@ -12,55 +12,54 @@ import re
 _SEGMENT = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 
-# 고객이 자기 레포 .github/workflows/ 에 복붙하는 최소 템플릿(OIDC 버전).
-# ${{ ... }} 는 GitHub Actions 문법(그대로 둠). __AUDIENCE__ 만 서빙 시 치환.
+# 고객이 자기 레포 .github/workflows/ 에 복붙하는 fullscan 워크플로(기존 코드 전체 감사).
+# 이 파일 + scripts/code_review_fullscan.py 를 함께 두면 된다. __AUDIENCE__ 만 서빙 시 치환.
 WORKFLOW_TEMPLATE = """\
-name: security-review
-# MORI 코드 보안 리뷰 증적 — 매 PR/요청마다 AI 보안 리뷰 → 결과를 MORI로 전송.
-# 준비물(레포 Settings→Secrets): ANTHROPIC_API_KEY, MORI_INGEST_URL (토큰은 OIDC로 대체).
+name: code-review-fullscan
+# MORI 코드 보안 리뷰 증적 — 기존 코드 전체를 AI로 리뷰 → 결과를 MORI로 전송.
+# 준비물: 이 파일 + scripts/code_review_fullscan.py, 레포 Secrets(ANTHROPIC_API_KEY·MORI_INGEST_URL).
 on:
-  pull_request:
-  workflow_dispatch:            # MORI UI에서 원격 실행(스캔 요청)용
+  workflow_dispatch:            # MORI UI 원격 실행 / 수동 실행
+    inputs:
+      mori_ingest_url:
+        description: "MORI ingest base URL (원격 트리거 시 자동 주입)"
+        required: false
+        default: ""
+  # 정기 베이스라인(월 1회) — 필요하면 주석 해제:
+  # schedule:
+  #   - cron: "0 0 1 * *"
 
 permissions:
   contents: read
-  pull-requests: write
   id-token: write               # GitHub OIDC — MORI가 repo·commit·run을 서명 검증(위조 불가)
 
 jobs:
-  security-review:
+  fullscan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          fetch-depth: 0
-      - id: review
-        uses: anthropics/claude-code-security-review@main
-        with:
-          claude-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          comment-pr: true
-      - name: Push results to MORI
-        if: ${{ always() }}
-        continue-on-error: true   # 증적 전송 실패해도 PR 체크는 막지 않음
+          python-version: "3.12"
+      - name: Full-repo AI security review -> MORI
+        continue-on-error: true
         env:
-          MORI_INGEST_URL: ${{ secrets.MORI_INGEST_URL }}
-          RESULTS_FILE: ${{ steps.review.outputs.results-file }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MORI_INGEST_URL: ${{ github.event.inputs.mori_ingest_url || secrets.MORI_INGEST_URL }}
+          MORI_INGEST_TOKEN: ${{ secrets.MORI_INGEST_TOKEN }}
+          CLAUDE_MODEL: claude-sonnet-5
         run: |
           [ -z "$MORI_INGEST_URL" ] && { echo "MORI_INGEST_URL 미설정 — 스킵"; exit 0; }
-          [ -f "$RESULTS_FILE" ] || { echo "결과 파일 없음 — 스킵"; exit 0; }
-          # OIDC 토큰(GitHub 서명) 획득 → MORI가 검증 (정적 토큰 불필요)
-          OIDC=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \\
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=__AUDIENCE__" | jq -r '.value // empty')
-          curl -fsS -X POST \\
-            "${MORI_INGEST_URL%/}/ingest/code-review?repo=${GITHUB_REPOSITORY}&commit=${GITHUB_SHA}&run_id=${GITHUB_RUN_ID}&pr=${PR_NUMBER}" \\
-            -H "X-MORI-OIDC: $OIDC" -H "Content-Type: application/json" \\
-            --data-binary "@${RESULTS_FILE}"
+          if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
+            export MORI_OIDC_TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \\
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=__AUDIENCE__" | jq -r '.value // empty')
+          fi
+          python3 scripts/code_review_fullscan.py
 """
 
 
 def workflow_template(audience: str = "mori-ingest") -> str:
-    """고객 배포용 security-review.yml 템플릿(감사 audience 채워서)."""
+    """고객 배포용 code-review-fullscan.yml 템플릿(감사 audience 채워서)."""
     return WORKFLOW_TEMPLATE.replace("__AUDIENCE__", audience or "mori-ingest")
 
 

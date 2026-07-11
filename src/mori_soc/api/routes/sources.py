@@ -395,15 +395,15 @@ def register_sources(ctx: RouteContext) -> None:
                 "commit": commit or None, "pr": pr or None, "run_url": run_url or None,
                 "scan_recorded": scan_recorded, "provenance_verified": verified}
 
-    # ── 고객 배포용 security-review.yml 템플릿 (UI 도움말의 "파일 예시") ───────────
+    # ── 고객 배포용 code-review-fullscan.yml 템플릿 (UI 도움말의 "파일 예시") ───────
     @app.get("/controls/code-review/workflow-template", tags=["Sources"])
     def code_review_workflow_template() -> dict[str, Any]:
-        """고객이 자기 레포에 복붙할 security-review.yml 예시(현재 서버 audience 반영)."""
+        """고객이 자기 레포에 복붙할 code-review-fullscan.yml 예시(현재 서버 audience 반영)."""
         import os as _os
         from mori_soc.services.code_review_dispatch import workflow_template
 
         aud = _os.getenv("MORI_OIDC_AUDIENCE", "mori-ingest").strip() or "mori-ingest"
-        return {"filename": ".github/workflows/security-review.yml",
+        return {"filename": ".github/workflows/code-review-fullscan.yml",
                 "content": workflow_template(aud), "audience": aud,
                 "public_url": _os.getenv("MORI_PUBLIC_URL", "").strip()}
 

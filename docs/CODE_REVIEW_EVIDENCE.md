@@ -1,6 +1,6 @@
 # 코드 보안 리뷰 증적 (SDLC / 2.8 개발보안) — MORI의 6번째 증적 소스
 
-> **한 줄** — 고객 레포의 CI가 AI 코드 보안 리뷰(claude-code-security-review)를 돌리고, MORI는 **코드를 만지지 않고** 그 결과를 받아 **ISMS-P 2.8 / ISO 27001 A.8.25·A.8.28 개발보안 증적**으로 바꾼다. 결과의 출처(repo·commit·run)는 **GitHub OIDC 서명으로 검증**해 위조를 차단한다.
+> **한 줄** — 고객 레포의 CI가 AI로 **기존 코드 전체**를 보안 리뷰하고, MORI는 **코드를 만지지 않고** 그 결과를 받아 **ISMS-P 2.8 / ISO 27001 A.8.25·A.8.28 개발보안 증적**으로 바꾼다. 결과의 출처(repo·commit·run)는 **GitHub OIDC 서명으로 검증**해 위조를 차단한다.
 
 작성일: 2026-07-11 · 상태: alpha (파이프라인·OIDC 실 postgres E2E 검증, 실 GitHub 런 미검증)
 
@@ -14,9 +14,11 @@ MORI의 명제는 **"관제가 곧 증적"** — 보는 층(Grafana)에 위임�
 
 ## 2. 동작 흐름
 
+**대상 = 기존 코드 전체**(PR diff 아님). 보안 담당자가 PR마다 리뷰할 수 없으므로, "지금 있는 코드"를 온디맨드/정기로 감사하는 것이 핵심.
+
 ```
-[고객 레포 CI]  security-review.yml
-   ├─ claude-code-security-review 실행 (매 PR / MORI 원격 트리거)
+[고객 레포 CI]  code-review-fullscan.yml + scripts/code_review_fullscan.py
+   ├─ 레포 소스 전체 수집 → Claude 보안 리뷰 (온디맨드 / 월간)
    ├─ GitHub OIDC 토큰(repo·sha·run 서명) 획득
    └─ POST /ingest/code-review  (X-MORI-OIDC + findings)
                 │
@@ -27,14 +29,16 @@ MORI의 명제는 **"관제가 곧 증적"** — 보는 층(Grafana)에 위임�
    └─ 대시보드 "미조치 코드 보안 리뷰" 작업 큐 타일
 ```
 
-원격 트리거: MORI UI(Compliance → 통제 카탈로그 관리자 바 → **GitHub 코드 보안 리뷰**)에 repo URL + 토큰 입력 → `workflow_dispatch`로 그 레포에서 실행. MORI는 여전히 코드를 만지지 않는다.
+원격 트리거: MORI UI(Compliance → 통제 카탈로그 관리자 바 → **GitHub 코드 보안 리뷰**)에 repo URL + 토큰 입력 → `workflow_dispatch`로 그 레포에서 fullscan 실행. MORI는 여전히 코드를 만지지 않는다(스캔은 고객 CI에서).
+
+> **왜 PR-diff 경로(claude-code-security-review 액션)를 안 쓰나**: 그 액션은 PR의 변경분만 리뷰하고 `workflow_dispatch`에선 스킵된다 — "기존 코드 전체 감사"를 못 한다. 그래서 이 프로젝트는 **fullscan(전체 코드)** 단일 경로만 유지한다.
 
 ## 3. 고객이 할 일 (최소)
 
-**자동 경로 (가장 가벼움)** — 파일 1개 + 시크릿 2개, 끝. 매 PR마다 증적.
-1. 레포 `.github/workflows/security-review.yml` 복사 (UI 도움말의 "📄 예시 보기·복사")
+파일 2개 + 시크릿 2개, 끝.
+1. 레포에 `.github/workflows/code-review-fullscan.yml` + `scripts/code_review_fullscan.py` 복사 (UI 도움말의 "📄 예시 보기·복사" — 워크플로 예시 제공)
 2. 레포 시크릿 2개: `ANTHROPIC_API_KEY` · `MORI_INGEST_URL`
-3. (선택) UI 온디맨드 스캔 → GitHub 토큰(actions:write)을 MORI UI에 입력(저장 안 함)
+3. 실행: GitHub Actions 탭에서 **code-review-fullscan → Run workflow**, 또는 MORI UI **스캔 요청**(GitHub 토큰 actions:write 입력, 저장 안 함)
 
 OIDC를 쓰므로 **정적 ingest 토큰 시크릿이 불필요**하다(GitHub 서명으로 대체).
 
@@ -72,6 +76,6 @@ OIDC를 쓰므로 **정적 ingest 토큰 시크릿이 불필요**하다(GitHub �
 
 - 유닛: OIDC 검증 8건(서명·변조거부·aud·exp·iss·allowlist·kid·alg), 인제스트·컬렉터·dispatch 등 포함 전체 그린.
 - 실 postgres E2E: findings 적재·provenance 저장·0건 스캔 증적·**OIDC 서명 claim이 위조 repo override(verified:true)**·bad token 401·정적 폴백 — 통과.
-- 미검증: 실 GitHub Actions 런(첫 PR 로그로 `oidc=yes` + push 200 확인 필요).
+- 미검증: 실 GitHub Actions 런(첫 fullscan 실행 로그로 push 200 확인 필요).
 
-관련 코드: `services/oidc_verify.py` · `collectors/code_review.py` · `services/code_review_dispatch.py` · `api/routes/sources.py`(`/ingest/code-review`, `/controls/code-review/*`) · `.github/workflows/security-review.yml` · `schema/012_code_review_source.sql`.
+관련 코드: `services/oidc_verify.py` · `collectors/code_review.py` · `services/code_review_dispatch.py` · `api/routes/sources.py`(`/ingest/code-review`, `/controls/code-review/*`) · `.github/workflows/code-review-fullscan.yml` · `scripts/code_review_fullscan.py` · `schema/012_code_review_source.sql`.
