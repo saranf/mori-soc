@@ -4403,7 +4403,21 @@ def render_user_dashboard_html(
           <button onclick=\"runCodeReviewScan()\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.scan_run','스캔 요청')}</button>
           <button onclick=\"document.getElementById('ctl_nlp').style.display='none'\" class=\"secondary\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.cancel','취소')}</button>
           <span id=\"scan_msg\" style=\"font-size:12px;color:#111827\"></span>
-        </div>`;
+        </div>
+        <details style=\"margin-top:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 10px\">
+          <summary style=\"cursor:pointer;font-size:12px;color:#16a34a;font-weight:600\">✅ ${tt('dash.ctl.scan_res_t','스캔 후 결과는 어디서 확인하나요?')}</summary>
+          <div style=\"font-size:12px;color:#374151;margin-top:6px;line-height:1.7\">
+            <div style=\"font-weight:600;margin-bottom:2px\">${tt('dash.ctl.scan_res_step1','1) 먼저 GitHub에서 실행 확인')}</div>
+            <div style=\"margin-bottom:6px\">${tt('dash.ctl.scan_res_gh','대상 레포 → Actions 탭 → \"security-review\" 실행(초록 체크)이 떠야 해요. 안 뜨면 그 레포에 security-review.yml·시크릿이 없는 거예요.')}</div>
+            <div style=\"font-weight:600;margin-bottom:2px\">${tt('dash.ctl.scan_res_step2','2) MORI에서 결과 확인 (잠시 후 새로고침)')}</div>
+            <ul style=\"margin:0;padding-left:18px\">
+              <li>${tt('dash.ctl.scan_res_triage','Alert Triage 탭 — findings가 보라색 code_review 배지로 떠요. 상태(접수→조사중→완료)를 눌러 처리.')}</li>
+              <li>${tt('dash.ctl.scan_res_gap','대시보드 \"미조치 코드 보안 리뷰\" 타일 — 미처리 건수(누르면 트리아지로).')}</li>
+              <li>${tt('dash.ctl.scan_res_ctl','Compliance → 통제 카탈로그 2.8.1·2.8.5 / A.8.25·A.8.28 — 이 통제에 증적으로 연결(통제별 증적 PDF/CSV).')}</li>
+            </ul>
+            <div style=\"color:#6b7280;margin-top:4px\">${tt('dash.ctl.scan_res_note','※ 반영에 1~3분 걸릴 수 있어요. 바로 안 보이면 페이지 새로고침(또는 워커 주기 후) 하세요. 안 보이면: 레포 MORI_INGEST_URL 시크릿이 이 MORI 주소인지·MORI가 외부에서 접근 가능한지 확인.')}</div>
+          </div>
+        </details>`;
       box.style.display = 'block';
     }
     window.openCodeReviewScan = openCodeReviewScan;
