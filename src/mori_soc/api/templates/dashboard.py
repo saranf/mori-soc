@@ -4381,7 +4381,15 @@ def render_user_dashboard_html(
               <button onclick=\"showCodeReviewScript()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">📄 ${tt('dash.ctl.scan_script_btn','② 스크립트(.py) 보기·복사')}</button>
               <span id=\"scan_tpl_msg\" style=\"font-size:11px;color:#16a34a\"></span>
             </div>
-            <div style=\"font-size:11px;color:#6b7280;margin-top:4px\">${tt('dash.ctl.scan_files_hint','두 파일을 각각 레포의 .github/workflows/code-review-fullscan.yml · scripts/code_review_fullscan.py 로 저장하세요.')}</div>
+            <div style=\"margin-top:6px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:6px 8px\">
+              <div style=\"font-size:11px;font-weight:600;color:#111827;margin-bottom:2px\">📁 ${tt('dash.ctl.scan_files_t','파일 위치 (중요 — 폴더가 서로 달라요)')}</div>
+              <div style=\"font-family:monospace;font-size:11px;color:#111827;line-height:1.5\">
+                <div>${tt('dash.ctl.scan_files_root','레포 루트')}/</div>
+                <div>├─ .github/workflows/code-review-fullscan.yml&nbsp;&nbsp;← ①</div>
+                <div>└─ scripts/code_review_fullscan.py&nbsp;&nbsp;← ②</div>
+              </div>
+              <div style=\"font-size:11px;color:#b45309;margin-top:3px\">⚠️ ${tt('dash.ctl.scan_files_warn','②(.py)는 .github/workflows 안이 아니라, 레포 맨 위에 scripts/ 폴더를 새로 만들어 넣어요.')}</div>
+            </div>
             <pre id=\"scan_tpl\" style=\"display:none;margin-top:6px;max-height:240px;overflow:auto;background:#0b1021;color:#e5e7eb;padding:10px;border-radius:8px;font-size:11px;line-height:1.45;white-space:pre\"></pre>
           </div>
         </details>
