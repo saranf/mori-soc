@@ -1,0 +1,46 @@
+name: code-review-fullscan
+
+# 기존 코드 전체 AI 보안 리뷰 → MORI (PR diff가 아니라 "지금 있는 코드" 감사용).
+# security-review.yml(PR diff, 새 취약점 예방)과 짝: 이건 기존 코드 베이스라인 감사.
+# 스캔은 이 CI 러너에서 돌고 MORI는 코드를 가져오지 않는다(결과 findings만 수신).
+# 준비물(레포 Secrets): ANTHROPIC_API_KEY · MORI_INGEST_URL.  to큰은 OIDC로 대체.
+
+on:
+  workflow_dispatch:            # MORI UI 원격 실행 / 수동 실행
+    inputs:
+      mori_ingest_url:
+        description: "MORI ingest base URL (원격 트리거 시 자동 주입)"
+        required: false
+        default: ""
+  # 정기 베이스라인(월 1회) — 필요하면 주석 해제:
+  # schedule:
+  #   - cron: "0 0 1 * *"
+
+permissions:
+  contents: read
+  id-token: write               # GitHub OIDC — MORI 위조 불가 provenance
+
+jobs:
+  fullscan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Full-repo AI security review → MORI
+        continue-on-error: true   # 증적 전송 실패해도 파이프라인 비차단
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MORI_INGEST_URL: ${{ github.event.inputs.mori_ingest_url || secrets.MORI_INGEST_URL }}
+          MORI_INGEST_TOKEN: ${{ secrets.MORI_INGEST_TOKEN }}
+          CLAUDE_MODEL: claude-sonnet-5
+        run: |
+          [ -z "$MORI_INGEST_URL" ] && { echo "MORI_INGEST_URL 미설정 — 스킵"; exit 0; }
+          # OIDC 토큰(권장) — MORI가 repo·commit·run 서명 검증
+          if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
+            export MORI_OIDC_TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=mori-ingest" | jq -r '.value // empty')
+          fi
+          # 스캐너: 고객 레포는 이 파일(scripts/code_review_fullscan.py)도 함께 복사해야 함.
+          python3 scripts/code_review_fullscan.py
