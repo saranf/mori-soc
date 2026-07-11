@@ -424,6 +424,58 @@ def register_sources(ctx: RouteContext) -> None:
                 "script_content": script_content,
                 "audience": aud, "public_url": _os.getenv("MORI_PUBLIC_URL", "").strip()}
 
+    # ── 코드 리뷰 findings CSV 다운로드 (개발보안 2.8 증적 원본) ──────────────────
+    @app.get("/controls/code-review/findings.csv", tags=["Compliance"])
+    def code_review_findings_csv(repo: str | None = None, commit: str | None = None) -> StreamingResponse:
+        """code_review findings(=alert)를 CSV로 내려준다. UI 공통 openCsvPreview 용.
+
+        repo/commit 쿼리로 특정 스캔만 필터 가능(스캔 이력의 '결과 다운로드'). 없으면 전체.
+        """
+        import csv as csv_mod
+        import io
+
+        want_repo = (repo or "").strip()
+        want_commit = (commit or "").strip()
+        rows: list[dict[str, Any]] = []
+        for a in get_query_service().store.alerts:
+            if a.source != "code_review":
+                continue
+            rp = a.raw_payload or {}
+            prov = rp.get("_provenance") or {}
+            r_repo = str(prov.get("repo") or "")
+            r_commit = str(prov.get("commit") or "")
+            if want_repo and r_repo != want_repo:
+                continue
+            if want_commit and not (r_commit == want_commit or r_commit.startswith(want_commit) or want_commit.startswith(r_commit)):
+                continue
+            rows.append({
+                "repo": r_repo,
+                "commit": r_commit[:12],
+                "file": str(rp.get("file") or rp.get("path") or ""),
+                "line": rp.get("line") if rp.get("line") is not None else "",
+                "severity": a.severity,
+                "rule": str(a.rule_id or rp.get("rule_id") or rp.get("category") or ""),
+                "title": a.rule_name or "",
+                "message": a.message or "",
+                "verified": "검증됨" if prov.get("verified") else "미검증",
+                "detected_at": a.observed_at.isoformat() if a.observed_at else "",
+            })
+        _sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+        rows.sort(key=lambda r: (_sev_rank.get(str(r["severity"]), 9), str(r["file"]), str(r["line"])))
+        header_map = {"repo": "레포", "commit": "커밋", "file": "파일", "line": "라인",
+                      "severity": "심각도", "rule": "룰", "title": "제목", "message": "메시지",
+                      "verified": "검증", "detected_at": "탐지시각"}
+        buf = io.StringIO()
+        writer = csv_mod.DictWriter(buf, fieldnames=list(header_map.keys()), extrasaction="ignore")
+        writer.writerow(header_map)
+        writer.writerows(rows)
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        return StreamingResponse(
+            iter([buf.getvalue()]),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="mori-code-review-findings-{timestamp}.csv"'},
+        )
+
     # ── CSOP 증적(evidence) HTTP 인제스트 — 조치 전/후 diff envelope 수신함 ────────
     @app.post("/ingest/evidence", tags=["Sources"])
     def ingest_evidence(payload: dict[str, Any], request: Request) -> dict[str, Any]:

@@ -16,29 +16,46 @@ MORI의 명제는 **"관제가 곧 증적"** — 보는 층(Grafana)에 위임�
 
 **대상 = 기존 코드 전체**(PR diff 아님). 보안 담당자가 PR마다 리뷰할 수 없으므로, "지금 있는 코드"를 온디맨드/정기로 감사하는 것이 핵심.
 
+**스캐너 2모드** — 둘 다 SARIF/findings를 같은 `/ingest/code-review`로 보내며 MORI 파싱은 동일하다:
+
+| | **무료(기본)** | **유료(고급)** |
+|---|---|---|
+| 스캐너 | Semgrep OSS (SAST 룰) | Claude AI 전체 리뷰 |
+| 워크플로 | `code-review-semgrep.yml` | `code-review-fullscan.yml` + `scripts/code_review_fullscan.py` |
+| 파일 | 1개 | 2개 |
+| 시크릿 | `MORI_INGEST_URL` 1개 | `ANTHROPIC_API_KEY` · `MORI_INGEST_URL` 2개 |
+| 비용 | 무료 | Anthropic API 크레딧 |
+| 강점 | 즉시·무료 패턴 SAST | 로직·맥락까지 심층 |
+
 ```
-[고객 레포 CI]  code-review-fullscan.yml + scripts/code_review_fullscan.py
-   ├─ 레포 소스 전체 수집 → Claude 보안 리뷰 (온디맨드 / 월간)
+[고객 레포 CI]  (무료) code-review-semgrep.yml   또는   (유료) code-review-fullscan.yml + scripts/code_review_fullscan.py
+   ├─ 레포 소스 전체 스캔  ── Semgrep OSS(SARIF)  /  Claude 보안 리뷰 (온디맨드 / 월간)
    ├─ GitHub OIDC 토큰(repo·sha·run 서명) 획득
-   └─ POST /ingest/code-review  (X-MORI-OIDC + findings)
+   └─ POST /ingest/code-review  (X-MORI-OIDC + SARIF/findings)
                 │
 [MORI]  OIDC 서명 검증 → repo·commit·run 을 서명 클레임으로 확정(위조 차단)
    ├─ findings → 호스트 없는 alert(source=code_review) → Alert Triage 재사용
    ├─ 스캔 런 자체를 증적 이벤트로 기록 (0건이어도 "통제가 작동했다")
+   ├─ findings CSV 다운로드(공통 openCsvPreview): `/controls/code-review/findings.csv?repo=&commit=`
    ├─ 통제 매핑: 2.8.1 · 2.8.5 · A.8.25 · A.8.28
    └─ 대시보드 "미조치 코드 보안 리뷰" 작업 큐 타일
 ```
 
-원격 트리거: MORI UI(Compliance → 통제 카탈로그 관리자 바 → **GitHub 코드 보안 리뷰**)에 repo URL + 토큰 입력 → `workflow_dispatch`로 그 레포에서 fullscan 실행. MORI는 여전히 코드를 만지지 않는다(스캔은 고객 CI에서).
+원격 트리거: MORI UI(Compliance → 통제 카탈로그 관리자 바 → **GitHub 코드 보안 리뷰**)에 repo URL + 토큰 입력 → `workflow_dispatch`로 그 레포에서 스캔 실행(기본 `code-review-semgrep.yml`). MORI는 여전히 코드를 만지지 않는다(스캔은 고객 CI에서).
 
-> **왜 PR-diff 경로(claude-code-security-review 액션)를 안 쓰나**: 그 액션은 PR의 변경분만 리뷰하고 `workflow_dispatch`에선 스킵된다 — "기존 코드 전체 감사"를 못 한다. 그래서 이 프로젝트는 **fullscan(전체 코드)** 단일 경로만 유지한다.
+> **왜 PR-diff 경로(claude-code-security-review 액션)를 안 쓰나**: 그 액션은 PR의 변경분만 리뷰하고 `workflow_dispatch`에선 스킵된다 — "기존 코드 전체 감사"를 못 한다. 그래서 이 프로젝트는 **전체 코드 스캔**(Semgrep/fullscan) 경로만 유지한다.
 
 ## 3. 고객이 할 일 (최소)
 
-파일 2개 + 시크릿 2개, 끝.
-1. 레포에 `.github/workflows/code-review-fullscan.yml` + `scripts/code_review_fullscan.py` 복사 (UI 도움말의 "📄 예시 보기·복사" — 워크플로 예시 제공)
+**무료(기본)** — 파일 1개 + 시크릿 1개, 끝.
+1. 레포에 `.github/workflows/code-review-semgrep.yml` 복사 (UI 도움말 "① 워크플로(.yml) 보기·복사")
+2. 레포 시크릿 1개: `MORI_INGEST_URL`
+3. 실행: GitHub Actions 탭 **code-review-semgrep → Run workflow**, 또는 MORI UI **스캔 요청**(GitHub 토큰 actions:write 입력, 저장 안 함)
+
+**유료(고급, 선택)** — 더 깊은 Claude 리뷰가 필요할 때. UI 도움말 ⚙️ "고급(유료)" 팝업에서 `.yml`·`.py` 복사.
+1. 레포에 `.github/workflows/code-review-fullscan.yml` + `scripts/code_review_fullscan.py` 복사
 2. 레포 시크릿 2개: `ANTHROPIC_API_KEY` · `MORI_INGEST_URL`
-3. 실행: GitHub Actions 탭에서 **code-review-fullscan → Run workflow**, 또는 MORI UI **스캔 요청**(GitHub 토큰 actions:write 입력, 저장 안 함)
+3. 실행: **code-review-fullscan → Run workflow**
 
 OIDC를 쓰므로 **정적 ingest 토큰 시크릿이 불필요**하다(GitHub 서명으로 대체).
 
@@ -76,6 +93,6 @@ OIDC를 쓰므로 **정적 ingest 토큰 시크릿이 불필요**하다(GitHub �
 
 - 유닛: OIDC 검증 8건(서명·변조거부·aud·exp·iss·allowlist·kid·alg), 인제스트·컬렉터·dispatch 등 포함 전체 그린.
 - 실 postgres E2E: findings 적재·provenance 저장·0건 스캔 증적·**OIDC 서명 claim이 위조 repo override(verified:true)**·bad token 401·정적 폴백 — 통과.
-- 미검증: 실 GitHub Actions 런(첫 fullscan 실행 로그로 push 200 확인 필요).
+- 실 GitHub Actions 런(무료 Semgrep): `saranf/trivy_Test` 스캔 → findings 51건 push, OIDC 검증됨(스캔 이력 UI 확인). fullscan(유료) 실 런은 크레딧 조건부.
 
-관련 코드: `services/oidc_verify.py` · `collectors/code_review.py` · `services/code_review_dispatch.py` · `api/routes/sources.py`(`/ingest/code-review`, `/controls/code-review/*`) · `.github/workflows/code-review-fullscan.yml` · `scripts/code_review_fullscan.py` · `schema/012_code_review_source.sql`.
+관련 코드: `services/oidc_verify.py` · `collectors/code_review.py` · `services/code_review_dispatch.py` · `api/routes/sources.py`(`/ingest/code-review`, `/controls/code-review/*`, `/controls/code-review/findings.csv`) · `.github/workflows/code-review-semgrep.yml`(무료 기본) · `.github/workflows/code-review-fullscan.yml` + `scripts/code_review_fullscan.py`(유료) · `schema/012_code_review_source.sql`.

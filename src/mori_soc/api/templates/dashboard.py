@@ -4535,7 +4535,10 @@ def render_user_dashboard_html(
           const when = String(e.received_at || env.scan_time || '').slice(0,16).replace('T',' ');
           const verified = env.verified ? `<span style=\"background:#dcfce722;color:#16a34a;border:1px solid #16a34a55;padding:0 5px;border-radius:5px;font-size:10px\">OIDC ${tt('dash.ctl.scan_hist_verified','검증됨')}</span>` : `<span style=\"background:#fef9c322;color:#a16207;border:1px solid #a1620755;padding:0 5px;border-radius:5px;font-size:10px\">${tt('dash.ctl.scan_hist_unverified','미검증')}</span>`;
           const link = env.run_url ? ` · <a href=\"${escapeHtml(env.run_url)}\" target=\"_blank\" style=\"color:#2563eb;text-decoration:none\">GitHub</a>` : '';
-          return `<div style=\"padding:5px 0;border-bottom:1px solid #f3f4f6\">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style=\"color:#6b7280\">${escapeHtml(when)}</span> ${verified}${link}</div>`;
+          const q = new URLSearchParams(); if (env.repo) q.set('repo', env.repo); if (env.commit) q.set('commit', env.commit);
+          const csvUrl = '/controls/code-review/findings.csv' + (q.toString() ? ('?'+q.toString()) : '');
+          const dl = ` · <a href=\"#\" onclick=\"event.preventDefault();openCsvPreview({title:tt('dash.ctl.scan_csv_title','코드 리뷰 findings CSV 미리보기'),filename:'mori-code-review-findings.csv',url:'${csvUrl}'})\" style=\"color:#2563eb;text-decoration:none\">${tt('dash.ctl.scan_csv_dl','결과 CSV')}</a>`;
+          return `<div style=\"padding:5px 0;border-bottom:1px solid #f3f4f6\">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style=\"color:#6b7280\">${escapeHtml(when)}</span> ${verified}${link}${dl}</div>`;
         }).join('');
       } catch(e) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.scan_hist_err','이력을 불러오지 못했어요')}</span>`; }
     }

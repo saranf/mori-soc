@@ -112,6 +112,51 @@ class IngestCodeReviewApiTests(unittest.TestCase):
             self.assertEqual(r.status_code, 503)
 
 
+class CodeReviewFindingsCsvTests(unittest.TestCase):
+    def _client(self, alerts):
+        from fastapi.testclient import TestClient
+
+        from mori_soc.api.server import create_app
+
+        store = InMemoryQueryStore(alerts=alerts)
+        with patch.dict(os.environ, {"MORI_DEMO_SEED": "0", "MORI_AUTH_ENABLED": ""}, clear=False):
+            return TestClient(create_app(QueryService(store)))
+
+    def test_findings_csv_exports_code_review_only_and_filters_by_repo(self) -> None:
+        now = datetime.now(tz=timezone.utc)
+        alerts = [
+            Alert(alert_id="c1", source="code_review", observed_at=now, message="sql injection (app.py:10)",
+                  severity="high", rule_id="py/sql", rule_name="SQL Injection",
+                  raw_payload={"file": "app.py", "line": 10,
+                               "_provenance": {"repo": "org/app", "commit": "deadbeefcafe", "verified": True}}),
+            Alert(alert_id="c2", source="code_review", observed_at=now, message="xss (ui.js:3)",
+                  severity="low", rule_id="js/xss",
+                  raw_payload={"file": "ui.js", "line": 3,
+                               "_provenance": {"repo": "org/other", "commit": "0000", "verified": False}}),
+            Alert(alert_id="w1", source="wazuh", observed_at=now, message="ssh brute", severity="high"),
+        ]
+        client = self._client(alerts)
+
+        r = client.get("/controls/code-review/findings.csv")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("text/csv", r.headers["content-type"])
+        body = r.text
+        self.assertIn("org/app", body)
+        self.assertIn("org/other", body)
+        self.assertNotIn("ssh brute", body)          # wazuh 제외
+        self.assertIn("검증됨", body)
+        self.assertIn("미검증", body)
+
+        r2 = client.get("/controls/code-review/findings.csv", params={"repo": "org/app"})
+        self.assertEqual(r2.status_code, 200)
+        self.assertIn("org/app", r2.text)
+        self.assertNotIn("org/other", r2.text)
+
+        r3 = client.get("/controls/code-review/findings.csv", params={"repo": "org/app", "commit": "deadbeef"})
+        self.assertIn("org/app", r3.text)            # prefix commit 매칭
+        self.assertNotIn("org/other", r3.text)
+
+
 class PdcaCodeReviewSplitTests(unittest.TestCase):
     def test_code_review_alerts_counted_separately(self) -> None:
         from mori_soc.api.payloads import build_pdca_payload
