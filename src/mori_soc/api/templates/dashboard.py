@@ -369,6 +369,7 @@ def render_user_dashboard_html(
       <section class=\"card\">
         <h2 data-i18n=\"dash.card.triage\">Alert Triage</h2>
         <div class=\"subtext\" data-i18n=\"dash.card.triage.sub\">최근 24시간 경보예요. 상태를 눌러 처리하세요.</div>
+        <div style=\"margin:0 0 12px;padding:8px 11px;background:#f9fafb;border:1px solid #e5e7eb;border-left:3px solid #2563eb;border-radius:8px;font-size:12px;color:#4b5563;line-height:1.65\" data-i18n=\"dash.card.triage.help\">이 탭을 열어두면 30초마다 자동으로 갱신돼요(처리 중일 땐 멈춤). 상태를 눌러 접수 → 조사중 → 완료로 처리하고, 소스 배지를 누르면 원본(Zabbix 등)으로 이동합니다.</div>
         <div class=\"table-wrap\" id=\"triage_table\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         <div style=\"margin-top:10px\"><button id=\"reload_triage\" class=\"secondary\" data-i18n=\"dash.btn.reload\">새로고침</button></div>
       </section>
