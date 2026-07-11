@@ -3841,7 +3841,7 @@ def render_user_dashboard_html(
       if (!titleEl || !bodyEl) return;
       bodyEl.innerHTML = '<span style="color:#111827">' + tt('dash.dyn.loading','로딩 중…') + '</span>';
       try {
-        const res = await fetch(`/guides/${encodeURIComponent(guideId)}`);
+        const res = await fetch(`/guides/${encodeURIComponent(guideId)}?lang=${encodeURIComponent(window.lang||'ko')}`);
         if (!res.ok) throw new Error(res.status);
         const g = await res.json();
         titleEl.textContent = g.title || guideId;
