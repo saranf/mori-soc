@@ -17,6 +17,10 @@ from mori_soc.api.payloads import build_assets_payload
 from mori_soc.api.routes.context import RouteContext
 
 
+# GitHub OIDC JWKS(공개키) 프로세스 캐시 — kid 회전 시에만 재조회.
+_OIDC_JWKS_CACHE: dict[str, Any] = {}
+
+
 def _extract_code_findings(payload: dict[str, Any]) -> list[dict[str, Any]]:
     """코드 리뷰 인제스트 본문에서 finding dict 목록을 뽑는다.
 
@@ -81,6 +85,46 @@ def register_sources(ctx: RouteContext) -> None:
         get_user = ctx.get_session_username
         if not (get_user and get_user(request)):
             raise HTTPException(status_code=401, detail="auth required (login or set MORI_INGEST_TOKEN)")
+
+    def _verify_oidc_header(request: Request) -> dict[str, Any] | None:
+        """X-MORI-OIDC 헤더가 있으면 GitHub OIDC JWT 를 검증해 클레임 반환(없으면 None).
+
+        헤더가 있으나 검증 실패면 401. 검증되면 repository·sha·run_id 가 GitHub 서명으로
+        보증되므로 provenance 를 '검증됨'으로 승격할 수 있다.
+        """
+        import os as _os
+        import time as _time
+
+        token = request.headers.get("x-mori-oidc", "").strip()
+        if not token:
+            return None
+        from mori_soc.services.oidc_verify import OidcError, fetch_github_jwks, verify_github_oidc
+
+        audience = _os.getenv("MORI_OIDC_AUDIENCE", "mori-ingest").strip() or "mori-ingest"
+        allowed = _os.getenv("MORI_OIDC_ALLOWED_REPOS", "").strip()
+        allowed_repos = {r.strip() for r in allowed.split(",") if r.strip()} or None
+        allowed_owner = _os.getenv("MORI_OIDC_ALLOWED_OWNER", "").strip() or None
+
+        def _run(jwks: dict[str, Any]) -> dict[str, Any]:
+            return verify_github_oidc(token, audience=audience, jwks=jwks, allowed_repos=allowed_repos,
+                                      allowed_owner=allowed_owner, now=int(_time.time()))
+
+        try:
+            if not _OIDC_JWKS_CACHE.get("keys"):
+                _OIDC_JWKS_CACHE.clear(); _OIDC_JWKS_CACHE.update(fetch_github_jwks())
+            try:
+                return _run(_OIDC_JWKS_CACHE)
+            except OidcError as exc:
+                if "no JWKS key" in str(exc):  # kid 회전 → 1회 재조회 후 재시도
+                    _OIDC_JWKS_CACHE.clear(); _OIDC_JWKS_CACHE.update(fetch_github_jwks())
+                    return _run(_OIDC_JWKS_CACHE)
+                raise
+        except OidcError as exc:
+            raise HTTPException(status_code=401, detail=f"OIDC verification failed: {exc}") from exc
+        except HTTPException:
+            raise
+        except Exception as exc:  # JWKS 조회 실패 등
+            raise HTTPException(status_code=503, detail=f"OIDC verify unavailable: {exc}") from exc
 
     def _session_role(request: Request) -> str | None:
         """현재 세션 롤(admin/security/...)을 반환. 미인증 시 None."""
@@ -265,7 +309,12 @@ def register_sources(ctx: RouteContext) -> None:
         """
         import os as _os
 
-        _require_ingest_auth(request)
+        # 인증: OIDC(X-MORI-OIDC) 우선 → 검증된 provenance. 없으면 정적 토큰/세션 폴백.
+        oidc_claims = _verify_oidc_header(request)
+        if oidc_claims is None:
+            if _os.getenv("MORI_INGEST_REQUIRE_OIDC", "").strip().lower() in ("1", "true", "yes"):
+                raise HTTPException(status_code=401, detail="OIDC required (X-MORI-OIDC) but not provided")
+            _require_ingest_auth(request)
 
         db = _os.getenv("MORI_DATABASE_URL", "").strip()
         if not db:
@@ -287,10 +336,18 @@ def register_sources(ctx: RouteContext) -> None:
         commit = (commit or "").strip() or str(payload.get("commit") or payload.get("sha") or "").strip()
         run_id = (run_id or "").strip() or str(payload.get("run_id") or "").strip()
         pr = (pr or "").strip() or str(payload.get("pr") or payload.get("pr_number") or "").strip()
+        # OIDC 검증됨 → GitHub 서명 클레임이 자기신고 값을 이긴다(위조 불가 provenance).
+        verified = False
+        if oidc_claims:
+            resolved_repo = str(oidc_claims.get("repository") or resolved_repo or "") or None
+            commit = str(oidc_claims.get("sha") or commit or "")
+            run_id = str(oidc_claims.get("run_id") or run_id or "")
+            verified = True
         run_url = (run_url or "").strip() or str(payload.get("run_url") or "").strip() or (
             f"https://github.com/{resolved_repo}/actions/runs/{run_id}" if resolved_repo and run_id else "")
         provenance = {"repo": resolved_repo, "commit": commit or None, "pr": pr or None,
-                      "run_id": run_id or None, "run_url": run_url or None, "scan_time": now_iso}
+                      "run_id": run_id or None, "run_url": run_url or None,
+                      "scan_time": now_iso, "verified": verified}
         for _f in findings:
             if isinstance(_f, dict):
                 _f.setdefault("_provenance", provenance)
@@ -336,7 +393,19 @@ def register_sources(ctx: RouteContext) -> None:
         return {"ok": True, "records_collected": report.records_collected,
                 "entities_saved": report.entities_saved, "repo": resolved_repo,
                 "commit": commit or None, "pr": pr or None, "run_url": run_url or None,
-                "scan_recorded": scan_recorded}
+                "scan_recorded": scan_recorded, "provenance_verified": verified}
+
+    # ── 고객 배포용 security-review.yml 템플릿 (UI 도움말의 "파일 예시") ───────────
+    @app.get("/controls/code-review/workflow-template", tags=["Sources"])
+    def code_review_workflow_template() -> dict[str, Any]:
+        """고객이 자기 레포에 복붙할 security-review.yml 예시(현재 서버 audience 반영)."""
+        import os as _os
+        from mori_soc.services.code_review_dispatch import workflow_template
+
+        aud = _os.getenv("MORI_OIDC_AUDIENCE", "mori-ingest").strip() or "mori-ingest"
+        return {"filename": ".github/workflows/security-review.yml",
+                "content": workflow_template(aud), "audience": aud,
+                "public_url": _os.getenv("MORI_PUBLIC_URL", "").strip()}
 
     # ── CSOP 증적(evidence) HTTP 인제스트 — 조치 전/후 diff envelope 수신함 ────────
     @app.post("/ingest/evidence", tags=["Sources"])

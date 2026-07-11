@@ -19,6 +19,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  id-token: write   # GitHub OIDC — 위조 불가 provenance(repo·commit·run 서명 증명)
 
 jobs:
   security-review:
@@ -54,18 +55,27 @@ jobs:
           RESULTS_FILE: ${{ steps.review.outputs.results-file }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          if [ -z "$MORI_INGEST_URL" ] || [ -z "$MORI_INGEST_TOKEN" ]; then
-            echo "MORI_INGEST_URL/TOKEN 미설정 — 증적 push 스킵"; exit 0
-          fi
+          if [ -z "$MORI_INGEST_URL" ]; then echo "MORI_INGEST_URL 미설정 — 스킵"; exit 0; fi
           if [ -z "$RESULTS_FILE" ] || [ ! -f "$RESULTS_FILE" ]; then
             echo "results 파일 없음($RESULTS_FILE) — 스킵"; exit 0
           fi
+          # OIDC 토큰 획득(권장) — GitHub 가 repo·sha·run 을 서명 → MORI 가 검증(위조 불가).
+          OIDC_TOKEN=""
+          if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
+            OIDC_TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=mori-ingest" | jq -r '.value // empty')
+          fi
+          if [ -z "$OIDC_TOKEN" ] && [ -z "$MORI_INGEST_TOKEN" ]; then
+            echo "OIDC·정적토큰 둘 다 없음 — 스킵"; exit 0
+          fi
           count=$(jq '.findings | length' "$RESULTS_FILE" 2>/dev/null || echo '?')
-          echo "MORI 로 findings ${count}건 push (${GITHUB_REPOSITORY}@${GITHUB_SHA})…"
-          # provenance(출처): repo·commit·run·pr 를 함께 실어 위·변조 추적을 가능케 한다.
+          echo "MORI 로 findings ${count}건 push (${GITHUB_REPOSITORY}@${GITHUB_SHA}, oidc=$([ -n "$OIDC_TOKEN" ] && echo yes || echo no))…"
+          # OIDC 있으면 X-MORI-OIDC(검증된 provenance), 없으면 정적 토큰 폴백.
+          HDR=(-H "Content-Type: application/json")
+          [ -n "$MORI_INGEST_TOKEN" ] && HDR+=(-H "Authorization: Bearer ${MORI_INGEST_TOKEN}")
+          [ -n "$OIDC_TOKEN" ] && HDR+=(-H "X-MORI-OIDC: ${OIDC_TOKEN}")
           curl -fsS -X POST \
             "${MORI_INGEST_URL%/}/ingest/code-review?repo=${GITHUB_REPOSITORY}&commit=${GITHUB_SHA}&run_id=${GITHUB_RUN_ID}&pr=${PR_NUMBER}" \
-            -H "Authorization: Bearer ${MORI_INGEST_TOKEN}" \
-            -H "Content-Type: application/json" \
+            "${HDR[@]}" \
             --data-binary "@${RESULTS_FILE}"
           echo; echo "pushed."
