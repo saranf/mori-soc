@@ -789,8 +789,11 @@ def register_compliance(ctx: RouteContext) -> None:
             owner, repo = parse_github_repo(repo_url)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        # MORI 자기 URL 을 dispatch 입력으로 주입 → 고객은 MORI_INGEST_URL 시크릿 불필요(3→2).
+        mori_url = str(payload.get("mori_ingest_url", "")).strip() or os.getenv("MORI_PUBLIC_URL", "").strip()
+        inputs = {"mori_ingest_url": mori_url} if mori_url else None
         try:
-            dispatch_workflow(owner, repo, token, ref=ref, workflow=workflow)
+            dispatch_workflow(owner, repo, token, ref=ref, workflow=workflow, inputs=inputs)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:

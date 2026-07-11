@@ -8,6 +8,13 @@ name: security-review
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      # MORI 가 원격 트리거(/controls/code-review/scan) 시 자기 URL 을 넘겨준다.
+      # 이 값이 있으면 고객은 MORI_INGEST_URL 시크릿을 설정하지 않아도 된다(시크릿 3→2).
+      mori_ingest_url:
+        description: "MORI ingest base URL (원격 트리거 시 자동 주입, 비우면 시크릿 사용)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -41,7 +48,8 @@ jobs:
         if: ${{ always() }}
         continue-on-error: true
         env:
-          MORI_INGEST_URL: ${{ secrets.MORI_INGEST_URL }}
+          # URL 은 dispatch 입력(MORI 주입) 우선 → 없으면 시크릿. 토큰은 로그 노출 방지로 시크릿만.
+          MORI_INGEST_URL: ${{ github.event.inputs.mori_ingest_url || secrets.MORI_INGEST_URL }}
           MORI_INGEST_TOKEN: ${{ secrets.MORI_INGEST_TOKEN }}
           RESULTS_FILE: ${{ steps.review.outputs.results-file }}
         run: |

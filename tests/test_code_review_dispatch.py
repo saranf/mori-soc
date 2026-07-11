@@ -89,6 +89,15 @@ class ScanEndpointTests(unittest.TestCase):
         self.assertNotIn("ghp_secret", r.text)  # 토큰은 응답에 절대 노출 안 됨
         disp.assert_called_once()
 
+    def test_mori_url_injected_as_dispatch_input(self) -> None:
+        # MORI_PUBLIC_URL 이 설정되면 dispatch inputs 로 주입 → 고객 URL 시크릿 불필요.
+        with patch.dict(os.environ, {"MORI_PUBLIC_URL": "https://mori.example.com"}, clear=False), \
+             patch("mori_soc.services.code_review_dispatch.dispatch_workflow", return_value={"ok": True}) as disp:
+            r = self.client.post("/controls/code-review/scan",
+                                 json={"repo_url": "acme/webapp", "github_token": "ghp_x"})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(disp.call_args.kwargs["inputs"], {"mori_ingest_url": "https://mori.example.com"})
+
 
 if __name__ == "__main__":
     unittest.main()
