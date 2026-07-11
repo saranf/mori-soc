@@ -52,6 +52,7 @@ jobs:
           MORI_INGEST_URL: ${{ github.event.inputs.mori_ingest_url || secrets.MORI_INGEST_URL }}
           MORI_INGEST_TOKEN: ${{ secrets.MORI_INGEST_TOKEN }}
           RESULTS_FILE: ${{ steps.review.outputs.results-file }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           if [ -z "$MORI_INGEST_URL" ] || [ -z "$MORI_INGEST_TOKEN" ]; then
             echo "MORI_INGEST_URL/TOKEN 미설정 — 증적 push 스킵"; exit 0
@@ -60,9 +61,10 @@ jobs:
             echo "results 파일 없음($RESULTS_FILE) — 스킵"; exit 0
           fi
           count=$(jq '.findings | length' "$RESULTS_FILE" 2>/dev/null || echo '?')
-          echo "MORI 로 findings ${count}건 push…"
+          echo "MORI 로 findings ${count}건 push (${GITHUB_REPOSITORY}@${GITHUB_SHA})…"
+          # provenance(출처): repo·commit·run·pr 를 함께 실어 위·변조 추적을 가능케 한다.
           curl -fsS -X POST \
-            "${MORI_INGEST_URL%/}/ingest/code-review?repo=${GITHUB_REPOSITORY}" \
+            "${MORI_INGEST_URL%/}/ingest/code-review?repo=${GITHUB_REPOSITORY}&commit=${GITHUB_SHA}&run_id=${GITHUB_RUN_ID}&pr=${PR_NUMBER}" \
             -H "Authorization: Bearer ${MORI_INGEST_TOKEN}" \
             -H "Content-Type: application/json" \
             --data-binary "@${RESULTS_FILE}"

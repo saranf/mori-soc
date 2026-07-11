@@ -251,7 +251,9 @@ def register_sources(ctx: RouteContext) -> None:
 
     # ── 코드 보안 리뷰 findings 인제스트 (claude-code-security-review → Alert Triage) ──
     @app.post("/ingest/code-review", tags=["Sources"])
-    def ingest_code_review(payload: dict[str, Any], request: Request, repo: str | None = None) -> dict[str, Any]:
+    def ingest_code_review(payload: dict[str, Any], request: Request, repo: str | None = None,
+                           commit: str | None = None, run_id: str | None = None,
+                           run_url: str | None = None, pr: str | None = None) -> dict[str, Any]:
         """AI 코드 보안 리뷰 findings 를 push → 정규화 → alert(source=code_review) 적재.
 
         claude-code-security-review(GitHub Action)가 매 PR 리뷰 결과를 보낸다. MORI 는
@@ -272,10 +274,26 @@ def register_sources(ctx: RouteContext) -> None:
             raise HTTPException(status_code=400, detail="body must be a JSON object")
 
         findings = _extract_code_findings(payload)
-        if not findings:
+        # {"findings": []} = 깨끗한 스캔(0건)도 유효 — "통제가 작동했다" 증적이 되므로 400 아님.
+        is_scan_report = isinstance(payload.get("findings"), list) or isinstance(payload.get("runs"), list)
+        if not findings and not is_scan_report:
             raise HTTPException(status_code=400, detail="no findings in payload ({findings:[...]} or SARIF {runs:[...]})")
 
         resolved_repo = (repo or "").strip() or str(payload.get("repo") or payload.get("repository") or "").strip() or None
+
+        # ── provenance(출처) 캡처 — 어느 repo·commit·PR·run 에서 나온 증적인지 불변 기록 ──
+        now = datetime.now(tz=timezone.utc)
+        now_iso = now.isoformat()
+        commit = (commit or "").strip() or str(payload.get("commit") or payload.get("sha") or "").strip()
+        run_id = (run_id or "").strip() or str(payload.get("run_id") or "").strip()
+        pr = (pr or "").strip() or str(payload.get("pr") or payload.get("pr_number") or "").strip()
+        run_url = (run_url or "").strip() or str(payload.get("run_url") or "").strip() or (
+            f"https://github.com/{resolved_repo}/actions/runs/{run_id}" if resolved_repo and run_id else "")
+        provenance = {"repo": resolved_repo, "commit": commit or None, "pr": pr or None,
+                      "run_id": run_id or None, "run_url": run_url or None, "scan_time": now_iso}
+        for _f in findings:
+            if isinstance(_f, dict):
+                _f.setdefault("_provenance", provenance)
 
         from mori_soc.collectors import CodeReviewCollector
         from mori_soc.models import SourceSync
@@ -290,17 +308,35 @@ def register_sources(ctx: RouteContext) -> None:
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"code-review ingest failed: {exc}") from exc
 
-        now = datetime.now(tz=timezone.utc)
+        # ── 스캔 런 자체를 증적으로 — 0건이어도 "이 repo@commit 를 언제 스캔했다"를 남긴다 ──
+        scan_recorded = False
+        if state_repo is not None:
+            import hashlib as _hashlib
+            seed = "|".join(x for x in [resolved_repo or "", commit, run_id] if x) or now_iso
+            ev_id = "cr-scan-" + _hashlib.sha1(seed.encode("utf-8")).hexdigest()[:16]
+            short = (commit or "HEAD")[:8]
+            record = {"id": ev_id, "host_id": resolved_repo or "", "artifact_name": resolved_repo or "",
+                      "delta_type": "code_review_scan", "cve": "",
+                      "summary": f"코드 보안 리뷰 스캔: {resolved_repo or '?'}@{short} — findings {len(findings)}건",
+                      "source": "code_review", "envelope": provenance, "received_at": now_iso}
+            try:
+                state_repo.save_evidence_event(ev_id, record)
+                scan_recorded = True
+            except Exception:
+                scan_recorded = False
+
         try:
             repo_db.save(SourceSync(source="code_review", status="success", last_sync_at=now, last_success_at=now,
-                                    message=f"http ingest: {report.records_collected} findings",
+                                    message=f"http ingest: {report.records_collected} findings ({resolved_repo or '?'}@{(commit or 'HEAD')[:8]})",
                                     records_collected=report.records_collected,
                                     envelopes_normalized=report.envelopes_normalized,
                                     entities_saved=report.entities_saved))
         except Exception:
             pass
         return {"ok": True, "records_collected": report.records_collected,
-                "entities_saved": report.entities_saved, "repo": resolved_repo}
+                "entities_saved": report.entities_saved, "repo": resolved_repo,
+                "commit": commit or None, "pr": pr or None, "run_url": run_url or None,
+                "scan_recorded": scan_recorded}
 
     # ── CSOP 증적(evidence) HTTP 인제스트 — 조치 전/후 diff envelope 수신함 ────────
     @app.post("/ingest/evidence", tags=["Sources"])

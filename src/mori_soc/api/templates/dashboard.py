@@ -4341,6 +4341,18 @@ def render_user_dashboard_html(
       const inp = 'background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 9px;font-size:13px';
       box.innerHTML = `<div style=\"font-weight:700;color:#7c3aed;margin-bottom:6px\">${tt('dash.ctl.scan_ttl','GitHub 레포 코드 보안 리뷰 요청')}</div>
         <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.ctl.scan_help','레포 URL과 GitHub 토큰(actions:write)을 넣으면 그 레포의 CI에서 보안 리뷰가 돌고 결과가 MORI로 자동 회수돼요. MORI는 코드를 가져오지 않고 토큰도 저장하지 않아요. 대상 레포에 security-review.yml이 있어야 해요.')}</div>
+        <details style=\"margin-bottom:8px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:8px 10px\">
+          <summary style=\"cursor:pointer;font-size:12px;color:#7c3aed;font-weight:600\">❓ ${tt('dash.ctl.scan_guide_t','처음이신가요? security-review.yml이 뭔지·셋업 방법 보기')}</summary>
+          <div style=\"font-size:12px;color:#374151;margin-top:6px;line-height:1.6\">
+            <div style=\"margin-bottom:4px\">${tt('dash.ctl.scan_guide_what','security-review.yml = 대상 GitHub 레포의 .github/workflows/ 에 넣는 자동화 파일이에요. 매 PR·요청마다 AI가 코드 보안 리뷰를 돌려 결과를 MORI로 보내요. (MORI는 코드를 가져오지 않아요)')}</div>
+            <div style=\"font-weight:600;margin:6px 0 2px\">${tt('dash.ctl.scan_guide_steps','대상 레포에 한 번만 준비하면 돼요:')}</div>
+            <ol style=\"margin:0;padding-left:18px\">
+              <li>${tt('dash.ctl.scan_guide_s1','레포 .github/workflows/ 에 security-review.yml 1개 복사 (MORI 저장소의 같은 파일)')}</li>
+              <li>${tt('dash.ctl.scan_guide_s2','레포 Settings → Secrets 에 2개 등록: ANTHROPIC_API_KEY · MORI_INGEST_TOKEN')}</li>
+              <li>${tt('dash.ctl.scan_guide_s3','아래에 GitHub 토큰(그 레포 actions:write) 입력 — 저장하지 않고 이번 실행에만 써요')}</li>
+            </ol>
+          </div>
+        </details>
         <div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px\">
           <input id=\"scan_url\" placeholder=\"${tt('dash.ctl.scan_url_ph','https://github.com/owner/repo')}\" style=\"${inp};flex:1;min-width:260px\" />
           <input id=\"scan_ref\" placeholder=\"${tt('dash.ctl.scan_ref_ph','브랜치(기본 main)')}\" value=\"main\" style=\"${inp};width:150px\" />
