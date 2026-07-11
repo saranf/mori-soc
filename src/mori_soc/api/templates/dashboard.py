@@ -4417,8 +4417,13 @@ def render_user_dashboard_html(
             </ul>
             <div style=\"color:#6b7280;margin-top:4px\">${tt('dash.ctl.scan_res_note','※ 반영에 1~3분 걸릴 수 있어요. 바로 안 보이면 페이지 새로고침(또는 워커 주기 후) 하세요. 안 보이면: 레포 MORI_INGEST_URL 시크릿이 이 MORI 주소인지·MORI가 외부에서 접근 가능한지 확인.')}</div>
           </div>
-        </details>`;
+        </details>
+        <div style=\"margin-top:10px\">
+          <div style=\"font-size:12px;font-weight:600;color:#111827;display:flex;align-items:center;gap:6px\">${tt('dash.ctl.scan_hist_t','최근 코드 리뷰 스캔 이력')} <button onclick=\"loadRecentCodeReviewScans()\" class=\"secondary\" style=\"width:auto;padding:2px 8px;font-size:11px\">${tt('dash.btn.reload','새로고침')}</button></div>
+          <div id=\"scan_recent\" style=\"margin-top:6px;font-size:12px;color:#374151\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>
+        </div>`;
       box.style.display = 'block';
+      loadRecentCodeReviewScans();
     }
     window.openCodeReviewScan = openCodeReviewScan;
     async function runCodeReviewScan() {
@@ -4453,6 +4458,27 @@ def render_user_dashboard_html(
       } catch(e) { pre.textContent = '(불러오기 실패)'; pre.style.display='block'; }
     }
     window.showCodeReviewTemplate = showCodeReviewTemplate;
+    async function loadRecentCodeReviewScans() {
+      const box = document.getElementById('scan_recent');
+      if (!box) return;
+      try {
+        const res = await fetch('/evidence?delta=code_review_scan&limit=10');
+        if (!res.ok) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.scan_hist_denied','목록을 볼 수 없어요 (admin·security 권한 필요)')}</span>`; return; }
+        const d = await res.json();
+        const evs = d.events || [];
+        if (!evs.length) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.scan_hist_empty','아직 스캔 이력이 없어요. 스캔을 요청하면 여기에 떠요 (0건 클린 스캔도 기록돼요).')}</span>`; return; }
+        box.innerHTML = evs.map(e => {
+          const env = e.envelope || {};
+          const repo = env.repo || e.host_id || '?';
+          const commit = (env.commit || '').slice(0,8);
+          const when = String(e.received_at || env.scan_time || '').slice(0,16).replace('T',' ');
+          const verified = env.verified ? `<span style=\"background:#dcfce722;color:#16a34a;border:1px solid #16a34a55;padding:0 5px;border-radius:5px;font-size:10px\">OIDC ${tt('dash.ctl.scan_hist_verified','검증됨')}</span>` : `<span style=\"background:#fef9c322;color:#a16207;border:1px solid #a1620755;padding:0 5px;border-radius:5px;font-size:10px\">${tt('dash.ctl.scan_hist_unverified','미검증')}</span>`;
+          const link = env.run_url ? ` · <a href=\"${escapeHtml(env.run_url)}\" target=\"_blank\" style=\"color:#2563eb;text-decoration:none\">GitHub</a>` : '';
+          return `<div style=\"padding:5px 0;border-bottom:1px solid #f3f4f6\">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style=\"color:#6b7280\">${escapeHtml(when)}</span> ${verified}${link}</div>`;
+        }).join('');
+      } catch(e) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.scan_hist_err','이력을 불러오지 못했어요')}</span>`; }
+    }
+    window.loadRecentCodeReviewScans = loadRecentCodeReviewScans;
 
     // ── M2-8: Claude API 키 관리 (admin, env 우선 → DB 폴백) ────────────────────
     async function loadClaudeKeyStatus() {
