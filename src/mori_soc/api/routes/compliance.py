@@ -793,7 +793,7 @@ def register_compliance(ctx: RouteContext) -> None:
         """고객 GitHub 레포의 보안 리뷰를 원격 실행. admin·security.
 
         {repo_url, github_token, ref?, workflow?}. GitHub workflow_dispatch 로 대상 레포의
-        code-review-fullscan.yml 을 트리거하면, 스캔은 **그 레포 CI 러너**에서 돌고 결과는
+        code-review-semgrep.yml(무료) 을 트리거하면, 스캔은 **그 레포 CI 러너**에서 돌고 결과는
         /ingest/code-review 로 돌아온다. MORI 는 코드를 clone/스캔하지 않으며 토큰도
         저장하지 않는다(이 호출에만 사용).
         """
@@ -804,9 +804,9 @@ def register_compliance(ctx: RouteContext) -> None:
         repo_url = str(payload.get("repo_url", "")).strip()
         token = str(payload.get("github_token", "")).strip()
         ref = str(payload.get("ref", "") or "main").strip() or "main"
-        # 온디맨드(UI) 스캔은 기존 코드 전체를 감사하는 fullscan 워크플로를 트리거한다.
-        # (security-review.yml 은 PR diff 전용이라 workflow_dispatch 에선 스킵됨)
-        workflow = str(payload.get("workflow", "") or "code-review-fullscan.yml").strip() or "code-review-fullscan.yml"
+        # 온디맨드(UI) 스캔 기본 = 무료 Semgrep(SAST)로 기존 코드 전체 감사.
+        # (유료 Claude 심층 리뷰를 원하면 payload.workflow=code-review-fullscan.yml)
+        workflow = str(payload.get("workflow", "") or "code-review-semgrep.yml").strip() or "code-review-semgrep.yml"
         if not repo_url:
             raise HTTPException(status_code=400, detail="repo_url 이 필요합니다.")
         if not token:

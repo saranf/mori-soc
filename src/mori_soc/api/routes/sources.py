@@ -416,7 +416,7 @@ def register_sources(ctx: RouteContext) -> None:
                 break
             except OSError:
                 continue
-        return {"filename": ".github/workflows/code-review-fullscan.yml",
+        return {"filename": ".github/workflows/code-review-semgrep.yml",
                 "content": workflow_template(aud),
                 "script_filename": "scripts/code_review_fullscan.py",
                 "script_content": script_content,

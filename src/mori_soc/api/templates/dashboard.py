@@ -4353,16 +4353,16 @@ def render_user_dashboard_html(
       document.getElementById('ctl_editor').style.display = 'none';
       const inp = 'background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 9px;font-size:13px';
       box.innerHTML = `<div style=\"font-weight:700;color:#7c3aed;margin-bottom:6px\">${tt('dash.ctl.scan_ttl','GitHub 레포 코드 보안 리뷰 요청')}</div>
-        <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.ctl.scan_help','레포 URL과 GitHub 토큰(actions:write)을 넣으면 그 레포의 CI에서 보안 리뷰가 돌고 결과가 MORI로 자동 회수돼요. MORI는 코드를 가져오지 않고 토큰도 저장하지 않아요. 대상 레포에 code-review-fullscan.yml + scripts/code_review_fullscan.py 가 있어야 해요.')}</div>
-        <div style=\"margin-bottom:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 10px;font-size:12px;color:#1e3a8a;line-height:1.6\">ℹ️ ${tt('dash.ctl.scan_warn_pr','온디맨드 스캔 = 기존 코드 전체를 AI로 리뷰해요(code-review-fullscan). 대상 레포에 code-review-fullscan.yml + scripts/code_review_fullscan.py 를 두면 이 버튼으로 바로 스캔돼요.')}</div>
+        <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.ctl.scan_help','레포 URL과 GitHub 토큰(actions:write)을 넣으면 그 레포의 CI에서 무료 보안 스캔(Semgrep)이 돌고 결과가 MORI로 자동 회수돼요. MORI는 코드를 가져오지 않고 토큰도 저장하지 않아요. 대상 레포에 code-review-semgrep.yml 1개만 있으면 돼요.')}</div>
+        <div style=\"margin-bottom:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 10px;font-size:12px;color:#1e3a8a;line-height:1.6\">ℹ️ ${tt('dash.ctl.scan_warn_pr','온디맨드 스캔 = 무료 Semgrep(SAST)로 기존 코드 전체를 스캔해요. 대상 레포에 code-review-semgrep.yml 1개만 두면 이 버튼으로 바로 스캔돼요. (더 깊은 유료 Claude 리뷰는 code-review-fullscan.yml 참고.)')}</div>
         <details style=\"margin-bottom:8px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:8px 10px\">
-          <summary style=\"cursor:pointer;font-size:12px;color:#7c3aed;font-weight:600\">❓ ${tt('dash.ctl.scan_guide_t','처음이신가요? code-review-fullscan 워크플로가 뭔지·셋업 방법 보기')}</summary>
+          <summary style=\"cursor:pointer;font-size:12px;color:#7c3aed;font-weight:600\">❓ ${tt('dash.ctl.scan_guide_t','처음이신가요? code-review-semgrep(무료) 셋업 방법 보기')}</summary>
           <div style=\"font-size:12px;color:#374151;margin-top:6px;line-height:1.6\">
-            <div style=\"margin-bottom:4px\">${tt('dash.ctl.scan_guide_what','code-review-fullscan = 대상 GitHub 레포의 .github/workflows/ 에 넣는 자동화 파일이에요. 실행하면 AI가 그 레포의 기존 코드 전체를 보안 리뷰해 결과를 MORI로 보내요. (MORI는 코드를 가져오지 않아요)')}</div>
+            <div style=\"margin-bottom:4px\">${tt('dash.ctl.scan_guide_what','code-review-semgrep = 대상 GitHub 레포의 .github/workflows/ 에 넣는 무료 자동화 파일이에요. 실행하면 Semgrep(무료 SAST)이 기존 코드 전체를 스캔해 결과를 MORI로 보내요. (MORI는 코드를 가져오지 않아요)')}</div>
             <div style=\"font-weight:600;margin:6px 0 2px\">${tt('dash.ctl.scan_guide_steps','대상 레포에 한 번만 준비하면 돼요:')}</div>
             <ol style=\"margin:0;padding-left:18px\">
-              <li>${tt('dash.ctl.scan_guide_s1','레포 .github/workflows/ 에 code-review-fullscan.yml + scripts/code_review_fullscan.py 복사 (MORI 저장소의 같은 파일)')}</li>
-              <li>${tt('dash.ctl.scan_guide_s2','레포 Settings → Secrets 에 2개 등록: ANTHROPIC_API_KEY · MORI_INGEST_URL (등록 방법 아래 ↓)')}</li>
+              <li>${tt('dash.ctl.scan_guide_s1','레포 .github/workflows/ 에 code-review-semgrep.yml 1개 복사 (MORI 저장소의 같은 파일)')}</li>
+              <li>${tt('dash.ctl.scan_guide_s2','레포 Settings → Secrets 에 1개만 등록: MORI_INGEST_URL (무료 — ANTHROPIC 키 불필요, 등록 방법 아래 ↓)')}</li>
               <li>${tt('dash.ctl.scan_guide_s3','아래에 GitHub 토큰(그 레포 actions:write) 입력 — 저장하지 않고 이번 실행에만 써요')}</li>
             </ol>
             <details style=\"margin-top:6px;background:#fff;border:1px dashed #d1d5db;border-radius:6px;padding:6px 8px\">
@@ -4371,24 +4371,22 @@ def render_user_dashboard_html(
                 <li>${tt('dash.ctl.scan_sec_1','대상 레포 페이지 상단 Settings 탭')}</li>
                 <li>${tt('dash.ctl.scan_sec_2','좌측 메뉴 Secrets and variables → Actions')}</li>
                 <li>${tt('dash.ctl.scan_sec_3','New repository secret 버튼 클릭')}</li>
-                <li>${tt('dash.ctl.scan_sec_4','Name=ANTHROPIC_API_KEY, Secret=Anthropic 콘솔(console.anthropic.com)의 API 키 → Add secret')}</li>
-                <li>${tt('dash.ctl.scan_sec_5','다시 New repository secret → Name=MORI_INGEST_URL, Secret=이 MORI 주소(예: https://mori.example.com) → Add secret')}</li>
+                <li>${tt('dash.ctl.scan_sec_4','Name=MORI_INGEST_URL, Secret=이 MORI 주소(예: https://mori.example.com) → Add secret')}</li>
+                <li>${tt('dash.ctl.scan_sec_5','(선택) 유료 Claude 심층 스캔을 쓸 때만 ANTHROPIC_API_KEY 도 추가')}</li>
               </ol>
               <div style=\"font-size:11px;color:#16a34a;margin-top:4px\">${tt('dash.ctl.scan_sec_note','※ OIDC로 인증하므로 별도 ingest 토큰 시크릿은 필요 없어요.')}</div>
             </details>
             <div style=\"margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center\">
-              <button onclick=\"showCodeReviewTemplate()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">📄 ${tt('dash.ctl.scan_tpl_btn','① 워크플로(.yml) 보기·복사')}</button>
-              <button onclick=\"showCodeReviewScript()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">📄 ${tt('dash.ctl.scan_script_btn','② 스크립트(.py) 보기·복사')}</button>
+              <button onclick=\"showCodeReviewTemplate()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">📄 ${tt('dash.ctl.scan_tpl_btn','워크플로(.yml) 보기·복사')}</button>
               <span id=\"scan_tpl_msg\" style=\"font-size:11px;color:#16a34a\"></span>
             </div>
             <div style=\"margin-top:6px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:6px 8px\">
-              <div style=\"font-size:11px;font-weight:600;color:#111827;margin-bottom:2px\">📁 ${tt('dash.ctl.scan_files_t','파일 위치 (중요 — 폴더가 서로 달라요)')}</div>
+              <div style=\"font-size:11px;font-weight:600;color:#111827;margin-bottom:2px\">📁 ${tt('dash.ctl.scan_files_t','파일 위치')}</div>
               <div style=\"font-family:monospace;font-size:11px;color:#111827;line-height:1.5\">
                 <div>${tt('dash.ctl.scan_files_root','레포 루트')}/</div>
-                <div>├─ .github/workflows/code-review-fullscan.yml&nbsp;&nbsp;← ①</div>
-                <div>└─ scripts/code_review_fullscan.py&nbsp;&nbsp;← ②</div>
+                <div>└─ .github/workflows/code-review-semgrep.yml</div>
               </div>
-              <div style=\"font-size:11px;color:#b45309;margin-top:3px\">⚠️ ${tt('dash.ctl.scan_files_warn','②(.py)는 .github/workflows 안이 아니라, 레포 맨 위에 scripts/ 폴더를 새로 만들어 넣어요.')}</div>
+              <div style=\"font-size:11px;color:#6b7280;margin-top:3px\">${tt('dash.ctl.scan_files_warn','파일 1개면 끝이에요(무료 Semgrep). 더 깊은 유료 Claude 리뷰는 code-review-fullscan.yml + scripts/code_review_fullscan.py.')}</div>
             </div>
             <pre id=\"scan_tpl\" style=\"display:none;margin-top:6px;max-height:240px;overflow:auto;background:#0b1021;color:#e5e7eb;padding:10px;border-radius:8px;font-size:11px;line-height:1.45;white-space:pre\"></pre>
           </div>
@@ -4422,7 +4420,7 @@ def render_user_dashboard_html(
           <summary style=\"cursor:pointer;font-size:12px;color:#16a34a;font-weight:600\">✅ ${tt('dash.ctl.scan_res_t','스캔 후 결과는 어디서 확인하나요?')}</summary>
           <div style=\"font-size:12px;color:#374151;margin-top:6px;line-height:1.7\">
             <div style=\"font-weight:600;margin-bottom:2px\">${tt('dash.ctl.scan_res_step1','1) 먼저 GitHub에서 실행 확인')}</div>
-            <div style=\"margin-bottom:6px\">${tt('dash.ctl.scan_res_gh','대상 레포 → Actions 탭 → \"code-review-fullscan\" 실행(초록 체크)이 떠야 해요. 안 뜨면 그 레포에 code-review-fullscan.yml·시크릿이 없는 거예요.')}</div>
+            <div style=\"margin-bottom:6px\">${tt('dash.ctl.scan_res_gh','대상 레포 → Actions 탭 → \"code-review-semgrep\" 실행(초록 체크)이 떠야 해요. 안 뜨면 그 레포에 code-review-semgrep.yml·시크릿이 없는 거예요.')}</div>
             <div style=\"font-weight:600;margin-bottom:2px\">${tt('dash.ctl.scan_res_step2','2) MORI에서 결과 확인 (잠시 후 새로고침)')}</div>
             <ul style=\"margin:0;padding-left:18px\">
               <li>${tt('dash.ctl.scan_res_triage','Alert Triage 탭 — findings가 보라색 code_review 배지로 떠요. 상태(접수→조사중→완료)를 눌러 처리.')}</li>
@@ -4467,7 +4465,7 @@ def render_user_dashboard_html(
         pre.textContent = d.content || '(empty)';
         pre.style.display = 'block';
         if (navigator.clipboard) {
-          try { await navigator.clipboard.writeText(d.content); if (msg) msg.textContent = tt('dash.ctl.scan_tpl_copied','클립보드에 복사됨 — 레포 .github/workflows/code-review-fullscan.yml 에 붙여넣기'); } catch(e) {}
+          try { await navigator.clipboard.writeText(d.content); if (msg) msg.textContent = tt('dash.ctl.scan_tpl_copied','클립보드에 복사됨 — 레포 .github/workflows/code-review-semgrep.yml 에 붙여넣기'); } catch(e) {}
         }
       } catch(e) { pre.textContent = '(불러오기 실패)'; pre.style.display='block'; }
     }
