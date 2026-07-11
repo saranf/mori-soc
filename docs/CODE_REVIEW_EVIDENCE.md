@@ -36,8 +36,9 @@ MORI의 명제는 **"관제가 곧 증적"** — 보는 층(Grafana)에 위임�
 [MORI]  OIDC 서명 검증 → repo·commit·run 을 서명 클레임으로 확정(위조 차단)
    ├─ findings → 호스트 없는 alert(source=code_review) → Alert Triage 재사용
    ├─ 스캔 런 자체를 증적 이벤트로 기록 (0건이어도 "통제가 작동했다")
+   ├─ **스캔 런 → 2.8 통제 증적 레코드 자동 승격**(2.8.1·2.8.5·A.8.25·A.8.28) — 통제 상세에 날짜 찍힌 증적
+   │    (id = scan seed × control 로 결정적 생성 → 재수신 시 갱신, 중복 없음)
    ├─ findings CSV 다운로드(공통 openCsvPreview): `/controls/code-review/findings.csv?repo=&commit=`
-   ├─ 통제 매핑: 2.8.1 · 2.8.5 · A.8.25 · A.8.28
    └─ 대시보드 "미조치 코드 보안 리뷰" 작업 큐 타일
 ```
 
@@ -76,7 +77,7 @@ OIDC를 쓰므로 **정적 ingest 토큰 시크릿이 불필요**하다(GitHub �
 ## 6. 더 딥하게 (로드맵, 레버리지 순)
 
 1. **provenance를 감사 산출물에 노출** — 통제 증적 PDF/ZIP에 commit·run URL을 박아 감사관이 클릭 추적(현재 raw_payload에만).
-2. **스캔 런 → 통제 evidence-record 승격** — `code_review_scan` 이벤트를 2.8 통제의 날짜 찍힌 증적 레코드로 자동 스냅샷(현재 evidence_events에만).
+2. ✅ **스캔 런 → 통제 evidence-record 승격**(완료) — ingest 시 `code_review_scan`을 2.8.1·2.8.5·A.8.25·A.8.28 통제의 날짜 찍힌 증적 레코드(`source=code_review`)로 자동 스냅샷. id 결정적 → 재수신 idempotent. 통제 상세 증적 목록·PDF/CSV에 노출.
 3. **finding → 위험평가(3×3) 연동** — 코드 finding에도 영향×가능성 위험등급.
 4. **findings 해소 추적** — 같은 finding 재등장/소멸 = reopened/fixed 이력(트리아지 자동 해소).
 5. **reusable workflow 배포** — 고객 파일을 3줄 caller로 축소.

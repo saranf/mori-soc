@@ -10,9 +10,31 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
-from mori_soc.services.code_review_dispatch import dispatch_workflow, parse_github_repo
+from mori_soc.services.code_review_dispatch import (
+    CODE_REVIEW_CONTROL_IDS,
+    dispatch_workflow,
+    parse_github_repo,
+)
 
 FASTAPI_AVAILABLE = importlib.util.find_spec("fastapi") is not None
+
+
+class CodeReviewControlMappingTests(unittest.TestCase):
+    def test_control_ids_match_catalog_evidence_sources(self) -> None:
+        """자동 승격 대상 통제 상수는 카탈로그의 evidence_sources:[code_review] 와 일치해야 한다."""
+        import json
+        from pathlib import Path
+
+        catalog = json.loads(
+            (Path(__file__).resolve().parents[1] / "src" / "mori_soc" / "data" / "controls_catalog.json").read_text("utf-8")
+        )
+        controls = catalog if isinstance(catalog, list) else catalog.get("controls", [])
+        from_catalog = {
+            (c.get("control_id") or c.get("id"))
+            for c in controls
+            if "code_review" in (c.get("evidence_sources") or [])
+        }
+        self.assertEqual(set(CODE_REVIEW_CONTROL_IDS), from_catalog)
 
 
 class ParseGithubRepoTests(unittest.TestCase):

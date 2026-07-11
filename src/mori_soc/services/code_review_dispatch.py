@@ -11,6 +11,10 @@ import re
 
 _SEGMENT = re.compile(r"^[A-Za-z0-9_.-]+$")
 
+# 코드 리뷰 스캔이 증적을 대는 통제(개발보안 2.8 / SDLC). 각 YAML 의 evidence_sources:[code_review]
+# 와 일치해야 한다: controls/isms-p/2.8.1·2.8.5, controls/iso27001/A.8.25·A.8.28.
+CODE_REVIEW_CONTROL_IDS = ("2.8.1", "2.8.5", "A.8.25", "A.8.28")
+
 
 # 고객이 자기 레포 .github/workflows/ 에 복붙하는 무료 Semgrep 워크플로(기존 코드 전체 감사).
 # 파일 1개 + Secret 1개(MORI_INGEST_URL)면 끝 — ANTHROPIC 키 불필요. __AUDIENCE__ 만 서빙 시 치환.

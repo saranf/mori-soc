@@ -367,6 +367,7 @@ def register_sources(ctx: RouteContext) -> None:
 
         # ── 스캔 런 자체를 증적으로 — 0건이어도 "이 repo@commit 를 언제 스캔했다"를 남긴다 ──
         scan_recorded = False
+        promoted = 0
         if state_repo is not None:
             import hashlib as _hashlib
             seed = "|".join(x for x in [resolved_repo or "", commit, run_id] if x) or now_iso
@@ -382,6 +383,38 @@ def register_sources(ctx: RouteContext) -> None:
             except Exception:
                 scan_recorded = False
 
+            # ── 스캔 런 → 2.8 통제 증적 레코드 자동 승격(개발보안 SDLC) ──────────────
+            # 각 통제에 날짜 찍힌 증적 레코드를 남겨 감사관이 통제 상세에서 바로 확인.
+            # id 를 (scan seed × control) 로 결정적 생성 → 재수신 시 갱신(중복 없음).
+            from mori_soc.services.code_review_dispatch import CODE_REVIEW_CONTROL_IDS
+
+            verified_label = "검증됨(OIDC)" if verified else "미검증"
+            title = f"코드 보안 리뷰 스캔 — {resolved_repo or '?'}@{short} · findings {len(findings)}건 · {verified_label}"
+            body_bits = [f"레포: {resolved_repo or '?'}", f"커밋: {commit or 'HEAD'}",
+                         f"탐지 findings: {len(findings)}건", f"provenance: {verified_label}"]
+            if run_url:
+                body_bits.append(f"실행 로그: {run_url}")
+            body = " · ".join(body_bits)
+            collected_at = now_iso[:10]
+            for cid in CODE_REVIEW_CONTROL_IDS:
+                rec = {
+                    "id": "cr-ev-" + _hashlib.sha1(f"{seed}|{cid}".encode("utf-8")).hexdigest()[:16],
+                    "control_id": cid, "title": title, "body": body,
+                    "collected_by": "MORI 코드 리뷰 파이프라인",
+                    "collected_at": collected_at,
+                    "reference": run_url or "",
+                    "source": "code_review", "repo": resolved_repo or "",
+                    "commit": commit or "", "findings_count": len(findings), "verified": verified,
+                    "created_at": now_iso, "created_by": "code_review",
+                }
+                try:
+                    ctx.control_evidence[rec["id"]] = rec
+                    if ctx.persist_control_evidence:
+                        ctx.persist_control_evidence(rec["id"])
+                    promoted += 1
+                except Exception:
+                    pass
+
         try:
             repo_db.save(SourceSync(source="code_review", status="success", last_sync_at=now, last_success_at=now,
                                     message=f"http ingest: {report.records_collected} findings ({resolved_repo or '?'}@{(commit or 'HEAD')[:8]})",
@@ -393,7 +426,8 @@ def register_sources(ctx: RouteContext) -> None:
         return {"ok": True, "records_collected": report.records_collected,
                 "entities_saved": report.entities_saved, "repo": resolved_repo,
                 "commit": commit or None, "pr": pr or None, "run_url": run_url or None,
-                "scan_recorded": scan_recorded, "provenance_verified": verified}
+                "scan_recorded": scan_recorded, "provenance_verified": verified,
+                "evidence_promoted": promoted}
 
     # ── 고객 배포용 code-review-fullscan.yml 템플릿 (UI 도움말의 "파일 예시") ───────
     @app.get("/controls/code-review/workflow-template", tags=["Sources"])
