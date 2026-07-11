@@ -4383,7 +4383,22 @@ def render_user_dashboard_html(
           <input id=\"scan_url\" placeholder=\"${tt('dash.ctl.scan_url_ph','https://github.com/owner/repo')}\" style=\"${inp};flex:1;min-width:260px\" />
           <input id=\"scan_ref\" placeholder=\"${tt('dash.ctl.scan_ref_ph','브랜치(기본 main)')}\" value=\"main\" style=\"${inp};width:150px\" />
         </div>
-        <input id=\"scan_token\" type=\"password\" placeholder=\"${tt('dash.ctl.scan_token_ph','GitHub 토큰 (actions:write · 저장 안 함)')}\" style=\"${inp};width:100%;box-sizing:border-box;margin-bottom:8px\" />
+        <input id=\"scan_token\" type=\"password\" placeholder=\"${tt('dash.ctl.scan_token_ph','GitHub 토큰 (actions:write · 저장 안 함)')}\" style=\"${inp};width:100%;box-sizing:border-box;margin-bottom:4px\" />
+        <details style=\"margin-bottom:8px;background:#fff;border:1px dashed #d1d5db;border-radius:6px;padding:6px 8px\">
+          <summary style=\"cursor:pointer;font-size:11px;color:#6b7280\">🔑 ${tt('dash.ctl.scan_tok_t','GitHub 토큰이 뭔가요? 어떻게 발급하나요?')}</summary>
+          <div style=\"font-size:11px;color:#374151;margin-top:6px;line-height:1.7\">
+            <div style=\"margin-bottom:4px\">${tt('dash.ctl.scan_tok_what','MORI가 그 레포의 리뷰 워크플로를 원격 실행하려면 GitHub 권한이 필요해요. 개인 액세스 토큰(PAT)을 발급해 아래에 넣으면 이번 실행에만 쓰고 저장하지 않아요. (스캔은 GitHub에서 돌고 MORI는 코드를 안 가져와요)')}</div>
+            <div style=\"font-weight:600;margin:4px 0 2px\">${tt('dash.ctl.scan_tok_how','발급 방법 (fine-grained 권장):')}</div>
+            <ol style=\"margin:0;padding-left:18px\">
+              <li>${tt('dash.ctl.scan_tok_1','GitHub 우측 상단 프로필 → Settings')}</li>
+              <li>${tt('dash.ctl.scan_tok_2','좌측 맨 아래 Developer settings → Personal access tokens → Fine-grained tokens')}</li>
+              <li>${tt('dash.ctl.scan_tok_3','Generate new token → Repository access = 대상 레포만 선택')}</li>
+              <li>${tt('dash.ctl.scan_tok_4','Permissions → Actions = Read and write 부여')}</li>
+              <li>${tt('dash.ctl.scan_tok_5','Generate token → 나온 값(ghp_… 또는 github_pat_…)을 복사해 아래에 붙여넣기')}</li>
+            </ol>
+            <div style=\"color:#16a34a;margin-top:4px\">${tt('dash.ctl.scan_tok_note','※ 최소 권한(그 레포·Actions write)만 주세요. 토큰은 서버에 저장되지 않아요.')}</div>
+          </div>
+        </details>
         <div style=\"display:flex;gap:8px;align-items:center\">
           <button onclick=\"runCodeReviewScan()\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.scan_run','스캔 요청')}</button>
           <button onclick=\"document.getElementById('ctl_nlp').style.display='none'\" class=\"secondary\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.cancel','취소')}</button>
