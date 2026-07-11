@@ -670,6 +670,19 @@ def render_user_dashboard_html(
         <div class=\"table-wrap\" id=\"acc_table\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
       </section>
 
+      <!-- 접속 발자취 (Access Trail) — 실제 접속기록 미리보기, 전체는 Loki -->
+      <section class=\"card\">
+        <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+          <h2 style=\"margin:0\" data-i18n=\"dash.acc.trail_title\">접속 발자취 (누가 · 언제 · 어디서)</h2>
+          <div style=\"display:flex;gap:10px;align-items:center\">
+            <span id=\"acc_trail_meta\" style=\"font-size:12px;color:#6b7280\"></span>
+            <a id=\"acc_trail_grafana\" href=\"#\" target=\"_blank\" style=\"display:none;color:#2563eb;font-size:12px;text-decoration:none\" data-i18n=\"dash.acc.trail_full\">전체는 Loki에서 →</a>
+          </div>
+        </div>
+        <div class=\"subtext\" data-i18n=\"dash.acc.trail_sub\">최근 로그인·sudo 기록 미리보기예요. 계정 목록과 대조해 '등록된 계정이 실제로 언제 접속했나'를 봐요. 전체 로그는 Loki에서 보세요. (ISMS-P 2.9.4 접속기록)</div>
+        <div class=\"table-wrap\" id=\"acc_trail\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+      </section>
+
       <div class=\"layout\">
         <section class=\"card\">
           <h2 data-i18n=\"dash.acc.approve_title\">승인 대장 (허용 계정 · sudo)</h2>
@@ -4351,6 +4364,8 @@ def render_user_dashboard_html(
               <li>${tt('dash.ctl.scan_guide_s2','레포 Settings → Secrets 에 2개 등록: ANTHROPIC_API_KEY · MORI_INGEST_TOKEN')}</li>
               <li>${tt('dash.ctl.scan_guide_s3','아래에 GitHub 토큰(그 레포 actions:write) 입력 — 저장하지 않고 이번 실행에만 써요')}</li>
             </ol>
+            <div style=\"margin-top:8px\"><button onclick=\"showCodeReviewTemplate()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">📄 ${tt('dash.ctl.scan_tpl_btn','security-review.yml 예시 보기·복사')}</button> <span id=\"scan_tpl_msg\" style=\"font-size:11px;color:#16a34a\"></span></div>
+            <pre id=\"scan_tpl\" style=\"display:none;margin-top:6px;max-height:240px;overflow:auto;background:#0b1021;color:#e5e7eb;padding:10px;border-radius:8px;font-size:11px;line-height:1.45;white-space:pre\"></pre>
           </div>
         </details>
         <div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px\">
@@ -4384,6 +4399,20 @@ def render_user_dashboard_html(
       } catch(e) { msg.textContent = tt('dash.ctl.scan_fail','요청 실패'); msg.style.color='#dc2626'; }
     }
     window.runCodeReviewScan = runCodeReviewScan;
+    async function showCodeReviewTemplate() {
+      const pre = document.getElementById('scan_tpl');
+      const msg = document.getElementById('scan_tpl_msg');
+      try {
+        const res = await fetch('/controls/code-review/workflow-template');
+        const d = await res.json();
+        pre.textContent = d.content || '(empty)';
+        pre.style.display = 'block';
+        if (navigator.clipboard) {
+          try { await navigator.clipboard.writeText(d.content); if (msg) msg.textContent = tt('dash.ctl.scan_tpl_copied','클립보드에 복사됨 — 레포 .github/workflows/security-review.yml 에 붙여넣기'); } catch(e) {}
+        }
+      } catch(e) { pre.textContent = '(불러오기 실패)'; pre.style.display='block'; }
+    }
+    window.showCodeReviewTemplate = showCodeReviewTemplate;
 
     // ── M2-8: Claude API 키 관리 (admin, env 우선 → DB 폴백) ────────────────────
     async function loadClaudeKeyStatus() {
@@ -4459,10 +4488,39 @@ def render_user_dashboard_html(
         const c = _accData.counts || {};
         const cardsEl = document.getElementById('acc_finding_cards');
         cardsEl.innerHTML = Object.keys(_ACC_FIND).map(k => { const [lbl,col,em] = _ACC_FIND[k]; const v = c[k]||0; return `<section class=\"card metric-card\" onclick=\"document.getElementById('acc_filter_finding').value='${k}';renderAccounts()\" style=\"padding:14px;cursor:pointer\"><div class=\"metric-label\">${em} ${tt('dash.acc.find.'+k, lbl)}</div><div class=\"metric-value\" style=\"color:${v?col:'#111827'}\">${v}</div></section>`; }).join('');
-        renderAccounts(); renderAccApprovals(); renderAccIpList();
+        renderAccounts(); renderAccApprovals(); renderAccIpList(); loadAccessTrail();
       } catch(e) { tableEl.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`; }
     }
     window.loadAccountsGov = loadAccountsGov;
+
+    // 접속 발자취 — 최근 접속기록 미리보기(전체는 Loki). Loki 미설정 시 안내 + Grafana 링크.
+    const _TRAIL_EV = { login:['로그인','login'], sudo:['sudo','sudo'], session_opened:['세션시작','session'], session_closed:['세션종료','session end'] };
+    async function loadAccessTrail() {
+      const el = document.getElementById('acc_trail'); if (!el) return;
+      const meta = document.getElementById('acc_trail_meta');
+      const gl = document.getElementById('acc_trail_grafana');
+      el.innerHTML = `<span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span>`;
+      try {
+        const r = await fetch('/accounts/access-trail?limit=30');
+        if (!r.ok) { el.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix','오류: ')}HTTP ${r.status}</span>`; return; }
+        const d = await r.json();
+        if (gl && d.grafana_url) { gl.href = d.grafana_url; gl.style.display = ''; }
+        if (!d.available) {
+          el.innerHTML = `<span class=\"empty\">${tt('dash.acc.trail_off','Loki 접속기록 미연결 — MORI_LOKI_URL 설정 시 최근 접속이 여기 떠요. 전체 로그는 Loki에서 확인하세요.')}</span>`;
+          if (meta) meta.textContent = '';
+          return;
+        }
+        const rows = d.entries || [];
+        if (meta) meta.textContent = tt('dash.acc.trail_recent','최근') + ' ' + (d.shown||rows.length) + tt('dash.acc.trail_count','건 미리보기');
+        if (!rows.length) { el.innerHTML = `<span class=\"empty\">${tt('dash.acc.trail_empty','최근 접속기록 없음')}</span>`; return; }
+        const rBadge = (res) => { const c = res==='success'?'#16a34a':(res==='fail'?'#dc2626':'#6b7280'); const t = res==='success'?tt('dash.acc.trail_ok','성공'):(res==='fail'?tt('dash.acc.trail_fail','실패'):'-'); return `<span style=\"background:${c}22;border:1px solid ${c};color:${c};border-radius:5px;padding:1px 6px;font-size:10px\">${t}</span>`; };
+        el.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"text-align:left;color:#6b7280\">`
+          + `<th style=\"padding:4px 6px\">${tt('dash.acc.trail_time','시각')}</th><th style=\"padding:4px 6px\">${tt('dash.acc.trail_user','계정')}</th><th style=\"padding:4px 6px\">${tt('dash.acc.trail_event','유형')}</th><th style=\"padding:4px 6px\">${tt('dash.acc.trail_host','호스트')}</th><th style=\"padding:4px 6px\">${tt('dash.acc.trail_ip','출발 IP')}</th><th style=\"padding:4px 6px\">${tt('dash.acc.trail_result','결과')}</th></tr></thead><tbody>`
+          + rows.map(e => { const ev = (_TRAIL_EV[e.event]||[e.event])[lang==='en'?1:0] || e.event; return `<tr style=\"border-top:1px solid #f3f4f6\"><td style=\"padding:4px 6px;white-space:nowrap\">${escapeHtml(e.time||'')}</td><td style=\"padding:4px 6px;font-family:monospace\">${escapeHtml(e.user||'')}</td><td style=\"padding:4px 6px\">${escapeHtml(ev)}${e.detail?` <span style=\"color:#6b7280\">${escapeHtml(e.detail)}</span>`:''}</td><td style=\"padding:4px 6px\">${escapeHtml(e.host||'-')}</td><td style=\"padding:4px 6px;font-family:monospace\">${escapeHtml(e.source_ip||'-')}</td><td style=\"padding:4px 6px\">${rBadge(e.result)}</td></tr>`; }).join('')
+          + `</tbody></table>`;
+      } catch(e) { el.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`; }
+    }
+    window.loadAccessTrail = loadAccessTrail;
 
     function _accFindBadge(f) { const c = (_ACC_FIND[f]||['',''])[1] || '#111827'; return `<span style=\"background:${c}22;border:1px solid ${c};color:${c};border-radius:5px;padding:1px 6px;font-size:10px;margin-right:3px\">${tt('dash.acc.find.'+f, (_ACC_FIND[f]||[f])[0])}</span>`; }
     function renderAccounts() {
@@ -4717,6 +4775,7 @@ def render_user_dashboard_html(
           { key:'code_review_pending', icon:'', label: tt('dash.gap.code_review','미조치 코드 보안 리뷰'), tab:'triage', color:'#ea580c' },
           { key:'overdue', icon:'', label: tt('dash.gap.overdue','조치 기한 초과'), tab:'compliance', color:'#dc2626' },
           { key:'unmapped_assets', icon:'', label: tt('dash.gap.unmapped','미매핑 자산 (자산 대사)'), tab:'assets', color:'#2563eb' },
+          { key:'access_uncovered', icon:'', label: tt('dash.gap.access','접속기록 미수집 서버'), tab:'accounts', color:'#dc2626' },
           { key:'control_pending', icon:'', label: tt('dash.gap.control','미조치 통제'), tab:'compliance', color:'#2563eb' },
         ];
         box.innerHTML = `<div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px\">` +
