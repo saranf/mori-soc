@@ -11,7 +11,7 @@
 | 자산 유형 | 소스 | 자동 수집 주기 | Stale 기준 | On-demand |
 |-----------|------|---------------|-----------|-----------|
 | **서버** | Zabbix | **30초** | 5분 | 새로고침 버튼 |
-| **PC/노트북** | Fleet | **주 1회** (604800s) | 10일 | 새로고침 버튼 |
+| **PC/노트북** | Fleet | **하루 1회** (86400s) | 10일 | 새로고침 버튼 |
 
 - 사용자가 **새로고침** 버튼을 누르면 `POST /assets/refresh` → 해당 소스 즉시 수집
 - 장기 미응답 자산은 자동으로 **stale** 상태로 전환 (UI 노란색 배지)
@@ -25,7 +25,7 @@
 |------|--------------|-----------|-------|-------|---------|
 | **자산 유형** | 서버 | PC / 노트북 | 서버+PC (EDR) | 전체 | 사용자 |
 | **수집 방식** | Polling (REST API) | Polling (REST API) | Polling (REST API) | Batch (파일/온디맨드) | Polling (LDAP) |
-| **폴링 주기** | **30 s** | **604800 s (주 1회)** | 60 s | 86400 s (24 h) | 3600 s (1 h) |
+| **폴링 주기** | **30 s** | **86400 s (하루 1회)** | 60 s | 86400 s (24 h) | 3600 s (1 h) |
 | **On-demand** | 새로고침 | 새로고침 | 새로고침 | 새로고침 | |
 | **목표 레이턴시** | < 45 s | < 수 분 (on-demand) | < 90 s | < 30 min (수동) | < 1.5 h |
 | **Freshness 기준** | 2 min | 7 days | 5 min | 7 days | 4 h |
@@ -48,7 +48,7 @@
 워커가 한 사이클을 완료한 뒤 다음 사이클까지 대기하는 시간.
 환경변수 `MORI_{SOURCE}_INTERVAL_SECONDS`로 개별 재정의 가능.
 - **서버(Zabbix)**: 30초 — 인프라 장애를 즉시 감지해야 하므로 짧은 주기
-- **PC(Fleet)**: 주 1회 — 엔드포인트 변동이 적어 빈번한 수집 불필요, 필요 시 on-demand
+- **PC(Fleet)**: 하루 1회 — 자산 변동이 적어 일 1회 수집으로 충분, 필요 시 새로고침 버튼으로 on-demand
 
 ### 목표 레이턴시
 이벤트가 소스에서 발생한 뒤 MORI DB에 저장될 때까지 허용하는 최대 시간.
@@ -88,11 +88,11 @@ MORI_ZABBIX_MAX_RETRIES=3             # 기준: 3
 MORI_ZABBIX_RETRY_BACKOFF_SECONDS=10  # 기준: 10
 MORI_ZABBIX_STALE_SECONDS=300         # 기준: 300 (5분)
 
-# ── Fleet (PC/노트북 — 주 1회) ────────────────────────
+# ── Fleet (PC/노트북 — 하루 1회) ────────────────────────
 MORI_ENABLE_FLEET=false               # 미연결 — API 연동 시 true
 MORI_FLEET_API_URL=http://fleet:8080
 MORI_FLEET_API_TOKEN=
-MORI_FLEET_INTERVAL_SECONDS=604800    # 기준: 604800 (주 1회)
+MORI_FLEET_INTERVAL_SECONDS=86400     # 기준: 86400 (하루 1회)
 MORI_FLEET_TIMEOUT_SECONDS=15
 MORI_FLEET_MAX_RETRIES=3             # 기준: 3
 MORI_FLEET_RETRY_BACKOFF_SECONDS=15  # 기준: 15

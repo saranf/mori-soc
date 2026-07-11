@@ -747,7 +747,7 @@ def _query_csv_filename(intent: str) -> str:
 # ── 소스별 stale 판단 기준 (docs/collection-standards.md 기준) ──────
 _SOURCE_STALE_THRESHOLDS: dict[str, int] = {
     "zabbix": 300,       # 5분 (서버: 30초 주기)
-    "fleet": 864000,     # 10일 (PC: 주 1회 수집)
+    "fleet": 864000,     # 10일 (PC: 하루 1회 수집)
     "wazuh": 600,        # 10분
     "trivy": 604800,     # 7일
     "ldap": 28800,       # 8시간
