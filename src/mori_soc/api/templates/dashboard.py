@@ -4450,7 +4450,7 @@ def render_user_dashboard_html(
           </div>
         </details>
         <div style=\"margin-top:10px\">
-          <div style=\"font-size:12px;font-weight:600;color:#111827;display:flex;align-items:center;gap:6px\">${tt('dash.ctl.scan_hist_t','최근 코드 리뷰 스캔 이력')} <button onclick=\"loadRecentCodeReviewScans()\" class=\"secondary\" style=\"width:auto;padding:2px 8px;font-size:11px\">${tt('dash.btn.reload','새로고침')}</button></div>
+          <div style=\"font-size:12px;font-weight:600;color:#111827;display:flex;align-items:center;gap:6px\">${tt('dash.ctl.scan_hist_t','최근 코드 리뷰 스캔 이력')} <button onclick=\"loadRecentCodeReviewScans()\" class=\"secondary\" style=\"width:auto;padding:2px 8px;font-size:11px\">${tt('dash.btn.reload','새로고침')}</button> <button onclick=\"backfillCodeReviewEvidence()\" class=\"secondary\" style=\"width:auto;padding:2px 8px;font-size:11px\" title=\"${tt('dash.ctl.scan_backfill_hint','자동 승격 도입 전 과거 스캔을 2.8 통제 증적으로 소급 반영')}\">${tt('dash.ctl.scan_backfill','과거 스캔 증적 반영')}</button></div>
           <div id=\"scan_recent\" style=\"margin-top:6px;font-size:12px;color:#374151\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>
         </div>`;
       box.style.display = 'block';
@@ -4543,6 +4543,17 @@ def render_user_dashboard_html(
       } catch(e) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.scan_hist_err','이력을 불러오지 못했어요')}</span>`; }
     }
     window.loadRecentCodeReviewScans = loadRecentCodeReviewScans;
+
+    async function backfillCodeReviewEvidence() {
+      try {
+        const res = await fetch('/controls/code-review/backfill-evidence', {method:'POST'});
+        if (!res.ok) { alert(tt('dash.ctl.scan_backfill_denied','권한이 없거나 실패했어요 (admin·security 필요)')); return; }
+        const d = await res.json();
+        alert(tt('dash.ctl.scan_backfill_done','과거 스캔 ')+(d.scans||0)+tt('dash.ctl.scan_backfill_done2','건 → 통제 증적 ')+(d.evidence_promoted||0)+tt('dash.ctl.scan_backfill_done3','건 반영됨. 통제 상세에서 확인하세요.'));
+        loadRecentCodeReviewScans();
+      } catch(e) { alert(tt('dash.ctl.scan_backfill_err','반영 중 오류가 났어요')); }
+    }
+    window.backfillCodeReviewEvidence = backfillCodeReviewEvidence;
 
     // ── M2-8: Claude API 키 관리 (admin, env 우선 → DB 폴백) ────────────────────
     async function loadClaudeKeyStatus() {

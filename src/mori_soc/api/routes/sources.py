@@ -293,6 +293,46 @@ def register_sources(ctx: RouteContext) -> None:
         return {"ok": True, "records_collected": report.records_collected,
                 "entities_saved": report.entities_saved}
 
+    def _promote_scan_to_controls(scan_ev_id: str, repo: str | None, commit: str | None,
+                                  findings_count: int, verified: bool,
+                                  run_url: str | None, collected_at: str) -> int:
+        """스캔 런을 2.8 통제(2.8.1·2.8.5·A.8.25·A.8.28) 증적 레코드로 승격. 승격 건수 반환.
+
+        증적 id 를 (scan_ev_id × control) 로 결정적 생성 → ingest·backfill 어느 경로든
+        같은 스캔이면 같은 레코드를 덮어써서 중복이 생기지 않는다(idempotent).
+        """
+        import hashlib as _hashlib
+
+        from mori_soc.services.code_review_dispatch import CODE_REVIEW_CONTROL_IDS
+
+        short = (commit or "HEAD")[:8]
+        vlabel = "검증됨(OIDC)" if verified else "미검증"
+        title = f"코드 보안 리뷰 스캔 — {repo or '?'}@{short} · findings {findings_count}건 · {vlabel}"
+        body_bits = [f"레포: {repo or '?'}", f"커밋: {commit or 'HEAD'}",
+                     f"탐지 findings: {findings_count}건", f"provenance: {vlabel}"]
+        if run_url:
+            body_bits.append(f"실행 로그: {run_url}")
+        body = " · ".join(body_bits)
+        now_i = datetime.now(tz=timezone.utc).isoformat()
+        n = 0
+        for cid in CODE_REVIEW_CONTROL_IDS:
+            rec = {
+                "id": "cr-ev-" + _hashlib.sha1(f"{scan_ev_id}|{cid}".encode("utf-8")).hexdigest()[:16],
+                "control_id": cid, "title": title, "body": body,
+                "collected_by": "MORI 코드 리뷰 파이프라인", "collected_at": collected_at,
+                "reference": run_url or "", "source": "code_review",
+                "repo": repo or "", "commit": commit or "", "findings_count": findings_count,
+                "verified": verified, "created_at": now_i, "created_by": "code_review",
+            }
+            try:
+                ctx.control_evidence[rec["id"]] = rec
+                if ctx.persist_control_evidence:
+                    ctx.persist_control_evidence(rec["id"])
+                n += 1
+            except Exception:
+                pass
+        return n
+
     # ── 코드 보안 리뷰 findings 인제스트 (claude-code-security-review → Alert Triage) ──
     @app.post("/ingest/code-review", tags=["Sources"])
     def ingest_code_review(payload: dict[str, Any], request: Request, repo: str | None = None,
@@ -376,7 +416,8 @@ def register_sources(ctx: RouteContext) -> None:
             record = {"id": ev_id, "host_id": resolved_repo or "", "artifact_name": resolved_repo or "",
                       "delta_type": "code_review_scan", "cve": "",
                       "summary": f"코드 보안 리뷰 스캔: {resolved_repo or '?'}@{short} — findings {len(findings)}건",
-                      "source": "code_review", "envelope": provenance, "received_at": now_iso}
+                      "source": "code_review", "envelope": provenance, "received_at": now_iso,
+                      "findings_count": len(findings)}
             try:
                 state_repo.save_evidence_event(ev_id, record)
                 scan_recorded = True
@@ -384,36 +425,9 @@ def register_sources(ctx: RouteContext) -> None:
                 scan_recorded = False
 
             # ── 스캔 런 → 2.8 통제 증적 레코드 자동 승격(개발보안 SDLC) ──────────────
-            # 각 통제에 날짜 찍힌 증적 레코드를 남겨 감사관이 통제 상세에서 바로 확인.
-            # id 를 (scan seed × control) 로 결정적 생성 → 재수신 시 갱신(중복 없음).
-            from mori_soc.services.code_review_dispatch import CODE_REVIEW_CONTROL_IDS
-
-            verified_label = "검증됨(OIDC)" if verified else "미검증"
-            title = f"코드 보안 리뷰 스캔 — {resolved_repo or '?'}@{short} · findings {len(findings)}건 · {verified_label}"
-            body_bits = [f"레포: {resolved_repo or '?'}", f"커밋: {commit or 'HEAD'}",
-                         f"탐지 findings: {len(findings)}건", f"provenance: {verified_label}"]
-            if run_url:
-                body_bits.append(f"실행 로그: {run_url}")
-            body = " · ".join(body_bits)
-            collected_at = now_iso[:10]
-            for cid in CODE_REVIEW_CONTROL_IDS:
-                rec = {
-                    "id": "cr-ev-" + _hashlib.sha1(f"{seed}|{cid}".encode("utf-8")).hexdigest()[:16],
-                    "control_id": cid, "title": title, "body": body,
-                    "collected_by": "MORI 코드 리뷰 파이프라인",
-                    "collected_at": collected_at,
-                    "reference": run_url or "",
-                    "source": "code_review", "repo": resolved_repo or "",
-                    "commit": commit or "", "findings_count": len(findings), "verified": verified,
-                    "created_at": now_iso, "created_by": "code_review",
-                }
-                try:
-                    ctx.control_evidence[rec["id"]] = rec
-                    if ctx.persist_control_evidence:
-                        ctx.persist_control_evidence(rec["id"])
-                    promoted += 1
-                except Exception:
-                    pass
+            # 감사관이 통제 상세에서 바로 확인. backfill 과 동일 헬퍼 → idempotent.
+            promoted = _promote_scan_to_controls(ev_id, resolved_repo, commit, len(findings),
+                                                 verified, run_url, now_iso[:10])
 
         try:
             repo_db.save(SourceSync(source="code_review", status="success", last_sync_at=now, last_success_at=now,
@@ -509,6 +523,38 @@ def register_sources(ctx: RouteContext) -> None:
             media_type="text/csv; charset=utf-8",
             headers={"Content-Disposition": f'attachment; filename="mori-code-review-findings-{timestamp}.csv"'},
         )
+
+    # ── 과거 스캔 소급 승격 — 자동승격 도입 전 스캔을 통제 증적으로 backfill ──────────
+    @app.post("/controls/code-review/backfill-evidence", tags=["Compliance"])
+    def code_review_backfill_evidence(request: Request) -> dict[str, Any]:
+        """이미 기록된 code_review_scan 이벤트들을 2.8 통제 증적 레코드로 소급 승격.
+
+        자동 승격은 ingest 시점에만 동작하므로, 그 이전에 들어온 스캔은 이 엔드포인트로
+        한 번 올린다. id 가 결정적이라 재실행/이후 재수신과 충돌 없이 idempotent.
+        """
+        if ctx.auth_enabled and _session_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="backfill requires admin or security role")
+        if state_repo is None:
+            raise HTTPException(status_code=503, detail="state store unavailable")
+        import re as _re
+
+        events = state_repo.load_evidence_events(limit=1000)
+        scans = [e for e in events if e.get("delta_type") == "code_review_scan"]
+        promoted = 0
+        for e in scans:
+            env = e.get("envelope") or {}
+            fc = e.get("findings_count")
+            if fc is None:
+                m = _re.search(r"findings\s+(\d+)", str(e.get("summary") or ""))
+                fc = int(m.group(1)) if m else 0
+            collected_at = (str(e.get("received_at") or "")[:10]
+                            or str(env.get("scan_time") or "")[:10]
+                            or datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"))
+            promoted += _promote_scan_to_controls(
+                str(e.get("id") or ""), env.get("repo") or e.get("host_id") or "",
+                env.get("commit") or "", int(fc), bool(env.get("verified")),
+                env.get("run_url") or "", collected_at)
+        return {"ok": True, "scans": len(scans), "evidence_promoted": promoted}
 
     # ── CSOP 증적(evidence) HTTP 인제스트 — 조치 전/후 diff envelope 수신함 ────────
     @app.post("/ingest/evidence", tags=["Sources"])
