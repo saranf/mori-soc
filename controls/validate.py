@@ -105,7 +105,7 @@ def main() -> int:
 
     known_signals = {
         "", "vuln_pending", "exceptions_expiring", "untriaged_alerts",
-        "overdue", "control_pending", "unmapped_assets",
+        "overdue", "control_pending", "unmapped_assets", "code_review_pending",
     }
     n_def = 0
     for f in sorted((ROOT / "common_defects").glob("*.yaml")):

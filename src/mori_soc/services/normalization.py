@@ -27,6 +27,7 @@ ASSET_BUCKET_BY_SOURCE = {
     "trivy": "server",
     "wazuh": "neutral",
     "host_log": "neutral",
+    "code_review": "neutral",
 }
 
 BRIDGED_ASSET_BUCKETS = ("pc", "server")

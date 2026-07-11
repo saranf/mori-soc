@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 Severity = Literal["critical", "high", "medium", "low", "info"]
 HostStatus = Literal["online", "offline", "unknown"]
-SourceName = Literal["fleet", "wazuh", "zabbix", "host_log", "trivy"]
+SourceName = Literal["fleet", "wazuh", "zabbix", "host_log", "trivy", "code_review"]
 AliasSource = SourceName
 SyncStatus = Literal["success", "error", "running"]
 
@@ -39,7 +39,7 @@ class HostAlias:
 @dataclass(slots=True)
 class Alert:
     alert_id: str
-    source: Literal["wazuh", "zabbix", "host_log"]
+    source: Literal["wazuh", "zabbix", "host_log", "code_review"]
     observed_at: datetime
     message: str
     host_id: str | None = None

@@ -93,6 +93,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     .result-badge.zabbix { background: #e5e7eb; color: #2563eb; }
     .result-badge.fleet { background: #dcfce7; color: #16a34a; }
     .result-badge.trivy { background: #fef9c3; color: #ea580c; }
+    .result-badge.code_review { background: #ede9fe; color: #7c3aed; }
     .result-badge.hosts { background: #f9fafb; color: #2563eb; }
     .top-actions button, .guide-chips button, .guide-list button { width: auto; }
     .guide-chips, .guide-list { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }

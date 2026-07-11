@@ -4,5 +4,9 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "시큐어 코딩"
 title_en: "Secure coding"
-evidence_sources: []
+intent_ko: "코드에 시큐어 코딩 원칙을 적용하고, 위반·취약점을 지속 탐지·조치한다."
+intent_en: "Apply secure-coding principles and continuously detect/remediate violations and vulnerabilities."
+evidence_hint_ko: "AI 코드 보안 리뷰가 탐지한 시큐어 코딩 위반·취약점 findings와 조치 이력이 증적이 된다."
+evidence_hint_en: "Secure-coding violations/vulnerabilities found by AI code review, plus remediation history, serve as evidence."
+evidence_sources: [code_review]
 status: "draft"

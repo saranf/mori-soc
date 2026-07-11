@@ -244,12 +244,14 @@ def register_compliance(ctx: RouteContext) -> None:
             "vuln_pending": int(src.get("trivy", 0) or 0),
             "exceptions_expiring": expiring,
             "untriaged_alerts": int(src.get("alert", 0) or 0),
+            "code_review_pending": int(src.get("code_review", 0) or 0),
             "overdue": int(pdca.get("overdue_count", 0) or 0),
             "control_pending": int(src.get("control_check", 0) or 0),
             "unmapped_assets": unmapped,
         }
         return {"generated_at": pdca.get("generated_at"), "gaps": gaps,
-                "total": gaps["vuln_pending"] + gaps["untriaged_alerts"] + gaps["control_pending"] + unmapped}
+                "total": gaps["vuln_pending"] + gaps["untriaged_alerts"] + gaps["code_review_pending"]
+                + gaps["control_pending"] + unmapped}
 
     @app.get("/controls/tree", tags=["Compliance"])
     def controls_tree(request: Request) -> dict[str, Any]:
@@ -305,10 +307,79 @@ def register_compliance(ctx: RouteContext) -> None:
                 unmapped = 0
             return {"vuln_pending": int(src.get("trivy", 0) or 0), "exceptions_expiring": expiring,
                     "untriaged_alerts": int(src.get("alert", 0) or 0),
+                    "code_review_pending": int(src.get("code_review", 0) or 0),
                     "overdue": int(pdca.get("overdue_count", 0) or 0),
                     "control_pending": int(src.get("control_check", 0) or 0), "unmapped_assets": unmapped}
         except Exception:
             return {}
+
+    # ── 접속기록 보존 현황 (안전성 확보조치 기준 제8조 / ISMS-P 2.9.4 / ISO A.8.15) ──
+    _LOG_RETENTION_TARGET_KEY = "log_retention_target_days"
+    _LOG_RETENTION_PERSONAL_KEY = "log_retention_personal"
+
+    def _retention_cfg() -> tuple[int, bool]:
+        """(목표 보존일, 개인정보처리 플래그). 기본 365일, 개인정보 처리 시 최소 730일."""
+        s = ctx.settings or {}
+        try:
+            target = int(str(s.get(_LOG_RETENTION_TARGET_KEY, 365)).strip() or 365)
+        except ValueError:
+            target = 365
+        personal = str(s.get(_LOG_RETENTION_PERSONAL_KEY, "")).strip().lower() in ("1", "true", "yes", "on")
+        if personal:
+            target = max(target, 730)
+        return target, personal
+
+    def _log_retention_status() -> dict[str, Any]:
+        """접속기록 보존 현황 — MORI가 **실제 관측한 기록의 시간 범위**로 보존 하한을 추정.
+
+        주의(정직성): 이는 'MORI가 관측한 기록 범위'이지 로그시스템(Loki 등)의 실제
+        retention 설정값이 아니다. 법정 보존기간(기본 1년, 고유식별정보 처리 시 2년)
+        충족 판단은 로그시스템 retention 설정 증빙과 **병행**해야 한다.
+        """
+        target, personal = _retention_cfg()
+        now = datetime.now(tz=timezone.utc)
+        try:
+            store = get_query_service().store
+        except Exception:
+            return {"target_days": target, "personal": personal, "span_days": None,
+                    "sources": [], "ok": False, "observed": False}
+
+        def _norm(ts: Any) -> "datetime | None":
+            if ts is None or not hasattr(ts, "tzinfo"):
+                return None
+            return ts.replace(tzinfo=timezone.utc) if ts.tzinfo is None else ts
+
+        per: dict[str, dict[str, Any]] = {}
+        for a in getattr(store, "alerts", []) or []:
+            src = getattr(a, "source", "") or "(unknown)"
+            ts = _norm(getattr(a, "observed_at", None))
+            d = per.setdefault(src, {"count": 0, "oldest": None})
+            d["count"] += 1
+            if ts is not None and (d["oldest"] is None or ts < d["oldest"]):
+                d["oldest"] = ts
+        vulns = [v for v in getattr(store, "vulnerabilities", []) or [] if getattr(v, "source", "") == "trivy"]
+        if vulns:
+            oldest = None
+            for v in vulns:
+                ts = _norm(getattr(v, "observed_at", None))
+                if ts is not None and (oldest is None or ts < oldest):
+                    oldest = ts
+            per["trivy"] = {"count": len(vulns), "oldest": oldest}
+
+        rows: list[dict[str, Any]] = []
+        overall_oldest: "datetime | None" = None
+        for src, d in per.items():
+            old = d["oldest"]
+            span = int((now - old).total_seconds() // 86400) if old else None
+            rows.append({"source": src, "count": d["count"],
+                         "oldest": old.strftime("%Y-%m-%d") if old else None, "span_days": span})
+            if old and (overall_oldest is None or old < overall_oldest):
+                overall_oldest = old
+        rows.sort(key=lambda r: (r["span_days"] is None, -(r["span_days"] or 0)))
+        span_days = int((now - overall_oldest).total_seconds() // 86400) if overall_oldest else None
+        return {"target_days": target, "personal": personal, "span_days": span_days,
+                "sources": rows, "ok": span_days is not None and span_days >= target,
+                "observed": overall_oldest is not None}
 
     def _source_metrics(limit: int = 8) -> dict[str, Any]:
         """증적 소스별 라이브 실데이터 집계 + **호스트↔통제 단위 breakdown**.
@@ -384,8 +455,26 @@ def register_compliance(ctx: RouteContext) -> None:
         m["wazuh"] = _alert_metric("wazuh", "탐지", "detections")
         m["fleet"] = {"count": fleet_hosts, "summary_ko": f"수집 자산 {fleet_hosts}",
                       "summary_en": f"{fleet_hosts} collected assets", "breakdown": [], "more": 0}
-        m["loki"] = {"summary_ko": "로그 보존 정책 적용(Loki)", "summary_en": "log retention configured (Loki)",
-                     "breakdown": [], "more": 0}
+        # ── Loki/접속기록: 관측 기록 범위 기반 보존현황(안전조치 제8조) ──
+        ret = _log_retention_status()
+        if ret.get("observed"):
+            span, tgt = ret["span_days"], ret["target_days"]
+            badge_ko = "충족" if ret["ok"] else "미달"
+            badge_en = "meets" if ret["ok"] else "below"
+            m["loki"] = {"count": span,
+                         "summary_ko": f"관측 기록 범위 {span}일 / 목표 {tgt}일 — {badge_ko}"
+                                       " (로그시스템 retention 설정 증빙 병행)",
+                         "summary_en": f"observed record span {span}d / target {tgt}d — {badge_en}"
+                                       " (attach log-system retention proof)",
+                         "breakdown": [{"label": r["source"],
+                                        "value": f"{r['oldest'] or '-'} · {r['span_days']}d · {r['count']}건"}
+                                       for r in ret["sources"][:limit]], "more": 0}
+        else:
+            tgt = ret["target_days"]
+            m["loki"] = {"count": 0,
+                         "summary_ko": f"접속기록 미관측 — 목표 보존 {tgt}일. 로그 수집 연동·retention 증빙 필요",
+                         "summary_en": f"no access records observed — target {tgt}d; wire log collection & attach proof",
+                         "breakdown": [], "more": 0}
         # ── MORI: 최근 인시던트 ──
         inc_vals = list((ctx.incidents or {}).values())
         inc_sorted = sorted(inc_vals, key=lambda x: str(x.get("updated_at") or x.get("created_at") or ""), reverse=True)
@@ -674,6 +763,44 @@ def register_compliance(ctx: RouteContext) -> None:
         return {"method": result["method"], "count": len(saved),
                 "controls": [{"id": c["control_id"], "title_ko": c.get("title_ko", "")} for c in saved]}
 
+    # ── 코드 보안 리뷰 원격 트리거 (Option A — dispatch) ──────────────────────────
+    @app.post("/controls/code-review/scan", tags=["Compliance"])
+    def request_code_review_scan(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """고객 GitHub 레포의 보안 리뷰를 원격 실행. admin·security.
+
+        {repo_url, github_token, ref?, workflow?}. GitHub workflow_dispatch 로 대상 레포의
+        security-review.yml 을 트리거하면, 스캔은 **그 레포 CI 러너**에서 돌고 결과는
+        /ingest/code-review 로 돌아온다. MORI 는 코드를 clone/스캔하지 않으며 토큰도
+        저장하지 않는다(이 호출에만 사용).
+        """
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="code review scan requires admin or security role")
+        from mori_soc.services.code_review_dispatch import dispatch_workflow, parse_github_repo
+
+        repo_url = str(payload.get("repo_url", "")).strip()
+        token = str(payload.get("github_token", "")).strip()
+        ref = str(payload.get("ref", "") or "main").strip() or "main"
+        workflow = str(payload.get("workflow", "") or "security-review.yml").strip() or "security-review.yml"
+        if not repo_url:
+            raise HTTPException(status_code=400, detail="repo_url 이 필요합니다.")
+        if not token:
+            raise HTTPException(status_code=400, detail="github_token 이 필요합니다.")
+        try:
+            owner, repo = parse_github_repo(repo_url)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        try:
+            dispatch_workflow(owner, repo, token, ref=ref, workflow=workflow)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"GitHub 워크플로 실행 실패: {exc}") from exc
+        user = ctx.get_session_username(request) if ctx.get_session_username else ""
+        if ctx.log_action:
+            # 토큰은 절대 기록하지 않는다 — owner/repo/ref 만.
+            ctx.log_action(user or "system", "CODE_REVIEW_SCAN", f"{owner}/{repo}@{ref} ({workflow})")
+        return {"ok": True, "owner": owner, "repo": repo, "workflow": workflow, "ref": ref}
+
     # ── M2-8: 통제별 수기 증적 레코드 (admin·security) ────────────────────────────
     @app.get("/controls/detail/{control_id}/evidence-records", tags=["Compliance"])
     def list_evidence_records(control_id: str, request: Request) -> dict[str, Any]:
@@ -930,6 +1057,64 @@ def register_compliance(ctx: RouteContext) -> None:
         actor = _require_catalog_admin(request)
         count = _run_bulk_snapshot(actor, "manual")
         return {"ok": True, "count": count}
+
+    # ── 월간 접속기록 점검 (안전조치 제8조: 월 1회 이상 점검) ──────────────────────
+    _LOG_REVIEW_CONTROLS = ("2.9.4", "A.8.15")
+
+    def _log_review_records() -> list[dict[str, Any]]:
+        return sorted([r for r in (ctx.control_evidence or {}).values() if r.get("source") == "log_review"],
+                      key=lambda r: str(r.get("collected_at") or ""), reverse=True)
+
+    @app.get("/compliance/log-review", tags=["Compliance"])
+    def get_log_review(request: Request) -> dict[str, Any]:
+        """접속기록 보존현황 + 월간 점검 이력. admin·security."""
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="log review requires admin or security role")
+        recs = _log_review_records()
+        this_month = datetime.now(tz=timezone.utc).strftime("%Y-%m")
+        done = any(str(r.get("collected_at", "")).startswith(this_month) for r in recs)
+        return {"retention": _log_retention_status(), "this_month": this_month,
+                "reviewed_this_month": done, "controls": list(_LOG_REVIEW_CONTROLS),
+                "history": [{"month": str(r.get("collected_at", ""))[:7], "collected_at": r.get("collected_at"),
+                             "by": r.get("collected_by"), "title": r.get("title"),
+                             "control_id": r.get("control_id")} for r in recs][:24]}
+
+    @app.post("/compliance/log-review/run", tags=["Compliance"])
+    def run_log_review(request: Request) -> dict[str, Any]:
+        """이번 달 접속기록 점검 수행 — 보존현황 스냅샷을 로그 통제 증적으로 적립. admin·security."""
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="log review requires admin or security role")
+        import uuid
+        user = ctx.get_session_username(request) if ctx.get_session_username else ""
+        ret = _log_retention_status()
+        now = datetime.now(tz=timezone.utc)
+        today, month = now.strftime("%Y-%m-%d"), now.strftime("%Y-%m")
+        badge = "충족" if ret.get("ok") else ("미관측" if not ret.get("observed") else "미달")
+        lines = [f"■ 접속기록 월간 점검 ({month}) — 안전성 확보조치 기준 제8조",
+                 f"· 목표 보존기간: {ret['target_days']}일" + (" (개인정보 처리: 2년 기준)" if ret.get("personal") else ""),
+                 f"· 관측 기록 범위: {ret['span_days'] if ret.get('span_days') is not None else '미관측'}일 → {badge}",
+                 "· 소스별 현황:"]
+        for r in ret.get("sources", []):
+            lines.append(f"   - {r['source']}: 최古 {r['oldest'] or '-'} · {r['span_days']}일 · {r['count']}건")
+        lines.append("· 이상징후 검토: (심야접근·대량조회·미승인IP 등 검토 결과 기입)")
+        lines.append("· 점검 결론: 로그시스템 retention 설정 증빙과 대조 후 적정성 판단")
+        body = "\n".join(lines)
+        ids = {c.get("id") for c in _merged_catalog().get("controls", [])}
+        created = 0
+        for cid in _LOG_REVIEW_CONTROLS:
+            if cid not in ids:
+                continue
+            rec = {"id": str(uuid.uuid4()), "control_id": cid, "title": f"접속기록 월간 점검 ({month})",
+                   "body": body, "collected_by": user or "system", "collected_at": today,
+                   "reference": "log_review 제8조 월1회 점검", "source": "log_review",
+                   "created_at": now.isoformat(), "created_by": user or "system"}
+            ctx.control_evidence[rec["id"]] = rec
+            if ctx.persist_control_evidence:
+                ctx.persist_control_evidence(rec["id"])
+            created += 1
+        if ctx.log_action:
+            ctx.log_action(user or "system", "LOG_REVIEW_RUN", f"{month}: {created} controls")
+        return {"ok": True, "month": month, "created": created, "retention": ret}
 
     @app.delete("/controls/detail/{control_id}/evidence-records/{evidence_id}", tags=["Compliance"])
     def delete_evidence_record(control_id: str, evidence_id: str, request: Request) -> dict[str, Any]:

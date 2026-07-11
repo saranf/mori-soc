@@ -1,0 +1,61 @@
+name: security-review
+
+# Track 1 — 도그푸딩: MORI 자기 레포의 매 PR을 Claude 보안 리뷰에 태운다.
+# "보안 제품을 스스로 보안 리뷰 루프 안에서 만든다" — Phase 0(신뢰의 토대) 증적.
+# 리뷰 결과는 PR 인라인 코멘트로 남고, Track 2가 붙으면 같은 findings를
+# /ingest/code-review 로 흘려보내 2.8 개발보안 증적으로 재사용한다.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  security-review:
+    runs-on: ubuntu-latest
+    # ANTHROPIC_API_KEY 시크릿이 없으면 스킵(포크 PR·키 미설정 환경에서 실패 방지).
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Claude Code security review
+        id: review
+        uses: anthropics/claude-code-security-review@main
+        with:
+          claude-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          comment-pr: true
+          # 데모 스택·서드파티 벤더 파일은 리뷰 대상에서 제외(노이즈 감소).
+          exclude-directories: backups,reports,docs
+
+      # Track 1 → Track 2 연결: 리뷰 findings 를 MORI 로 보내 2.8 개발보안 증적화.
+      # results-file(.findings[]: file·line·severity·category·description)을 그대로 POST —
+      # /ingest/code-review 가 {findings:[...]} 를 파싱한다. MORI 접속정보(시크릿)가 있을
+      # 때만 실행하고, 실패해도 PR 체크를 막지 않는다(도그푸딩은 비필수).
+      - name: Push findings to MORI (evidence layer)
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          MORI_INGEST_URL: ${{ secrets.MORI_INGEST_URL }}
+          MORI_INGEST_TOKEN: ${{ secrets.MORI_INGEST_TOKEN }}
+          RESULTS_FILE: ${{ steps.review.outputs.results-file }}
+        run: |
+          if [ -z "$MORI_INGEST_URL" ] || [ -z "$MORI_INGEST_TOKEN" ]; then
+            echo "MORI_INGEST_URL/TOKEN 미설정 — 증적 push 스킵"; exit 0
+          fi
+          if [ -z "$RESULTS_FILE" ] || [ ! -f "$RESULTS_FILE" ]; then
+            echo "results 파일 없음($RESULTS_FILE) — 스킵"; exit 0
+          fi
+          count=$(jq '.findings | length' "$RESULTS_FILE" 2>/dev/null || echo '?')
+          echo "MORI 로 findings ${count}건 push…"
+          curl -fsS -X POST \
+            "${MORI_INGEST_URL%/}/ingest/code-review?repo=${GITHUB_REPOSITORY}" \
+            -H "Authorization: Bearer ${MORI_INGEST_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data-binary "@${RESULTS_FILE}"
+          echo; echo "pushed."

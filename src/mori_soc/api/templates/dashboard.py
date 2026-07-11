@@ -94,6 +94,7 @@ def render_user_dashboard_html(
     .result-badge.zabbix { background: rgba(56,189,248,.15); color: #2563eb; }
     .result-badge.fleet { background: rgba(52,211,153,.15); color: #16a34a; }
     .result-badge.trivy { background: rgba(251,146,60,.15); color: #ea580c; }
+    .result-badge.code_review { background: rgba(139,92,246,.15); color: #7c3aed; }
     .result-badge.hosts { background: rgba(148,163,184,.15); color: #111827; }
     /* ── NLQ FAB ── */
     .nlq-fab { position: fixed; bottom: 88px; right: 20px; z-index: 1001; background: linear-gradient(135deg,#2563eb,#2563eb); color: #fff; border: none; border-radius: 999px; padding: 14px 20px; font-size: 14px; font-weight: 700; box-shadow: 0 6px 24px rgba(14,165,233,.45); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.15s, box-shadow 0.15s; }
@@ -602,6 +603,7 @@ def render_user_dashboard_html(
           <div id=\"ctl_admin_bar\" style=\"display:none;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0\">
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openControlEditor()\" data-i18n=\"dash.ctl.add\">통제 추가</button>
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openNlpImport()\" data-i18n=\"dash.ctl.nlp\">법령 텍스트 임포트(NLP)</button>
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openCodeReviewScan()\" data-i18n=\"dash.ctl.scan\">GitHub 코드 보안 리뷰</button>
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openClaudeKey()\" data-i18n=\"dash.ctl.key_btn\">Claude 키</button>
             <span id=\"ctl_key_status\" style=\"font-size:11px;color:#111827\"></span>
             <span style=\"width:1px;height:20px;background:#e5e7eb\"></span>
@@ -4297,6 +4299,45 @@ def render_user_dashboard_html(
     }
     window.runNlpImport = runNlpImport;
 
+    // ── 코드 보안 리뷰 원격 트리거 (Option A — GitHub workflow_dispatch) ──────────
+    function openCodeReviewScan() {
+      const box = document.getElementById('ctl_nlp');
+      document.getElementById('ctl_editor').style.display = 'none';
+      const inp = 'background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 9px;font-size:13px';
+      box.innerHTML = `<div style=\"font-weight:700;color:#7c3aed;margin-bottom:6px\">${tt('dash.ctl.scan_ttl','GitHub 레포 코드 보안 리뷰 요청')}</div>
+        <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.ctl.scan_help','레포 URL과 GitHub 토큰(actions:write)을 넣으면 그 레포의 CI에서 보안 리뷰가 돌고 결과가 MORI로 자동 회수돼요. MORI는 코드를 가져오지 않고 토큰도 저장하지 않아요. 대상 레포에 security-review.yml이 있어야 해요.')}</div>
+        <div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px\">
+          <input id=\"scan_url\" placeholder=\"${tt('dash.ctl.scan_url_ph','https://github.com/owner/repo')}\" style=\"${inp};flex:1;min-width:260px\" />
+          <input id=\"scan_ref\" placeholder=\"${tt('dash.ctl.scan_ref_ph','브랜치(기본 main)')}\" value=\"main\" style=\"${inp};width:150px\" />
+        </div>
+        <input id=\"scan_token\" type=\"password\" placeholder=\"${tt('dash.ctl.scan_token_ph','GitHub 토큰 (actions:write · 저장 안 함)')}\" style=\"${inp};width:100%;box-sizing:border-box;margin-bottom:8px\" />
+        <div style=\"display:flex;gap:8px;align-items:center\">
+          <button onclick=\"runCodeReviewScan()\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.scan_run','스캔 요청')}</button>
+          <button onclick=\"document.getElementById('ctl_nlp').style.display='none'\" class=\"secondary\" style=\"width:auto;padding:6px 16px\">${tt('dash.ctl.cancel','취소')}</button>
+          <span id=\"scan_msg\" style=\"font-size:12px;color:#111827\"></span>
+        </div>`;
+      box.style.display = 'block';
+    }
+    window.openCodeReviewScan = openCodeReviewScan;
+    async function runCodeReviewScan() {
+      const msg = document.getElementById('scan_msg');
+      const repo_url = document.getElementById('scan_url').value.trim();
+      const github_token = document.getElementById('scan_token').value.trim();
+      const ref = document.getElementById('scan_ref').value.trim() || 'main';
+      if (!repo_url) { msg.textContent = tt('dash.ctl.scan_need_url','레포 URL을 넣으세요'); msg.style.color='#dc2626'; return; }
+      if (!github_token) { msg.textContent = tt('dash.ctl.scan_need_tok','GitHub 토큰을 넣으세요'); msg.style.color='#dc2626'; return; }
+      msg.textContent = tt('dash.ctl.scan_running','요청 중…'); msg.style.color='#111827';
+      try {
+        const res = await fetch('/controls/code-review/scan', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ repo_url, github_token, ref }) });
+        const d = await res.json().catch(()=>({}));
+        if (!res.ok) { msg.textContent = (d.detail || tt('dash.ctl.scan_fail','요청 실패')) + ' (' + res.status + ')'; msg.style.color='#dc2626'; return; }
+        document.getElementById('scan_token').value = '';  // 토큰 화면에서 즉시 비움
+        msg.textContent = `${d.owner}/${d.repo} ${tt('dash.ctl.scan_done','스캔 요청됨 — 완료되면 트리아지·증적에 반영돼요')}`; msg.style.color='#16a34a';
+      } catch(e) { msg.textContent = tt('dash.ctl.scan_fail','요청 실패'); msg.style.color='#dc2626'; }
+    }
+    window.runCodeReviewScan = runCodeReviewScan;
+
     // ── M2-8: Claude API 키 관리 (admin, env 우선 → DB 폴백) ────────────────────
     async function loadClaudeKeyStatus() {
       const el = document.getElementById('ctl_key_status'); if (!el) return;
@@ -4626,6 +4667,7 @@ def render_user_dashboard_html(
           { key:'vuln_pending', icon:'', label: tt('dash.gap.vuln','조치 안 된 Critical/High'), tab:'compliance', color:'#dc2626' },
           { key:'exceptions_expiring', icon:'', label: tt('dash.gap.exc','예외 만료 D-7 이내'), tab:'assets', color:'#ea580c' },
           { key:'untriaged_alerts', icon:'', label: tt('dash.gap.alert','미트리아지 alert'), tab:'triage', color:'#ea580c' },
+          { key:'code_review_pending', icon:'', label: tt('dash.gap.code_review','미조치 코드 보안 리뷰'), tab:'triage', color:'#ea580c' },
           { key:'overdue', icon:'', label: tt('dash.gap.overdue','조치 기한 초과'), tab:'compliance', color:'#dc2626' },
           { key:'unmapped_assets', icon:'', label: tt('dash.gap.unmapped','미매핑 자산 (자산 대사)'), tab:'assets', color:'#2563eb' },
           { key:'control_pending', icon:'', label: tt('dash.gap.control','미조치 통제'), tab:'compliance', color:'#2563eb' },

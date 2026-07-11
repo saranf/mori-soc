@@ -17,6 +17,43 @@ from mori_soc.api.payloads import build_assets_payload
 from mori_soc.api.routes.context import RouteContext
 
 
+def _extract_code_findings(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """코드 리뷰 인제스트 본문에서 finding dict 목록을 뽑는다.
+
+    허용: (1) ``{"findings": [...]}`` (2) SARIF ``{"runs": [{"results": [...]}]}``
+    (3) 단일 finding dict. SARIF result → MORI finding 형태로 평탄화한다.
+    """
+    if isinstance(payload.get("findings"), list):
+        return [f for f in payload["findings"] if isinstance(f, dict)]
+    if isinstance(payload.get("runs"), list):  # SARIF
+        out: list[dict[str, Any]] = []
+        for run in payload["runs"]:
+            if not isinstance(run, dict):
+                continue
+            for r in run.get("results") or []:
+                if not isinstance(r, dict):
+                    continue
+                msg = r.get("message") if isinstance(r.get("message"), dict) else {}
+                locs = r.get("locations") if isinstance(r.get("locations"), list) else []
+                phys = (locs[0].get("physicalLocation") if locs and isinstance(locs[0], dict) else {}) or {}
+                art = phys.get("artifactLocation") if isinstance(phys.get("artifactLocation"), dict) else {}
+                region = phys.get("region") if isinstance(phys.get("region"), dict) else {}
+                out.append({
+                    "id": r.get("guid") or r.get("correlationGuid"),
+                    "rule_id": r.get("ruleId"),
+                    "severity": r.get("level"),
+                    "title": (msg.get("text") if isinstance(msg, dict) else None),
+                    "message": (msg.get("text") if isinstance(msg, dict) else None),
+                    "file": art.get("uri") if isinstance(art, dict) else None,
+                    "line": region.get("startLine") if isinstance(region, dict) else None,
+                })
+        return out
+    # 단일 finding fallback — 리뷰 finding 으로 볼 수 있는 필드가 있을 때만.
+    if any(k in payload for k in ("rule_id", "ruleId", "title", "severity", "level")):
+        return [payload]
+    return []
+
+
 def register_sources(ctx: RouteContext) -> None:
     app = ctx.app
     get_query_service = ctx.get_query_service
@@ -211,6 +248,59 @@ def register_sources(ctx: RouteContext) -> None:
             pass
         return {"ok": True, "records_collected": report.records_collected,
                 "entities_saved": report.entities_saved}
+
+    # ── 코드 보안 리뷰 findings 인제스트 (claude-code-security-review → Alert Triage) ──
+    @app.post("/ingest/code-review", tags=["Sources"])
+    def ingest_code_review(payload: dict[str, Any], request: Request, repo: str | None = None) -> dict[str, Any]:
+        """AI 코드 보안 리뷰 findings 를 push → 정규화 → alert(source=code_review) 적재.
+
+        claude-code-security-review(GitHub Action)가 매 PR 리뷰 결과를 보낸다. MORI 는
+        코드를 읽지 않고 finding 결과만 받아(Trivy 리포트 push 와 동형) 호스트에 묶이지
+        않는 alert 로 적재 → Alert Triage 재사용 + 2.8 개발보안(ISO A.8.25~28) 증적.
+
+        본문은 (1) MORI 네이티브 ``{"findings": [...]}``, (2) SARIF ``{"runs": [{"results": [...]}]}``,
+        (3) 단일 finding dict 를 허용한다. 인증/백엔드 조건은 /ingest/wazuh 와 동일.
+        """
+        import os as _os
+
+        _require_ingest_auth(request)
+
+        db = _os.getenv("MORI_DATABASE_URL", "").strip()
+        if not db:
+            raise HTTPException(status_code=503, detail="ingest requires MORI_DATABASE_URL (postgres backend)")
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="body must be a JSON object")
+
+        findings = _extract_code_findings(payload)
+        if not findings:
+            raise HTTPException(status_code=400, detail="no findings in payload ({findings:[...]} or SARIF {runs:[...]})")
+
+        resolved_repo = (repo or "").strip() or str(payload.get("repo") or payload.get("repository") or "").strip() or None
+
+        from mori_soc.collectors import CodeReviewCollector
+        from mori_soc.models import SourceSync
+        from mori_soc.repositories import PostgresRepository
+        from mori_soc.services import CollectorIngestionService, EnvelopeEntityMapper
+
+        repo_db = PostgresRepository(db)
+        try:
+            report = CollectorIngestionService(EnvelopeEntityMapper(), repo_db).ingest_collector(
+                CodeReviewCollector(findings=findings, repo=resolved_repo)
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"code-review ingest failed: {exc}") from exc
+
+        now = datetime.now(tz=timezone.utc)
+        try:
+            repo_db.save(SourceSync(source="code_review", status="success", last_sync_at=now, last_success_at=now,
+                                    message=f"http ingest: {report.records_collected} findings",
+                                    records_collected=report.records_collected,
+                                    envelopes_normalized=report.envelopes_normalized,
+                                    entities_saved=report.entities_saved))
+        except Exception:
+            pass
+        return {"ok": True, "records_collected": report.records_collected,
+                "entities_saved": report.entities_saved, "repo": resolved_repo}
 
     # ── CSOP 증적(evidence) HTTP 인제스트 — 조치 전/후 diff envelope 수신함 ────────
     @app.post("/ingest/evidence", tags=["Sources"])

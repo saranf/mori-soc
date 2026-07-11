@@ -266,8 +266,10 @@ def build_pdca_payload(
         trivy_high_count += 1
 
     # ── 미해결 critical/high alerts → 미조치 (최근 7일) ───────────────────────
+    # code_review(SDLC) findings 는 인프라 경보와 분리 집계 — 개발보안(2.8) 증적 공백.
     alert_window_start = now - timedelta(days=7)
     alert_high_count = 0
+    code_review_high_count = 0
     for a in store.alerts:
         if a.severity not in {"critical", "high"}:
             continue
@@ -276,10 +278,11 @@ def build_pdca_payload(
         triage = alert_triage_map.get(a.alert_id, {})
         if str(triage.get("status", "")).strip() == "resolved":
             continue
+        is_code_review = a.source == "code_review"
         pending.append({
             "check_id": a.alert_id,
-            "control_id": "A.5.24",
-            "entity_type": "host",
+            "control_id": "2.8.1" if is_code_review else "A.5.24",
+            "entity_type": "application" if is_code_review else "host",
             "entity_id": hostnames.get(a.host_id or "", a.host_id or "-"),
             "status": "fail" if a.severity == "critical" else "warning",
             "checked_at": _isoformat(a.observed_at),
@@ -287,16 +290,19 @@ def build_pdca_payload(
             "note": f"[{a.source}] {a.message}",
             "remediation_due_at": None,
             "overdue": False,
-            "source": "alert",
+            "source": "code_review" if is_code_review else "alert",
         })
-        alert_high_count += 1
+        if is_code_review:
+            code_review_high_count += 1
+        else:
+            alert_high_count += 1
 
     pending.sort(key=lambda x: (0 if x["overdue"] else 1, x.get("remediation_due_at") or "9999"))
 
     # PDCA 단계 매핑 — Trivy/Alert 미조치도 Do 단계에 포함
     pdca = {
         "plan": status_counts["not_checked"],
-        "do": status_counts["warning"] + status_counts["fail"] + trivy_high_count + alert_high_count,
+        "do": status_counts["warning"] + status_counts["fail"] + trivy_high_count + alert_high_count + code_review_high_count,
         "check": checked,
         "act": status_counts["pass"],
     }
@@ -315,6 +321,7 @@ def build_pdca_payload(
             "control_check": sum(1 for p in pending if p["source"] == "control_check"),
             "trivy": trivy_high_count,
             "alert": alert_high_count,
+            "code_review": code_review_high_count,
         },
     }
 

@@ -1,0 +1,12 @@
+id: "DEF-DEV-001"
+controls: ["2.8.1", "2.8.5", "A.8.25", "A.8.28"]
+title_ko: "코드 보안 리뷰는 수행하나 처리 기록이 없음"
+title_en: "Code security review runs but there is no handling record"
+symptom_ko: "PR마다 보안 리뷰가 돌지만 findings를 누가 언제 확인·판단·조치했는지 기록이 없어, 개발보안 통제의 이행을 증명하지 못한다."
+symptom_en: "Security review runs on each PR, but there is no record of who reviewed/judged/remediated the findings, so secure-development controls can't be proven as operating."
+evidence_gap_ko: "\"리뷰했다\"는 있으나 \"정해진 절차로 처리했다\"(트리아지 상태·담당자·이력)의 증적이 없다."
+evidence_gap_en: "There is 'reviewed' but not 'handled per procedure' (triage status/owner/history)."
+mori_signal: code_review_pending
+fix_ko: "코드 리뷰 findings를 MORI Alert Triage로 물려 상태·담당자·이력을 기록하고, 미조치 건을 작업 큐에 노출한다. 매 PR 리뷰 실행 자체를 2.8/A.8.25 증적으로 스냅샷한다."
+fix_en: "Wire code-review findings into MORI Alert Triage to record status/owner/history and surface pending items in the work queue; snapshot each PR-review run itself as 2.8/A.8.25 evidence."
+severity: medium

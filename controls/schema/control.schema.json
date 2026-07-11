@@ -18,7 +18,7 @@
     "evidence_sources": {
       "type": "array",
       "description": "MORI sources that produce evidence for this control",
-      "items": { "enum": ["zabbix", "wazuh", "fleet", "trivy", "loki", "mori"] }
+      "items": { "enum": ["zabbix", "wazuh", "fleet", "trivy", "loki", "mori", "code_review"] }
     },
     "evidence_hint_ko": { "type": "string", "description": "How this control is satisfied, as evidence (KO)" },
     "evidence_hint_en": { "type": "string", "description": "How this control is satisfied, as evidence (EN)" },

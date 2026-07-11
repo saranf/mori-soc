@@ -4,5 +4,9 @@ version: "2022"
 domain: "A.8 Technological controls"
 title_ko: "안전한 개발 수명주기"
 title_en: "Secure development life cycle"
-evidence_sources: []
+intent_ko: "개발 수명주기 전반에 보안 검토를 내재화하고, 각 변경마다 리뷰가 실행됨을 증적으로 남긴다."
+intent_en: "Embed security review across the development life cycle and evidence a review on each change."
+evidence_hint_ko: "매 PR AI 보안 리뷰 실행·findings·트리아지 기록이 SDLC 보안 내재화 증적이 된다."
+evidence_hint_en: "Per-PR AI security review runs, findings and triage records evidence security embedded in the SDLC."
+evidence_sources: [code_review]
 status: "draft"

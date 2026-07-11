@@ -5,5 +5,9 @@ domain: "2. 보호대책 요구사항"
 section: "2.8 정보시스템 도입 및 개발 보안"
 title_ko: "소스 프로그램 관리"
 title_en: "Source-code management"
-evidence_sources: []
+intent_ko: "소스 코드의 취약점·보안결함을 지속적으로 점검하고 조치 이력을 관리한다."
+intent_en: "Continuously review source code for vulnerabilities/security defects and manage remediation history."
+evidence_hint_ko: "AI 코드 보안 리뷰 findings(취약점·결함)와 트리아지·조치 이력이 소스 관리 증적이 된다."
+evidence_hint_en: "AI code review findings (vulns/defects) plus triage/remediation history serve as source-management evidence."
+evidence_sources: [code_review]
 status: "draft"

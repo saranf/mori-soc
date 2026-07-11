@@ -5,7 +5,7 @@
     "iso27001": 93,
     "reviewed": 58,
     "mappings": 61,
-    "defects": 5
+    "defects": 6
   },
   "controls": [
     {
@@ -918,7 +918,13 @@
       "section": "2.8 정보시스템 도입 및 개발 보안",
       "title_ko": "보안 요구사항 정의",
       "title_en": "Security-requirements definition",
-      "evidence_sources": [],
+      "intent_ko": "개발·도입 시 보안 요구사항을 정의하고, 변경마다 보안 검토가 이뤄짐을 증적으로 남긴다.",
+      "intent_en": "Define security requirements for development/acquisition and evidence a security review on each change.",
+      "evidence_hint_ko": "매 PR에 대한 AI 코드 보안 리뷰 수행 기록(리뷰 실행·findings·트리아지)이 보안 검토 증적이 된다.",
+      "evidence_hint_en": "The per-PR AI code security review record (run, findings, triage) serves as security-review evidence.",
+      "evidence_sources": [
+        "code_review"
+      ],
       "status": "draft"
     },
     {
@@ -966,7 +972,13 @@
       "section": "2.8 정보시스템 도입 및 개발 보안",
       "title_ko": "소스 프로그램 관리",
       "title_en": "Source-code management",
-      "evidence_sources": [],
+      "intent_ko": "소스 코드의 취약점·보안결함을 지속적으로 점검하고 조치 이력을 관리한다.",
+      "intent_en": "Continuously review source code for vulnerabilities/security defects and manage remediation history.",
+      "evidence_hint_ko": "AI 코드 보안 리뷰 findings(취약점·결함)와 트리아지·조치 이력이 소스 관리 증적이 된다.",
+      "evidence_hint_en": "AI code review findings (vulns/defects) plus triage/remediation history serve as source-management evidence.",
+      "evidence_sources": [
+        "code_review"
+      ],
       "status": "draft"
     },
     {
@@ -2186,7 +2198,13 @@
       "domain": "A.8 Technological controls",
       "title_ko": "안전한 개발 수명주기",
       "title_en": "Secure development life cycle",
-      "evidence_sources": [],
+      "intent_ko": "개발 수명주기 전반에 보안 검토를 내재화하고, 각 변경마다 리뷰가 실행됨을 증적으로 남긴다.",
+      "intent_en": "Embed security review across the development life cycle and evidence a review on each change.",
+      "evidence_hint_ko": "매 PR AI 보안 리뷰 실행·findings·트리아지 기록이 SDLC 보안 내재화 증적이 된다.",
+      "evidence_hint_en": "Per-PR AI security review runs, findings and triage records evidence security embedded in the SDLC.",
+      "evidence_sources": [
+        "code_review"
+      ],
       "status": "draft"
     },
     {
@@ -2216,7 +2234,13 @@
       "domain": "A.8 Technological controls",
       "title_ko": "시큐어 코딩",
       "title_en": "Secure coding",
-      "evidence_sources": [],
+      "intent_ko": "코드에 시큐어 코딩 원칙을 적용하고, 위반·취약점을 지속 탐지·조치한다.",
+      "intent_en": "Apply secure-coding principles and continuously detect/remediate violations and vulnerabilities.",
+      "evidence_hint_ko": "AI 코드 보안 리뷰가 탐지한 시큐어 코딩 위반·취약점 findings와 조치 이력이 증적이 된다.",
+      "evidence_hint_en": "Secure-coding violations/vulnerabilities found by AI code review, plus remediation history, serve as evidence.",
+      "evidence_sources": [
+        "code_review"
+      ],
       "status": "draft"
     },
     {
@@ -2944,6 +2968,25 @@
       "fix_ko": "Fleet 자동 발견 + Zabbix×Fleet×Trivy 자산 대사로 미매핑 자산을 작업 큐에 노출하고 담당자를 지정한다.",
       "fix_en": "Use Fleet auto-discovery + Zabbix×Fleet×Trivy reconciliation to surface unmapped assets in the work queue and assign owners.",
       "severity": "high"
+    },
+    {
+      "id": "DEF-DEV-001",
+      "controls": [
+        "2.8.1",
+        "2.8.5",
+        "A.8.25",
+        "A.8.28"
+      ],
+      "title_ko": "코드 보안 리뷰는 수행하나 처리 기록이 없음",
+      "title_en": "Code security review runs but there is no handling record",
+      "symptom_ko": "PR마다 보안 리뷰가 돌지만 findings를 누가 언제 확인·판단·조치했는지 기록이 없어, 개발보안 통제의 이행을 증명하지 못한다.",
+      "symptom_en": "Security review runs on each PR, but there is no record of who reviewed/judged/remediated the findings, so secure-development controls can't be proven as operating.",
+      "evidence_gap_ko": "\"리뷰했다\"는 있으나 \"정해진 절차로 처리했다\"(트리아지 상태·담당자·이력)의 증적이 없다.",
+      "evidence_gap_en": "There is 'reviewed' but not 'handled per procedure' (triage status/owner/history).",
+      "mori_signal": "code_review_pending",
+      "fix_ko": "코드 리뷰 findings를 MORI Alert Triage로 물려 상태·담당자·이력을 기록하고, 미조치 건을 작업 큐에 노출한다. 매 PR 리뷰 실행 자체를 2.8/A.8.25 증적으로 스냅샷한다.",
+      "fix_en": "Wire code-review findings into MORI Alert Triage to record status/owner/history and surface pending items in the work queue; snapshot each PR-review run itself as 2.8/A.8.25 evidence.",
+      "severity": "medium"
     },
     {
       "id": "DEF-MON-001",

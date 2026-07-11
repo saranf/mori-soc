@@ -5,5 +5,9 @@ domain: "2. 보호대책 요구사항"
 section: "2.8 정보시스템 도입 및 개발 보안"
 title_ko: "보안 요구사항 정의"
 title_en: "Security-requirements definition"
-evidence_sources: []
+intent_ko: "개발·도입 시 보안 요구사항을 정의하고, 변경마다 보안 검토가 이뤄짐을 증적으로 남긴다."
+intent_en: "Define security requirements for development/acquisition and evidence a security review on each change."
+evidence_hint_ko: "매 PR에 대한 AI 코드 보안 리뷰 수행 기록(리뷰 실행·findings·트리아지)이 보안 검토 증적이 된다."
+evidence_hint_en: "The per-PR AI code security review record (run, findings, triage) serves as security-review evidence."
+evidence_sources: [code_review]
 status: "draft"
