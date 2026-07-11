@@ -8,6 +8,8 @@ WORKDIR /app
 
 COPY src ./src
 COPY schema ./schema
+COPY scripts ./scripts
+COPY .github ./.github
 
 # 한글 폰트 (PDF 증적 리포트 렌더링용 — fonts-nanum NanumGothic)
 RUN apt-get update \

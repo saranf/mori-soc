@@ -398,14 +398,29 @@ def register_sources(ctx: RouteContext) -> None:
     # ── 고객 배포용 code-review-fullscan.yml 템플릿 (UI 도움말의 "파일 예시") ───────
     @app.get("/controls/code-review/workflow-template", tags=["Sources"])
     def code_review_workflow_template() -> dict[str, Any]:
-        """고객이 자기 레포에 복붙할 code-review-fullscan.yml 예시(현재 서버 audience 반영)."""
+        """고객이 자기 레포에 복붙할 fullscan 2파일(워크플로 + 스캐너 스크립트) 예시."""
         import os as _os
+        from pathlib import Path as _Path
+
         from mori_soc.services.code_review_dispatch import workflow_template
 
         aud = _os.getenv("MORI_OIDC_AUDIENCE", "mori-ingest").strip() or "mori-ingest"
+        # 스캐너 스크립트는 단일 소스(scripts/code_review_fullscan.py)에서 읽어 서빙.
+        script_content = ""
+        for cand in (
+            _Path(__file__).resolve().parents[4] / "scripts" / "code_review_fullscan.py",
+            _Path.cwd() / "scripts" / "code_review_fullscan.py",
+        ):
+            try:
+                script_content = cand.read_text(encoding="utf-8")
+                break
+            except OSError:
+                continue
         return {"filename": ".github/workflows/code-review-fullscan.yml",
-                "content": workflow_template(aud), "audience": aud,
-                "public_url": _os.getenv("MORI_PUBLIC_URL", "").strip()}
+                "content": workflow_template(aud),
+                "script_filename": "scripts/code_review_fullscan.py",
+                "script_content": script_content,
+                "audience": aud, "public_url": _os.getenv("MORI_PUBLIC_URL", "").strip()}
 
     # ── CSOP 증적(evidence) HTTP 인제스트 — 조치 전/후 diff envelope 수신함 ────────
     @app.post("/ingest/evidence", tags=["Sources"])

@@ -4376,7 +4376,12 @@ def render_user_dashboard_html(
               </ol>
               <div style=\"font-size:11px;color:#16a34a;margin-top:4px\">${tt('dash.ctl.scan_sec_note','※ OIDC로 인증하므로 별도 ingest 토큰 시크릿은 필요 없어요.')}</div>
             </details>
-            <div style=\"margin-top:8px\"><button onclick=\"showCodeReviewTemplate()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">📄 ${tt('dash.ctl.scan_tpl_btn','워크플로(fullscan) 예시 보기·복사')}</button> <span id=\"scan_tpl_msg\" style=\"font-size:11px;color:#16a34a\"></span></div>
+            <div style=\"margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center\">
+              <button onclick=\"showCodeReviewTemplate()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">📄 ${tt('dash.ctl.scan_tpl_btn','① 워크플로(.yml) 보기·복사')}</button>
+              <button onclick=\"showCodeReviewScript()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">📄 ${tt('dash.ctl.scan_script_btn','② 스크립트(.py) 보기·복사')}</button>
+              <span id=\"scan_tpl_msg\" style=\"font-size:11px;color:#16a34a\"></span>
+            </div>
+            <div style=\"font-size:11px;color:#6b7280;margin-top:4px\">${tt('dash.ctl.scan_files_hint','두 파일을 각각 레포의 .github/workflows/code-review-fullscan.yml · scripts/code_review_fullscan.py 로 저장하세요.')}</div>
             <pre id=\"scan_tpl\" style=\"display:none;margin-top:6px;max-height:240px;overflow:auto;background:#0b1021;color:#e5e7eb;padding:10px;border-radius:8px;font-size:11px;line-height:1.45;white-space:pre\"></pre>
           </div>
         </details>
@@ -4459,6 +4464,21 @@ def render_user_dashboard_html(
       } catch(e) { pre.textContent = '(불러오기 실패)'; pre.style.display='block'; }
     }
     window.showCodeReviewTemplate = showCodeReviewTemplate;
+    async function showCodeReviewScript() {
+      const pre = document.getElementById('scan_tpl');
+      const msg = document.getElementById('scan_tpl_msg');
+      try {
+        const res = await fetch('/controls/code-review/workflow-template');
+        const d = await res.json();
+        const c = d.script_content || '';
+        pre.textContent = c || tt('dash.ctl.scan_script_missing','(스크립트를 불러올 수 없어요 — MORI 저장소 scripts/code_review_fullscan.py 참고)');
+        pre.style.display = 'block';
+        if (c && navigator.clipboard) {
+          try { await navigator.clipboard.writeText(c); if (msg) msg.textContent = tt('dash.ctl.scan_script_copied','클립보드에 복사됨 — 레포 scripts/code_review_fullscan.py 로 저장'); } catch(e) {}
+        }
+      } catch(e) { pre.textContent = '(불러오기 실패)'; pre.style.display='block'; }
+    }
+    window.showCodeReviewScript = showCodeReviewScript;
     async function loadRecentCodeReviewScans() {
       const box = document.getElementById('scan_recent');
       if (!box) return;
