@@ -402,7 +402,7 @@ def register_sources(ctx: RouteContext) -> None:
         import os as _os
         from pathlib import Path as _Path
 
-        from mori_soc.services.code_review_dispatch import workflow_template
+        from mori_soc.services.code_review_dispatch import fullscan_template, workflow_template
 
         aud = _os.getenv("MORI_OIDC_AUDIENCE", "mori-ingest").strip() or "mori-ingest"
         # 스캐너 스크립트는 단일 소스(scripts/code_review_fullscan.py)에서 읽어 서빙.
@@ -418,6 +418,8 @@ def register_sources(ctx: RouteContext) -> None:
                 continue
         return {"filename": ".github/workflows/code-review-semgrep.yml",
                 "content": workflow_template(aud),
+                "fullscan_filename": ".github/workflows/code-review-fullscan.yml",
+                "fullscan_content": fullscan_template(aud),
                 "script_filename": "scripts/code_review_fullscan.py",
                 "script_content": script_content,
                 "audience": aud, "public_url": _os.getenv("MORI_PUBLIC_URL", "").strip()}

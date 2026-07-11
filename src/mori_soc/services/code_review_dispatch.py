@@ -72,6 +72,55 @@ def workflow_template(audience: str = "mori-ingest") -> str:
     return WORKFLOW_TEMPLATE.replace("__AUDIENCE__", audience or "mori-ingest")
 
 
+# (선택·유료) Claude 심층 리뷰 워크플로 — code-review-fullscan.yml + scripts/code_review_fullscan.py.
+FULLSCAN_WORKFLOW_TEMPLATE = """\
+name: code-review-fullscan
+# (유료) Claude AI로 기존 코드 전체를 심층 리뷰 → 결과를 MORI로 전송.
+# 준비물: 이 파일 + scripts/code_review_fullscan.py, 레포 Secrets(ANTHROPIC_API_KEY·MORI_INGEST_URL).
+on:
+  workflow_dispatch:
+    inputs:
+      mori_ingest_url:
+        description: "MORI ingest base URL (원격 트리거 시 자동 주입)"
+        required: false
+        default: ""
+  # schedule:
+  #   - cron: "0 0 1 * *"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  fullscan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Full-repo AI security review -> MORI
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MORI_INGEST_URL: ${{ github.event.inputs.mori_ingest_url || secrets.MORI_INGEST_URL }}
+          MORI_INGEST_TOKEN: ${{ secrets.MORI_INGEST_TOKEN }}
+          CLAUDE_MODEL: claude-sonnet-5
+        run: |
+          [ -z "$MORI_INGEST_URL" ] && { echo "MORI_INGEST_URL 미설정 — 스킵"; exit 0; }
+          if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
+            export MORI_OIDC_TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \\
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=__AUDIENCE__" | jq -r '.value // empty')
+          fi
+          python3 scripts/code_review_fullscan.py
+"""
+
+
+def fullscan_template(audience: str = "mori-ingest") -> str:
+    """(유료) code-review-fullscan.yml 템플릿(감사 audience 채워서)."""
+    return FULLSCAN_WORKFLOW_TEMPLATE.replace("__AUDIENCE__", audience or "mori-ingest")
+
+
 def parse_github_repo(url: str) -> tuple[str, str]:
     """GitHub repo URL/식별자에서 (owner, repo) 를 뽑는다.
 
