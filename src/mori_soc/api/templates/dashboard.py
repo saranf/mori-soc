@@ -4361,9 +4361,20 @@ def render_user_dashboard_html(
             <div style=\"font-weight:600;margin:6px 0 2px\">${tt('dash.ctl.scan_guide_steps','대상 레포에 한 번만 준비하면 돼요:')}</div>
             <ol style=\"margin:0;padding-left:18px\">
               <li>${tt('dash.ctl.scan_guide_s1','레포 .github/workflows/ 에 security-review.yml 1개 복사 (MORI 저장소의 같은 파일)')}</li>
-              <li>${tt('dash.ctl.scan_guide_s2','레포 Settings → Secrets 에 2개 등록: ANTHROPIC_API_KEY · MORI_INGEST_TOKEN')}</li>
+              <li>${tt('dash.ctl.scan_guide_s2','레포 Settings → Secrets 에 2개 등록: ANTHROPIC_API_KEY · MORI_INGEST_URL (등록 방법 아래 ↓)')}</li>
               <li>${tt('dash.ctl.scan_guide_s3','아래에 GitHub 토큰(그 레포 actions:write) 입력 — 저장하지 않고 이번 실행에만 써요')}</li>
             </ol>
+            <details style=\"margin-top:6px;background:#fff;border:1px dashed #d1d5db;border-radius:6px;padding:6px 8px\">
+              <summary style=\"cursor:pointer;font-size:11px;color:#6b7280\">🔑 ${tt('dash.ctl.scan_sec_t','시크릿 등록 방법 (GitHub에서 처음이면)')}</summary>
+              <ol style=\"margin:6px 0 0;padding-left:18px;font-size:11px;color:#374151;line-height:1.7\">
+                <li>${tt('dash.ctl.scan_sec_1','대상 레포 페이지 상단 Settings 탭')}</li>
+                <li>${tt('dash.ctl.scan_sec_2','좌측 메뉴 Secrets and variables → Actions')}</li>
+                <li>${tt('dash.ctl.scan_sec_3','New repository secret 버튼 클릭')}</li>
+                <li>${tt('dash.ctl.scan_sec_4','Name=ANTHROPIC_API_KEY, Secret=Anthropic 콘솔(console.anthropic.com)의 API 키 → Add secret')}</li>
+                <li>${tt('dash.ctl.scan_sec_5','다시 New repository secret → Name=MORI_INGEST_URL, Secret=이 MORI 주소(예: https://mori.example.com) → Add secret')}</li>
+              </ol>
+              <div style=\"font-size:11px;color:#16a34a;margin-top:4px\">${tt('dash.ctl.scan_sec_note','※ OIDC로 인증하므로 별도 ingest 토큰 시크릿은 필요 없어요.')}</div>
+            </details>
             <div style=\"margin-top:8px\"><button onclick=\"showCodeReviewTemplate()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">📄 ${tt('dash.ctl.scan_tpl_btn','security-review.yml 예시 보기·복사')}</button> <span id=\"scan_tpl_msg\" style=\"font-size:11px;color:#16a34a\"></span></div>
             <pre id=\"scan_tpl\" style=\"display:none;margin-top:6px;max-height:240px;overflow:auto;background:#0b1021;color:#e5e7eb;padding:10px;border-radius:8px;font-size:11px;line-height:1.45;white-space:pre\"></pre>
           </div>

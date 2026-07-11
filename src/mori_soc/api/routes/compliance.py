@@ -230,14 +230,16 @@ def register_compliance(ctx: RouteContext) -> None:
         # 자산 대사(reconciliation): 어떤 소스에서도 관측 안 된 자산 = 관리 이탈/미매핑.
         # Fleet 자산 식별(1.2.1)·자산 현행화(2.1.3) 증적의 핵심 공백 신호.
         unmapped = 0
+        access_uncovered = 0
         try:
             cross = build_crosscheck_payload(get_query_service())
             for chk in cross.get("checks", []) or []:
                 if chk.get("id") == "source_coverage":
                     unmapped = int(chk.get("uncovered_hosts", 0) or 0)
-                    break
+                elif chk.get("id") == "access_record_coverage":
+                    access_uncovered = int(chk.get("uncovered_hosts", 0) or 0)
         except Exception:
-            unmapped = 0
+            unmapped = access_uncovered = 0
 
         src = pdca.get("pending_sources", {}) or {}
         gaps = {
@@ -248,10 +250,11 @@ def register_compliance(ctx: RouteContext) -> None:
             "overdue": int(pdca.get("overdue_count", 0) or 0),
             "control_pending": int(src.get("control_check", 0) or 0),
             "unmapped_assets": unmapped,
+            "access_uncovered": access_uncovered,
         }
         return {"generated_at": pdca.get("generated_at"), "gaps": gaps,
                 "total": gaps["vuln_pending"] + gaps["untriaged_alerts"] + gaps["code_review_pending"]
-                + gaps["control_pending"] + unmapped}
+                + gaps["control_pending"] + unmapped + access_uncovered}
 
     @app.get("/controls/tree", tags=["Compliance"])
     def controls_tree(request: Request) -> dict[str, Any]:
@@ -297,19 +300,22 @@ def register_compliance(ctx: RouteContext) -> None:
                 if now <= dt <= soon:
                     expiring += 1
             unmapped = 0
+            access_uncovered = 0
             try:
                 cross = build_crosscheck_payload(get_query_service())
                 for chk in cross.get("checks", []) or []:
                     if chk.get("id") == "source_coverage":
                         unmapped = int(chk.get("uncovered_hosts", 0) or 0)
-                        break
+                    elif chk.get("id") == "access_record_coverage":
+                        access_uncovered = int(chk.get("uncovered_hosts", 0) or 0)
             except Exception:
-                unmapped = 0
+                unmapped = access_uncovered = 0
             return {"vuln_pending": int(src.get("trivy", 0) or 0), "exceptions_expiring": expiring,
                     "untriaged_alerts": int(src.get("alert", 0) or 0),
                     "code_review_pending": int(src.get("code_review", 0) or 0),
                     "overdue": int(pdca.get("overdue_count", 0) or 0),
-                    "control_pending": int(src.get("control_check", 0) or 0), "unmapped_assets": unmapped}
+                    "control_pending": int(src.get("control_check", 0) or 0), "unmapped_assets": unmapped,
+                    "access_uncovered": access_uncovered}
         except Exception:
             return {}
 
@@ -375,11 +381,29 @@ def register_compliance(ctx: RouteContext) -> None:
                          "oldest": old.strftime("%Y-%m-%d") if old else None, "span_days": span})
             if old and (overall_oldest is None or old < overall_oldest):
                 overall_oldest = old
+        # ── Loki 라이브 접속기록(설정 시): 관측 추정 대신 실쿼리 결과로 loki 행 승격 ──
+        try:
+            from mori_soc.services.loki_client import access_log_summary
+            lk = access_log_summary(target, now=now)
+        except Exception:
+            lk = {"available": False}
+        if lk.get("available"):
+            rows = [r for r in rows if r["source"] != "loki"]
+            rows.append({"source": "loki", "count": lk.get("count", 0), "oldest": lk.get("oldest"),
+                         "span_days": lk.get("span_days"), "accepted": lk.get("accepted"),
+                         "failed": lk.get("failed"), "live": True})
+            if lk.get("oldest"):
+                try:
+                    old_dt = datetime.strptime(lk["oldest"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                    if overall_oldest is None or old_dt < overall_oldest:
+                        overall_oldest = old_dt
+                except ValueError:
+                    pass
         rows.sort(key=lambda r: (r["span_days"] is None, -(r["span_days"] or 0)))
         span_days = int((now - overall_oldest).total_seconds() // 86400) if overall_oldest else None
         return {"target_days": target, "personal": personal, "span_days": span_days,
                 "sources": rows, "ok": span_days is not None and span_days >= target,
-                "observed": overall_oldest is not None}
+                "observed": overall_oldest is not None, "loki_live": bool(lk.get("available"))}
 
     def _source_metrics(limit: int = 8) -> dict[str, Any]:
         """증적 소스별 라이브 실데이터 집계 + **호스트↔통제 단위 breakdown**.

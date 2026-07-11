@@ -326,6 +326,17 @@ def build_pdca_payload(
     }
 
 
+def access_record_coverage_sets(server_ids: "set[str]", log_source_ids: "set[str]") -> "tuple[set[str], set[str]]":
+    """(접속기록 소스가 붙은 서버, 안 붙은 서버) — 접속기록 커버리지 대사의 순수 로직.
+
+    MORI다운 판단: raw 로그를 들지 않고 자산 인벤토리 × 로그 소스만으로 '어느 서버가
+    접속기록을 안 남기나'를 가려낸다(안전조치 제8조 / ISMS-P 2.9.4).
+    """
+    s = set(server_ids)
+    ls = set(log_source_ids)
+    return s & ls, s - ls
+
+
 def build_crosscheck_payload(service: QueryService) -> dict[str, Any]:
     """소스 간 교차 검증 데이터를 생성한다."""
     store = service.store
@@ -364,6 +375,14 @@ def build_crosscheck_payload(service: QueryService) -> dict[str, Any]:
     # 4) LDAP accounts vs host owners (if any directory accounts exist)
     ldap_accounts = {a.username for a in store.directory_accounts}
 
+    # 5) 접속기록 소스 커버리지 — in-scope 서버 중 접속기록 로그 소스(Wazuh/Loki/host_log)가
+    #    안 붙은 서버 = 접속기록 미수집 의심. MORI다움: raw 로그 없이 '어디가 비었나'를 증명.
+    server_ids = zabbix_ids | {h for h in all_host_ids if h.startswith("server-")}
+    log_source_ids = (source_host_ids.get("wazuh", set())
+                      | source_host_ids.get("loki", set())
+                      | source_host_ids.get("host_log", set()))
+    access_covered, access_uncovered = access_record_coverage_sets(server_ids, log_source_ids)
+
     # Sources per host for detail
     sources_per_host: dict[str, list[str]] = {}
     for alias in store.host_aliases:
@@ -399,6 +418,16 @@ def build_crosscheck_payload(service: QueryService) -> dict[str, Any]:
                 "all_hosts": sorted([_host_row(h) for h in all_host_ids], key=lambda x: x["hostname"])[:200],
                 "covered": sorted([_host_row(h) for h in any_source], key=lambda x: x["hostname"])[:200],
                 "uncovered": sorted([_host_row(h) for h in no_source], key=lambda x: x["hostname"])[:50],
+            },
+            {
+                "id": "access_record_coverage",
+                "title": "접속기록 소스 커버리지 (서버)",
+                "description": "in-scope 서버 중 접속기록 로그 소스(Wazuh/Loki/호스트로그)가 붙지 않은 서버를 찾습니다. 안전조치 제8조·ISMS-P 2.9.4.",
+                "servers_total": len(server_ids),
+                "covered_hosts": len(access_covered),
+                "uncovered_hosts": len(access_uncovered),
+                "covered": sorted([_host_row(h) for h in access_covered], key=lambda x: x["hostname"])[:200],
+                "uncovered": sorted([_host_row(h) for h in access_uncovered], key=lambda x: x["hostname"])[:50],
             },
             {
                 "id": "vuln_vs_observation",
@@ -929,6 +958,24 @@ def _grafana_explore_url(host_id: str | None, raw_ref: str | None = None) -> str
             }
         ],
         "range": {"from": "now-6h", "to": "now"},
+    }
+    panes_json = _url_quote(json.dumps({"pane": pane}, separators=(",", ":")), safe="")
+    return f"{GRAFANA_BASE_URL}/explore?schemaVersion=1&panes={panes_json}&orgId=1"
+
+
+def grafana_explore_expr_url(expr: str, *, from_: str = "now-7d", to: str = "now") -> str:
+    """임의 LogQL expr 로 Grafana Explore 딥링크(panes 포맷) 생성.
+
+    접속 발자취 '전체 로그는 Loki에서 보기' 링크 등에 사용 — MORI는 미리보기만,
+    전체 조회는 보는 층(Grafana/Loki)에 위임.
+    """
+    ds_uid = _LOKI_DATASOURCE_UID
+    ds_type = _LOKI_DATASOURCE_TYPE
+    pane = {
+        "datasource": ds_uid,
+        "queries": [{"refId": "A", "expr": expr, "queryType": "range",
+                     "datasource": {"type": ds_type, "uid": ds_uid}}],
+        "range": {"from": from_, "to": to},
     }
     panes_json = _url_quote(json.dumps({"pane": pane}, separators=(",", ":")), safe="")
     return f"{GRAFANA_BASE_URL}/explore?schemaVersion=1&panes={panes_json}&orgId=1"

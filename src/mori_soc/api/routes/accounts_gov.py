@@ -164,6 +164,23 @@ def register_accounts_gov(ctx: RouteContext) -> None:
         _require_gov(request)
         return _overview()
 
+    @app.get("/accounts/access-trail", tags=["Accounts"])
+    def accounts_access_trail(request: Request, limit: int = 30) -> dict[str, Any]:
+        """접속 발자취 — 최근 로그인·sudo 기록 **미리보기**(전체 아님, 전체는 Loki/Grafana).
+
+        Loki(보는 층)에 최근 접속기록만 질의해 '누가·언제·어디서' 표를 만든다. 계정 거버넌스와
+        같은 화면에서 계정↔실제 접속을 대조. env ``MORI_LOKI_URL`` 미설정 시 available=False.
+        """
+        _require_gov(request)
+        from mori_soc.services.loki_client import access_log_recent, access_selector
+        from mori_soc.api.payloads import grafana_explore_expr_url
+        n = max(1, min(int(limit or 30), 100))
+        rec = access_log_recent(limit=n)
+        sel = access_selector()
+        return {"available": bool(rec.get("available")), "entries": rec.get("entries", []),
+                "shown": len(rec.get("entries", [])), "selector": sel,
+                "grafana_url": grafana_explore_expr_url(sel)}
+
     @app.get("/accounts/host/{host_key}", tags=["Accounts"])
     def accounts_for_host(host_key: str, request: Request) -> dict[str, Any]:
         """한 호스트의 계정(서버/PC 자산 상세 섹션용). admin·security 전용."""
