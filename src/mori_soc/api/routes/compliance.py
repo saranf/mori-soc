@@ -804,7 +804,9 @@ def register_compliance(ctx: RouteContext) -> None:
         repo_url = str(payload.get("repo_url", "")).strip()
         token = str(payload.get("github_token", "")).strip()
         ref = str(payload.get("ref", "") or "main").strip() or "main"
-        workflow = str(payload.get("workflow", "") or "security-review.yml").strip() or "security-review.yml"
+        # 온디맨드(UI) 스캔은 기존 코드 전체를 감사하는 fullscan 워크플로를 트리거한다.
+        # (security-review.yml 은 PR diff 전용이라 workflow_dispatch 에선 스킵됨)
+        workflow = str(payload.get("workflow", "") or "code-review-fullscan.yml").strip() or "code-review-fullscan.yml"
         if not repo_url:
             raise HTTPException(status_code=400, detail="repo_url 이 필요합니다.")
         if not token:

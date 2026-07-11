@@ -4354,7 +4354,7 @@ def render_user_dashboard_html(
       const inp = 'background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 9px;font-size:13px';
       box.innerHTML = `<div style=\"font-weight:700;color:#7c3aed;margin-bottom:6px\">${tt('dash.ctl.scan_ttl','GitHub 레포 코드 보안 리뷰 요청')}</div>
         <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.ctl.scan_help','레포 URL과 GitHub 토큰(actions:write)을 넣으면 그 레포의 CI에서 보안 리뷰가 돌고 결과가 MORI로 자동 회수돼요. MORI는 코드를 가져오지 않고 토큰도 저장하지 않아요. 대상 레포에 security-review.yml이 있어야 해요.')}</div>
-        <div style=\"margin-bottom:8px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;font-size:12px;color:#92400e;line-height:1.6\">⚠️ ${tt('dash.ctl.scan_warn_pr','중요: 보안 리뷰 GitHub Action은 PR(pull request)의 변경분만 리뷰해요. 그래서 여기 원격 실행(수동)만으로는 스캔이 스킵돼요. 실제 findings는 대상 레포에 PR을 열면 자동으로 나와 MORI로 옵니다 — 이 버튼은 워크플로 연결 확인·재실행용이에요.')}</div>
+        <div style=\"margin-bottom:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 10px;font-size:12px;color:#1e3a8a;line-height:1.6\">ℹ️ ${tt('dash.ctl.scan_warn_pr','온디맨드 스캔 = 기존 코드 전체를 AI로 리뷰해요(code-review-fullscan). 대상 레포에 code-review-fullscan.yml + scripts/code_review_fullscan.py 를 두면 이 버튼으로 바로 스캔돼요. (PR을 열면 변경분만 리뷰하는 security-review.yml도 같이 두면 신규 코드 예방까지 커버.)')}</div>
         <details style=\"margin-bottom:8px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:8px 10px\">
           <summary style=\"cursor:pointer;font-size:12px;color:#7c3aed;font-weight:600\">❓ ${tt('dash.ctl.scan_guide_t','처음이신가요? security-review.yml이 뭔지·셋업 방법 보기')}</summary>
           <div style=\"font-size:12px;color:#374151;margin-top:6px;line-height:1.6\">
@@ -4409,7 +4409,7 @@ def render_user_dashboard_html(
           <summary style=\"cursor:pointer;font-size:12px;color:#16a34a;font-weight:600\">✅ ${tt('dash.ctl.scan_res_t','스캔 후 결과는 어디서 확인하나요?')}</summary>
           <div style=\"font-size:12px;color:#374151;margin-top:6px;line-height:1.7\">
             <div style=\"font-weight:600;margin-bottom:2px\">${tt('dash.ctl.scan_res_step1','1) 먼저 GitHub에서 실행 확인')}</div>
-            <div style=\"margin-bottom:6px\">${tt('dash.ctl.scan_res_gh','대상 레포 → Actions 탭 → \"security-review\" 실행(초록 체크)이 떠야 해요. 안 뜨면 그 레포에 security-review.yml·시크릿이 없는 거예요. findings는 PR을 열 때만 나와요(수동 실행은 스킵).')}</div>
+            <div style=\"margin-bottom:6px\">${tt('dash.ctl.scan_res_gh','대상 레포 → Actions 탭 → \"security-review\" 실행(초록 체크)이 떠야 해요. 안 뜨면 그 레포에 security-review.yml·시크릿이 없는 거예요.')}</div>
             <div style=\"font-weight:600;margin-bottom:2px\">${tt('dash.ctl.scan_res_step2','2) MORI에서 결과 확인 (잠시 후 새로고침)')}</div>
             <ul style=\"margin:0;padding-left:18px\">
               <li>${tt('dash.ctl.scan_res_triage','Alert Triage 탭 — findings가 보라색 code_review 배지로 떠요. 상태(접수→조사중→완료)를 눌러 처리.')}</li>
