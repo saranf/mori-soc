@@ -171,5 +171,69 @@ def render_data_flow_svg(rows: list[dict[str, Any]]) -> str:
     return "".join(parts)
 
 
+def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "") -> bytes:
+    """개인정보 처리흐름표 PDF(감사관 제출용). reportlab 필요. 팔레트 6색만.
+
+    가로 A4에 항목별 수집→저장→이용→파기 + 제3자/국외 표. control_evidence PDF 와
+    같은 한글 폰트 파이프라인을 재사용한다(무의존성 원칙 밖 — reportlab 은 프로젝트 공통).
+    """
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("reportlab not installed; PDF output unavailable") from exc
+    import io
+
+    from mori_soc.services.reports import _get_pdf_font
+
+    font = _get_pdf_font()
+    styles = getSampleStyleSheet()
+    h1 = ParagraphStyle("pdf_h1", parent=styles["Title"], fontName=font, fontSize=15, leading=19, spaceAfter=3,
+                        textColor=colors.HexColor("#111827"))
+    meta = ParagraphStyle("pdf_meta", parent=styles["Normal"], fontName=font, fontSize=8.5, leading=12,
+                          textColor=colors.HexColor("#111827"))
+    cell = ParagraphStyle("pdf_cell", parent=styles["Normal"], fontName=font, fontSize=8, leading=10.5,
+                          textColor=colors.HexColor("#111827"))
+
+    def esc(s: Any) -> str:
+        return str(s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    headers = ["개인정보 항목", "정보주체", "수집경로", "저장위치", "테이블·컬럼",
+               "이용목적", "보관·파기", "제3자·국외"]
+    data = [[Paragraph(f"<b>{esc(h)}</b>", cell) for h in headers]]
+    for r in rows:
+        keep = "보관: " + str(r.get("retention") or "-") + " / 파기: " + str(r.get("destruction") or "-")
+        share = "제3자: " + str(r.get("third_party") or "없음") + " / 국외: " + str(r.get("overseas") or "없음")
+        data.append([Paragraph(esc(v), cell) for v in (
+            r.get("item"), r.get("subject"), r.get("collection_source"),
+            r.get("storage_location"), r.get("storage_table"), r.get("purpose"), keep, share)])
+
+    widths = [34 * mm, 22 * mm, 32 * mm, 30 * mm, 40 * mm, 38 * mm, 40 * mm, 44 * mm]
+    table = Table(data, colWidths=widths, repeatRows=1)
+    table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),   # 검 헤더
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),                  # 흰 글자
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),   # 뉴트럴 그리드
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+
+    buf = io.BytesIO()
+    docp = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=12 * mm, rightMargin=12 * mm,
+                             topMargin=14 * mm, bottomMargin=12 * mm, title="MORI 개인정보 처리흐름표")
+    story: list[Any] = [Paragraph("개인정보 처리흐름표 (ISMS-P 3.1·3.2·3.4)", h1)]
+    sub = f"항목 {len(rows)}건 · 수집→저장→이용→파기"
+    if generated_at:
+        sub += f" · 생성 {esc(generated_at)}"
+    story += [Paragraph(sub, meta), Spacer(1, 6)]
+    story.append(table if rows else Paragraph("흐름표가 비어 있습니다.", meta))
+    docp.build(story)
+    return buf.getvalue()
+
+
 __all__ = ["STAGES", "FLOW_FIELDS", "is_pii_finding", "infer_item",
-           "seed_rows_from_findings", "render_data_flow_svg"]
+           "seed_rows_from_findings", "render_data_flow_svg", "render_data_flow_pdf"]

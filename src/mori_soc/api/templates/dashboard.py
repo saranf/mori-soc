@@ -4482,6 +4482,7 @@ def render_user_dashboard_html(
         <div style=\"display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px\">
           <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"seedPrivacyFlow()\">${tt('dash.pf.seed','PII 스캔으로 시드')}</button>
           <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"openCsvPreview({title:tt('dash.pf.title','개인정보 처리흐름도 (ISMS-P 3.x)'),filename:'mori-personal-data-flow.csv',url:'/privacy/data-flow.csv'})\">${tt('dash.pf.csv','CSV')}</button>
+          <a href=\"/privacy/data-flow.pdf\" target=\"_blank\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px;text-decoration:none;color:#2563eb;border:1px solid #e5e7eb;border-radius:6px\">${tt('dash.pf.pdf','PDF')}</a>
           <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"promotePrivacyFlow()\">${tt('dash.pf.promote','3.x 통제 증적 승격')}</button>
           <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"loadPrivacyFlow()\">${tt('dash.pf.reload','새로고침')}</button>
         </div>

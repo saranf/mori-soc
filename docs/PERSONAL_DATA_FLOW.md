@@ -44,6 +44,7 @@ UI: Compliance → 통제 카탈로그 관리자 바(admin·security 전용) →
 | POST | `/privacy/data-flow/seed-from-scan?repo=` | PII code_review finding → 후보 행 시드 |
 | GET | `/privacy/data-flow.svg` | 처리흐름도(SVG, 무의존성 문자열 렌더) |
 | GET | `/privacy/data-flow.csv` | 흐름표 CSV |
+| GET | `/privacy/data-flow.pdf` | 흐름표 PDF(감사관 제출용, reportlab·팔레트 6색) |
 | POST | `/privacy/data-flow/promote-evidence` | 3.1.1·3.2.1·3.4.1 통제 증적 승격(idempotent) |
 
 ## 4. 데이터 모델

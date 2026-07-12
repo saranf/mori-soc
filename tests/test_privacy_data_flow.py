@@ -107,6 +107,15 @@ class PrivacyRouteTests(unittest.TestCase):
         self.assertTrue(c.delete(f"/privacy/data-flow/{fid}").json()["ok"])
         self.assertEqual(len(c.get("/privacy/data-flow").json()["rows"]), 0)
 
+    @unittest.skipUnless(importlib.util.find_spec("reportlab"), "requires reportlab")
+    def test_data_flow_pdf_export(self) -> None:
+        c = self._client()
+        c.post("/privacy/data-flow", json={"item": "이메일", "storage_location": "db", "purpose": "가입"})
+        r = c.get("/privacy/data-flow.pdf")
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.headers["content-type"], "application/pdf")
+        self.assertTrue(r.content.startswith(b"%PDF-"))
+
     def test_seed_from_scan_uses_pii_code_review_alerts(self) -> None:
         import datetime as _dt
 

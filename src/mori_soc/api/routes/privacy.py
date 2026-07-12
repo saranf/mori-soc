@@ -20,6 +20,7 @@ from mori_soc.api.routes.context import RouteContext
 from mori_soc.services.data_flow import (
     FLOW_FIELDS,
     STAGES,
+    render_data_flow_pdf,
     render_data_flow_svg,
     seed_rows_from_findings,
 )
@@ -168,6 +169,19 @@ def register_privacy(ctx: RouteContext) -> None:
             media_type="text/csv; charset=utf-8",
             headers={"Content-Disposition": f'attachment; filename="mori-personal-data-flow-{ts}.csv"'},
         )
+
+    # ── 흐름표 PDF(감사관 제출용) ──────────────────────────────────────────────
+    @app.get("/privacy/data-flow.pdf", tags=["Privacy"])
+    def data_flow_pdf(request: Request) -> Response:
+        _require_privacy_role(request)
+        try:
+            pdf = render_data_flow_pdf(_sorted_rows(),
+                                       generated_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"))
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        ts = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        return Response(content=pdf, media_type="application/pdf",
+                        headers={"Content-Disposition": f'attachment; filename="mori-personal-data-flow-{ts}.pdf"'})
 
     # ── 3.x 통제 증적 승격 ─────────────────────────────────────────────────────
     @app.post("/privacy/data-flow/promote-evidence", tags=["Privacy"])
