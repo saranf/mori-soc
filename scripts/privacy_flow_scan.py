@@ -219,7 +219,10 @@ def build_flow(root: Path) -> dict:
 
 def post_to_mori(base: str, flow: dict, *, repo: str, commit: str, run_id: str,
                  token: str = "", oidc: str = "") -> int:
-    url = base.rstrip("/") + f"/ingest/privacy-flow?repo={repo}&commit={commit}&run_id={run_id}"
+    b = (base or "").strip()
+    if "://" not in b:
+        b = "https://" + b
+    url = b.rstrip("/") + f"/ingest/privacy-flow?repo={repo}&commit={commit}&run_id={run_id}"
     data = json.dumps(flow, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST")
     req.add_header("Content-Type", "application/json")

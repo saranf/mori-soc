@@ -143,9 +143,15 @@ def call_claude(api_key: str, model: str, prompt: str, *, max_tokens: int = 4096
     return "".join(chunks)
 
 
+def _with_scheme(base: str) -> str:
+    """MORI_INGEST_URL 에 스킴이 없으면 https:// 를 붙인다(unknown url type 방지)."""
+    b = (base or "").strip()
+    return b if "://" in b else "https://" + b
+
+
 def post_to_mori(base_url: str, findings: list[dict], *, repo: str, commit: str, run_id: str,
                  token: str = "", oidc: str = "") -> int:
-    url = base_url.rstrip("/") + f"/ingest/code-review?repo={repo}&commit={commit}&run_id={run_id}"
+    url = _with_scheme(base_url).rstrip("/") + f"/ingest/code-review?repo={repo}&commit={commit}&run_id={run_id}"
     body = json.dumps({"findings": findings}).encode("utf-8")
     headers = {"content-type": "application/json"}
     if oidc:
@@ -198,7 +204,7 @@ def parse_flow(text: str) -> dict:
 
 def post_flow_to_mori(base_url: str, flow: dict, *, repo: str, commit: str, run_id: str,
                       token: str = "", oidc: str = "") -> int:
-    url = base_url.rstrip("/") + f"/ingest/privacy-flow?repo={repo}&commit={commit}&run_id={run_id}"
+    url = _with_scheme(base_url).rstrip("/") + f"/ingest/privacy-flow?repo={repo}&commit={commit}&run_id={run_id}"
     body = json.dumps(flow, ensure_ascii=False).encode("utf-8")
     headers = {"content-type": "application/json"}
     if oidc:

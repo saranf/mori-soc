@@ -387,9 +387,20 @@ def register_sources(ctx: RouteContext) -> None:
             verified = True
         run_url = (run_url or "").strip() or str(payload.get("run_url") or "").strip() or (
             f"https://github.com/{resolved_repo}/actions/runs/{run_id}" if resolved_repo and run_id else "")
+        # 스캔 방식 감지 — SARIF(runs[].tool)면 그 도구(무료), 네이티브 findings 면 Claude(유료).
+        tool_label = "스캔"
+        if isinstance(payload.get("runs"), list):
+            drv = ""
+            try:
+                drv = str(((payload["runs"][0] or {}).get("tool") or {}).get("driver", {}).get("name") or "")
+            except Exception:
+                drv = ""
+            tool_label = f"{drv or 'Semgrep'}(무료)"
+        elif isinstance(payload.get("findings"), list):
+            tool_label = "Claude(유료)"
         provenance = {"repo": resolved_repo, "commit": commit or None, "pr": pr or None,
                       "run_id": run_id or None, "run_url": run_url or None,
-                      "scan_time": now_iso, "verified": verified}
+                      "scan_time": now_iso, "verified": verified, "tool": tool_label}
         for _f in findings:
             if isinstance(_f, dict):
                 _f.setdefault("_provenance", provenance)

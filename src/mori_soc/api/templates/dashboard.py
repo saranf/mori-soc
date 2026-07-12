@@ -4696,12 +4696,13 @@ def render_user_dashboard_html(
           const commit = (env.commit || '').slice(0,8);
           const when = String(e.received_at || env.scan_time || '').slice(0,16).replace('T',' ');
           const verified = env.verified ? `<span style=\"background:#ffffff22;color:#16a34a;border:1px solid #16a34a55;padding:0 5px;border-radius:5px;font-size:10px\">OIDC ${tt('dash.ctl.scan_hist_verified','검증됨')}</span>` : `<span style=\"background:#ffffff22;color:#111827;border:1px solid #11182755;padding:0 5px;border-radius:5px;font-size:10px\">${tt('dash.ctl.scan_hist_unverified','미검증')}</span>`;
+          const toolBadge = env.tool ? ` <span style=\"color:#2563eb;border:1px solid #2563eb;border-radius:5px;padding:0 5px;font-size:10px\">${escapeHtml(env.tool)}</span>` : '';
           const link = env.run_url ? ` · <a href=\"${escapeHtml(env.run_url)}\" target=\"_blank\" style=\"color:#2563eb;text-decoration:none\">GitHub</a>` : '';
           const q = new URLSearchParams(); if (env.repo) q.set('repo', env.repo); if (env.commit) q.set('commit', env.commit);
           const csvUrl = '/controls/code-review/findings.csv' + (q.toString() ? ('?'+q.toString()) : '');
           const dl = ` · <a href=\"#\" onclick=\"event.preventDefault();openCsvPreview({title:tt('dash.ctl.scan_csv_title','코드 리뷰 findings CSV 미리보기'),filename:'mori-code-review-findings.csv',url:'${csvUrl}'})\" style=\"color:#2563eb;text-decoration:none\">${tt('dash.ctl.scan_csv_dl','결과 CSV')}</a>`;
           const del = e.id ? ` <a href=\"#\" title=\"${tt('dash.ctl.scan_del','이력 삭제')}\" onclick=\"event.preventDefault();deleteCodeReviewScan('${escapeHtml(e.id)}')\" style=\"color:#dc2626;text-decoration:none;font-weight:700\">×</a>` : '';
-          return `<div style=\"padding:5px 0;border-bottom:1px solid #f3f4f6\">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style=\"color:#111827\">${escapeHtml(when)}</span> ${verified}${link}${dl}${del}</div>`;
+          return `<div style=\"padding:5px 0;border-bottom:1px solid #f3f4f6\">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style=\"color:#111827\">${escapeHtml(when)}</span> ${verified}${toolBadge}${link}${dl}${del}</div>`;
         }).join('');
       } catch(e) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.scan_hist_err','이력을 불러오지 못했어요')}</span>`; }
     }

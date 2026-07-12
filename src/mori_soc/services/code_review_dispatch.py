@@ -50,6 +50,7 @@ jobs:
           MORI_INGEST_URL: ${{ github.event.inputs.mori_ingest_url || secrets.MORI_INGEST_URL }}
         run: |
           python3 -m pip install --quiet semgrep
+          case "$MORI_INGEST_URL" in http://*|https://*) ;; ?*) MORI_INGEST_URL="https://$MORI_INGEST_URL";; esac
           # 개인정보(PII) 룰 = MORI 가 서빙(기본셋 + 어드민 커스텀 기준). 스캔 때 최신본을 가져온다.
           [ -n "$MORI_INGEST_URL" ] && curl -fsS "${MORI_INGEST_URL%/}/privacy/pii-rules.yml" -o .mori-pii.yml || true
           if [ ! -s .mori-pii.yml ]; then
@@ -85,6 +86,7 @@ jobs:
           MORI_INGEST_TOKEN: ${{ secrets.MORI_INGEST_TOKEN }}
         run: |
           [ -z "$MORI_INGEST_URL" ] && { echo "MORI_INGEST_URL 미설정 — 스킵"; exit 0; }
+          case "$MORI_INGEST_URL" in http://*|https://*) ;; ?*) MORI_INGEST_URL="https://$MORI_INGEST_URL";; esac
           [ -f semgrep.sarif ] || { echo "SARIF 없음 — 스킵"; exit 0; }
           OIDC=""
           if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
