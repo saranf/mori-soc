@@ -590,6 +590,79 @@ def register_sources(ctx: RouteContext) -> None:
             raise HTTPException(status_code=500, detail=f"delete failed: {exc}") from exc
         return {"ok": True, "id": event_id}
 
+    # ── AI 심층 개인정보 흐름도 인제스트(유료 fullscan → 구조화 JSON) ────────────
+    @app.post("/ingest/privacy-flow", tags=["Sources"])
+    def ingest_privacy_flow(payload: dict[str, Any], request: Request, repo: str | None = None,
+                            commit: str | None = None, run_id: str | None = None) -> dict[str, Any]:
+        """Claude fullscan(고객 CI)이 코드를 읽고 만든 **구조화된 개인정보 라이프사이클**을 받는다.
+
+        본문: {items:[{item,category,collect[],store[],encryption,use[],dispose[],third_party,overseas,table}],
+               gaps:[...], summary:{...}}. MORI 는 코드를 안 읽고 AI 결과를 렌더만 한다.
+        """
+        oidc_claims = _verify_oidc_header(request)
+        if oidc_claims is None:
+            _require_ingest_auth(request)
+        import hashlib as _hashlib
+        import json as _json
+
+        resolved_repo = (repo or "").strip() or str(payload.get("repo") or "").strip()
+        if oidc_claims:
+            resolved_repo = str(oidc_claims.get("repository") or resolved_repo or "")
+        items = payload.get("items") if isinstance(payload.get("items"), list) else []
+        now_iso = datetime.now(tz=timezone.utc).isoformat()
+
+        def _join(v: Any) -> str:
+            if isinstance(v, list):
+                return "\n".join(str(x).strip() for x in v if str(x).strip())
+            return str(v or "").strip()
+
+        # 이 repo 의 기존 개인정보 흐름(regex 후보 포함)을 AI 결과로 교체.
+        for fid in [k for k, r in list(ctx.personal_data_flow.items())
+                    if str((r or {}).get("repo") or "") == resolved_repo]:
+            ctx.personal_data_flow.pop(fid, None)
+            if ctx.delete_personal_data_flow:
+                ctx.delete_personal_data_flow(fid)
+
+        saved = 0
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            name = str(it.get("item") or "").strip()
+            if not name:
+                continue
+            table = str(it.get("table") or "").strip()
+            enc = str(it.get("encryption") or "").strip()
+            store = _join(it.get("store"))
+            if enc:
+                store = (store + "\n보호: " + enc).strip()
+            fid = "pdf-ai-" + _hashlib.sha1(f"{resolved_repo}|{name}".encode("utf-8")).hexdigest()[:12]
+            ctx.personal_data_flow[fid] = {
+                "id": fid, "item": name, "category": str(it.get("category") or "").strip(),
+                "subject": "", "collection_source": _join(it.get("collect")),
+                "storage_location": table, "storage_table": store,
+                "purpose": _join(it.get("use")), "retention": "",
+                "destruction": _join(it.get("dispose")),
+                "third_party": _join(it.get("third_party")), "overseas": _join(it.get("overseas")),
+                "note": "", "source": "ai_flow", "table": table, "repo": resolved_repo,
+                "created_at": now_iso, "created_by": "ai_fullscan", "updated_at": now_iso,
+            }
+            if ctx.persist_personal_data_flow:
+                ctx.persist_personal_data_flow(fid)
+            saved += 1
+
+        # 갭·요약 메타는 settings 에 저장(렌더용).
+        meta = {"repo": resolved_repo, "commit": (commit or "").strip() or None,
+                "gaps": payload.get("gaps") if isinstance(payload.get("gaps"), list) else [],
+                "summary": payload.get("summary") if isinstance(payload.get("summary"), dict) else {},
+                "generated_at": now_iso, "source": "ai_fullscan"}
+        try:
+            ctx.settings["privacy_flow_meta"] = _json.dumps(meta, ensure_ascii=False)
+            if ctx.persist_setting:
+                ctx.persist_setting("privacy_flow_meta", "ai_fullscan")
+        except Exception:
+            pass
+        return {"ok": True, "items_saved": saved, "repo": resolved_repo}
+
     # ── CSOP 증적(evidence) HTTP 인제스트 — 조치 전/후 diff envelope 수신함 ────────
     @app.post("/ingest/evidence", tags=["Sources"])
     def ingest_evidence(payload: dict[str, Any], request: Request) -> dict[str, Any]:

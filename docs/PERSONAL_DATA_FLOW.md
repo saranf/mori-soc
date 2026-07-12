@@ -48,6 +48,13 @@ UI: Compliance → 통제 카탈로그 관리자 바(admin·security 전용) →
 | POST | `/privacy/data-flow/reset` | 흐름표 전체 리셋(재스캔으로 재생성) |
 | GET | `/privacy/pii-rules.yml` | 스캔용 Semgrep 룰(리터럴+필드명 기본셋+어드민 커스텀). 워크플로가 스캔 때 fetch |
 | GET·PUT | `/privacy/pii-criteria` | 어드민 PII 기준(기본 노출 + 커스텀 정규식=항목 편집) |
+| POST | `/ingest/privacy-flow` | **구조화된 라이프사이클** 수신(무료 파서 또는 Claude fullscan → 동일 스키마) |
+| GET | `/privacy/flow-scanner.py` | 무료 스키마·관례 파서 스크립트 서빙(워크플로가 fetch·실행) |
+
+**심층 흐름도 — 무료(엇비슷) vs Claude(완벽)**: 둘 다 `수집→저장→이용→파기` 구조화 JSON을
+`/ingest/privacy-flow`로 보내 **동일하게 렌더**(항목별 다중 위치·암호화·마스킹·파기·제3자·갭·요약카드).
+- **무료**: `scripts/privacy_flow_scan.py`(순수 stdlib, API 키 0)가 **Prisma 스키마 + 관례(*Enc·*Hash·mask*·erase/withdraw/purge)**를 읽어 재구성. 워크플로가 MORI 서빙본을 fetch·실행(파일 1개 유지).
+- **완벽**: `scripts/code_review_fullscan.py`(유료 Claude)가 코드를 이해해 라이프사이클을 생성. 무료로 놓치는 시맨틱(마스킹 로직·파기 경로·갭)까지 채움.
 
 **탐지 범위**: 리터럴 값(주민번호·전화·카드)만이 아니라 **PII 필드명**(email·phone·gender·birthDate·cardNumber·account·address·name·주민등록번호…)까지 잡아, 실제 앱의 개인정보 항목을 폭넓게 발견한다. 어드민이 `/privacy/pii-criteria`에 **커스텀 기준(정규식=항목)**을 추가하면 다음 스캔부터 **기본셋 + 커스텀**이 함께 적용된다(워크플로가 `pii-rules.yml`을 fetch). 파일 경로로 단계(수집/저장/이용/파기)를 추정해 해당 칸에 배치한다.
 | POST | `/privacy/data-flow/promote-evidence` | 3.1.1·3.2.1·3.4.1 통제 증적 승격(idempotent) |

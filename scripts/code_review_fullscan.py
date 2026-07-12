@@ -157,6 +157,59 @@ def post_to_mori(base_url: str, findings: list[dict], *, repo: str, commit: str,
         return resp.status
 
 
+FLOW_PROMPT = """\
+아래 저장소 소스를 읽고 **개인정보 처리 라이프사이클(수집→저장→이용→파기)**을 JSON 으로만 출력하세요.
+각 개인정보 항목별로, 실제 코드 근거(소스 파일·API 라우트·Prisma 테이블/컬럼·암복호화·마스킹 함수·파기 경로)를 담습니다.
+설명 없이 아래 스키마의 JSON 객체 하나만 출력:
+{"items":[{"item":"이메일","category":"일반|고유식별|비밀|금융",
+  "collect":["회원가입 signup/page.tsx","POST /api/auth/signup"],
+  "store":["User.emailEnc","User.emailHash (블라인드 인덱스)"],"encryption":"AES-256-GCM + HMAC",
+  "use":["로그인 findByEmail()","마스킹 maskEmail()"],
+  "dispose":["탈퇴 withdrawUser()","만료 purgeExpired()"],
+  "third_party":"제3자 제공 대상(없으면 생략)","overseas":"국외이전(없으면 생략)","table":"User"}],
+ "gaps":["파기 흐름 개선 필요 지점(있으면)"],
+ "summary":{"items":항목수,"tables":테이블수,"encryption":"대표 암호화"}}
+
+--- 소스 ---
+"""
+
+
+def build_flow_prompt(files: list[tuple[str, str]]) -> str:
+    parts = [FLOW_PROMPT]
+    for path, content in files:
+        parts.append(f"\n### {path}\n{content}")
+    return "".join(parts)
+
+
+def parse_flow(text: str) -> dict:
+    t = text.strip()
+    if t.startswith("```"):
+        t = t.split("```", 2)[1] if "```" in t[3:] else t
+        t = t[t.find("{"):]
+    i, j = t.find("{"), t.rfind("}")
+    if i < 0 or j < 0:
+        return {}
+    try:
+        d = json.loads(t[i:j + 1])
+        return d if isinstance(d, dict) and isinstance(d.get("items"), list) else {}
+    except Exception:
+        return {}
+
+
+def post_flow_to_mori(base_url: str, flow: dict, *, repo: str, commit: str, run_id: str,
+                      token: str = "", oidc: str = "") -> int:
+    url = base_url.rstrip("/") + f"/ingest/privacy-flow?repo={repo}&commit={commit}&run_id={run_id}"
+    body = json.dumps(flow, ensure_ascii=False).encode("utf-8")
+    headers = {"content-type": "application/json"}
+    if oidc:
+        headers["x-mori-oidc"] = oidc
+    elif token:
+        headers["authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(url, data=body, headers=headers)
+    with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
+        return resp.status
+
+
 def main() -> int:
     api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
     mori_url = os.getenv("MORI_INGEST_URL", "").strip()
@@ -198,6 +251,20 @@ def main() -> int:
         print(f"MORI push status: {status}")
     except Exception as exc:
         print(f"MORI push 실패(비차단): {exc}", file=sys.stderr)
+
+    # ── 개인정보 라이프사이클(완벽 경로) — Claude 로 구조화 흐름을 만들어 MORI 에 전송 ──
+    if files:
+        try:
+            flow = parse_flow(call_claude(api_key, model, build_flow_prompt(files), max_tokens=8192))
+            if flow.get("items"):
+                st = post_flow_to_mori(
+                    mori_url, flow, repo=os.getenv("GITHUB_REPOSITORY", ""),
+                    commit=os.getenv("GITHUB_SHA", ""), run_id=os.getenv("GITHUB_RUN_ID", ""),
+                    token=os.getenv("MORI_INGEST_TOKEN", "").strip(),
+                    oidc=os.getenv("MORI_OIDC_TOKEN", "").strip())
+                print(f"개인정보 흐름 {len(flow['items'])}항목 push status: {st}")
+        except Exception as exc:
+            print(f"개인정보 흐름 생성 실패(비차단): {exc}", file=sys.stderr)
     return 0
 
 

@@ -66,11 +66,21 @@ def register_privacy(ctx: RouteContext) -> None:
         except Exception:
             return []
 
+    def _flow_meta() -> dict[str, Any]:
+        raw = (ctx.settings or {}).get("privacy_flow_meta", "")
+        try:
+            return json.loads(raw) if raw else {}
+        except Exception:
+            return {}
+
     # ── 목록 ─────────────────────────────────────────────────────────────────
     @app.get("/privacy/data-flow", tags=["Privacy"])
     def list_data_flow(request: Request) -> dict[str, Any]:
         _require_privacy_role(request)
-        return {"rows": _sorted_rows(), "stages": list(STAGES), "fields": list(FLOW_FIELDS)}
+        rows = _sorted_rows()
+        ai = any(r.get("source") == "ai_flow" for r in rows)
+        return {"rows": rows, "stages": list(STAGES), "fields": list(FLOW_FIELDS),
+                "meta": _flow_meta() if ai else {}}
 
     # ── 전체 리셋(읽기전용 증적 초기화 — 재스캔으로 재생성) ─────────────────────────
     @app.post("/privacy/data-flow/reset", tags=["Privacy"])
@@ -84,6 +94,20 @@ def register_privacy(ctx: RouteContext) -> None:
         if ctx.log_action:
             ctx.log_action(_user(request), "PRIVACY_FLOW_RESET", f"{len(ids)} rows cleared")
         return {"ok": True, "cleared": len(ids)}
+
+    # ── 무료 개인정보 흐름 파서(스크립트) 서빙 — 워크플로가 fetch 해서 실행(파일 1개 유지) ──
+    @app.get("/privacy/flow-scanner.py", tags=["Privacy"], response_class=Response)
+    def flow_scanner_py() -> Response:
+        from pathlib import Path as _Path
+        content = ""
+        for cand in (_Path(__file__).resolve().parents[4] / "scripts" / "privacy_flow_scan.py",
+                     _Path.cwd() / "scripts" / "privacy_flow_scan.py"):
+            try:
+                content = cand.read_text(encoding="utf-8")
+                break
+            except OSError:
+                continue
+        return Response(content=content, media_type="text/x-python; charset=utf-8")
 
     # ── 스캔용 PII 룰(YAML) — 기본셋 + 어드민 커스텀 기준. 워크플로가 스캔 때 가져감 ──
     @app.get("/privacy/pii-rules.yml", tags=["Privacy"], response_class=Response)

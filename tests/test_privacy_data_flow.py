@@ -185,6 +185,28 @@ class PrivacyRouteTests(unittest.TestCase):
         rows = c.get("/privacy/data-flow").json()["rows"]
         self.assertEqual(rows[0]["source"], "pii_scan")
 
+    def test_ingest_privacy_flow_renders_rich(self) -> None:
+        import os as _os
+        from unittest.mock import patch as _patch
+        with _patch.dict(_os.environ, {"MORI_INGEST_TOKEN": "s3cret"}, clear=False):
+            c = self._client()
+            flow = {"items": [{"item": "이메일", "category": "일반",
+                               "collect": ["회원가입 signup/page.tsx"], "store": ["User.emailEnc"],
+                               "encryption": "AES-256-GCM", "use": ["maskEmail()"],
+                               "dispose": ["withdrawUser()"], "table": "User"}],
+                    "gaps": ["비밀번호 즉시 파기 검토"], "summary": {"items": 12, "tables": 5}}
+            r = c.post("/ingest/privacy-flow?repo=org/app", json=flow, headers={"X-MORI-Token": "s3cret"})
+            self.assertEqual(r.status_code, 200, r.text)
+            self.assertEqual(r.json()["items_saved"], 1)
+            d = c.get("/privacy/data-flow").json()
+            row = d["rows"][0]
+            self.assertEqual(row["source"], "ai_flow")
+            self.assertEqual(row["storage_location"], "User")
+            self.assertIn("User.emailEnc", row["storage_table"])
+            self.assertIn("AES-256-GCM", row["storage_table"])
+            self.assertEqual(d["meta"]["summary"]["items"], 12)
+            self.assertEqual(len(d["meta"]["gaps"]), 1)
+
     def test_role_gate_blocks_non_privileged(self) -> None:
         from fastapi.testclient import TestClient
 

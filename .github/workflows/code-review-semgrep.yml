@@ -84,3 +84,10 @@ jobs:
             "${HDR[@]}" \
             --data-binary "@semgrep.sarif"
           echo; echo "pushed."
+          # 무료 개인정보 라이프사이클(스키마·관례 파서) — MORI가 서빙하는 스크립트를 받아 실행.
+          # AI(유료 fullscan) 없이도 수집→저장→이용→파기 흐름도를 '엇비슷하게' 재구성.
+          echo "개인정보 흐름 파서 실행…"
+          curl -fsS "${MORI_INGEST_URL%/}/privacy/flow-scanner.py" -o .mori-flow.py 2>/dev/null || true
+          if [ -s .mori-flow.py ]; then
+            MORI_OIDC_TOKEN="$OIDC" python3 .mori-flow.py || echo "flow 파서 스킵"
+          fi
