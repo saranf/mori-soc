@@ -23,7 +23,13 @@ MORI 관점(엔드포인트 자산·구성 점검 증적):
 
 ## 2. MORI 스택에서 Fleet 구성
 
-`docker compose` 로 이미 함께 뜹니다(별도 설치 불필요).
+**번들 Fleet 은 `fleet` profile 뒤에 있어 기본 `docker compose up` 으로는 뜨지 않습니다.** 켜세요:
+
+```bash
+docker compose --profile fleet up -d       # (또는 전체 번들: --profile bundled)
+docker compose ps fleet mysql redis         # 3개 Up 확인
+# Fleet UI: http://<서버>:1337   (.env 의 MORI_FLEET_UI_URL)
+```
 
 | 구성요소 | 역할 | 포트 |
 |---|---|---|
@@ -32,10 +38,9 @@ MORI 관점(엔드포인트 자산·구성 점검 증적):
 | `redis` | 라이브 쿼리 pub/sub | (내부) |
 | `fleet-init` | vuln DB / 로그 볼륨 준비 | - |
 
-```bash
-docker compose ps fleet mysql redis
-# Fleet UI: http://<서버>:1337   (.env 의 MORI_FLEET_UI_URL)
-```
+> **로그인 루프 주의**: Fleet UI 최초 로그인이 무한 루프면 이미지 태그를 고정하세요
+> (`docker-compose.yml` 의 `fleetdm/fleet` → 검증된 태그, 예: `fleetdm/fleet:v4.x`).
+> 자세한 건 `docs/FLEET_RESET_AND_REINSTALL_GUIDE.md`.
 
 ---
 
@@ -63,15 +68,18 @@ Fleet 은 osquery + 관리 데몬을 묶은 **fleetd** 설치 패키지를 만�
 ### 4-1. 설치 패키지 생성 (관리 PC에서, fleetctl 필요)
 
 ```bash
-# fleetctl 설치 (macOS)
-brew install fleetctl        # 또는 npm i -g fleetctl
+# fleetctl 설치 — 공식 npm 패키지 사용(brew 포뮬러는 없음)
+npm i -g fleetctl            # 또는 fleetctl preview 문서 참고
 
-# 대상 OS별 설치 패키지 생성
-fleetctl package --type=msi   --fleet-url=http://<서버>:1337 --enroll-secret=<SECRET>   # Windows
-fleetctl package --type=pkg   --fleet-url=http://<서버>:1337 --enroll-secret=<SECRET>   # macOS
-fleetctl package --type=deb   --fleet-url=http://<서버>:1337 --enroll-secret=<SECRET>   # Ubuntu/Debian
-fleetctl package --type=rpm   --fleet-url=http://<서버>:1337 --enroll-secret=<SECRET>   # RHEL 계열
+# 서버가 HTTP(TLS 미설정, compose 기본 FLEET_SERVER_TLS=false)이므로 --insecure 필수.
+fleetctl package --type=msi --fleet-url=http://<서버>:1337 --enroll-secret=<SECRET> --insecure   # Windows
+fleetctl package --type=pkg --fleet-url=http://<서버>:1337 --enroll-secret=<SECRET> --insecure   # macOS
+fleetctl package --type=deb --fleet-url=http://<서버>:1337 --enroll-secret=<SECRET> --insecure   # Ubuntu/Debian
+fleetctl package --type=rpm --fleet-url=http://<서버>:1337 --enroll-secret=<SECRET> --insecure   # RHEL 계열
 ```
+
+> `fleetctl get enroll_secret` 은 먼저 `fleetctl config set --address http://<서버>:1337 --tls-skip-verify`
+> + `fleetctl login` 을 해야 동작합니다. (또는 UI **Settings → Enroll secret** 에서 복사)
 
 생성된 패키지를 대상 단말에 설치하면 자동 등록됩니다.
 - macOS 상세 절차: [FLEET_MACBOOK_ENROLLMENT_AND_TEST.md](./FLEET_MACBOOK_ENROLLMENT_AND_TEST.md)

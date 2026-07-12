@@ -47,11 +47,15 @@
 
 ## 0. 사전 확인 (MORI 측)
 
-MORI 스택이 떠 있으면 Zabbix Server/Web은 이미 실행 중입니다.
+**번들 Zabbix 는 `zabbix` profile 뒤에 있어 기본 `docker compose up` 으로는 뜨지 않습니다.** 먼저 켜세요:
 
 ```bash
-docker compose ps zabbix-server zabbix-web
+docker compose --profile zabbix up -d      # (또는 전체 번들: --profile bundled)
+docker compose ps zabbix-server zabbix-web  # 두 컨테이너가 Up 인지 확인
 ```
+
+> 이미 사내에 Zabbix 가 있으면(브라운필드) 이 profile 을 켜지 말고 `.env` 의
+> `MORI_ZABBIX_API_URL`/`MORI_ZABBIX_API_TOKEN` 으로 기존 서버를 가리키세요.
 
 - **Zabbix Web**: `http://<서버>:18081` (`.env`의 `MORI_ZABBIX_UI_URL`, 기본 `Admin` / `zabbix`)
 - **Zabbix Server(agent 접속 대상)**: `<서버>:10051` (compose에서 `10051:10051` 노출)

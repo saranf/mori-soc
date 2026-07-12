@@ -101,7 +101,8 @@ docker compose logs -f mori-api # 로그
 ```
 
 - MORI의 운영 상태(담당자·조치·Triage·인시던트·위험성 평가·통제 이행상태·설정)는 모두
-  PostgreSQL에 **write-through 영속화**되어 재시작·복구 후에도 유지됩니다. (스키마 `001`~`009`)
+  PostgreSQL에 **write-through 영속화**되어 재시작·복구 후에도 유지됩니다. (스키마 `001`~`013`,
+  code_review·개인정보 흐름표 포함 — 앱 부팅 시 전 스키마 idempotent 재적용)
 
 ---
 

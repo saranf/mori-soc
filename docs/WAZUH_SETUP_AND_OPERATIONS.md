@@ -41,9 +41,16 @@ Wazuh 는 하나가 아니라 **3개가 한 세트**로 돕니다. MORI 스택�
 
 MORI 스택 버전: **4.14.4**.
 
+**번들 Wazuh 는 `wazuh` profile 뒤에 있어 기본 `up` 으로는 뜨지 않습니다.** 인덱서 인증서를
+먼저 만든 뒤 profile 로 켜세요:
+
 ```bash
-docker compose ps wazuh.manager wazuh.indexer wazuh.dashboard
-# Dashboard: .env 의 MORI_WAZUH_UI_URL (기본 미설정 → 채우면 MORI 인프라 위젯에서 Wazuh↗ 링크)
+rm -rf config/wazuh_indexer_ssl_certs && mkdir -p config/wazuh_indexer_ssl_certs
+docker compose -f generate-indexer-certs.yml run --rm generator   # 인덱서 TLS 인증서 생성
+docker compose --profile wazuh up -d                              # (또는 전체 번들: --profile bundled)
+docker compose ps wazuh.manager wazuh.indexer wazuh.dashboard      # 3개 Up 확인
+# Dashboard: 기본 https://127.0.0.1:${WAZUH_DASHBOARD_PORT:-8443} (localhost 바인딩 —
+#   원격 접속은 SSH 터널/역프록시 필요). .env 의 MORI_WAZUH_UI_URL 채우면 MORI 위젯에 Wazuh↗ 링크.
 ```
 
 ---
@@ -97,10 +104,29 @@ Dashboard → **Security events / Threat Hunting** 에서 경보를 봅니다.
 
 ---
 
-## 5. MORI 연동 (현재/예정)
+## 5. MORI 연동
 
-- **현재**: Wazuh 경보 **시드 데이터**가 MORI Alert Triage 에 이미 흐르는 형태로 시연되고, `MORI_WAZUH_UI_URL` 설정 시 인프라 위젯에서 **Wazuh↗** 딥링크.
-- **예정(Next)**: `pollers/wazuh.py` 로 Wazuh API(`:55000`) 또는 indexer(`:9200`)를 폴링 → 경보를 MORI alert 로 정규화 적재(Zabbix 와 동일 파이프라인) → Triage → Incident → 증적. Trivy 처럼 `POST /ingest/wazuh` HTTP 인제스트로도 확장 가능.
+**HTTP push (`POST /ingest/wazuh`) — 이미 구현·동작**합니다. Wazuh 측(또는 중계 스크립트)에서
+경보를 MORI 로 밀어 넣으면 alert 로 정규화 적재 → Alert Triage → Incident → 증적으로 흐릅니다.
+
+```bash
+# 본문: {"alerts": [{ "rule": {...}, "agent": {...}, ... }]}  — Wazuh alerts.json 포맷
+curl -fsS -X POST "$MORI_INGEST_URL/ingest/wazuh" \
+  -H "Authorization: Bearer $MORI_INGEST_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data @wazuh-alerts.json
+# 응답: {"ok": true, "records_collected": N, "entities_saved": M}
+```
+
+- 인증: `MORI_INGEST_TOKEN` Bearer(또는 `X-MORI-Token`) 헤더. **`MORI_DATABASE_URL` 이 설정된
+  상태여야** 적재됩니다(state 백엔드 필요).
+- 확인: 응답의 `records_collected` + MORI 소스 신선도(**설정 → 소스**)와 **Alert Triage** 화면.
+- **예정(Next)**: `pollers/wazuh.py` 로 Wazuh API(`:55000`)/indexer(`:9200`)를 **주기 폴링**(현재 스텁
+  — `MORI_ENABLE_WAZUH`/`MORI_WAZUH_API_*` 는 자리만 잡아둔 상태로 아직 무동작).
+- `MORI_WAZUH_UI_URL` 설정 시 인프라 위젯에서 **Wazuh↗** 딥링크.
+
+> ⚠️ 어떤 룰/레벨이 **어떤 통제 증적으로 매핑**되는지는 아직 자동화되지 않았습니다(Trivy 의 스캔→2.8
+> 자동승격 같은 매핑 미구현). 현재는 Triage→Incident 경로로 다뤄집니다.
 
 즉 MORI 에서 최종 그림은:
 

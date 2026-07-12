@@ -114,14 +114,15 @@ flowchart LR
 
 **Brownfield (on top of existing Zabbix/Wazuh/Fleet)**
 ```bash
-docker compose up -d                  # MORI core only (api + worker + postgres)
+docker compose up -d                  # MORI core + LDAP + observability (no bundled Zabbix/Wazuh/Fleet)
 # Wire existing infra in .env:
 #   MORI_ZABBIX_API_URL=https://zabbix.your-corp.com/api_jsonrpc.php
 #   MORI_ZABBIX_API_TOKEN=<token>
 docker compose up -d mori-worker      # re-apply
 ```
 
-> Bundled demo stack: `docker compose --profile bundled up -d` (individual: `--profile zabbix`/`fleet`/`wazuh`)
+> Default `up -d` starts: soc-postgres · mori-api · mori-worker · openldap · phpldapadmin · portal · grafana · loki · fluent-bit.
+> Bundled demo stack (own Zabbix/Wazuh/Fleet): `docker compose --profile bundled up -d` (individual: `--profile zabbix`/`fleet`/`wazuh`). HTTPS proxy: `--profile https up -d mori-caddy` (after issuing certs — see [HTTPS setup](docs/HTTPS_SETUP.md)).
 > Full steps in the [Brownfield connect guide](docs/BROWNFIELD_CONNECT.en.md).
 
 > **Demo credentials** — `admin`/`security`/`monitor` (password `1234`) are for the **isolated demo only**. For any real deployment, change `MORI_ADMIN_PASSWORD` in `.env` and set `MORI_DEMO_MODE=false`.

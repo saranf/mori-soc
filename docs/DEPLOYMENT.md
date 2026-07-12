@@ -57,16 +57,33 @@ openssl rand -base64 32
 
 ### 4. 최초 실행
 
+**MORI 코어만** 먼저 띄웁니다(신규 설치 기본). 아래 한 줄이면 됩니다:
+
 ```bash
-rm -rf config/wazuh_indexer_ssl_certs
-mkdir -p config/wazuh_indexer_ssl_certs
-docker compose -f generate-indexer-certs.yml run --rm generator
-docker compose up -d
+docker compose up -d          # MORI 코어 + LDAP + 관측(grafana/loki/fluent-bit)
 docker compose ps
 ```
 
-기존에 인증서 생성 전에 `docker compose up`을 먼저 실행했다면,
-`config/wazuh_indexer_ssl_certs` 내부 경로가 디렉터리로 잘못 생성될 수 있으므로 위처럼 초기화 후 다시 생성하는 것을 권장합니다.
+> 기본 `up -d` 로 뜨는 것: `soc-postgres` · `mori-api` · `mori-worker` · `openldap` ·
+> `phpldapadmin` · `portal` · `grafana` · `loki` · `fluent-bit`.
+> 번들 모니터링 스택(Zabbix/Wazuh/Fleet)과 HTTPS(caddy)는 **profile 로 분리**돼 기본 기동에
+> 포함되지 않는다 → 자원 절약 + 인증서 없이 크래시 방지. 필요할 때만 아래처럼 켠다.
+
+```bash
+# (선택) 번들 데모 스택 전체 — Zabbix + Fleet + Wazuh
+docker compose --profile bundled up -d
+# (선택) 개별:  --profile zabbix  /  --profile fleet  /  --profile wazuh
+# (선택) HTTPS(caddy) — 인증서 발급 후에만. docs/HTTPS_SETUP.md
+docker compose --profile https up -d mori-caddy
+```
+
+> **Wazuh 프로필**을 켤 때만 인덱서 인증서가 먼저 필요하다(아래). 인증서 생성 전에 wazuh
+> 프로필을 올렸다면 `config/wazuh_indexer_ssl_certs` 가 디렉터리로 잘못 생기므로 초기화 후 재생성:
+> ```bash
+> rm -rf config/wazuh_indexer_ssl_certs && mkdir -p config/wazuh_indexer_ssl_certs
+> docker compose -f generate-indexer-certs.yml run --rm generator
+> docker compose --profile wazuh up -d
+> ```
 
 ### 4-1. MORI API + Postgres 기동
 
@@ -126,8 +143,10 @@ curl -X POST http://mori.rmstudio.co.kr:18000/query \
 
 주의:
 
-- `schema/001_phase1_initial.sql`은 `mori-postgres-data` 볼륨이 비어 있는 **최초 기동 시점에만** 자동 적용됩니다.
-- 이미 데이터 볼륨이 생성된 상태라면, 이후 schema 파일 변경은 자동 반영되지 않습니다.
+- **DB 스키마는 앱(mori-api) 부팅 때마다 `schema/*.sql` 전체를 idempotent 하게 재적용**합니다
+  (`src/mori_soc/api/server.py` → state 백엔드의 `apply_schema`). 즉 새 스키마 파일(예: 012·013)을
+  추가하고 `docker compose up -d --build mori-api` 만 해도 반영되며, **볼륨을 지울 필요가 없습니다.**
+  (compose 의 initdb 마운트는 최초 빈 볼륨 부트스트랩용일 뿐, 이후 정합성은 앱 self-heal 이 담당.)
 - 현재 단계는 **조회 API + DB 배포선**까지이며, 실제 보안 데이터 적재 자동화는 후속 수집 연동 작업이 필요합니다.
 - `/dashboard/summary` 와 `/ui` 는 MORI DB 기준 집계이므로, 실시간 수집 worker가 없으면 Zabbix UI/Fleet UI 수치와 차이가 날 수 있습니다.
 
@@ -151,7 +170,7 @@ docker compose up -d soc-postgres mori-api
 
 - 위 명령은 **빌드 캐시만** 정리합니다.
 - `docker compose down -v`는 볼륨까지 삭제하므로 DB 데이터가 날아갑니다.
-- schema를 처음부터 다시 적용해야 할 때만 `mori-postgres-data` 볼륨 삭제를 고려하세요.
+- 스키마는 부팅마다 자동 재적용되므로(위 §주의) 볼륨 삭제는 **데이터를 완전히 초기화하려는 경우에만** 하세요.
 
 ### 5. Grafana 로그인 안 될 때
 
