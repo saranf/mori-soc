@@ -4415,6 +4415,12 @@ def render_user_dashboard_html(
           <input id=\"scan_url\" placeholder=\"${tt('dash.ctl.scan_url_ph','https://github.com/owner/repo')}\" style=\"${inp};flex:1;min-width:260px\" />
           <input id=\"scan_ref\" placeholder=\"${tt('dash.ctl.scan_ref_ph','브랜치(기본 main)')}\" value=\"main\" style=\"${inp};width:150px\" />
         </div>
+        <div style=\"display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:12px;color:#111827;align-items:center\">
+          <span style=\"font-weight:600\">${tt('dash.ctl.scan_mode','스캔 방식')}:</span>
+          <label style=\"display:inline-flex;align-items:center;gap:4px\"><input type=\"radio\" name=\"scan_mode\" value=\"code-review-semgrep.yml\" checked> ${tt('dash.ctl.scan_mode_free','무료 Semgrep(SAST·PII)')}</label>
+          <label style=\"display:inline-flex;align-items:center;gap:4px\"><input type=\"radio\" name=\"scan_mode\" value=\"code-review-fullscan.yml\"> ${tt('dash.ctl.scan_mode_ai','유료 Claude 심층(라이프사이클 완벽)')}</label>
+          <span style=\"font-size:11px;color:#111827\">${tt('dash.ctl.scan_mode_note','유료는 레포에 code-review-fullscan.yml + ANTHROPIC_API_KEY 필요(고급 팝업 참고)')}</span>
+        </div>
         <input id=\"scan_token\" type=\"password\" placeholder=\"${tt('dash.ctl.scan_token_ph','GitHub 토큰 (actions:write · 저장 안 함)')}\" style=\"${inp};width:100%;box-sizing:border-box;margin-bottom:4px\" />
         <details style=\"margin-bottom:8px;background:#fff;border:1px dashed #e5e7eb;border-radius:6px;padding:6px 8px\">
           <summary style=\"cursor:pointer;font-size:11px;color:#111827\">${tt('dash.ctl.scan_tok_t','GitHub 토큰이 뭔가요? 어떻게 발급하나요?')}</summary>
@@ -4616,12 +4622,14 @@ def render_user_dashboard_html(
       const repo_url = document.getElementById('scan_url').value.trim();
       const github_token = document.getElementById('scan_token').value.trim();
       const ref = document.getElementById('scan_ref').value.trim() || 'main';
+      const modeEl = document.querySelector('input[name=\"scan_mode\"]:checked');
+      const workflow = modeEl ? modeEl.value : 'code-review-semgrep.yml';
       if (!repo_url) { msg.textContent = tt('dash.ctl.scan_need_url','레포 URL을 넣으세요'); msg.style.color='#dc2626'; return; }
       if (!github_token) { msg.textContent = tt('dash.ctl.scan_need_tok','GitHub 토큰을 넣으세요'); msg.style.color='#dc2626'; return; }
       msg.textContent = tt('dash.ctl.scan_running','요청 중…'); msg.style.color='#111827';
       try {
         const res = await fetch('/controls/code-review/scan', { method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ repo_url, github_token, ref }) });
+          body: JSON.stringify({ repo_url, github_token, ref, workflow }) });
         const d = await res.json().catch(()=>({}));
         if (!res.ok) { msg.textContent = (d.detail || tt('dash.ctl.scan_fail','요청 실패')) + ' (' + res.status + ')'; msg.style.color='#dc2626'; return; }
         document.getElementById('scan_token').value = '';  // 토큰 화면에서 즉시 비움
