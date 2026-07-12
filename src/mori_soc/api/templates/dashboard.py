@@ -4470,42 +4470,29 @@ def render_user_dashboard_html(
     }
     window.openCodeReviewScan = openCodeReviewScan;
 
-    // ── 개인정보 처리흐름도 (ISMS-P 3.x) ─────────────────────────────────────────
-    const PF_FIELDS = ['item','subject','collection_source','storage_location','storage_table','purpose','retention','destruction','third_party','overseas','note'];
+    // ── 개인정보 처리흐름도 (ISMS-P 3.x) — 읽기 전용 증적 ──────────────────────────
     function openPrivacyFlow() {
       const box = document.getElementById('ctl_nlp');
       document.getElementById('ctl_editor').style.display = 'none';
-      const inp = 'background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:5px 8px;font-size:12px;width:100%;box-sizing:border-box';
-      const fld = PF_FIELDS.map(k => `<div><label style=\"font-size:10px;color:#111827\">${tt('dash.pf.f_'+k, k)}${k==='item'?' *':''}</label><input id=\"pf_${k}\" style=\"${inp}\"></div>`).join('');
       box.innerHTML = `<div style=\"font-weight:700;color:#2563eb;margin-bottom:4px\">${tt('dash.pf.title','개인정보 처리흐름도 (ISMS-P 3.x)')}</div>
-        <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.pf.help','개인정보 항목이 수집→저장→이용→파기로 흐르는 경로와 저장위치(DB/테이블)를 기록해요. 스캔에서 발견된 개인정보/비밀정보로 후보를 자동 시드할 수 있어요. MORI는 코드를 읽지 않아요.')}</div>
-        <div style=\"display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px\">
+        <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.pf.help','개인정보 항목이 수집→저장→이용→파기로 흐르는 경로와 저장위치(DB/테이블)를 기록해요. 코드 스캔에서 발견된 개인정보/비밀정보로 자동 생성돼요. MORI는 코드를 읽지 않아요.')}</div>
+        <div style=\"display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center\">
           <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"seedPrivacyFlow()\">${tt('dash.pf.seed','PII 스캔으로 시드')}</button>
           <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"openCsvPreview({title:tt('dash.pf.title','개인정보 처리흐름도 (ISMS-P 3.x)'),filename:'mori-personal-data-flow.csv',url:'/privacy/data-flow.csv'})\">${tt('dash.pf.csv','CSV')}</button>
           <a href=\"/privacy/data-flow.pdf\" target=\"_blank\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px;text-decoration:none;color:#2563eb;border:1px solid #e5e7eb;border-radius:6px\">${tt('dash.pf.pdf','PDF')}</a>
           <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"promotePrivacyFlow()\">${tt('dash.pf.promote','3.x 통제 증적 승격')}</button>
           <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"loadPrivacyFlow()\">${tt('dash.pf.reload','새로고침')}</button>
+          <span id=\"pf_msg\" style=\"font-size:11px;color:#16a34a\"></span>
         </div>
         <div style=\"font-size:12px;font-weight:600;color:#111827;margin:6px 0 4px\">${tt('dash.pf.diagram','처리 흐름도 (수집→저장→이용→파기)')}</div>
         <div id=\"pf_diagram\" style=\"overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px;padding:6px;background:#fff\"></div>
-        <div style=\"margin-top:4px;font-size:11px;color:#111827;line-height:1.6\">${tt('dash.pf.legend','읽는 법: ‘PII 시드’ 배지 = 스캔에서 자동으로 온 후보 행이에요(저장위치·테이블은 담당자가 채워요). 단계는 수집→저장→이용→파기 순이고, 오른쪽 ‘제3자제공/국외이전’ 표시는 그 항목에 해당 처리가 있다는 뜻이에요. ‘3.x 통제 증적 승격’을 누르면 3.1.1·3.2.1·3.4.1 통제 상세에 증적으로 연결돼요.')}</div>
-        <div style=\"font-size:12px;font-weight:600;color:#111827;margin:10px 0 4px\">${tt('dash.pf.add','행 추가')}</div>
-        <div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:6px\">${fld}</div>
-        <div style=\"display:flex;gap:6px\"><button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"savePrivacyFlow()\" id=\"pf_save_btn\">${tt('dash.pf.save','저장')}</button><button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px;display:none\" onclick=\"pfClearForm()\" id=\"pf_cancel_btn\">${tt('dash.pf.cancel','취소')}</button><span id=\"pf_msg\" style=\"font-size:11px;color:#16a34a;align-self:center\"></span></div>
-        <div id=\"pf_rows\" style=\"margin-top:10px;font-size:12px\"></div>`;
+        <div style=\"margin-top:4px;font-size:11px;color:#111827;line-height:1.6\">${tt('dash.pf.legend','읽는 법: ‘PII 시드’ 배지 = 코드 스캔에서 자동 발견된 개인정보 처리 지점이에요(저장위치·테이블에 코드 파일:라인). 단계는 수집→저장→이용→파기 순이고, 오른쪽 ‘제3자/국외’는 그 항목에 해당 처리가 있다는 뜻이에요. 이 표는 읽기 전용 증적이며, ‘3.x 통제 증적 승격’으로 3.1.1·3.2.1·3.4.1 통제에 연결돼요.')}</div>
+        <div style=\"font-size:12px;font-weight:600;color:#111827;margin:10px 0 4px\">${tt('dash.pf.detail','처리흐름 상세')}</div>
+        <div id=\"pf_rows\" style=\"margin-top:2px;font-size:12px\"></div>`;
       box.style.display = 'block';
-      window._pfEdit = '';
       loadPrivacyFlow();
     }
     window.openPrivacyFlow = openPrivacyFlow;
-
-    function pfClearForm() {
-      PF_FIELDS.forEach(k => { const el = document.getElementById('pf_'+k); if (el) el.value=''; });
-      window._pfEdit = '';
-      const sb = document.getElementById('pf_save_btn'); if (sb) sb.textContent = tt('dash.pf.save','저장');
-      const cb = document.getElementById('pf_cancel_btn'); if (cb) cb.style.display='none';
-    }
-    window.pfClearForm = pfClearForm;
 
     async function loadPrivacyFlow() {
       const rowsBox = document.getElementById('pf_rows');
@@ -4516,52 +4503,23 @@ def render_user_dashboard_html(
         if (!res.ok) { rowsBox.innerHTML = `<span class=\"empty\">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; return; }
         const d = await res.json();
         const rows = d.rows || [];
-        // 다이어그램(인라인 SVG — 쿠키 인증)
-        try { const sv = await fetch('/privacy/data-flow.svg'); dia.innerHTML = sv.ok ? await sv.text() : ''; } catch(e){ dia.innerHTML=''; }
-        if (!rows.length) { rowsBox.innerHTML = `<span class=\"empty\">${tt('dash.pf.empty','흐름표가 비어 있어요. 행을 추가하거나 PII 스캔으로 시드하세요.')}</span>`; return; }
-        rowsBox.innerHTML = rows.map(r => {
+        try { const sv = await fetch('/privacy/data-flow.svg'); if (dia) dia.innerHTML = sv.ok ? await sv.text() : ''; } catch(e){ if (dia) dia.innerHTML=''; }
+        if (!rows.length) { rowsBox.innerHTML = `<span class=\"empty\">${tt('dash.pf.empty','흐름표가 비어 있어요.')}</span>`; return; }
+        const cols = [['item','f_item'],['storage_location','f_storage_location'],['storage_table','f_storage_table'],['purpose','f_purpose'],['destruction','f_destruction'],['third_party','f_third_party'],['overseas','f_overseas']];
+        const th = cols.map(c => `<th style=\"padding:4px 6px;text-align:left;color:#111827;font-size:10px;border-bottom:1px solid #e5e7eb\">${tt('dash.pf.'+c[1],c[1])}</th>`).join('');
+        const trs = rows.map(r => {
           const badge = r.source==='pii_scan' ? ` <span style=\"background:#ffffff;color:#2563eb;border:1px solid #2563eb;border-radius:5px;padding:0 5px;font-size:10px\">PII 시드</span>` : '';
-          const cells = ['item','storage_location','storage_table','purpose','destruction','third_party','overseas']
-            .map(k => `<td style=\"padding:3px 6px;border-bottom:1px solid #f3f4f6\">${escapeHtml(r[k]||'—')}</td>`).join('');
-          return `<tr><td style=\"padding:3px 6px;border-bottom:1px solid #f3f4f6\"><b>${escapeHtml(r.item||'(미기재)')}</b>${badge}</td>${cells}<td style=\"padding:3px 6px;border-bottom:1px solid #f3f4f6;white-space:nowrap\"><a href=\"#\" onclick=\"event.preventDefault();pfEditRow('${r.id}')\" style=\"color:#2563eb\">${tt('dash.pf.edit','수정')}</a> · <a href=\"#\" onclick=\"event.preventDefault();pfDeleteRow('${r.id}')\" style=\"color:#dc2626\">${tt('dash.pf.del','삭제')}</a></td></tr>`;
+          const tds = cols.map(c => {
+            const v = escapeHtml(r[c[0]]||'—');
+            return c[0]==='item' ? `<td style=\"padding:4px 6px;border-bottom:1px solid #f3f4f6\"><b>${v}</b>${badge}</td>`
+                                 : `<td style=\"padding:4px 6px;border-bottom:1px solid #f3f4f6\">${v}</td>`;
+          }).join('');
+          return `<tr>${tds}</tr>`;
         }).join('');
-        const head = ['f_item','f_storage_location','f_storage_table','f_purpose','f_destruction','f_third_party','f_overseas']
-          .map(k => `<th style=\"padding:3px 6px;text-align:left;color:#111827;font-size:10px\">${tt('dash.pf.'+k,k)}</th>`).join('');
-        rowsBox.innerHTML = `<div style=\"overflow-x:auto\"><table style=\"width:100%;border-collapse:collapse\"><tr><th style=\"padding:3px 6px;text-align:left;color:#111827;font-size:10px\">${tt('dash.pf.f_item','항목')}</th>${head}<th></th></tr>${rowsBox.innerHTML}</table></div>`;
-        window._pfRows = rows;
+        rowsBox.innerHTML = `<div style=\"overflow-x:auto\"><table style=\"width:100%;border-collapse:collapse\"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table></div>`;
       } catch(e) { rowsBox.innerHTML = `<span class=\"empty\">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
     }
     window.loadPrivacyFlow = loadPrivacyFlow;
-
-    async function savePrivacyFlow() {
-      const msg = document.getElementById('pf_msg');
-      const body = {}; PF_FIELDS.forEach(k => { body[k] = (document.getElementById('pf_'+k)||{}).value || ''; });
-      if (!body.item.trim()) { if (msg){ msg.style.color='#dc2626'; msg.textContent = tt('dash.pf.item_required','개인정보 항목은 필수예요'); } return; }
-      const editId = window._pfEdit || '';
-      const url = editId ? ('/privacy/data-flow/'+editId) : '/privacy/data-flow';
-      const method = editId ? 'PUT' : 'POST';
-      const res = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-      if (!res.ok) { if (msg){ msg.style.color='#dc2626'; msg.textContent = tt('dash.pf.denied','권한이 없어요 (admin·security)'); } return; }
-      if (msg){ msg.style.color='#16a34a'; msg.textContent = '✓'; }
-      pfClearForm(); loadPrivacyFlow();
-    }
-    window.savePrivacyFlow = savePrivacyFlow;
-
-    function pfEditRow(id) {
-      const r = (window._pfRows||[]).find(x => x.id===id); if (!r) return;
-      PF_FIELDS.forEach(k => { const el=document.getElementById('pf_'+k); if (el) el.value = r[k]||''; });
-      window._pfEdit = id;
-      const sb = document.getElementById('pf_save_btn'); if (sb) sb.textContent = tt('dash.pf.save','저장');
-      const cb = document.getElementById('pf_cancel_btn'); if (cb) cb.style.display='inline-block';
-      const f = document.getElementById('pf_item'); if (f) f.focus();
-    }
-    window.pfEditRow = pfEditRow;
-
-    async function pfDeleteRow(id) {
-      const res = await fetch('/privacy/data-flow/'+id, {method:'DELETE'});
-      if (res.ok) loadPrivacyFlow();
-    }
-    window.pfDeleteRow = pfDeleteRow;
 
     async function seedPrivacyFlow() {
       const res = await fetch('/privacy/data-flow/seed-from-scan', {method:'POST'});

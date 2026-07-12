@@ -13,6 +13,7 @@ from unittest.mock import patch
 from mori_soc.models import Alert, Host
 from mori_soc.services.data_flow import (
     infer_item,
+    infer_stage,
     is_pii_finding,
     render_data_flow_svg,
     seed_rows_from_findings,
@@ -51,6 +52,27 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertEqual(rows[0]["source"], "pii_scan")
         self.assertEqual(rows[0]["storage_location"], "org/app")
         self.assertIn("config.py:3", rows[0]["storage_table"])
+
+    def test_infer_stage_from_path(self) -> None:
+        self.assertEqual(infer_stage("src/app/signup/page.tsx"), "수집")
+        self.assertEqual(infer_stage("src/app/checkout/page.tsx"), "수집")
+        self.assertEqual(infer_stage("prisma/seed.ts"), "저장")
+        self.assertEqual(infer_stage("db/schema.sql"), "저장")
+        self.assertEqual(infer_stage("src/api/users/route.ts"), "이용")
+        self.assertIsNone(infer_stage("README.md"))
+
+    def test_seed_routes_collection_point(self) -> None:
+        rows = seed_rows_from_findings([
+            {"rule_id": "korean-pii-phone", "file": "src/app/signup/page.tsx", "line": 89, "message": "전화"},
+            {"rule_id": "korean-pii-phone", "file": "prisma/seed.ts", "line": 14, "message": "전화"},
+        ], repo="org/app")
+        by_file = {r["file"]: r for r in rows}
+        # signup → 수집 칸에 코드위치, 저장 칸 비움
+        self.assertIn("signup/page.tsx:89", by_file["src/app/signup/page.tsx"]["collection_source"])
+        self.assertEqual(by_file["src/app/signup/page.tsx"]["storage_table"], "")
+        # seed → 저장 칸
+        self.assertIn("seed.ts:14", by_file["prisma/seed.ts"]["storage_table"])
+        self.assertEqual(by_file["prisma/seed.ts"]["collection_source"], "")
 
     def test_render_svg_has_stages_and_values(self) -> None:
         svg = render_data_flow_svg([{"item": "이메일", "collection_source": "회원가입",

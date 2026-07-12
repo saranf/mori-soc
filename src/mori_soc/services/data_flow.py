@@ -54,11 +54,36 @@ def infer_item(finding: dict[str, Any]) -> str:
     return ", ".join(hits[:3])
 
 
+# 파일 경로로 개인정보 처리 단계를 추정 — MORI 는 코드를 안 읽으니 경로 단서로 best-effort.
+_COLLECT_HINTS = ("signup", "sign-up", "sign_up", "register", "registration", "join", "login",
+                  "sign-in", "signin", "/form", "checkout", "contact", "subscribe", "apply",
+                  "onboard", "survey", "profile", "mypage", "account", "input", "enroll", "order")
+_STORE_HINTS = ("seed", "migration", "migrate", "schema", "prisma", "/model", "entity", "repository",
+                "dao", ".sql", "/db/", "database", "fixtures", "/store", "insert")
+_USE_HINTS = ("/api/", "route", "handler", "service", "controller", "usecase", "use-case", "process",
+              "send", "mailer", "sms", "notif", "export", "report", "analytic", "payment", "/lib/")
+
+
+def infer_stage(file_path: str) -> str | None:
+    """파일 경로로 처리 단계(수집/저장/이용)를 추정. 불명확하면 None."""
+    p = (file_path or "").lower()
+    if not p:
+        return None
+    if any(h in p for h in _STORE_HINTS):
+        return "저장"
+    if any(h in p for h in _COLLECT_HINTS):
+        return "수집"
+    if any(h in p for h in _USE_HINTS):
+        return "이용"
+    return None
+
+
 def seed_rows_from_findings(findings: list[dict[str, Any]], *, repo: str = "",
                             existing_keys: set[str] | None = None) -> list[dict[str, Any]]:
-    """PII findings → 흐름표 후보 행(부분 채움). storage_table 에 파일:라인을 넣어 위치 단서 제공.
+    """PII findings → 흐름표 후보 행. 파일 경로로 단계(수집/저장/이용)를 추정해 해당 칸에 코드 위치.
 
-    중복 시드 방지를 위해 (repo|file|rule) 키로 걸러낸다(existing_keys).
+    signup·checkout·form → 수집 / prisma·seed·schema·sql → 저장 / api·service → 이용.
+    불명확하면 저장(코드에 존재). 중복 시드 방지는 (repo|file|rule) 키로.
     """
     existing_keys = existing_keys or set()
     out: list[dict[str, Any]] = []
@@ -73,19 +98,22 @@ def seed_rows_from_findings(findings: list[dict[str, Any]], *, repo: str = "",
             continue
         existing_keys.add(key)
         loc = f"{file_}:{line}" if file_ and line is not None else file_
+        stage = infer_stage(file_)
         out.append({
             "item": infer_item(f),
             "subject": "",
-            "collection_source": "",
+            # 추정 단계에 코드 위치를 넣는다 — 수집 지점도 채워지도록.
+            "collection_source": loc if stage == "수집" else "",
             "storage_location": repo or "",
-            "storage_table": loc,        # 코드 위치 단서(담당자가 실제 테이블로 교체)
-            "purpose": "",
+            "storage_table": loc if stage in (None, "저장") else "",
+            "purpose": loc if stage == "이용" else "",
             "retention": "",
             "destruction": "",
             "third_party": "",
             "overseas": "",
-            "note": f"[PII 스캔 시드] {rule}".strip(),
+            "note": f"[PII 스캔 시드] {rule} · {loc} · 추정단계 {stage or '저장'}".strip(),
             "source": "pii_scan",
+            "stage": stage or "저장",
             "repo": repo or "",
             "file": file_,
             "rule": rule,
@@ -178,6 +206,7 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "") 
     같은 한글 폰트 파이프라인을 재사용한다(무의존성 원칙 밖 — reportlab 은 프로젝트 공통).
     """
     try:
+        from reportlab.graphics.shapes import Drawing, Line, Polygon, Rect, String
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4, landscape
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -189,51 +218,100 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "") 
 
     from mori_soc.services.reports import _get_pdf_font
 
+    BLACK, WHITE, NEUTRAL = colors.HexColor("#111827"), colors.white, colors.HexColor("#e5e7eb")
+    BLUE, GREEN, YELLOW, RED = (colors.HexColor("#2563eb"), colors.HexColor("#16a34a"),
+                               colors.HexColor("#ca8a04"), colors.HexColor("#dc2626"))
+    STAGE_COLOR = {"수집": BLUE, "저장": GREEN, "이용": YELLOW, "파기": RED}
+
     font = _get_pdf_font()
     styles = getSampleStyleSheet()
-    h1 = ParagraphStyle("pdf_h1", parent=styles["Title"], fontName=font, fontSize=15, leading=19, spaceAfter=3,
-                        textColor=colors.HexColor("#111827"))
-    meta = ParagraphStyle("pdf_meta", parent=styles["Normal"], fontName=font, fontSize=8.5, leading=12,
-                          textColor=colors.HexColor("#111827"))
-    cell = ParagraphStyle("pdf_cell", parent=styles["Normal"], fontName=font, fontSize=8, leading=10.5,
-                          textColor=colors.HexColor("#111827"))
+    h1 = ParagraphStyle("pdf_h1", parent=styles["Title"], fontName=font, fontSize=15, leading=19,
+                        spaceAfter=2, textColor=BLACK)
+    meta = ParagraphStyle("pdf_meta", parent=styles["Normal"], fontName=font, fontSize=8.5, leading=12, textColor=BLACK)
+    h2 = ParagraphStyle("pdf_h2", parent=styles["Heading2"], fontName=font, fontSize=11, leading=14,
+                        spaceBefore=10, spaceAfter=4, textColor=BLACK)
+    body = ParagraphStyle("pdf_body", parent=styles["Normal"], fontName=font, fontSize=9, leading=13, textColor=BLACK)
+    cell = ParagraphStyle("pdf_cell", parent=styles["Normal"], fontName=font, fontSize=8, leading=10.5, textColor=BLACK)
+    hcell = ParagraphStyle("pdf_hcell", parent=cell, textColor=WHITE)  # 헤더는 흰 글자(검 배경 위)
 
     def esc(s: Any) -> str:
         return str(s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-    headers = ["개인정보 항목", "정보주체", "수집경로", "저장위치", "테이블·컬럼",
-               "이용목적", "보관·파기", "제3자·국외"]
-    data = [[Paragraph(f"<b>{esc(h)}</b>", cell) for h in headers]]
-    for r in rows:
-        keep = "보관: " + str(r.get("retention") or "-") + " / 파기: " + str(r.get("destruction") or "-")
-        share = "제3자: " + str(r.get("third_party") or "없음") + " / 국외: " + str(r.get("overseas") or "없음")
-        data.append([Paragraph(esc(v), cell) for v in (
-            r.get("item"), r.get("subject"), r.get("collection_source"),
-            r.get("storage_location"), r.get("storage_table"), r.get("purpose"), keep, share)])
+    def val(s: Any) -> str:
+        return esc(s) if str(s or "").strip() else "—"
 
-    widths = [34 * mm, 22 * mm, 32 * mm, 30 * mm, 40 * mm, 38 * mm, 40 * mm, 44 * mm]
+    # ── 수집→저장→이용→파기 흐름도(그림) — 팔레트 테두리 박스 + 화살표 ──────────────
+    def _flow_drawing(width: float) -> "Drawing":
+        h, bw, bh, gap = 46, 90, 30, 26
+        d = Drawing(width, h)
+        n = len(STAGES)
+        total = n * bw + (n - 1) * gap
+        x0 = (width - total) / 2
+        for i, st in enumerate(STAGES):
+            x = x0 + i * (bw + gap)
+            col = STAGE_COLOR[st]
+            d.add(Rect(x, 8, bw, bh, rx=6, ry=6, strokeColor=col, strokeWidth=1.3, fillColor=WHITE))
+            d.add(String(x + bw / 2, 18, st, fontName=font, fontSize=12, fillColor=col, textAnchor="middle"))
+            if i < n - 1:
+                ax = x + bw
+                d.add(Line(ax, 23, ax + gap - 4, 23, strokeColor=BLACK, strokeWidth=1.2))
+                d.add(Polygon([ax + gap - 4, 23, ax + gap - 10, 20, ax + gap - 10, 26], fillColor=BLACK, strokeColor=BLACK))
+        return d
+
+    # ── 상세 표(헤더 흰 글자) ──────────────────────────────────────────────────
+    headers = ["개인정보 항목", "정보주체", "수집경로", "저장위치", "테이블·컬럼(코드위치)",
+               "이용목적", "보관·파기", "제3자·국외"]
+    data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in headers]]
+    for r in rows:
+        keep = f"보관: {val(r.get('retention'))} / 파기: {val(r.get('destruction'))}"
+        share = f"제3자: {esc(r.get('third_party') or '없음')} / 국외: {esc(r.get('overseas') or '없음')}"
+        data.append([Paragraph(v, cell) for v in (
+            val(r.get("item")), val(r.get("subject")), val(r.get("collection_source")),
+            val(r.get("storage_location")), val(r.get("storage_table")), val(r.get("purpose")), keep, share)])
+    widths = [30 * mm, 20 * mm, 30 * mm, 30 * mm, 44 * mm, 34 * mm, 42 * mm, 40 * mm]
     table = Table(data, colWidths=widths, repeatRows=1)
     table.setStyle(TableStyle([
         ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),   # 검 헤더
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),                  # 흰 글자
-        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),   # 뉴트럴 그리드
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BACKGROUND", (0, 0), (-1, 0), BLACK), ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
+        ("GRID", (0, 0), (-1, -1), 0.4, NEUTRAL), ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
 
+    # ── 요약 ───────────────────────────────────────────────────────────────────
+    items = sorted({str(r.get("item") or "").strip() for r in rows if r.get("item")})
+    stores = sorted({str(r.get("storage_location") or "").strip() for r in rows if r.get("storage_location")})
+    n_third = sum(1 for r in rows if str(r.get("third_party") or "").strip() not in ("", "없음", "-", "n/a"))
+    n_over = sum(1 for r in rows if str(r.get("overseas") or "").strip() not in ("", "없음", "-", "n/a"))
+    n_seed = sum(1 for r in rows if r.get("source") == "pii_scan")
+
     buf = io.BytesIO()
     docp = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=12 * mm, rightMargin=12 * mm,
-                             topMargin=14 * mm, bottomMargin=12 * mm, title="MORI 개인정보 처리흐름표")
-    story: list[Any] = [Paragraph("개인정보 처리흐름표 (ISMS-P 3.1·3.2·3.4)", h1)]
-    sub = f"항목 {len(rows)}건 · 수집→저장→이용→파기"
-    if generated_at:
-        sub += f" · 생성 {esc(generated_at)}"
-    story += [Paragraph(sub, meta), Spacer(1, 6)]
-    story.append(table if rows else Paragraph("흐름표가 비어 있습니다.", meta))
+                             topMargin=13 * mm, bottomMargin=12 * mm, title="MORI 개인정보 처리흐름표")
+    content_w = landscape(A4)[0] - 24 * mm
+    story: list[Any] = [Paragraph("개인정보 처리흐름표 (ISMS-P 3.1 수집 · 3.2 이용/제공 · 3.4 파기)", h1)]
+    sub = f"항목 {len(rows)}건" + (f" · 생성 {esc(generated_at)}" if generated_at else "") + " · MORI 코드 리뷰 파이프라인"
+    story.append(Paragraph(sub, meta))
+    story.append(Paragraph(
+        "이 문서는 개인정보 항목이 <b>수집 → 저장 → 이용 → 파기</b> 각 단계에서 어떻게 처리·저장되는지 기록한 "
+        "ISMS-P 개인정보 처리단계 필수 증적입니다. '테이블·컬럼(코드위치)' 열에 <b>src/…:라인</b> 형태로 표시된 항목은 "
+        "코드 스캔(Semgrep, 고객 CI)에서 자동 발견된 개인정보 처리 지점이며, 저장위치·이용목적·보관/파기는 담당자가 확정합니다. "
+        "MORI 는 코드를 저장하지 않고 스캔 결과만 받습니다.", body))
+    story += [Spacer(1, 8), _flow_drawing(content_w), Spacer(1, 4)]
+    story.append(Paragraph("요약", h2))
+    story.append(Paragraph(
+        f"· 개인정보 항목({len(items)}종): {esc(', '.join(items)) or '—'}<br/>"
+        f"· 저장위치({len(stores)}곳): {esc(', '.join(stores)) or '—'}<br/>"
+        f"· 제3자 제공: {n_third}건 · 국외 이전: {n_over}건 · 스캔 자동발견 행: {n_seed}건", body))
+    story.append(Paragraph("처리흐름 상세", h2))
+    story.append(table if rows else Paragraph("흐름표가 비어 있습니다 — 스캔에서 개인정보가 발견되지 않았거나 행이 미작성 상태입니다.", body))
+    story.append(Spacer(1, 6))
+    story.append(Paragraph(
+        "용어 · '—' 는 담당자 미작성(추가 확정 필요). 단계: 수집(3.1)=개인정보를 받는 지점 / 저장(3.2)=보관 위치(DB·테이블·파일) / "
+        "이용(3.2)=사용 목적 / 파기(3.4)=보관기간 경과·목적 달성 후 삭제. '제3자·국외' 표시는 해당 항목의 외부 제공·국외 이전 여부.",
+        ParagraphStyle("pdf_note", parent=cell, textColor=BLACK)))
     docp.build(story)
     return buf.getvalue()
 
 
-__all__ = ["STAGES", "FLOW_FIELDS", "is_pii_finding", "infer_item",
+__all__ = ["STAGES", "FLOW_FIELDS", "is_pii_finding", "infer_item", "infer_stage",
            "seed_rows_from_findings", "render_data_flow_svg", "render_data_flow_pdf"]

@@ -419,9 +419,8 @@ def register_sources(ctx: RouteContext) -> None:
             try:
                 from mori_soc.services.data_flow import seed_rows_from_findings
 
-                existing = {f"{r.get('repo','')}|{r.get('file','')}|{r.get('rule','')}"
-                            for r in ctx.personal_data_flow.values() if r.get("source") == "pii_scan"}
-                for row in seed_rows_from_findings(findings, repo=resolved_repo or "", existing_keys=existing):
+                # 결정적 id 로 upsert(덮어쓰기) → 재스캔 시 단계 재분류가 반영된다.
+                for row in seed_rows_from_findings(findings, repo=resolved_repo or ""):
                     fid = "pdf-" + _hashlib.sha1(
                         f"{resolved_repo}|{row.get('file','')}|{row.get('rule','')}".encode("utf-8")).hexdigest()[:12]
                     row.update({"id": fid, "created_at": now_iso, "created_by": "code_review", "updated_at": now_iso})

@@ -121,22 +121,20 @@ def register_privacy(ctx: RouteContext) -> None:
             rp = dict(rp)
             rp.setdefault("_repo", r_repo)
             findings.append(rp)
-        # 이미 있는 시드 키(repo|file|rule)로 중복 방지
-        existing = {f"{r.get('repo','')}|{r.get('file','')}|{r.get('rule','')}"
-                    for r in ctx.personal_data_flow.values() if r.get("source") == "pii_scan"}
-        # repo 별로 나눠 시드(각 finding 의 _repo 사용)
+        # ingest 자동시드와 동일한 결정적 id 로 upsert → 재분류 반영, 중복 없음.
         now = datetime.now(tz=timezone.utc).isoformat()
         added = 0
         by_repo: dict[str, list[dict[str, Any]]] = {}
         for f in findings:
             by_repo.setdefault(str(f.get("_repo") or want_repo or ""), []).append(f)
         for rp_repo, fs in by_repo.items():
-            for row in seed_rows_from_findings(fs, repo=rp_repo, existing_keys=existing):
-                row.update({"id": "pdf-" + uuid.uuid4().hex[:12], "created_at": now,
-                            "created_by": _user(request), "updated_at": now})
-                ctx.personal_data_flow[row["id"]] = row
+            for row in seed_rows_from_findings(fs, repo=rp_repo):
+                fid = "pdf-" + hashlib.sha1(
+                    f"{rp_repo}|{row.get('file','')}|{row.get('rule','')}".encode("utf-8")).hexdigest()[:12]
+                row.update({"id": fid, "created_at": now, "created_by": _user(request), "updated_at": now})
+                ctx.personal_data_flow[fid] = row
                 if ctx.persist_personal_data_flow:
-                    ctx.persist_personal_data_flow(row["id"])
+                    ctx.persist_personal_data_flow(fid)
                 added += 1
         if ctx.log_action:
             ctx.log_action(_user(request), "PRIVACY_FLOW_SEED", f"{added} rows from scan")
