@@ -209,6 +209,7 @@ view roles"** (admin is always included). Target users see the Accounts tab afte
 | [Code-review evidence](docs/CODE_REVIEW_EVIDENCE.md) | SDLC/2.8 evidence source · free/paid modes · OIDC provenance · customer setup |
 | [Personal-data flow](docs/PERSONAL_DATA_FLOW.md) | Privacy 3.x · collect→store→use→dispose · free(rough)/Claude(perfect) · PII criteria·PDF |
 | [Deployment](docs/DEPLOYMENT.md) | Server deploy · operations · troubleshooting |
+| [HTTPS setup](docs/HTTPS_SETUP.md) | Let's Encrypt · conflict-free nginx vhost · server run |
 | [Functional Spec](docs/FUNCTIONAL_SPEC.md) · [Roadmap](docs/IMPLEMENTATION_ROADMAP.md) | Feature spec / Phase 0–5 roadmap |
 
 ---

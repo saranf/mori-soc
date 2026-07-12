@@ -1,0 +1,13 @@
+# MORI HTTPS 리버스 프록시 — Caddy 가 Let's Encrypt 인증서를 자동 발급/갱신한다.
+# 요구: (1) PUBLIC_DOMAIN 이 이 서버 공인 IP 로 DNS 연결 (2) 호스트 80·443 인터넷 개방.
+# 결과: https://PUBLIC_DOMAIN → mori-api:8000 (포트 없이 HTTPS). MORI_INGEST_URL 을
+#       https://PUBLIC_DOMAIN 로 쓰면 GitHub Actions 가 인증서 검증된 채로 push 가능.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$PUBLIC_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy mori-api:8000
+}
