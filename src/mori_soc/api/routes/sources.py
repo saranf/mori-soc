@@ -414,25 +414,8 @@ def register_sources(ctx: RouteContext) -> None:
             seed = "|".join(x for x in [resolved_repo or "", commit, run_id] if x) or now_iso
             ev_id = "cr-scan-" + _hashlib.sha1(seed.encode("utf-8")).hexdigest()[:16]
             short = (commit or "HEAD")[:8]
-            record = {"id": ev_id, "host_id": resolved_repo or "", "artifact_name": resolved_repo or "",
-                      "delta_type": "code_review_scan", "cve": "",
-                      "summary": f"코드 보안 리뷰 스캔: {resolved_repo or '?'}@{short} — findings {len(findings)}건",
-                      "source": "code_review", "envelope": provenance, "received_at": now_iso,
-                      "findings_count": len(findings)}
-            try:
-                state_repo.save_evidence_event(ev_id, record)
-                scan_recorded = True
-            except Exception:
-                scan_recorded = False
-
-            # ── 스캔 런 → 2.8 통제 증적 레코드 자동 승격(개발보안 SDLC) ──────────────
-            # 감사관이 통제 상세에서 바로 확인. backfill 과 동일 헬퍼 → idempotent.
-            promoted = _promote_scan_to_controls(ev_id, resolved_repo, commit, len(findings),
-                                                 verified, run_url, now_iso[:10])
-
-            # ── 코드 리뷰와 함께 개인정보 흐름표 자동 시드 ────────────────────────────
-            # PII/비밀정보 finding 을 흐름표 후보 행으로 만들어 "코드 리뷰 = 개인정보
-            # 흐름도까지 같이" 되도록. (수동 [PII 스캔으로 시드] 는 백업 경로)
+            # ── 코드 리뷰와 함께 개인정보 흐름표 자동 시드(스캔 요약에 건수 노출 위해 먼저) ──
+            # PII/비밀정보 finding 을 흐름표 후보 행으로 → "코드 리뷰 = 개인정보 흐름도까지 같이".
             try:
                 from mori_soc.services.data_flow import seed_rows_from_findings
 
@@ -447,7 +430,24 @@ def register_sources(ctx: RouteContext) -> None:
                         ctx.persist_personal_data_flow(fid)
                     pii_seeded += 1
             except Exception:
-                pass
+                pii_seeded = 0
+
+            # ── 스캔 런 자체를 증적으로 — findings + 개인정보 시드 건수를 요약에 노출(진단성) ──
+            pii_note = f" · 개인정보 흐름표 시드 {pii_seeded}건" if pii_seeded else " · 개인정보 0건"
+            record = {"id": ev_id, "host_id": resolved_repo or "", "artifact_name": resolved_repo or "",
+                      "delta_type": "code_review_scan", "cve": "",
+                      "summary": f"코드 보안 리뷰 스캔: {resolved_repo or '?'}@{short} — findings {len(findings)}건{pii_note}",
+                      "source": "code_review", "envelope": provenance, "received_at": now_iso,
+                      "findings_count": len(findings), "pii_seeded": pii_seeded}
+            try:
+                state_repo.save_evidence_event(ev_id, record)
+                scan_recorded = True
+            except Exception:
+                scan_recorded = False
+
+            # ── 스캔 런 → 2.8 통제 증적 레코드 자동 승격(개발보안 SDLC, idempotent) ──────
+            promoted = _promote_scan_to_controls(ev_id, resolved_repo, commit, len(findings),
+                                                 verified, run_url, now_iso[:10])
 
         try:
             repo_db.save(SourceSync(source="code_review", status="success", last_sync_at=now, last_success_at=now,
