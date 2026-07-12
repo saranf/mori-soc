@@ -48,39 +48,47 @@ class CollectFilesTests(unittest.TestCase):
 
 class BuildPromptTests(unittest.TestCase):
     def test_prompt_has_schema_paths_and_line_numbers(self) -> None:
-        prompt = crf.build_prompt([("app/db.py", "q = raw\nrun(q)")])
-        self.assertIn('"findings"', prompt)          # 스키마 힌트
+        prompt = crf.build_combined_prompt([("app/db.py", "q = raw\nrun(q)")])
+        self.assertIn('"findings"', prompt)          # 보안 스키마
+        self.assertIn('"privacy"', prompt)           # 개인정보 스키마(통합)
         self.assertIn("FILE: app/db.py", prompt)     # 파일 경로
         self.assertIn("1: q = raw", prompt)          # 라인 번호
         self.assertIn("2: run(q)", prompt)
 
 
-class ParseFindingsTests(unittest.TestCase):
+class ParseCombinedTests(unittest.TestCase):
     def test_raw_json(self) -> None:
-        out = crf.parse_findings('{"findings":[{"file":"a.py","line":3,"severity":"HIGH","category":"sqli","description":"x"}]}')
-        self.assertEqual(len(out), 1)
-        self.assertEqual(out[0]["file"], "a.py")
-        self.assertEqual(out[0]["severity"], "HIGH")
+        fd, pv = crf.parse_combined(
+            '{"findings":[{"file":"a.py","line":3,"severity":"HIGH","category":"sqli","description":"x"}],'
+            '"privacy":{"items":[{"item":"이메일"}],"gaps":["g"],"summary":{"items":1}}}')
+        self.assertEqual(len(fd), 1)
+        self.assertEqual(fd[0]["file"], "a.py")
+        self.assertEqual(fd[0]["severity"], "HIGH")
+        self.assertEqual(len(pv["items"]), 1)
+        self.assertEqual(pv["gaps"], ["g"])
 
     def test_fenced_json(self) -> None:
-        txt = '```json\n{"findings":[{"file":"b.py","description":"y"}]}\n```'
-        out = crf.parse_findings(txt)
-        self.assertEqual(len(out), 1)
-        self.assertEqual(out[0]["category"], "security")  # 기본값 채움
-        self.assertEqual(out[0]["severity"], "medium")
+        txt = '```json\n{"findings":[{"file":"b.py","description":"y"}],"privacy":{"items":[]}}\n```'
+        fd, pv = crf.parse_combined(txt)
+        self.assertEqual(len(fd), 1)
+        self.assertEqual(fd[0]["category"], "security")  # 기본값 채움
+        self.assertEqual(fd[0]["severity"], "medium")
+        self.assertEqual(pv["items"], [])
 
     def test_prose_wrapped_json(self) -> None:
-        txt = "Here are the issues I found:\n{\"findings\": [{\"file\":\"c.py\",\"line\":1,\"description\":\"z\"}]}\nDone."
-        out = crf.parse_findings(txt)
-        self.assertEqual(len(out), 1)
-        self.assertEqual(out[0]["file"], "c.py")
+        txt = ("Here are the results:\n"
+               '{"findings": [{"file":"c.py","line":1,"description":"z"}], "privacy": {"items":[]}}\nDone.')
+        fd, pv = crf.parse_combined(txt)
+        self.assertEqual(len(fd), 1)
+        self.assertEqual(fd[0]["file"], "c.py")
+        self.assertIsInstance(pv, dict)
 
     def test_empty_and_garbage(self) -> None:
-        self.assertEqual(crf.parse_findings('{"findings":[]}'), [])
-        self.assertEqual(crf.parse_findings("no json here"), [])
-        self.assertEqual(crf.parse_findings(""), [])
-        # findings 안의 비-dict 항목은 무시
-        self.assertEqual(crf.parse_findings('{"findings":["oops", 3]}'), [])
+        self.assertEqual(crf.parse_combined('{"findings":[],"privacy":{}}'), ([], {}))
+        self.assertEqual(crf.parse_combined("no json here"), ([], {}))
+        self.assertEqual(crf.parse_combined(""), ([], {}))
+        # findings 안의 비-dict 항목은 무시, privacy 없으면 {}
+        self.assertEqual(crf.parse_combined('{"findings":["oops", 3]}'), ([], {}))
 
 
 if __name__ == "__main__":
