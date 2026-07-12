@@ -7,6 +7,7 @@ stores + the ``get_query_service`` helper from :class:`RouteContext`) is new.
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
@@ -16,6 +17,8 @@ from fastapi.responses import StreamingResponse
 from mori_soc.api.payloads import build_assets_payload
 from mori_soc.api.routes.context import RouteContext
 
+# 인제스트/증적 영속화 실패는 절대 조용히 삼키지 않는다(증적·개인정보 유실 은폐 방지).
+_log = logging.getLogger("mori_soc.ingest")
 
 # GitHub OIDC JWKS(공개키) 프로세스 캐시 — kid 회전 시에만 재조회.
 _OIDC_JWKS_CACHE: dict[str, Any] = {}
@@ -239,7 +242,7 @@ def register_sources(ctx: RouteContext) -> None:
                                  envelopes_normalized=report.envelopes_normalized,
                                  entities_saved=report.entities_saved))
         except Exception:
-            pass
+            _log.warning("trivy SourceSync save failed (ingest succeeded, sync history not updated)", exc_info=True)
         return {"ok": True, "records_collected": report.records_collected,
                 "entities_saved": report.entities_saved, "artifact": payload.get("ArtifactName"),
                 "host_id": resolved_host or payload.get("ArtifactName")}
@@ -291,7 +294,7 @@ def register_sources(ctx: RouteContext) -> None:
                                  envelopes_normalized=report.envelopes_normalized,
                                  entities_saved=report.entities_saved))
         except Exception:
-            pass
+            _log.warning("wazuh SourceSync save failed (ingest succeeded, sync history not updated)", exc_info=True)
         return {"ok": True, "records_collected": report.records_collected,
                 "entities_saved": report.entities_saved}
 
@@ -326,13 +329,14 @@ def register_sources(ctx: RouteContext) -> None:
                 "repo": repo or "", "commit": commit or "", "findings_count": findings_count,
                 "verified": verified, "created_at": now_i, "created_by": "code_review",
             }
+            ctx.control_evidence[rec["id"]] = rec  # 메모리엔 항상 반영
             try:
-                ctx.control_evidence[rec["id"]] = rec
                 if ctx.persist_control_evidence:
                     ctx.persist_control_evidence(rec["id"])
                 n += 1
             except Exception:
-                pass
+                # DB 영속 실패 — 재기동 시 증적 유실 위험. 삼키지 말고 계측(승격 카운트엔 미포함).
+                _log.exception("control_evidence persist failed: id=%s control=%s", rec["id"], cid)
         return n
 
     # ── 코드 보안 리뷰 findings 인제스트 (claude-code-security-review → Alert Triage) ──
@@ -429,23 +433,31 @@ def register_sources(ctx: RouteContext) -> None:
             short = (commit or "HEAD")[:8]
             # ── 코드 리뷰와 함께 개인정보 흐름표 자동 시드(스캔 요약에 건수 노출 위해 먼저) ──
             # PII/비밀정보 finding 을 흐름표 후보 행으로 → "코드 리뷰 = 개인정보 흐름도까지 같이".
+            # 건별 try — 한 건 실패로 앞서 저장된 건까지 "0건"으로 은폐하지 않는다(부분 성공 정직 보고).
             try:
                 from mori_soc.services.data_flow import seed_rows_from_findings
-
-                # 결정적 id 로 upsert(덮어쓰기) → 재스캔 시 단계 재분류가 반영된다.
-                for row in seed_rows_from_findings(findings, repo=resolved_repo or ""):
-                    fid = "pdf-" + _hashlib.sha1(
-                        f"{resolved_repo}|{row.get('file','')}|{row.get('line','')}|{row.get('item','')}|{row.get('table','')}".encode("utf-8")).hexdigest()[:12]
-                    row.update({"id": fid, "created_at": now_iso, "created_by": "code_review", "updated_at": now_iso})
-                    ctx.personal_data_flow[fid] = row
+                seeded_rows = seed_rows_from_findings(findings, repo=resolved_repo or "")
+            except Exception:
+                _log.exception("privacy-flow seed generation failed: repo=%s", resolved_repo)
+                seeded_rows = []
+            pii_failed = 0
+            for row in seeded_rows:  # 결정적 id 로 upsert → 재스캔 시 단계 재분류 반영
+                fid = "pdf-" + _hashlib.sha1(
+                    f"{resolved_repo}|{row.get('file','')}|{row.get('line','')}|{row.get('item','')}|{row.get('table','')}".encode("utf-8")).hexdigest()[:12]
+                row.update({"id": fid, "created_at": now_iso, "created_by": "code_review", "updated_at": now_iso})
+                ctx.personal_data_flow[fid] = row  # 메모리엔 항상 반영
+                try:
                     if ctx.persist_personal_data_flow:
                         ctx.persist_personal_data_flow(fid)
                     pii_seeded += 1
-            except Exception:
-                pii_seeded = 0
+                except Exception:
+                    pii_failed += 1
+                    _log.exception("personal_data_flow persist failed: id=%s repo=%s", fid, resolved_repo)
 
             # ── 스캔 런 자체를 증적으로 — findings + 개인정보 시드 건수를 요약에 노출(진단성) ──
             pii_note = f" · 개인정보 흐름표 시드 {pii_seeded}건" if pii_seeded else " · 개인정보 0건"
+            if pii_failed:
+                pii_note += f"(저장실패 {pii_failed}건)"
             record = {"id": ev_id, "host_id": resolved_repo or "", "artifact_name": resolved_repo or "",
                       "delta_type": "code_review_scan", "cve": "",
                       "summary": f"코드 보안 리뷰 스캔: {resolved_repo or '?'}@{short} — findings {len(findings)}건{pii_note}",
@@ -455,6 +467,8 @@ def register_sources(ctx: RouteContext) -> None:
                 state_repo.save_evidence_event(ev_id, record)
                 scan_recorded = True
             except Exception:
+                # 스캔 증적 저장 실패 — 개발보안 증적 유실. 삼키지 말고 계측(응답 scan_recorded=false).
+                _log.exception("scan evidence save failed: id=%s repo=%s", ev_id, resolved_repo)
                 scan_recorded = False
 
             # ── 스캔 런 → 2.8 통제 증적 레코드 자동 승격(개발보안 SDLC, idempotent) ──────
@@ -468,7 +482,7 @@ def register_sources(ctx: RouteContext) -> None:
                                     envelopes_normalized=report.envelopes_normalized,
                                     entities_saved=report.entities_saved))
         except Exception:
-            pass
+            _log.warning("code_review SourceSync save failed (ingest succeeded, sync history not updated)", exc_info=True)
         return {"ok": True, "records_collected": report.records_collected,
                 "entities_saved": report.entities_saved, "repo": resolved_repo,
                 "commit": commit or None, "pr": pr or None, "run_url": run_url or None,
@@ -692,13 +706,16 @@ def register_sources(ctx: RouteContext) -> None:
                 "gaps": payload.get("gaps") if isinstance(payload.get("gaps"), list) else [],
                 "summary": payload.get("summary") if isinstance(payload.get("summary"), dict) else {},
                 "generated_at": now_iso, "source": "ai_fullscan"}
+        meta_saved = True
         try:
             ctx.settings["privacy_flow_meta"] = _json.dumps(meta, ensure_ascii=False)
             if ctx.persist_setting:
                 ctx.persist_setting("privacy_flow_meta", "ai_fullscan")
         except Exception:
-            pass
-        return {"ok": True, "items_saved": saved, "repo": resolved_repo}
+            # 항목(items)은 저장됐으나 갭·요약 메타 저장 실패 — 화면서 갭 분석이 사라질 수 있음.
+            meta_saved = False
+            _log.warning("privacy_flow_meta save failed: repo=%s (items saved, gaps/summary lost)", resolved_repo, exc_info=True)
+        return {"ok": True, "items_saved": saved, "repo": resolved_repo, "meta_saved": meta_saved}
 
     # ── CSOP 증적(evidence) HTTP 인제스트 — 조치 전/후 diff envelope 수신함 ────────
     @app.post("/ingest/evidence", tags=["Sources"])
