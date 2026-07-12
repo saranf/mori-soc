@@ -84,9 +84,13 @@ OIDC를 쓰므로 **정적 ingest 토큰 시크릿이 불필요**하다(GitHub �
 6. **OIDC 강제·allowlist를 UI 설정으로** — `MORI_INGEST_REQUIRE_OIDC`·repo allowlist를 admin 화면에서.
 7. **다중 레포 대시보드** — repo별 필터·집계(현재 repo는 provenance에만).
 
+> **개인정보(3.x) 연계**: 이 스캔이 발견한 PII/개인정보는 **개인정보 처리흐름도**로 이어진다 —
+> 무료(스키마·관례 파서)/유료(Claude)가 수집→저장→이용→파기 라이프사이클을 만들어 3.1.1·3.2.1·3.4.1
+> 통제 증적으로 승격한다. 상세: [PERSONAL_DATA_FLOW.md](PERSONAL_DATA_FLOW.md).
+
 ## 7. 문서 반영 상태
 
-- README(한/영): 이 커밋에서 6번째 소스·2.8 커버리지·OIDC를 반영.
+- README(한/영): 6번째 소스·2.8 커버리지·OIDC + **개인정보 처리흐름도(3.x)** 반영.
 - README_FULL / 로드맵(Phase 표): 코드리뷰 소스 심화 반영은 **후속 필요**(현재 이 문서가 정본).
 - 참고: 동시 진행 중인 **접속기록/로그 검토(Loki)** 작업은 별도 트랙으로 이 문서 범위 밖.
 

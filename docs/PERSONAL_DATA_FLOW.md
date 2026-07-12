@@ -49,7 +49,8 @@ UI: Compliance → 통제 카탈로그 관리자 바(admin·security 전용) →
 | GET | `/privacy/pii-rules.yml` | 스캔용 Semgrep 룰(리터럴+필드명 기본셋+어드민 커스텀). 워크플로가 스캔 때 fetch |
 | GET·PUT | `/privacy/pii-criteria` | 어드민 PII 기준(기본 노출 + 커스텀 정규식=항목 편집) |
 | POST | `/ingest/privacy-flow` | **구조화된 라이프사이클** 수신(무료 파서 또는 Claude fullscan → 동일 스키마) |
-| GET | `/privacy/flow-scanner.py` | 무료 스키마·관례 파서 스크립트 서빙(워크플로가 fetch·실행) |
+| GET | `/privacy/flow-scanner.py` | 무료 스키마·관례 파서 스크립트 서빙(어드민 옵션 주입 후, 워크플로가 fetch·실행) |
+| GET·PUT | `/privacy/flow-opts` | 어드민 옵트인 고급 옵션 — **라우트 매칭**(수집·이용·파기 경로 연결)·**추가 ORM**(TypeORM·Sequelize·JPA) |
 
 **심층 흐름도 — 무료(엇비슷) vs Claude(완벽)**: 둘 다 `수집→저장→이용→파기` 구조화 JSON을
 `/ingest/privacy-flow`로 보내 **동일하게 렌더**(항목별 다중 위치·암호화·마스킹·파기·제3자·갭·요약카드).
