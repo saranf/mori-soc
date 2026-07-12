@@ -296,12 +296,15 @@ def render_data_flow_svg(rows: list[dict[str, Any]]) -> str:
     return "".join(parts)
 
 
-def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "") -> bytes:
+def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
+                         gaps: list[Any] | None = None, summary: dict[str, Any] | None = None) -> bytes:
     """개인정보 처리흐름표 PDF(감사관 제출용). reportlab 필요. 팔레트 6색만.
 
-    가로 A4에 항목별 수집→저장→이용→파기 + 제3자/국외 표. control_evidence PDF 와
-    같은 한글 폰트 파이프라인을 재사용한다(무의존성 원칙 밖 — reportlab 은 프로젝트 공통).
+    가로 A4에 항목별 구분·수집→저장→이용→파기 + 제3자/국외 표 + 파기 개선 갭.
+    AI(유료 fullscan) 결과의 다중라인·암호화·갭까지 담아 감사 제출 수준으로 렌더한다.
     """
+    gaps = gaps or []
+    summary = summary or {}
     try:
         from reportlab.graphics.shapes import Drawing, Line, Polygon, Rect, String
         from reportlab.lib import colors
@@ -335,7 +338,8 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "") 
         return str(s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     def val(s: Any) -> str:
-        return esc(s) if str(s or "").strip() else "—"
+        # 다중라인(\n)을 <br/>로 — AI 결과의 여러 위치·경로가 줄바꿈으로 보이게.
+        return esc(s).replace("\n", "<br/>") if str(s or "").strip() else "—"
 
     # ── 수집→저장→이용→파기 흐름도(그림) — 팔레트 테두리 박스 + 화살표 ──────────────
     def _flow_drawing(width: float) -> "Drawing":
@@ -356,16 +360,23 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "") 
         return d
 
     # ── 상세 표(헤더 흰 글자) ──────────────────────────────────────────────────
-    headers = ["개인정보 항목", "정보주체", "수집경로", "저장위치", "테이블·컬럼(코드위치)",
-               "이용목적", "보관·파기", "제3자·국외"]
+    headers = ["개인정보 항목", "구분", "수집", "저장(테이블·컬럼)", "이용", "파기", "제3자·국외"]
     data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in headers]]
     for r in rows:
-        keep = f"보관: {val(r.get('retention'))} / 파기: {val(r.get('destruction'))}"
-        share = f"제3자: {esc(r.get('third_party') or '없음')} / 국외: {esc(r.get('overseas') or '없음')}"
+        store = val(r.get("storage_location"))
+        tbl = val(r.get("storage_table"))
+        store_cell = (store + ("<br/>" + tbl if tbl != "—" else "")) if store != "—" else tbl
+        keep = val(r.get("destruction"))
+        ret = val(r.get("retention"))
+        dispose_cell = keep if keep != "—" else ret
+        share = " / ".join(x for x in [
+            ("제3자: " + esc(r.get("third_party")).replace("\n", " ")) if str(r.get("third_party") or "").strip() else "",
+            ("국외: " + esc(r.get("overseas")).replace("\n", " ")) if str(r.get("overseas") or "").strip() else "",
+        ] if x) or "—"
         data.append([Paragraph(v, cell) for v in (
-            val(r.get("item")), val(r.get("subject")), val(r.get("collection_source")),
-            val(r.get("storage_location")), val(r.get("storage_table")), val(r.get("purpose")), keep, share)])
-    widths = [30 * mm, 20 * mm, 30 * mm, 30 * mm, 44 * mm, 34 * mm, 42 * mm, 40 * mm]
+            val(r.get("item")), val(r.get("category")), val(r.get("collection_source")),
+            store_cell, val(r.get("purpose")), dispose_cell, share)])
+    widths = [26 * mm, 16 * mm, 42 * mm, 46 * mm, 46 * mm, 42 * mm, 32 * mm]
     table = Table(data, colWidths=widths, repeatRows=1)
     table.setStyle(TableStyle([
         ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 8),
@@ -394,17 +405,25 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "") 
         "코드 스캔(Semgrep, 고객 CI)에서 자동 발견된 개인정보 처리 지점이며, 저장위치·이용목적·보관/파기는 담당자가 확정합니다. "
         "MORI 는 코드를 저장하지 않고 스캔 결과만 받습니다.", body))
     story += [Spacer(1, 8), _flow_drawing(content_w), Spacer(1, 4)]
+    enc = str(summary.get("encryption") or "").strip()
     story.append(Paragraph("요약", h2))
     story.append(Paragraph(
-        f"· 개인정보 항목({len(items)}종): {esc(', '.join(items)) or '—'}<br/>"
-        f"· 저장위치({len(stores)}곳): {esc(', '.join(stores)) or '—'}<br/>"
-        f"· 제3자 제공: {n_third}건 · 국외 이전: {n_over}건 · 스캔 자동발견 행: {n_seed}건", body))
+        f"· 개인정보 항목({summary.get('items') or len(items)}종): {esc(', '.join(items)) or '—'}<br/>"
+        f"· 저장 테이블({summary.get('tables') or len(stores)}곳): {esc(', '.join(stores)) or '—'}<br/>"
+        + (f"· 저장 암호화: {esc(enc)}<br/>" if enc else "")
+        + f"· 제3자 제공: {n_third}건 · 국외 이전: {n_over}건"
+        + (f" · 파기 흐름 개선 지점: {len(gaps)}건" if gaps else ""), body))
     story.append(Paragraph("처리흐름 상세", h2))
     story.append(table if rows else Paragraph("흐름표가 비어 있습니다 — 스캔에서 개인정보가 발견되지 않았거나 행이 미작성 상태입니다.", body))
+    # 파기 흐름 개선 필요 지점(AI가 짚은 갭) — 감사 고부가.
+    if gaps:
+        story.append(Paragraph("파기 흐름 개선 필요 지점", h2))
+        story.append(Paragraph("<br/>".join("· " + esc(g) for g in gaps),
+                               ParagraphStyle("pdf_gap", parent=body, textColor=RED)))
     story.append(Spacer(1, 6))
     story.append(Paragraph(
-        "용어 · '—' 는 담당자 미작성(추가 확정 필요). 단계: 수집(3.1)=개인정보를 받는 지점 / 저장(3.2)=보관 위치(DB·테이블·파일) / "
-        "이용(3.2)=사용 목적 / 파기(3.4)=보관기간 경과·목적 달성 후 삭제. '제3자·국외' 표시는 해당 항목의 외부 제공·국외 이전 여부.",
+        "용어 · '구분' = 민감도(일반/고유식별/비밀/금융). 단계: 수집(3.1)=개인정보를 받는 지점 / 저장(3.2)=보관 위치(DB·테이블·컬럼) / "
+        "이용(3.2)=사용·마스킹·제공 / 파기(3.4)=삭제·익명화. '—' 는 미기재. 무료 스캔은 후보, 유료 Claude 는 암호화·마스킹·파기 갭까지 채운다.",
         ParagraphStyle("pdf_note", parent=cell, textColor=BLACK)))
     docp.build(story)
     return buf.getvalue()

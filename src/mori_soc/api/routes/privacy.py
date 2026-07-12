@@ -279,9 +279,11 @@ def register_privacy(ctx: RouteContext) -> None:
     @app.get("/privacy/data-flow.pdf", tags=["Privacy"])
     def data_flow_pdf(request: Request) -> Response:
         _require_privacy_role(request)
+        meta = _flow_meta()
         try:
             pdf = render_data_flow_pdf(_sorted_rows(),
-                                       generated_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"))
+                                       generated_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
+                                       gaps=meta.get("gaps") or [], summary=meta.get("summary") or {})
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         ts = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
