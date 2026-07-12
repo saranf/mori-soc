@@ -45,6 +45,11 @@ UI: Compliance → 통제 카탈로그 관리자 바(admin·security 전용) →
 | GET | `/privacy/data-flow.svg` | 처리흐름도(SVG, 무의존성 문자열 렌더) |
 | GET | `/privacy/data-flow.csv` | 흐름표 CSV |
 | GET | `/privacy/data-flow.pdf` | 흐름표 PDF(감사관 제출용, reportlab·팔레트 6색) |
+| POST | `/privacy/data-flow/reset` | 흐름표 전체 리셋(재스캔으로 재생성) |
+| GET | `/privacy/pii-rules.yml` | 스캔용 Semgrep 룰(리터럴+필드명 기본셋+어드민 커스텀). 워크플로가 스캔 때 fetch |
+| GET·PUT | `/privacy/pii-criteria` | 어드민 PII 기준(기본 노출 + 커스텀 정규식=항목 편집) |
+
+**탐지 범위**: 리터럴 값(주민번호·전화·카드)만이 아니라 **PII 필드명**(email·phone·gender·birthDate·cardNumber·account·address·name·주민등록번호…)까지 잡아, 실제 앱의 개인정보 항목을 폭넓게 발견한다. 어드민이 `/privacy/pii-criteria`에 **커스텀 기준(정규식=항목)**을 추가하면 다음 스캔부터 **기본셋 + 커스텀**이 함께 적용된다(워크플로가 `pii-rules.yml`을 fetch). 파일 경로로 단계(수집/저장/이용/파기)를 추정해 해당 칸에 배치한다.
 | POST | `/privacy/data-flow/promote-evidence` | 3.1.1·3.2.1·3.4.1 통제 증적 승격(idempotent) |
 
 ## 4. 데이터 모델

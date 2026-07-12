@@ -59,7 +59,21 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertEqual(infer_stage("prisma/seed.ts"), "저장")
         self.assertEqual(infer_stage("db/schema.sql"), "저장")
         self.assertEqual(infer_stage("src/api/users/route.ts"), "이용")
+        self.assertEqual(infer_stage("src/api/me/erase.ts"), "파기")
         self.assertIsNone(infer_stage("README.md"))
+
+    def test_build_pii_rules_valid_yaml_with_defaults_and_custom(self) -> None:
+        import yaml
+
+        from mori_soc.services.data_flow import build_pii_semgrep_rules
+        y = yaml.safe_load(build_pii_semgrep_rules([{"term": "배송지|shippingAddr", "item": "주소"}]))
+        ids = [r["id"] for r in y["rules"]]
+        self.assertIn("korean-pii-rrn", ids)          # 리터럴
+        self.assertTrue(any(i.startswith("pii-field-") for i in ids))   # 필드명 기본셋
+        self.assertIn("pii-custom-0", ids)            # 어드민 커스텀
+        for r in y["rules"]:                          # 모든 룰이 generic + regex
+            self.assertEqual(r["languages"], ["generic"])
+            self.assertIn("pattern-regex", r["patterns"][0])
 
     def test_seed_routes_collection_point(self) -> None:
         rows = seed_rows_from_findings([

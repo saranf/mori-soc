@@ -4481,9 +4481,12 @@ def render_user_dashboard_html(
           <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"openCsvPreview({title:tt('dash.pf.title','개인정보 처리흐름도 (ISMS-P 3.x)'),filename:'mori-personal-data-flow.csv',url:'/privacy/data-flow.csv'})\">${tt('dash.pf.csv','CSV')}</button>
           <a href=\"/privacy/data-flow.pdf\" target=\"_blank\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px;text-decoration:none;color:#2563eb;border:1px solid #e5e7eb;border-radius:6px\">${tt('dash.pf.pdf','PDF')}</a>
           <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"promotePrivacyFlow()\">${tt('dash.pf.promote','3.x 통제 증적 승격')}</button>
+          <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"togglePiiCriteria()\">${tt('dash.pf.criteria','PII 기준 편집')}</button>
           <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"loadPrivacyFlow()\">${tt('dash.pf.reload','새로고침')}</button>
+          <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px;color:#dc2626\" onclick=\"resetPrivacyFlow()\">${tt('dash.pf.reset','리셋')}</button>
           <span id=\"pf_msg\" style=\"font-size:11px;color:#16a34a\"></span>
         </div>
+        <div id=\"pf_criteria\" style=\"display:none;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px\"></div>
         <div style=\"font-size:12px;font-weight:600;color:#111827;margin:6px 0 4px\">${tt('dash.pf.diagram','처리 흐름도 (수집→저장→이용→파기)')}</div>
         <div id=\"pf_diagram\" style=\"overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px;padding:6px;background:#fff\"></div>
         <div style=\"margin-top:4px;font-size:11px;color:#111827;line-height:1.6\">${tt('dash.pf.legend','읽는 법: ‘PII 시드’ 배지 = 코드 스캔에서 자동 발견된 개인정보 처리 지점이에요(저장위치·테이블에 코드 파일:라인). 단계는 수집→저장→이용→파기 순이고, 오른쪽 ‘제3자/국외’는 그 항목에 해당 처리가 있다는 뜻이에요. 이 표는 읽기 전용 증적이며, ‘3.x 통제 증적 승격’으로 3.1.1·3.2.1·3.4.1 통제에 연결돼요.')}</div>
@@ -4539,6 +4542,45 @@ def render_user_dashboard_html(
       if (msg){ msg.style.color='#16a34a'; msg.textContent = tt('dash.pf.promoted','통제 증적 승격됨: ')+(d.evidence_promoted||0); }
     }
     window.promotePrivacyFlow = promotePrivacyFlow;
+
+    async function resetPrivacyFlow() {
+      if (!confirm(tt('dash.pf.reset_confirm','흐름표를 모두 비웁니다. 재스캔하면 다시 채워져요. 계속할까요?'))) return;
+      const res = await fetch('/privacy/data-flow/reset', {method:'POST'});
+      const msg = document.getElementById('pf_msg');
+      if (!res.ok) { if (msg){ msg.style.color='#dc2626'; msg.textContent = tt('dash.pf.denied','권한이 없어요 (admin·security)'); } return; }
+      const d = await res.json();
+      if (msg){ msg.style.color='#16a34a'; msg.textContent = tt('dash.pf.reset_done','리셋됨: ')+(d.cleared||0); }
+      loadPrivacyFlow();
+    }
+    window.resetPrivacyFlow = resetPrivacyFlow;
+
+    async function togglePiiCriteria() {
+      const el = document.getElementById('pf_criteria');
+      if (!el) return;
+      if (el.style.display !== 'none') { el.style.display='none'; return; }
+      el.style.display='block';
+      const res = await fetch('/privacy/pii-criteria');
+      if (!res.ok) { el.innerHTML = `<span class=\"empty\">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; return; }
+      const d = await res.json();
+      const defs = (d.defaults||[]).map(x => escapeHtml(x.item)).filter((v,i,a)=>a.indexOf(v)===i).join(', ');
+      const custom = (d.custom||[]).map(t => `${t.term}=${t.item}`).join('\\n');
+      el.innerHTML = `<div style=\"color:#111827;margin-bottom:4px\">${tt('dash.pf.criteria_help','스캔은 기본셋 + 아래 커스텀 기준을 함께 써요. 한 줄에 하나씩 <b>정규식=항목라벨</b> (예: 배송지|shippingAddr=주소).')}</div>
+        <div style=\"color:#111827;font-size:11px;margin-bottom:4px\">${tt('dash.pf.criteria_default','기본 탐지 항목')}: ${defs}</div>
+        <textarea id=\"pf_criteria_txt\" style=\"width:100%;box-sizing:border-box;min-height:80px;font-family:monospace;font-size:12px;border:1px solid #e5e7eb;border-radius:6px;padding:6px\">${escapeHtml(custom)}</textarea>
+        <div style=\"margin-top:6px\"><button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"savePiiCriteria()\">${tt('dash.pf.criteria_save','기준 저장')}</button> <span id=\"pf_criteria_msg\" style=\"font-size:11px;color:#16a34a\"></span></div>`;
+    }
+    window.togglePiiCriteria = togglePiiCriteria;
+
+    async function savePiiCriteria() {
+      const txt = (document.getElementById('pf_criteria_txt')||{}).value || '';
+      const custom = txt.split('\\n').map(l => l.trim()).filter(Boolean).map(l => {
+        const i = l.lastIndexOf('='); return i<0 ? {term:l, item:'개인정보'} : {term:l.slice(0,i).trim(), item:l.slice(i+1).trim()||'개인정보'};
+      });
+      const res = await fetch('/privacy/pii-criteria', {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({custom})});
+      const msg = document.getElementById('pf_criteria_msg');
+      if (msg){ if(res.ok){ msg.style.color='#16a34a'; msg.textContent = tt('dash.pf.criteria_saved','저장됨 — 다음 스캔부터 반영'); } else { msg.style.color='#dc2626'; msg.textContent = tt('dash.pf.denied','권한이 없어요 (admin·security)'); } }
+    }
+    window.savePiiCriteria = savePiiCriteria;
 
     async function runCodeReviewScan() {
       const msg = document.getElementById('scan_msg');

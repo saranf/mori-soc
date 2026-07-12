@@ -26,36 +26,40 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Semgrep scan (free OSS rules)
+      - name: Semgrep scan (free OSS rules + MORI PII rules)
+        env:
+          MORI_INGEST_URL: ${{ github.event.inputs.mori_ingest_url || secrets.MORI_INGEST_URL }}
         run: |
           python3 -m pip install --quiet semgrep
-          # 한국형 개인정보(PII) 커스텀 룰 — 주민번호·휴대전화·카드번호 하드코딩 탐지.
-          # MORI 개인정보 흐름표(ISMS-P 3.x) 시드로 연결됨. 파일 1개 유지 위해 런타임 생성.
-          cat > .mori-korean-pii.yml <<'RULES'
+          # 개인정보(PII) 룰 = MORI 가 서빙(기본셋 + 어드민 커스텀 기준). 스캔 때 최신본을 가져온다.
+          # MORI 미도달 시 최소 리터럴 룰(주민번호·휴대폰·카드)로 폴백.
+          [ -n "$MORI_INGEST_URL" ] && curl -fsS "${MORI_INGEST_URL%/}/privacy/pii-rules.yml" -o .mori-pii.yml || true
+          if [ ! -s .mori-pii.yml ]; then
+            cat > .mori-pii.yml <<'RULES'
           rules:
             - id: korean-pii-rrn
               languages: [generic]
               severity: WARNING
-              message: "주민등록번호로 보이는 값이 하드코딩됨 (개인정보 — 흐름표 등록 필요)"
+              message: "주민등록번호로 보이는 값이 하드코딩됨 (개인정보)"
               patterns:
                 - pattern-regex: '\b\d{6}[-\s]?[1-4]\d{6}\b'
             - id: korean-pii-phone
               languages: [generic]
               severity: INFO
-              message: "휴대전화번호로 보이는 값이 하드코딩됨 (개인정보)"
+              message: "휴대폰번호로 보이는 값이 하드코딩됨 (개인정보)"
               patterns:
                 - pattern-regex: '\b01[016789][-\s]?\d{3,4}[-\s]?\d{4}\b'
             - id: korean-pii-card
               languages: [generic]
               severity: WARNING
-              message: "신용카드번호로 보이는 값이 하드코딩됨 (개인정보)"
+              message: "카드번호로 보이는 값이 하드코딩됨 (개인정보)"
               patterns:
                 - pattern-regex: '\b\d{4}[-\s]\d{4}[-\s]\d{4}[-\s]\d{4}\b'
           RULES
-          # --config auto: 공개 무료 룰셋 + p/secrets: 하드코딩 비밀/자격증명 + korean-pii: 한국형 개인정보.
-          # findings 있으면 exit 1 이라 || true 로 계속. 룰 파일 자신은 스캔 제외.
-          semgrep scan --config auto --config p/secrets --config .mori-korean-pii.yml \
-            --exclude .mori-korean-pii.yml --sarif --output semgrep.sarif . || true
+          fi
+          # auto: 공개 무료 룰 + p/secrets: 하드코딩 비밀 + MORI PII 룰(값·필드명·어드민 기준).
+          semgrep scan --config auto --config p/secrets --config .mori-pii.yml \
+            --exclude .mori-pii.yml --sarif --output semgrep.sarif . || true
           echo "SARIF size: $(wc -c < semgrep.sarif 2>/dev/null || echo 0) bytes"
       - name: Push results to MORI
         continue-on-error: true

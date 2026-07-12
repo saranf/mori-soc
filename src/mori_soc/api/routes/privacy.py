@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv as csv_mod
 import hashlib
 import io
+import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -18,12 +19,16 @@ from fastapi.responses import Response, StreamingResponse
 
 from mori_soc.api.routes.context import RouteContext
 from mori_soc.services.data_flow import (
+    DEFAULT_PII_FIELDS,
     FLOW_FIELDS,
     STAGES,
+    build_pii_semgrep_rules,
     render_data_flow_pdf,
     render_data_flow_svg,
     seed_rows_from_findings,
 )
+
+_PII_TERMS_SETTING = "privacy_pii_terms"  # settings 에 JSON 으로 어드민 커스텀 기준 보관
 
 # 흐름표가 증적을 대는 개인정보 통제(3.1 수집·3.2 이용/제공·3.4 파기).
 PRIVACY_FLOW_CONTROL_IDS = ("3.1.1", "3.2.1", "3.4.1")
@@ -52,11 +57,60 @@ def register_privacy(ctx: RouteContext) -> None:
     def _user(request: Request) -> str:
         return (ctx.get_session_username(request) if ctx.get_session_username else "") or ""
 
+    def _custom_terms() -> list[dict[str, str]]:
+        raw = (ctx.settings or {}).get(_PII_TERMS_SETTING, "")
+        try:
+            data = json.loads(raw) if raw else []
+            return [{"term": str(t.get("term", "")), "item": str(t.get("item", ""))}
+                    for t in data if isinstance(t, dict) and str(t.get("term", "")).strip()]
+        except Exception:
+            return []
+
     # ── 목록 ─────────────────────────────────────────────────────────────────
     @app.get("/privacy/data-flow", tags=["Privacy"])
     def list_data_flow(request: Request) -> dict[str, Any]:
         _require_privacy_role(request)
         return {"rows": _sorted_rows(), "stages": list(STAGES), "fields": list(FLOW_FIELDS)}
+
+    # ── 전체 리셋(읽기전용 증적 초기화 — 재스캔으로 재생성) ─────────────────────────
+    @app.post("/privacy/data-flow/reset", tags=["Privacy"])
+    def reset_data_flow(request: Request) -> dict[str, Any]:
+        _require_privacy_role(request)
+        ids = list(ctx.personal_data_flow.keys())
+        for fid in ids:
+            ctx.personal_data_flow.pop(fid, None)
+            if ctx.delete_personal_data_flow:
+                ctx.delete_personal_data_flow(fid)
+        if ctx.log_action:
+            ctx.log_action(_user(request), "PRIVACY_FLOW_RESET", f"{len(ids)} rows cleared")
+        return {"ok": True, "cleared": len(ids)}
+
+    # ── 스캔용 PII 룰(YAML) — 기본셋 + 어드민 커스텀 기준. 워크플로가 스캔 때 가져감 ──
+    @app.get("/privacy/pii-rules.yml", tags=["Privacy"], response_class=Response)
+    def pii_rules_yml() -> Response:
+        """고객 CI Semgrep 이 --config 로 가져가는 룰. 민감정보 아님(공개 GET)."""
+        return Response(content=build_pii_semgrep_rules(_custom_terms()),
+                        media_type="text/yaml; charset=utf-8")
+
+    # ── 어드민 PII 기준(기본 노출 + 커스텀 편집) ─────────────────────────────────
+    @app.get("/privacy/pii-criteria", tags=["Privacy"])
+    def get_pii_criteria(request: Request) -> dict[str, Any]:
+        _require_privacy_role(request)
+        return {"defaults": [{"pattern": rx, "item": item} for rx, item in DEFAULT_PII_FIELDS],
+                "custom": _custom_terms()}
+
+    @app.put("/privacy/pii-criteria", tags=["Privacy"])
+    def put_pii_criteria(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        _require_privacy_role(request)
+        raw = payload.get("custom") or []
+        terms = [{"term": str((t or {}).get("term", "")).strip(), "item": str((t or {}).get("item", "")).strip() or "개인정보"}
+                 for t in raw if isinstance(t, dict) and str((t or {}).get("term", "")).strip()][:200]
+        ctx.settings[_PII_TERMS_SETTING] = json.dumps(terms, ensure_ascii=False)
+        if ctx.persist_setting:
+            ctx.persist_setting(_PII_TERMS_SETTING, _user(request))
+        if ctx.log_action:
+            ctx.log_action(_user(request), "PRIVACY_PII_CRITERIA", f"{len(terms)} custom terms")
+        return {"ok": True, "custom": terms}
 
     # ── 추가 ─────────────────────────────────────────────────────────────────
     @app.post("/privacy/data-flow", tags=["Privacy"])

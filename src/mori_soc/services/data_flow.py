@@ -35,6 +35,25 @@ _ITEM_HINTS = (
     ("card", "카드번호"), ("카드", "카드번호"), ("password", "비밀번호"), ("비밀", "비밀번호"),
     ("token", "인증토큰/시크릿"), ("secret", "인증토큰/시크릿"), ("credential", "자격증명"),
     ("api", "API 키"), ("key", "키/시크릿"),
+    ("gender", "성별"), ("성별", "성별"),
+    ("birth", "생년월일"), ("dob", "생년월일"), ("생년월일", "생년월일"),
+    ("address", "주소"), ("주소", "주소"), ("배송지", "주소"),
+    ("full_name", "이름"), ("fullname", "이름"), ("성명", "이름"), ("고객명", "이름"), ("이름", "이름"),
+)
+
+# 어드민이 러프하게 늘릴 수 있는 PII 필드 기본셋 — (semgrep pattern-regex, 항목 라벨).
+# 스캔이 리터럴 값뿐 아니라 필드/스키마 식별자까지 잡도록(이름·성별·생년월일·주소 등).
+DEFAULT_PII_FIELDS: tuple[tuple[str, str], ...] = (
+    (r"(?i)\bemail\b|이메일", "이메일"),
+    (r"(?i)\b(phone|mobile|tel)\b|휴대폰|전화번호", "전화번호"),
+    (r"(?i)\b(resident_?reg_?num|residentnumber|rrn|ssn|jumin)\b|주민등록번호", "주민등록번호"),
+    (r"(?i)\b(card_?number|creditcard)\b|카드번호", "카드번호"),
+    (r"(?i)\b(account_?number|bank_?account)\b|계좌번호", "계좌번호"),
+    (r"(?i)\b(birth_?date|birthday|dob)\b|생년월일", "생년월일"),
+    (r"(?i)\bgender\b|성별", "성별"),
+    (r"(?i)\b(address|shipping_?address)\b|주소|배송지", "주소"),
+    (r"(?i)\bpassport\b|여권", "여권번호"),
+    (r"(?i)\b(full_?name)\b|성명|고객명", "이름"),
 )
 
 
@@ -62,13 +81,16 @@ _STORE_HINTS = ("seed", "migration", "migrate", "schema", "prisma", "/model", "e
                 "dao", ".sql", "/db/", "database", "fixtures", "/store", "insert")
 _USE_HINTS = ("/api/", "route", "handler", "service", "controller", "usecase", "use-case", "process",
               "send", "mailer", "sms", "notif", "export", "report", "analytic", "payment", "/lib/")
+_DISPOSE_HINTS = ("erase", "/destroy", "purge", "withdraw", "탈퇴", "파기", "deletion", "expire")
 
 
 def infer_stage(file_path: str) -> str | None:
-    """파일 경로로 처리 단계(수집/저장/이용)를 추정. 불명확하면 None."""
+    """파일 경로로 처리 단계(수집/저장/이용/파기)를 추정. 불명확하면 None."""
     p = (file_path or "").lower()
     if not p:
         return None
+    if any(h in p for h in _DISPOSE_HINTS):
+        return "파기"
     if any(h in p for h in _STORE_HINTS):
         return "저장"
     if any(h in p for h in _COLLECT_HINTS):
@@ -108,7 +130,7 @@ def seed_rows_from_findings(findings: list[dict[str, Any]], *, repo: str = "",
             "storage_table": loc if stage in (None, "저장") else "",
             "purpose": loc if stage == "이용" else "",
             "retention": "",
-            "destruction": "",
+            "destruction": loc if stage == "파기" else "",
             "third_party": "",
             "overseas": "",
             "note": f"[PII 스캔 시드] {rule} · {loc} · 추정단계 {stage or '저장'}".strip(),
@@ -119,6 +141,46 @@ def seed_rows_from_findings(findings: list[dict[str, Any]], *, repo: str = "",
             "rule": rule,
         })
     return out
+
+
+# 항상 포함되는 리터럴 값 룰(한국형) — 실제 PII 값 하드코딩 탐지.
+_LITERAL_RULES = (
+    ("korean-pii-rrn", "WARNING", "주민등록번호로 보이는 값이 하드코딩됨 (개인정보)",
+     r"\b\d{6}[-\s]?[1-4]\d{6}\b"),
+    ("korean-pii-phone", "INFO", "휴대폰번호로 보이는 값이 하드코딩됨 (개인정보)",
+     r"\b01[016789][-\s]?\d{3,4}[-\s]?\d{4}\b"),
+    ("korean-pii-card", "WARNING", "카드번호로 보이는 값이 하드코딩됨 (개인정보)",
+     r"\b\d{4}[-\s]\d{4}[-\s]\d{4}[-\s]\d{4}\b"),
+)
+
+
+def build_pii_semgrep_rules(custom_terms: list[dict[str, str]] | None = None) -> str:
+    """스캔용 Semgrep 룰(YAML) — 리터럴 값 + PII 필드명 기본셋 + 어드민 커스텀 기준.
+
+    custom_terms: [{"term": "배송지|shippingAddr", "item": "주소"}, ...] (term=정규식, item=라벨).
+    필드/커스텀 룰의 message 에 항목 라벨을 넣어 MORI 가 infer_item 으로 항목을 잡는다.
+    """
+    def _q(rx: str) -> str:
+        # YAML single-quoted scalar — 내부 홑따옴표만 이스케이프.
+        return "'" + str(rx).replace("'", "''") + "'"
+
+    lines = ["rules:"]
+    for rid, sev, msg, rx in _LITERAL_RULES:
+        lines += [f"  - id: {rid}", "    languages: [generic]", f"    severity: {sev}",
+                  f'    message: "{msg}"', "    patterns:", f"      - pattern-regex: {_q(rx)}"]
+    for i, (rx, item) in enumerate(DEFAULT_PII_FIELDS):
+        lines += [f"  - id: pii-field-{i}", "    languages: [generic]", "    severity: INFO",
+                  f'    message: "{item}(개인정보) 항목이 코드에 사용됨"', "    patterns:",
+                  f"      - pattern-regex: {_q(rx)}"]
+    for i, ct in enumerate(custom_terms or []):
+        term = str((ct or {}).get("term") or "").strip()
+        item = str((ct or {}).get("item") or "개인정보").strip() or "개인정보"
+        if not term:
+            continue
+        lines += [f"  - id: pii-custom-{i}", "    languages: [generic]", "    severity: INFO",
+                  f'    message: "{item}(개인정보·어드민 기준) 항목이 코드에 사용됨"', "    patterns:",
+                  f"      - pattern-regex: {_q(term)}"]
+    return "\n".join(lines) + "\n"
 
 
 def _esc(v: Any) -> str:
@@ -313,5 +375,5 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "") 
     return buf.getvalue()
 
 
-__all__ = ["STAGES", "FLOW_FIELDS", "is_pii_finding", "infer_item", "infer_stage",
-           "seed_rows_from_findings", "render_data_flow_svg", "render_data_flow_pdf"]
+__all__ = ["STAGES", "FLOW_FIELDS", "DEFAULT_PII_FIELDS", "is_pii_finding", "infer_item", "infer_stage",
+           "seed_rows_from_findings", "build_pii_semgrep_rules", "render_data_flow_svg", "render_data_flow_pdf"]
