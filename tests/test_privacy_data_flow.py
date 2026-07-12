@@ -25,33 +25,41 @@ FASTAPI_AVAILABLE = importlib.util.find_spec("fastapi") is not None
 
 class DataFlowServiceTests(unittest.TestCase):
     def test_is_pii_finding_detects_signals(self) -> None:
-        self.assertTrue(is_pii_finding({"rule_id": "py/hardcoded-secret"}))
+        # 개인정보는 True, 서비스 시크릿(API키·토큰)은 개인정보가 아니므로 False(분리).
         self.assertTrue(is_pii_finding({"category": "email exposure", "message": "이메일 노출"}))
         self.assertTrue(is_pii_finding({"message": "주민등록번호 저장"}))
+        self.assertFalse(is_pii_finding({"rule_id": "py/hardcoded-secret", "message": "AWS api key"}))
         self.assertFalse(is_pii_finding({"rule_id": "py/unused-import", "message": "unused"}))
 
     def test_infer_item(self) -> None:
         self.assertIn("이메일", infer_item({"message": "email leaked"}))
         self.assertIn("주민등록번호", infer_item({"rule_id": "ssn-detector"}))
+        # 단어경계로 부분문자열 오탐 차단(monkey→key, discard→card, headphone→phone, IP address→주소).
+        self.assertEqual(infer_item({"message": "monkeypatch keyword"}), "")
+        self.assertEqual(infer_item({"message": "discard the IP address"}), "")
 
     def test_korean_pii_rule_ids_classify(self) -> None:
-        # 워크플로 커스텀 룰(korean-pii-*)이 MORI 측에서 PII 로 분류·항목추론돼야 한다.
-        for rid, item in (("korean-pii-rrn", "주민등록번호"), ("korean-pii-phone", "전화번호"),
-                          ("korean-pii-card", "카드번호")):
-            self.assertTrue(is_pii_finding({"rule_id": rid}), rid)
-            self.assertIn(item, infer_item({"rule_id": rid}), rid)
+        # 커스텀 룰(korean-pii-*)은 항목명이 담긴 message 로 오므로 그 message 로 분류·항목추론된다.
+        for msg, item in (("주민등록번호로 보이는 값", "주민등록번호"),
+                          ("휴대폰번호로 보이는 값", "전화번호"),
+                          ("카드번호로 보이는 값", "카드번호")):
+            f = {"rule_id": "korean-pii-x", "message": msg}
+            self.assertTrue(is_pii_finding(f), msg)
+            self.assertIn(item, infer_item(f), msg)
 
     def test_seed_rows_dedupe_and_fields(self) -> None:
         findings = [
-            {"rule_id": "py/hardcoded-secret", "file": "config.py", "line": 3, "message": "api key"},
-            {"rule_id": "py/hardcoded-secret", "file": "config.py", "line": 3, "message": "api key"},  # dup
+            {"rule_id": "pii-field", "file": "db/schema.sql", "line": 3, "message": "email column"},
+            {"rule_id": "pii-field", "file": "db/schema.sql", "line": 3, "message": "email column"},  # dup
+            {"rule_id": "py/hardcoded-secret", "file": "config.py", "line": 1, "message": "AWS api key"},  # secret, not PII
             {"rule_id": "py/unused", "file": "x.py", "line": 1, "message": "unused"},  # not PII
         ]
         rows = seed_rows_from_findings(findings, repo="org/app")
-        self.assertEqual(len(rows), 1)              # dup collapsed, non-PII skipped
+        self.assertEqual(len(rows), 1)              # dup collapsed, secret·non-PII skipped
         self.assertEqual(rows[0]["source"], "pii_scan")
-        self.assertEqual(rows[0]["storage_location"], "")   # repo 이름은 넣지 않음(테이블 없으면 빈값)
-        self.assertIn("config.py:3", rows[0]["storage_table"])
+        self.assertEqual(rows[0]["item"], "이메일")
+        self.assertEqual(rows[0]["category"], "일반개인정보")
+        self.assertEqual(rows[0]["stage"], "저장")           # db/schema.sql → 저장 단계
 
     def test_seed_uses_db_table_not_repo(self) -> None:
         # Prisma model 스니펫 → 저장위치=테이블명(repo 아님)
@@ -169,11 +177,16 @@ class PrivacyRouteTests(unittest.TestCase):
 
         now = _dt.datetime.now(_dt.timezone.utc)
         alerts = [
-            Alert(alert_id="c1", source="code_review", observed_at=now, message="hardcoded secret",
-                  severity="high", rule_id="py/hardcoded-secret",
-                  raw_payload={"file": "config.py", "line": 3, "rule_id": "py/hardcoded-secret",
+            Alert(alert_id="c1", source="code_review", observed_at=now, message="email column in users table",
+                  severity="info", rule_id="pii-field-0",
+                  raw_payload={"file": "db/schema.sql", "line": 3, "rule_id": "pii-field-0",
+                               "message": "email(개인정보) 항목이 코드에 사용됨",
                                "_provenance": {"repo": "org/app"}}),
-            Alert(alert_id="c2", source="code_review", observed_at=now, message="unused import",
+            Alert(alert_id="c2", source="code_review", observed_at=now, message="hardcoded secret",
+                  severity="high", rule_id="py/hardcoded-secret",
+                  raw_payload={"file": "config.py", "line": 1, "rule_id": "py/hardcoded-secret",
+                               "message": "AWS api key", "_provenance": {"repo": "org/app"}}),
+            Alert(alert_id="c3", source="code_review", observed_at=now, message="unused import",
                   severity="low", rule_id="py/unused",
                   raw_payload={"file": "x.py", "line": 1, "rule_id": "py/unused",
                                "_provenance": {"repo": "org/app"}}),
@@ -181,7 +194,7 @@ class PrivacyRouteTests(unittest.TestCase):
         c = self._client(alerts=alerts)
         r = c.post("/privacy/data-flow/seed-from-scan")
         self.assertEqual(r.status_code, 200, r.text)
-        self.assertEqual(r.json()["seeded"], 1)      # PII 1건만 시드(unused 제외)
+        self.assertEqual(r.json()["seeded"], 1)      # 개인정보(이메일) 1건만 — secret·unused 제외
         rows = c.get("/privacy/data-flow").json()["rows"]
         self.assertEqual(rows[0]["source"], "pii_scan")
 

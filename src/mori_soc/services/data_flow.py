@@ -16,30 +16,40 @@ STAGES = ("수집", "저장", "이용", "파기")
 
 # 흐름표 한 행의 필드(빈 값 허용 — 담당자가 점진적으로 채움).
 FLOW_FIELDS = (
-    "item", "subject", "collection_source", "storage_location", "storage_table",
+    "item", "category", "subject", "collection_source", "storage_location", "storage_table",
     "purpose", "retention", "destruction", "third_party", "overseas", "note",
 )
 
-# finding 이 PII/개인정보·비밀정보 성격인지 판별하는 신호(rule_id/category/message).
-_PII_SIGNAL = re.compile(
-    r"pii|personal|privacy|gdpr|secret|credential|password|passwd|token|api[_-]?key|"
-    r"private[_-]?key|email|phone|ssn|resident|jumin|주민|이메일|전화|비밀|개인정보|여권|계좌|카드",
+# 서비스 시크릿(API키·토큰·자격증명)은 정보주체의 "개인정보"가 아니다 → 흐름표에서 제외.
+# (보안 findings 로는 code_review 가 별도로 잡는다.) 개인정보 vs secret 을 명확히 분리.
+_SECRET_SIGNAL = re.compile(
+    r"\b(secret|credential|api[_-]?key|private[_-]?key|access[_-]?token|refresh[_-]?token|"
+    r"client[_-]?secret|bearer|aws[_-]?(access|secret)|jwt[_-]?secret)\b",
     re.IGNORECASE,
 )
 
-# 규칙/메시지에서 항목(이메일/전화/주민번호…)을 대략 추론 — 시드 초기값 채우기용.
-_ITEM_HINTS = (
-    ("email", "이메일"), ("이메일", "이메일"), ("phone", "전화번호"), ("전화", "전화번호"),
-    ("ssn", "주민등록번호"), ("rrn", "주민등록번호"), ("resident", "주민등록번호"), ("jumin", "주민등록번호"), ("주민", "주민등록번호"),
-    ("passport", "여권번호"), ("여권", "여권번호"), ("account", "계좌번호"), ("계좌", "계좌번호"),
-    ("card", "카드번호"), ("카드", "카드번호"), ("password", "비밀번호"), ("비밀", "비밀번호"),
-    ("token", "인증토큰/시크릿"), ("secret", "인증토큰/시크릿"), ("credential", "자격증명"),
-    ("api", "API 키"), ("key", "키/시크릿"),
-    ("gender", "성별"), ("성별", "성별"),
-    ("birth", "생년월일"), ("dob", "생년월일"), ("생년월일", "생년월일"),
-    ("address", "주소"), ("주소", "주소"), ("배송지", "주소"),
-    ("full_name", "이름"), ("fullname", "이름"), ("성명", "이름"), ("고객명", "이름"), ("이름", "이름"),
+# 개인정보 항목 사전: (단어경계 정규식, 항목 라벨, 민감도 구분). 단어경계로 부분문자열
+# 오탐(monkey→key, discard→card, headphone→phone, IP address→주소)을 막는다.
+# 구분(category): 고유식별정보 > 금융정보 > 민감정보 > 일반개인정보 (민감도 우선순위).
+_PII_ITEMS: tuple[tuple[str, str, str], ...] = (
+    (r"(?i)\b(resident_?reg(_?num)?|residentnumber|rrn|ssn|jumin)\b|주민등록번호|주민번호", "주민등록번호", "고유식별정보"),
+    (r"(?i)\bpassport(_?(no|number))?\b|여권번호|여권", "여권번호", "고유식별정보"),
+    (r"(?i)\b(driver_?license|license_?no|driving_?license)\b|운전면허(번호)?", "운전면허번호", "고유식별정보"),
+    (r"(?i)\b(card_?(number|no)|creditcard|pan)\b|카드번호|신용카드", "카드번호", "금융정보"),
+    (r"(?i)\b(account_?(number|no)|bank_?account|iban)\b|계좌번호", "계좌번호", "금융정보"),
+    (r"(?i)\b(health|medical|diagnosis|disease|prescription)\b|건강정보|질병|진료|처방", "건강정보", "민감정보"),
+    (r"(?i)\b(religion|political|ideology)\b|종교|정치성향|사상", "사상·신념", "민감정보"),
+    (r"(?i)\bemail(_?address)?\b|이메일|메일주소", "이메일", "일반개인정보"),
+    (r"(?i)\b(phone|mobile|tel|telephone|msisdn|cellphone)\b|휴대폰|전화번호|연락처", "전화번호", "일반개인정보"),
+    (r"(?i)\b(birth_?date|birthday|birthdate|dob)\b|생년월일|생일", "생년월일", "일반개인정보"),
+    (r"(?i)\bgender\b|성별", "성별", "일반개인정보"),
+    (r"(?i)(?<!ip )(?<!mac )(?<!web )(?<!url )\b(home_?address|street_?address|shipping_?address|road_?address|postal_?address)\b|(?<![a-z])주소|배송지", "주소", "일반개인정보"),
+    (r"(?i)\b(full_?name|first_?name|last_?name)\b|성명|고객명|성함", "이름", "일반개인정보"),
 )
+_CATEGORY_RANK = {"고유식별정보": 4, "금융정보": 3, "민감정보": 2, "일반개인정보": 1, "": 0}
+_PII_ITEMS_C = tuple((re.compile(rx), label, cat) for rx, label, cat in _PII_ITEMS)
+# 개인정보 신호 = 항목 사전 중 하나라도 매칭되거나, 명시적 개인정보 카테고리 rule.
+_PII_SIGNAL = re.compile(r"(?i)\b(pii|personal[_-]?data|personal[_-]?info|privacy|gdpr)\b|개인정보")
 
 # 어드민이 러프하게 늘릴 수 있는 PII 필드 기본셋 — (semgrep pattern-regex, 항목 라벨).
 # 스캔이 리터럴 값뿐 아니라 필드/스키마 식별자까지 잡도록(이름·성별·생년월일·주소 등).
@@ -57,20 +67,43 @@ DEFAULT_PII_FIELDS: tuple[tuple[str, str], ...] = (
 )
 
 
+def _pii_hay(finding: dict[str, Any]) -> str:
+    return " ".join(str(finding.get(k) or "") for k in
+                    ("rule_id", "ruleId", "category", "rule", "title", "message", "description", "snippet"))
+
+
+def _matched_items(finding: dict[str, Any]) -> list[tuple[str, str]]:
+    """finding 에서 매칭된 (항목 라벨, 구분) 리스트 — 단어경계 기준."""
+    hay = _pii_hay(finding)
+    out: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for pat, label, cat in _PII_ITEMS_C:
+        if pat.search(hay) and label not in seen:
+            seen.add(label)
+            out.append((label, cat))
+    return out
+
+
 def is_pii_finding(finding: dict[str, Any]) -> bool:
-    """finding(raw_payload) 이 개인정보/비밀정보 관련인지."""
-    hay = " ".join(str(finding.get(k) or "") for k in ("rule_id", "ruleId", "category", "rule", "title", "message", "description"))
-    return bool(_PII_SIGNAL.search(hay))
+    """finding 이 (서비스 시크릿이 아닌) 개인정보 관련인지. secret 은 흐름표에서 제외."""
+    hay = _pii_hay(finding)
+    items = _matched_items(finding)
+    # 구체 항목이 잡히면 개인정보로 확정(시크릿 신호가 있어도 이메일/카드 등은 개인정보).
+    if items:
+        return True
+    # 항목은 못 잡았지만 명시적 개인정보 rule 이고, 순수 시크릿 신호가 아니면 포함.
+    return bool(_PII_SIGNAL.search(hay)) and not _SECRET_SIGNAL.search(hay)
 
 
 def infer_item(finding: dict[str, Any]) -> str:
-    """finding 에서 개인정보 항목을 대략 추론(없으면 빈 문자열). 스니펫의 필드명도 반영."""
-    hay = " ".join(str(finding.get(k) or "") for k in ("rule_id", "category", "title", "message", "description", "snippet")).lower()
-    hits: list[str] = []
-    for needle, label in _ITEM_HINTS:
-        if needle in hay and label not in hits:
-            hits.append(label)
-    return ", ".join(hits[:3])
+    """finding 에서 개인정보 항목을 추론(없으면 빈 문자열). 단어경계로 오탐 최소화."""
+    return ", ".join(label for label, _ in _matched_items(finding)[:3])
+
+
+def infer_category(finding: dict[str, Any]) -> str:
+    """매칭된 항목 중 가장 민감한 구분(고유식별>금융>민감>일반)을 반환. 없으면 빈 문자열."""
+    cats = [cat for _, cat in _matched_items(finding)]
+    return max(cats, key=lambda c: _CATEGORY_RANK.get(c, 0), default="")
 
 
 # 파일 경로로 개인정보 처리 단계를 추정 — MORI 는 코드를 안 읽으니 경로 단서로 best-effort.
@@ -122,33 +155,37 @@ def infer_stage(file_path: str) -> str | None:
 
 def seed_rows_from_findings(findings: list[dict[str, Any]], *, repo: str = "",
                             existing_keys: set[str] | None = None) -> list[dict[str, Any]]:
-    """PII findings → 흐름표 후보 행. 파일 경로로 단계(수집/저장/이용)를 추정해 해당 칸에 코드 위치.
+    """PII findings → 흐름표 후보 행. 파일 경로로 단계(수집/저장/이용/파기)를 추정해 해당 칸에 코드 위치.
 
-    signup·checkout·form → 수집 / prisma·seed·schema·sql → 저장 / api·service → 이용.
-    불명확하면 저장(코드에 존재). 중복 시드 방지는 (repo|file|rule) 키로.
+    signup·checkout·form → 수집 / prisma·seed·schema·sql → 저장 / api·service → 이용 / erase·purge → 파기.
+    단계 불명확 시 억지로 "저장"으로 몰지 않고 단계·저장칸을 비워 담당자 확정에 맡긴다(근거 없는 저장 주장 방지).
+    항목(개인정보 종류)을 못 잡은 finding 은 시드하지 않는다. 중복 방지 키에 line·item 포함.
     """
     existing_keys = existing_keys or set()
     out: list[dict[str, Any]] = []
     for f in findings:
         if not is_pii_finding(f):
             continue
+        item = infer_item(f)
+        if not item:
+            continue  # 개인정보 항목을 특정 못 하면 빈 행을 만들지 않는다.
         file_ = str(f.get("file") or f.get("path") or "")
         line = f.get("line")
         rule = str(f.get("rule_id") or f.get("category") or f.get("rule") or "")
         table = infer_table(f)
-        key = f"{repo}|{file_}|{rule}|{table}"  # 같은 파일 내 여러 테이블 구분
+        key = f"{repo}|{file_}|{line}|{item}|{table}"  # 같은 파일 내 서로 다른 항목/위치 구분
         if key in existing_keys:
             continue
         existing_keys.add(key)
         loc = f"{file_}:{line}" if file_ and line is not None else file_
         stage = infer_stage(file_)
-        # 저장위치 = DB 테이블(추출되면) / 아니면 파일 위치. repo 이름은 넣지 않는다(사용자 요청).
-        store_loc = (f"{table} 테이블" if table else "") if stage in (None, "저장") else ""
-        store_tbl = (f"{table} ({loc})" if table else loc) if stage in (None, "저장") else ""
+        # 저장위치 = DB 테이블(추출되면) / 아니면 파일 위치. 단계가 '저장'으로 확인될 때만 채운다.
+        store_loc = (f"{table} 테이블" if table else "") if stage == "저장" else ""
+        store_tbl = (f"{table} ({loc})" if table else loc) if stage == "저장" else ""
         out.append({
-            "item": infer_item(f),
+            "item": item,
+            "category": infer_category(f),
             "subject": "",
-            # 추정 단계에 코드 위치를 넣는다 — 수집 지점도 채워지도록.
             "collection_source": loc if stage == "수집" else "",
             "storage_location": store_loc,
             "storage_table": store_tbl,
@@ -157,11 +194,12 @@ def seed_rows_from_findings(findings: list[dict[str, Any]], *, repo: str = "",
             "destruction": loc if stage == "파기" else "",
             "third_party": "",
             "overseas": "",
-            "note": f"[PII 스캔 시드] {rule} · {loc} · 추정단계 {stage or '저장'}".strip(),
+            "note": f"[PII 스캔 시드] {rule} · {loc} · 추정단계 {stage or '미상(담당자 확정 필요)'}".strip(),
             "source": "pii_scan",
-            "stage": stage or "저장",
+            "stage": stage or "",
             "repo": repo or "",
             "file": file_,
+            "line": line,
             "rule": rule,
             "table": table,
         })

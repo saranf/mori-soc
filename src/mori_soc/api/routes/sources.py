@@ -435,7 +435,7 @@ def register_sources(ctx: RouteContext) -> None:
                 # 결정적 id 로 upsert(덮어쓰기) → 재스캔 시 단계 재분류가 반영된다.
                 for row in seed_rows_from_findings(findings, repo=resolved_repo or ""):
                     fid = "pdf-" + _hashlib.sha1(
-                        f"{resolved_repo}|{row.get('file','')}|{row.get('rule','')}|{row.get('table','')}".encode("utf-8")).hexdigest()[:12]
+                        f"{resolved_repo}|{row.get('file','')}|{row.get('line','')}|{row.get('item','')}|{row.get('table','')}".encode("utf-8")).hexdigest()[:12]
                     row.update({"id": fid, "created_at": now_iso, "created_by": "code_review", "updated_at": now_iso})
                     ctx.personal_data_flow[fid] = row
                     if ctx.persist_personal_data_flow:
@@ -525,14 +525,19 @@ def register_sources(ctx: RouteContext) -> None:
 
     # ── 코드 리뷰 findings CSV 다운로드 (개발보안 2.8 증적 원본) ──────────────────
     @app.get("/controls/code-review/findings.csv", tags=["Compliance"])
-    def code_review_findings_csv(repo: str | None = None, commit: str | None = None) -> StreamingResponse:
+    def code_review_findings_csv(request: Request, repo: str | None = None, commit: str | None = None) -> StreamingResponse:
         """code_review findings(=alert)를 CSV로 내려준다. UI 공통 openCsvPreview 용.
 
+        코드 경로·스니펫·메시지가 담기므로 증적 조회와 동일하게 admin·security 전용.
         repo/commit 쿼리로 특정 스캔만 필터 가능(스캔 이력의 '결과 다운로드'). 없으면 전체.
         """
         import csv as csv_mod
         import io
 
+        if ctx.auth_enabled:
+            role = _session_role(request)
+            if role not in ("admin", "security"):
+                raise HTTPException(status_code=403, detail="findings export requires admin or security role")
         want_repo = (repo or "").strip()
         want_commit = (commit or "").strip()
         rows: list[dict[str, Any]] = []
@@ -646,9 +651,11 @@ def register_sources(ctx: RouteContext) -> None:
                 return "\n".join(str(x).strip() for x in v if str(x).strip())
             return str(v or "").strip()
 
-        # 이 repo 의 기존 개인정보 흐름(regex 후보 포함)을 AI 결과로 교체.
+        # 이 repo 의 **자동 생성** 흐름(regex 후보·이전 AI 결과)만 AI 결과로 교체한다.
+        # 담당자가 수기 입력(source="manual")한 행은 절대 삭제하지 않는다(데이터 손실 방지).
         for fid in [k for k, r in list(ctx.personal_data_flow.items())
-                    if str((r or {}).get("repo") or "") == resolved_repo]:
+                    if str((r or {}).get("repo") or "") == resolved_repo
+                    and str((r or {}).get("source") or "") in ("pii_scan", "ai_flow")]:
             ctx.personal_data_flow.pop(fid, None)
             if ctx.delete_personal_data_flow:
                 ctx.delete_personal_data_flow(fid)

@@ -237,7 +237,7 @@ def register_privacy(ctx: RouteContext) -> None:
         for rp_repo, fs in by_repo.items():
             for row in seed_rows_from_findings(fs, repo=rp_repo):
                 fid = "pdf-" + hashlib.sha1(
-                    f"{rp_repo}|{row.get('file','')}|{row.get('rule','')}|{row.get('table','')}".encode("utf-8")).hexdigest()[:12]
+                    f"{rp_repo}|{row.get('file','')}|{row.get('line','')}|{row.get('item','')}|{row.get('table','')}".encode("utf-8")).hexdigest()[:12]
                 row.update({"id": fid, "created_at": now, "created_by": _user(request), "updated_at": now})
                 ctx.personal_data_flow[fid] = row
                 if ctx.persist_personal_data_flow:
