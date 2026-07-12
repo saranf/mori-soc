@@ -29,14 +29,7 @@ SKIP_DIRS = {
     ".next", ".nuxt", "target", "bin", "obj", ".terraform", "migrations", "backups",
 }
 PER_FILE_MAX = 60_000        # 파일당 상한(대형 생성물 제외)
-DEFAULT_TOTAL_MAX = 120_000  # 1회 전송 총량 상한(토큰·비용·400 방지)
-
-_SCHEMA_HINT = (
-    'Return ONLY JSON: {"findings":[{"file":"path","line":N,"severity":"HIGH|MEDIUM|LOW",'
-    '"category":"snake_case_type","description":"...","recommendation":"..."}]}. '
-    "Empty findings => {\"findings\":[]}. No prose."
-)
-
+DEFAULT_TOTAL_MAX = 160_000  # 1회 전송 총량 상한 — findings+흐름도를 한 호출로 합쳐 여유 확보
 
 def collect_files(root: str, *, total_max: int = DEFAULT_TOTAL_MAX,
                   exts: set[str] = CODE_EXTS, skip_dirs: set[str] = SKIP_DIRS) -> tuple[list[tuple[str, str]], bool]:
@@ -65,58 +58,6 @@ def collect_files(root: str, *, total_max: int = DEFAULT_TOTAL_MAX,
             out.append((rel, text))
             total += len(text)
     return out, truncated
-
-
-def build_prompt(files: list[tuple[str, str]]) -> str:
-    """수집한 파일들로 보안 리뷰 프롬프트를 만든다(파일마다 경로·번호 매긴 라인)."""
-    parts = [
-        "You are a senior application security auditor. Review the following EXISTING source "
-        "files for security vulnerabilities (injection, authz, secrets, crypto misuse, SSRF, "
-        "path traversal, deserialization, etc.). Report real, actionable issues with the exact "
-        "file and line. Be precise; avoid false positives.",
-        _SCHEMA_HINT,
-        "",
-    ]
-    for rel, text in files:
-        parts.append(f"===== FILE: {rel} =====")
-        for i, line in enumerate(text.splitlines(), start=1):
-            parts.append(f"{i}: {line}")
-        parts.append("")
-    return "\n".join(parts)
-
-
-def parse_findings(text: str) -> list[dict]:
-    """Claude 응답 텍스트에서 findings 배열을 관대하게 추출·정규화한다."""
-    raw = (text or "").strip()
-    if raw.startswith("```"):
-        raw = raw.split("```", 2)[1] if "```" in raw[3:] else raw
-        raw = raw[len("json"):].strip() if raw.lower().startswith("json") else raw
-    obj = None
-    try:
-        obj = json.loads(raw)
-    except Exception:
-        start, end = raw.find("{"), raw.rfind("}")
-        if start != -1 and end > start:
-            try:
-                obj = json.loads(raw[start:end + 1])
-            except Exception:
-                obj = None
-    findings = (obj or {}).get("findings") if isinstance(obj, dict) else None
-    if not isinstance(findings, list):
-        return []
-    norm: list[dict] = []
-    for f in findings:
-        if not isinstance(f, dict):
-            continue
-        norm.append({
-            "file": f.get("file") or f.get("path"),
-            "line": f.get("line"),
-            "severity": f.get("severity") or f.get("level") or "medium",
-            "category": f.get("category") or f.get("rule_id") or "security",
-            "description": f.get("description") or f.get("message") or f.get("title") or "",
-            "recommendation": f.get("recommendation"),
-        })
-    return norm
 
 
 def call_claude(api_key: str, model: str, prompt: str, *, max_tokens: int = 4096) -> str:
@@ -163,45 +104,6 @@ def post_to_mori(base_url: str, findings: list[dict], *, repo: str, commit: str,
         return resp.status
 
 
-FLOW_PROMPT = """\
-아래 저장소 소스를 읽고 **개인정보 처리 라이프사이클(수집→저장→이용→파기)**을 JSON 으로만 출력하세요.
-각 개인정보 항목별로, 실제 코드 근거(소스 파일·API 라우트·Prisma 테이블/컬럼·암복호화·마스킹 함수·파기 경로)를 담습니다.
-설명 없이 아래 스키마의 JSON 객체 하나만 출력:
-{"items":[{"item":"이메일","category":"일반|고유식별|비밀|금융",
-  "collect":["회원가입 signup/page.tsx","POST /api/auth/signup"],
-  "store":["User.emailEnc","User.emailHash (블라인드 인덱스)"],"encryption":"AES-256-GCM + HMAC",
-  "use":["로그인 findByEmail()","마스킹 maskEmail()"],
-  "dispose":["탈퇴 withdrawUser()","만료 purgeExpired()"],
-  "third_party":"제3자 제공 대상(없으면 생략)","overseas":"국외이전(없으면 생략)","table":"User"}],
- "gaps":["파기 흐름 개선 필요 지점(있으면)"],
- "summary":{"items":항목수,"tables":테이블수,"encryption":"대표 암호화"}}
-
---- 소스 ---
-"""
-
-
-def build_flow_prompt(files: list[tuple[str, str]]) -> str:
-    parts = [FLOW_PROMPT]
-    for path, content in files:
-        parts.append(f"\n### {path}\n{content}")
-    return "".join(parts)
-
-
-def parse_flow(text: str) -> dict:
-    t = text.strip()
-    if t.startswith("```"):
-        t = t.split("```", 2)[1] if "```" in t[3:] else t
-        t = t[t.find("{"):]
-    i, j = t.find("{"), t.rfind("}")
-    if i < 0 or j < 0:
-        return {}
-    try:
-        d = json.loads(t[i:j + 1])
-        return d if isinstance(d, dict) and isinstance(d.get("items"), list) else {}
-    except Exception:
-        return {}
-
-
 def post_flow_to_mori(base_url: str, flow: dict, *, repo: str, commit: str, run_id: str,
                       token: str = "", oidc: str = "") -> int:
     url = _with_scheme(base_url).rstrip("/") + f"/ingest/privacy-flow?repo={repo}&commit={commit}&run_id={run_id}"
@@ -216,6 +118,69 @@ def post_flow_to_mori(base_url: str, flow: dict, *, repo: str, commit: str, run_
         return resp.status
 
 
+# ── 한 번의 Claude 호출로 보안 findings + 개인정보 라이프사이클을 함께 뽑는다 ──
+# 파일을 두 번 보내던 낭비를 없애 컨텍스트 여유↑·비용↓·잘림↓. findings 스코프에
+# '평문 PII 저장·약한 해시·PII 로깅·과수집·마스킹 누락' 을 넣어 개인정보-보안까지 잡는다.
+COMBINED_PROMPT = """\
+You are a senior application security AND privacy auditor. Read the EXISTING repository source below
+and return ONE JSON object with two parts. No prose, JSON only.
+
+"findings": real, actionable issues with exact file+line — classic security (injection, broken authz,
+hardcoded secrets, crypto misuse, SSRF, path traversal, deserialization) AND privacy-security
+(sensitive PII stored in PLAINTEXT / missing encryption-at-rest, weak password hashing, PII written to
+logs, over-collection, missing output masking). Be precise, avoid false positives. None => [].
+
+"privacy": the personal-data lifecycle (collect->store->use->dispose) with real code evidence
+(files, API routes, DB tables/columns, encryption, masking functions, disposal paths).
+
+Output EXACTLY this JSON shape:
+{"findings":[{"file":"path","line":N,"severity":"HIGH|MEDIUM|LOW","category":"snake_case","description":"...","recommendation":"..."}],
+ "privacy":{"items":[{"item":"이메일","category":"일반|고유식별|비밀|금융","collect":["회원가입 signup/page.tsx"],
+   "store":["User.emailEnc","User.emailHash (블라인드 인덱스)"],"encryption":"AES-256-GCM + HMAC",
+   "use":["로그인 findByEmail()","마스킹 maskEmail()"],"dispose":["탈퇴 withdrawUser()","만료 purgeExpired()"],
+   "third_party":"","overseas":"","table":"User"}],
+  "gaps":["파기 흐름 개선 필요 지점"],"summary":{"items":N,"tables":N,"encryption":"대표 암호화"}}}
+
+--- SOURCE ---
+"""
+
+
+def build_combined_prompt(files: list[tuple[str, str]]) -> str:
+    parts = [COMBINED_PROMPT]
+    for rel, text in files:
+        parts.append(f"\n===== FILE: {rel} =====\n")
+        for i, line in enumerate(text.splitlines(), start=1):
+            parts.append(f"{i}: {line}\n")
+    return "".join(parts)
+
+
+def parse_combined(text: str) -> tuple[list[dict], dict]:
+    """통합 응답에서 (정규화된 findings, privacy dict) 를 관대하게 추출."""
+    t = (text or "").strip()
+    if t.startswith("```"):
+        t = t.split("```", 2)[1] if "```" in t[3:] else t
+        t = t[t.find("{"):]
+    i, j = t.find("{"), t.rfind("}")
+    obj: dict = {}
+    if i >= 0 and j > i:
+        try:
+            obj = json.loads(t[i:j + 1])
+        except Exception:
+            obj = {}
+    findings: list[dict] = []
+    for f in (obj.get("findings") if isinstance(obj, dict) else None) or []:
+        if isinstance(f, dict):
+            findings.append({
+                "file": f.get("file") or f.get("path"), "line": f.get("line"),
+                "severity": f.get("severity") or f.get("level") or "medium",
+                "category": f.get("category") or f.get("rule_id") or "security",
+                "description": f.get("description") or f.get("message") or f.get("title") or "",
+                "recommendation": f.get("recommendation"),
+            })
+    privacy = obj.get("privacy") if isinstance(obj, dict) else {}
+    return findings, (privacy if isinstance(privacy, dict) else {})
+
+
 def main() -> int:
     api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
     mori_url = os.getenv("MORI_INGEST_URL", "").strip()
@@ -228,49 +193,37 @@ def main() -> int:
     model = os.getenv("CLAUDE_MODEL", "").strip() or "claude-sonnet-5"
     files, truncated = collect_files(os.getenv("SCAN_ROOT", "."))
     print(f"수집: {len(files)} 파일" + (" (일부 잘림 — SCAN 총량 상한)" if truncated else ""))
-    if not files:
-        print("스캔할 소스 파일 없음 — 0건으로 기록")
-        findings: list[dict] = []
-    else:
-        prompt = build_prompt(files)
-        print(f"Claude 호출: 모델={model}, 프롬프트≈{len(prompt):,}자")
+    findings: list[dict] = []
+    flow: dict = {}
+    if files:
+        prompt = build_combined_prompt(files)
+        print(f"Claude 호출(1회 통합: 보안+개인정보): 모델={model}, 프롬프트≈{len(prompt):,}자")
         try:
-            findings = parse_findings(call_claude(api_key, model, prompt))
+            findings, flow = parse_combined(call_claude(api_key, model, prompt, max_tokens=16000))
         except Exception as exc:
             print(f"Claude 리뷰 실패: {exc}", file=sys.stderr)
             msg = str(exc).lower()
             if "model" in msg:
-                print("힌트: CLAUDE_MODEL 을 계정에서 지원하는 모델 id로 지정하세요 "
-                      "(예: claude-sonnet-4-5, 워크플로 env CLAUDE_MODEL).", file=sys.stderr)
+                print("힌트: CLAUDE_MODEL 을 계정 지원 모델 id로(예: claude-sonnet-4-5).", file=sys.stderr)
             elif "long" in msg or "max" in msg or "token" in msg:
-                print("힌트: 프롬프트가 큽니다 — DEFAULT_TOTAL_MAX 를 더 낮추세요.", file=sys.stderr)
+                print("힌트: 프롬프트가 큽니다 — DEFAULT_TOTAL_MAX 를 낮추세요.", file=sys.stderr)
             return 1
-    print(f"findings: {len(findings)}건 (모델 {model})")
+    print(f"findings: {len(findings)}건 · 개인정보 {len(flow.get('items') or [])}항목 (모델 {model})")
+
+    repo, commit, run_id = (os.getenv("GITHUB_REPOSITORY", ""), os.getenv("GITHUB_SHA", ""),
+                            os.getenv("GITHUB_RUN_ID", ""))
+    token, oidc = os.getenv("MORI_INGEST_TOKEN", "").strip(), os.getenv("MORI_OIDC_TOKEN", "").strip()
     try:
-        status = post_to_mori(
-            mori_url, findings,
-            repo=os.getenv("GITHUB_REPOSITORY", ""), commit=os.getenv("GITHUB_SHA", ""),
-            run_id=os.getenv("GITHUB_RUN_ID", ""),
-            token=os.getenv("MORI_INGEST_TOKEN", "").strip(),
-            oidc=os.getenv("MORI_OIDC_TOKEN", "").strip(),
-        )
-        print(f"MORI push status: {status}")
+        print(f"MORI push status: {post_to_mori(mori_url, findings, repo=repo, commit=commit, run_id=run_id, token=token, oidc=oidc)}")
     except Exception as exc:
         print(f"MORI push 실패(비차단): {exc}", file=sys.stderr)
-
-    # ── 개인정보 라이프사이클(완벽 경로) — Claude 로 구조화 흐름을 만들어 MORI 에 전송 ──
-    if files:
+    if flow.get("items"):
         try:
-            flow = parse_flow(call_claude(api_key, model, build_flow_prompt(files), max_tokens=8192))
-            if flow.get("items"):
-                st = post_flow_to_mori(
-                    mori_url, flow, repo=os.getenv("GITHUB_REPOSITORY", ""),
-                    commit=os.getenv("GITHUB_SHA", ""), run_id=os.getenv("GITHUB_RUN_ID", ""),
-                    token=os.getenv("MORI_INGEST_TOKEN", "").strip(),
-                    oidc=os.getenv("MORI_OIDC_TOKEN", "").strip())
-                print(f"개인정보 흐름 {len(flow['items'])}항목 push status: {st}")
+            st = post_flow_to_mori(mori_url, flow, repo=repo, commit=commit, run_id=run_id, token=token, oidc=oidc)
+            print(f"개인정보 흐름 {len(flow['items'])}항목 push status: {st}")
         except Exception as exc:
-            print(f"개인정보 흐름 생성 실패(비차단): {exc}", file=sys.stderr)
+            print(f"개인정보 흐름 전송 실패(비차단): {exc}", file=sys.stderr)
+    return 0
     return 0
 
 

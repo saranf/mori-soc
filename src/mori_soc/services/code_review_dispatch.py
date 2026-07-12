@@ -113,8 +113,8 @@ def workflow_template(audience: str = "mori-ingest") -> str:
 # (선택·유료) Claude 심층 리뷰 워크플로 — code-review-fullscan.yml + scripts/code_review_fullscan.py.
 FULLSCAN_WORKFLOW_TEMPLATE = """\
 name: code-review-fullscan
-# (유료) Claude AI로 기존 코드 전체를 심층 리뷰 → 결과를 MORI로 전송.
-# 준비물: 이 파일 + scripts/code_review_fullscan.py, 레포 Secrets(ANTHROPIC_API_KEY·MORI_INGEST_URL).
+# (유료) Claude AI로 기존 코드 전체를 심층 리뷰 → 보안 findings + 개인정보 흐름을 한 호출로 MORI에 전송.
+# 준비물: 이 파일 하나 + 레포 Secrets(ANTHROPIC_API_KEY·MORI_INGEST_URL). 스캐너 스크립트는 MORI가 서빙(fetch).
 on:
   workflow_dispatch:
     inputs:
@@ -146,11 +146,15 @@ jobs:
           CLAUDE_MODEL: claude-sonnet-5
         run: |
           [ -z "$MORI_INGEST_URL" ] && { echo "MORI_INGEST_URL 미설정 — 스킵"; exit 0; }
+          case "$MORI_INGEST_URL" in http://*|https://*) ;; ?*) MORI_INGEST_URL="https://$MORI_INGEST_URL";; esac
+          export MORI_INGEST_URL
           if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
             export MORI_OIDC_TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \\
               "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=__AUDIENCE__" | jq -r '.value // empty')
           fi
-          python3 scripts/code_review_fullscan.py
+          # 스캐너는 MORI가 서빙 — 항상 최신본을 받아 실행(레포에 스크립트 재복사 불필요).
+          curl -fsS "${MORI_INGEST_URL%/}/code-review/fullscan.py" -o code_review_fullscan.py
+          python3 code_review_fullscan.py
 """
 
 

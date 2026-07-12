@@ -21,11 +21,12 @@ MORI의 명제는 **"관제가 곧 증적"** — 보는 층(Grafana)에 위임�
 | | **무료(기본)** | **유료(고급)** |
 |---|---|---|
 | 스캐너 | Semgrep OSS (SAST 룰) | Claude AI 전체 리뷰 |
-| 워크플로 | `code-review-semgrep.yml` | `code-review-fullscan.yml` + `scripts/code_review_fullscan.py` |
-| 파일 | 1개 | 2개 |
+| 워크플로 | `code-review-semgrep.yml` | `code-review-fullscan.yml` (스캐너는 MORI가 서빙·fetch) |
+| 파일 | 1개 | 1개 (스크립트 재복사 불필요) |
 | 시크릿 | `MORI_INGEST_URL` 1개 | `ANTHROPIC_API_KEY` · `MORI_INGEST_URL` 2개 |
 | 비용 | 무료 | Anthropic API 크레딧 |
 | 강점 | 즉시·무료 패턴 SAST | 로직·맥락까지 심층 |
+| 산출 | findings(2.8) | **한 호출로** findings(2.8) + 개인정보 흐름(3.x) 동시 |
 
 ```
 [고객 레포 CI]  (무료) code-review-semgrep.yml   또는   (유료) code-review-fullscan.yml + scripts/code_review_fullscan.py
@@ -53,10 +54,10 @@ MORI의 명제는 **"관제가 곧 증적"** — 보는 층(Grafana)에 위임�
 2. 레포 시크릿 1개: `MORI_INGEST_URL`
 3. 실행: GitHub Actions 탭 **code-review-semgrep → Run workflow**, 또는 MORI UI **스캔 요청**(GitHub 토큰 actions:write 입력, 저장 안 함)
 
-**유료(고급, 선택)** — 더 깊은 Claude 리뷰가 필요할 때. UI 도움말 ⚙️ "고급(유료)" 팝업에서 `.yml`·`.py` 복사.
-1. 레포에 `.github/workflows/code-review-fullscan.yml` + `scripts/code_review_fullscan.py` 복사
+**유료(고급, 선택)** — 더 깊은 Claude 리뷰가 필요할 때. UI 도움말 ⚙️ "고급(유료)" 팝업에서 `.yml` 복사.
+1. 레포에 `.github/workflows/code-review-fullscan.yml` **하나만** 복사(스캐너는 워크플로가 `${MORI_INGEST_URL}/code-review/fullscan.py`에서 최신본을 받아 실행 — 재복사 불필요)
 2. 레포 시크릿 2개: `ANTHROPIC_API_KEY` · `MORI_INGEST_URL`
-3. 실행: **code-review-fullscan → Run workflow**
+3. 실행: **code-review-fullscan → Run workflow** → **한 번의 Claude 호출**로 보안 findings(2.8)와 개인정보 흐름(3.x)이 함께 나온다(파일을 두 번 보내지 않아 잘림·비용↓)
 
 OIDC를 쓰므로 **정적 ingest 토큰 시크릿이 불필요**하다(GitHub 서명으로 대체).
 

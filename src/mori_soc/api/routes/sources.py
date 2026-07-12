@@ -504,6 +504,25 @@ def register_sources(ctx: RouteContext) -> None:
                 "script_content": script_content,
                 "audience": aud, "public_url": _os.getenv("MORI_PUBLIC_URL", "").strip()}
 
+    @app.get("/code-review/fullscan.py", tags=["Sources"])
+    def code_review_fullscan_py():
+        """(유료) fullscan 스캐너를 MORI가 직접 서빙 — 워크플로가 fetch 하므로 재복사 불필요."""
+        from pathlib import Path as _Path
+
+        from fastapi.responses import Response as _Response
+
+        content = ""
+        for cand in (
+            _Path(__file__).resolve().parents[4] / "scripts" / "code_review_fullscan.py",
+            _Path.cwd() / "scripts" / "code_review_fullscan.py",
+        ):
+            try:
+                content = cand.read_text(encoding="utf-8")
+                break
+            except OSError:
+                continue
+        return _Response(content=content, media_type="text/x-python; charset=utf-8")
+
     # ── 코드 리뷰 findings CSV 다운로드 (개발보안 2.8 증적 원본) ──────────────────
     @app.get("/controls/code-review/findings.csv", tags=["Compliance"])
     def code_review_findings_csv(repo: str | None = None, commit: str | None = None) -> StreamingResponse:

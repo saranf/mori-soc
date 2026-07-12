@@ -37,10 +37,13 @@ jobs:
           CLAUDE_MODEL: claude-sonnet-5
         run: |
           [ -z "$MORI_INGEST_URL" ] && { echo "MORI_INGEST_URL 미설정 — 스킵"; exit 0; }
+          case "$MORI_INGEST_URL" in http://*|https://*) ;; ?*) MORI_INGEST_URL="https://$MORI_INGEST_URL";; esac
+          export MORI_INGEST_URL
           # OIDC 토큰(권장) — MORI가 repo·commit·run 서명 검증
           if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
             export MORI_OIDC_TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
               "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=mori-ingest" | jq -r '.value // empty')
           fi
-          # 스캐너: 고객 레포는 이 파일(scripts/code_review_fullscan.py)도 함께 복사해야 함.
-          python3 scripts/code_review_fullscan.py
+          # 스캐너는 MORI가 서빙 — 항상 최신본을 받아 실행(레포에 스크립트 재복사 불필요).
+          curl -fsS "${MORI_INGEST_URL%/}/code-review/fullscan.py" -o code_review_fullscan.py
+          python3 code_review_fullscan.py
