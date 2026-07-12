@@ -42,6 +42,7 @@ def _extract_code_findings(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 phys = (locs[0].get("physicalLocation") if locs and isinstance(locs[0], dict) else {}) or {}
                 art = phys.get("artifactLocation") if isinstance(phys.get("artifactLocation"), dict) else {}
                 region = phys.get("region") if isinstance(phys.get("region"), dict) else {}
+                snip = region.get("snippet") if isinstance(region.get("snippet"), dict) else {}
                 out.append({
                     "id": r.get("guid") or r.get("correlationGuid"),
                     "rule_id": r.get("ruleId"),
@@ -50,6 +51,7 @@ def _extract_code_findings(payload: dict[str, Any]) -> list[dict[str, Any]]:
                     "message": (msg.get("text") if isinstance(msg, dict) else None),
                     "file": art.get("uri") if isinstance(art, dict) else None,
                     "line": region.get("startLine") if isinstance(region, dict) else None,
+                    "snippet": (snip.get("text") if isinstance(snip, dict) else None),
                 })
         return out
     # 단일 finding fallback — 리뷰 finding 으로 볼 수 있는 필드가 있을 때만.
@@ -422,7 +424,7 @@ def register_sources(ctx: RouteContext) -> None:
                 # 결정적 id 로 upsert(덮어쓰기) → 재스캔 시 단계 재분류가 반영된다.
                 for row in seed_rows_from_findings(findings, repo=resolved_repo or ""):
                     fid = "pdf-" + _hashlib.sha1(
-                        f"{resolved_repo}|{row.get('file','')}|{row.get('rule','')}".encode("utf-8")).hexdigest()[:12]
+                        f"{resolved_repo}|{row.get('file','')}|{row.get('rule','')}|{row.get('table','')}".encode("utf-8")).hexdigest()[:12]
                     row.update({"id": fid, "created_at": now_iso, "created_by": "code_review", "updated_at": now_iso})
                     ctx.personal_data_flow[fid] = row
                     if ctx.persist_personal_data_flow:
@@ -574,6 +576,19 @@ def register_sources(ctx: RouteContext) -> None:
                 env.get("commit") or "", int(fc), bool(env.get("verified")),
                 env.get("run_url") or "", collected_at)
         return {"ok": True, "scans": len(scans), "evidence_promoted": promoted}
+
+    # ── 스캔 이력 항목 삭제(X 버튼) ─────────────────────────────────────────────
+    @app.delete("/controls/code-review/scan/{event_id}", tags=["Compliance"])
+    def code_review_scan_delete(event_id: str, request: Request) -> dict[str, Any]:
+        if ctx.auth_enabled and _session_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="requires admin or security role")
+        if state_repo is None:
+            raise HTTPException(status_code=503, detail="state store unavailable")
+        try:
+            state_repo.delete_evidence_event(event_id)
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"delete failed: {exc}") from exc
+        return {"ok": True, "id": event_id}
 
     # ── CSOP 증적(evidence) HTTP 인제스트 — 조치 전/후 diff envelope 수신함 ────────
     @app.post("/ingest/evidence", tags=["Sources"])

@@ -97,6 +97,9 @@ class InMemoryStateRepository(StateRepository):
     def save_evidence_event(self, event_id: str, record: dict[str, Any]) -> None:
         self._evidence_events[event_id] = copy.deepcopy(record)
 
+    def delete_evidence_event(self, event_id: str) -> None:
+        self._evidence_events.pop(event_id, None)
+
     # ── settings ────────────────────────────────────────────────────────────────
     def load_settings(self) -> dict[str, str]:
         return dict(self._settings)

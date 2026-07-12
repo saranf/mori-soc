@@ -64,8 +64,8 @@ def is_pii_finding(finding: dict[str, Any]) -> bool:
 
 
 def infer_item(finding: dict[str, Any]) -> str:
-    """finding 에서 개인정보 항목을 대략 추론(없으면 빈 문자열)."""
-    hay = " ".join(str(finding.get(k) or "") for k in ("rule_id", "category", "title", "message", "description")).lower()
+    """finding 에서 개인정보 항목을 대략 추론(없으면 빈 문자열). 스니펫의 필드명도 반영."""
+    hay = " ".join(str(finding.get(k) or "") for k in ("rule_id", "category", "title", "message", "description", "snippet")).lower()
     hits: list[str] = []
     for needle, label in _ITEM_HINTS:
         if needle in hay and label not in hits:
@@ -82,6 +82,26 @@ _STORE_HINTS = ("seed", "migration", "migrate", "schema", "prisma", "/model", "e
 _USE_HINTS = ("/api/", "route", "handler", "service", "controller", "usecase", "use-case", "process",
               "send", "mailer", "sms", "notif", "export", "report", "analytic", "payment", "/lib/")
 _DISPOSE_HINTS = ("erase", "/destroy", "purge", "withdraw", "탈퇴", "파기", "deletion", "expire")
+
+
+# 스니펫/메시지에서 DB 테이블·모델명을 뽑는다 — Prisma·SQL·TypeORM·Sequelize 흔한 패턴.
+_TABLE_PATTERNS = (
+    re.compile(r"\bmodel\s+([A-Za-z_]\w*)", re.I),                 # Prisma: model User {
+    re.compile(r"create\s+table\s+(?:if\s+not\s+exists\s+)?[\"'`\[]?([A-Za-z_]\w*)", re.I),  # SQL
+    re.compile(r"@Entity\([^)]*\)\s*(?:export\s+)?(?:abstract\s+)?class\s+([A-Za-z_]\w*)", re.I),  # TypeORM
+    re.compile(r"table\s*[:=]\s*[\"'`]([A-Za-z_]\w*)", re.I),      # sequelize/knex tableName
+    re.compile(r"@Table\([^)]*name\s*[:=]\s*[\"'`]([A-Za-z_]\w*)", re.I),
+)
+
+
+def infer_table(finding: dict[str, Any]) -> str:
+    """finding 스니펫/메시지에서 DB 테이블(모델)명을 추정. 없으면 빈 문자열."""
+    hay = " ".join(str(finding.get(k) or "") for k in ("snippet", "message", "description", "title"))
+    for pat in _TABLE_PATTERNS:
+        m = pat.search(hay)
+        if m:
+            return m.group(1)
+    return ""
 
 
 def infer_stage(file_path: str) -> str | None:
@@ -115,19 +135,23 @@ def seed_rows_from_findings(findings: list[dict[str, Any]], *, repo: str = "",
         file_ = str(f.get("file") or f.get("path") or "")
         line = f.get("line")
         rule = str(f.get("rule_id") or f.get("category") or f.get("rule") or "")
-        key = f"{repo}|{file_}|{rule}"
+        table = infer_table(f)
+        key = f"{repo}|{file_}|{rule}|{table}"  # 같은 파일 내 여러 테이블 구분
         if key in existing_keys:
             continue
         existing_keys.add(key)
         loc = f"{file_}:{line}" if file_ and line is not None else file_
         stage = infer_stage(file_)
+        # 저장위치 = DB 테이블(추출되면) / 아니면 파일 위치. repo 이름은 넣지 않는다(사용자 요청).
+        store_loc = (f"{table} 테이블" if table else "") if stage in (None, "저장") else ""
+        store_tbl = (f"{table} ({loc})" if table else loc) if stage in (None, "저장") else ""
         out.append({
             "item": infer_item(f),
             "subject": "",
             # 추정 단계에 코드 위치를 넣는다 — 수집 지점도 채워지도록.
             "collection_source": loc if stage == "수집" else "",
-            "storage_location": repo or "",
-            "storage_table": loc if stage in (None, "저장") else "",
+            "storage_location": store_loc,
+            "storage_table": store_tbl,
             "purpose": loc if stage == "이용" else "",
             "retention": "",
             "destruction": loc if stage == "파기" else "",
@@ -139,6 +163,7 @@ def seed_rows_from_findings(findings: list[dict[str, Any]], *, repo: str = "",
             "repo": repo or "",
             "file": file_,
             "rule": rule,
+            "table": table,
         })
     return out
 
@@ -153,6 +178,16 @@ _LITERAL_RULES = (
      r"\b\d{4}[-\s]\d{4}[-\s]\d{4}[-\s]\d{4}\b"),
 )
 
+# DB 테이블/모델 블록 안의 PII — 스니펫에 'model X {'·'CREATE TABLE X' 를 담아
+# MORI 가 저장 테이블명을 뽑도록. (저장 단계 행의 '저장위치=테이블' 근거)
+_PII_FIELD_ALT = r"(email|phone|mobile|tel|gender|birth|dob|resident|rrn|ssn|jumin|card|account|passport|address|이메일|휴대폰|전화|성별|생년월일|주민|카드|계좌|여권|주소|배송지)"
+_TABLE_RULES = (
+    ("pii-prisma-model", "INFO", "Prisma 모델(DB 테이블)에 개인정보 필드",
+     r"(?is)model\s+[A-Za-z_]\w*\s*\{[^}]*?\b" + _PII_FIELD_ALT + r"\b[^}]*?\}"),
+    ("pii-sql-table", "INFO", "SQL 테이블 정의에 개인정보 컬럼",
+     r"(?is)create\s+table[^;(]*\([^;]*?\b" + _PII_FIELD_ALT + r"\b[^;]*?\)"),
+)
+
 
 def build_pii_semgrep_rules(custom_terms: list[dict[str, str]] | None = None) -> str:
     """스캔용 Semgrep 룰(YAML) — 리터럴 값 + PII 필드명 기본셋 + 어드민 커스텀 기준.
@@ -165,7 +200,7 @@ def build_pii_semgrep_rules(custom_terms: list[dict[str, str]] | None = None) ->
         return "'" + str(rx).replace("'", "''") + "'"
 
     lines = ["rules:"]
-    for rid, sev, msg, rx in _LITERAL_RULES:
+    for rid, sev, msg, rx in (*_LITERAL_RULES, *_TABLE_RULES):
         lines += [f"  - id: {rid}", "    languages: [generic]", f"    severity: {sev}",
                   f'    message: "{msg}"', "    patterns:", f"      - pattern-regex: {_q(rx)}"]
     for i, (rx, item) in enumerate(DEFAULT_PII_FIELDS):

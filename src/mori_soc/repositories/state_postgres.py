@@ -328,6 +328,10 @@ class PostgresStateRepository(StateRepository):
                  Jsonb(envelope) if Jsonb is not None else envelope, record.get("received_at")),
             )
 
+    def delete_evidence_event(self, event_id: str) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM ui_evidence_events WHERE id = %s", (event_id,))
+
     # ── settings (org-wide key-value) ──────────────────────────────────────────
     def load_settings(self) -> dict[str, str]:
         with self._connect() as conn, conn.cursor() as cur:

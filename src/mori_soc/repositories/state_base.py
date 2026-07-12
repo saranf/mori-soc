@@ -102,6 +102,11 @@ class StateRepository(ABC):
         """Upsert one evidence event (idempotent on ``event_id``)."""
         raise NotImplementedError
 
+    @abstractmethod
+    def delete_evidence_event(self, event_id: str) -> None:
+        """Remove one evidence event."""
+        raise NotImplementedError
+
     # ── settings: org-wide key -> value string (e.g. risk_doa) ─────────────────
     @abstractmethod
     def load_settings(self) -> dict[str, str]:

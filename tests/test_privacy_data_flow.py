@@ -50,8 +50,20 @@ class DataFlowServiceTests(unittest.TestCase):
         rows = seed_rows_from_findings(findings, repo="org/app")
         self.assertEqual(len(rows), 1)              # dup collapsed, non-PII skipped
         self.assertEqual(rows[0]["source"], "pii_scan")
-        self.assertEqual(rows[0]["storage_location"], "org/app")
+        self.assertEqual(rows[0]["storage_location"], "")   # repo 이름은 넣지 않음(테이블 없으면 빈값)
         self.assertIn("config.py:3", rows[0]["storage_table"])
+
+    def test_seed_uses_db_table_not_repo(self) -> None:
+        # Prisma model 스니펫 → 저장위치=테이블명(repo 아님)
+        rows = seed_rows_from_findings([
+            {"rule_id": "pii-prisma-model", "file": "prisma/schema.prisma", "line": 3,
+             "snippet": "model User {\n  phone String\n  email String\n}"},
+        ], repo="org/app")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["storage_location"], "User 테이블")
+        self.assertIn("User", rows[0]["storage_table"])
+        self.assertNotIn("org/app", rows[0]["storage_location"])   # repo 이름 미포함
+        self.assertEqual(rows[0]["table"], "User")
 
     def test_infer_stage_from_path(self) -> None:
         self.assertEqual(infer_stage("src/app/signup/page.tsx"), "수집")
