@@ -408,6 +408,7 @@ def register_sources(ctx: RouteContext) -> None:
         # ── 스캔 런 자체를 증적으로 — 0건이어도 "이 repo@commit 를 언제 스캔했다"를 남긴다 ──
         scan_recorded = False
         promoted = 0
+        pii_seeded = 0
         if state_repo is not None:
             import hashlib as _hashlib
             seed = "|".join(x for x in [resolved_repo or "", commit, run_id] if x) or now_iso
@@ -429,6 +430,25 @@ def register_sources(ctx: RouteContext) -> None:
             promoted = _promote_scan_to_controls(ev_id, resolved_repo, commit, len(findings),
                                                  verified, run_url, now_iso[:10])
 
+            # ── 코드 리뷰와 함께 개인정보 흐름표 자동 시드 ────────────────────────────
+            # PII/비밀정보 finding 을 흐름표 후보 행으로 만들어 "코드 리뷰 = 개인정보
+            # 흐름도까지 같이" 되도록. (수동 [PII 스캔으로 시드] 는 백업 경로)
+            try:
+                from mori_soc.services.data_flow import seed_rows_from_findings
+
+                existing = {f"{r.get('repo','')}|{r.get('file','')}|{r.get('rule','')}"
+                            for r in ctx.personal_data_flow.values() if r.get("source") == "pii_scan"}
+                for row in seed_rows_from_findings(findings, repo=resolved_repo or "", existing_keys=existing):
+                    fid = "pdf-" + _hashlib.sha1(
+                        f"{resolved_repo}|{row.get('file','')}|{row.get('rule','')}".encode("utf-8")).hexdigest()[:12]
+                    row.update({"id": fid, "created_at": now_iso, "created_by": "code_review", "updated_at": now_iso})
+                    ctx.personal_data_flow[fid] = row
+                    if ctx.persist_personal_data_flow:
+                        ctx.persist_personal_data_flow(fid)
+                    pii_seeded += 1
+            except Exception:
+                pass
+
         try:
             repo_db.save(SourceSync(source="code_review", status="success", last_sync_at=now, last_success_at=now,
                                     message=f"http ingest: {report.records_collected} findings ({resolved_repo or '?'}@{(commit or 'HEAD')[:8]})",
@@ -441,7 +461,7 @@ def register_sources(ctx: RouteContext) -> None:
                 "entities_saved": report.entities_saved, "repo": resolved_repo,
                 "commit": commit or None, "pr": pr or None, "run_url": run_url or None,
                 "scan_recorded": scan_recorded, "provenance_verified": verified,
-                "evidence_promoted": promoted}
+                "evidence_promoted": promoted, "privacy_flow_seeded": pii_seeded}
 
     # ── 고객 배포용 code-review-fullscan.yml 템플릿 (UI 도움말의 "파일 예시") ───────
     @app.get("/controls/code-review/workflow-template", tags=["Sources"])

@@ -30,7 +30,7 @@ _PII_SIGNAL = re.compile(
 # 규칙/메시지에서 항목(이메일/전화/주민번호…)을 대략 추론 — 시드 초기값 채우기용.
 _ITEM_HINTS = (
     ("email", "이메일"), ("이메일", "이메일"), ("phone", "전화번호"), ("전화", "전화번호"),
-    ("ssn", "주민등록번호"), ("resident", "주민등록번호"), ("jumin", "주민등록번호"), ("주민", "주민등록번호"),
+    ("ssn", "주민등록번호"), ("rrn", "주민등록번호"), ("resident", "주민등록번호"), ("jumin", "주민등록번호"), ("주민", "주민등록번호"),
     ("passport", "여권번호"), ("여권", "여권번호"), ("account", "계좌번호"), ("계좌", "계좌번호"),
     ("card", "카드번호"), ("카드", "카드번호"), ("password", "비밀번호"), ("비밀", "비밀번호"),
     ("token", "인증토큰/시크릿"), ("secret", "인증토큰/시크릿"), ("credential", "자격증명"),
@@ -107,8 +107,8 @@ def render_data_flow_svg(rows: list[dict[str, Any]]) -> str:
     n = max(len(rows), 1)
     width = pad_left + len(STAGES) * col_w + (len(STAGES) - 1) * gap + 30
     height = pad_top + n * (row_h + 18) + 30
-    stage_fill = {"수집": "#eff6ff", "저장": "#f0fdf4", "이용": "#fefce8", "파기": "#fef2f2"}
-    stage_stroke = {"수집": "#3b82f6", "저장": "#22c55e", "이용": "#eab308", "파기": "#ef4444"}
+    # 팔레트 6색만: 파(#2563eb)·초(#16a34a)·노(#ca8a04)·빨(#dc2626), 배경 흰(#fff), 텍스트 검(#111827).
+    stage_stroke = {"수집": "#2563eb", "저장": "#16a34a", "이용": "#ca8a04", "파기": "#dc2626"}
 
     def cell_text(stage: str, r: dict[str, Any]) -> str:
         if stage == "수집":
@@ -125,12 +125,12 @@ def render_data_flow_svg(rows: list[dict[str, Any]]) -> str:
     parts.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
                  f'width="100%" style="max-width:{width}px;font-family:system-ui,sans-serif">')
     parts.append('<defs><marker id="arw" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">'
-                 '<path d="M0,0 L8,4 L0,8 Z" fill="#94a3b8"/></marker></defs>')
-    # 단계 헤더
+                 '<path d="M0,0 L8,4 L0,8 Z" fill="#111827"/></marker></defs>')
+    # 단계 헤더 — 흰 배경 + 단계색 테두리/글자(팔레트 준수)
     for i, st in enumerate(STAGES):
         x = pad_left + i * (col_w + gap)
         parts.append(f'<rect x="{x}" y="24" width="{col_w}" height="30" rx="6" '
-                     f'fill="{stage_stroke[st]}" opacity="0.15"/>')
+                     f'fill="#ffffff" stroke="{stage_stroke[st]}" stroke-width="1.2"/>')
         parts.append(f'<text x="{x + col_w/2}" y="44" text-anchor="middle" font-size="14" '
                      f'font-weight="700" fill="{stage_stroke[st]}">{st}</text>')
     # 행(항목별 레인)
@@ -143,18 +143,18 @@ def render_data_flow_svg(rows: list[dict[str, Any]]) -> str:
         for i, st in enumerate(STAGES):
             x = pad_left + i * (col_w + gap)
             parts.append(f'<rect x="{x}" y="{y}" width="{col_w}" height="{row_h}" rx="8" '
-                         f'fill="{stage_fill[st]}" stroke="{stage_stroke[st]}" stroke-width="1.2"/>')
+                         f'fill="#ffffff" stroke="{stage_stroke[st]}" stroke-width="1.2"/>')
             # 셀 내용(<br/> → tspan 2줄)
             txt = cell_text(st, r)
             lines = txt.split("<br/>")[:2]
             for li, ln in enumerate(lines):
                 ln = (ln[:26] + "…") if len(ln) > 27 else ln
                 parts.append(f'<text x="{x + col_w/2}" y="{y + 30 + li*18}" text-anchor="middle" '
-                             f'font-size="11" fill="#374151">{ln}</text>')
+                             f'font-size="11" fill="#111827">{ln}</text>')
             if i < len(STAGES) - 1:
                 ax = x + col_w
                 parts.append(f'<line x1="{ax}" y1="{y + row_h/2}" x2="{ax + gap - 6}" y2="{y + row_h/2}" '
-                             f'stroke="#94a3b8" stroke-width="1.6" marker-end="url(#arw)"/>')
+                             f'stroke="#111827" stroke-width="1.6" marker-end="url(#arw)"/>')
         # 제3자/국외 배지
         extra = []
         if str(r.get("third_party") or "").strip() and str(r.get("third_party")).strip() not in ("없음", "-", "n/a"):
@@ -163,10 +163,10 @@ def render_data_flow_svg(rows: list[dict[str, Any]]) -> str:
             extra.append("국외이전")
         if extra:
             parts.append(f'<text x="{width - 16}" y="{y + row_h/2}" text-anchor="end" font-size="10" '
-                         f'fill="#b91c1c">⚠ {" · ".join(extra)}</text>')
+                         f'fill="#dc2626">{" · ".join(extra)}</text>')
     if not rows:
         parts.append(f'<text x="{width/2}" y="{pad_top + 30}" text-anchor="middle" font-size="13" '
-                     f'fill="#9ca3af">흐름표가 비어 있습니다 — 행을 추가하거나 PII 스캔으로 시드하세요.</text>')
+                     f'fill="#111827">흐름표가 비어 있습니다 — 행을 추가하거나 PII 스캔으로 시드하세요.</text>')
     parts.append("</svg>")
     return "".join(parts)
 

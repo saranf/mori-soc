@@ -48,8 +48,31 @@ jobs:
       - name: Semgrep scan (free OSS rules)
         run: |
           python3 -m pip install --quiet semgrep
-          # auto = 공개 무료 룰, p/secrets = 하드코딩 비밀/자격증명(개인정보·시크릿) 탐지.
-          semgrep scan --config auto --config p/secrets --sarif --output semgrep.sarif . || true
+          # 한국형 개인정보(PII) 커스텀 룰(주민번호·휴대전화·카드) — 흐름표 시드로 연결. 파일 1개 유지 위해 런타임 생성.
+          cat > .mori-korean-pii.yml <<'RULES'
+          rules:
+            - id: korean-pii-rrn
+              languages: [generic]
+              severity: WARNING
+              message: "주민등록번호로 보이는 값이 하드코딩됨 (개인정보)"
+              patterns:
+                - pattern-regex: '\\b\\d{6}[-\\s]?[1-4]\\d{6}\\b'
+            - id: korean-pii-phone
+              languages: [generic]
+              severity: INFO
+              message: "휴대전화번호로 보이는 값이 하드코딩됨 (개인정보)"
+              patterns:
+                - pattern-regex: '\\b01[016789][-\\s]?\\d{3,4}[-\\s]?\\d{4}\\b'
+            - id: korean-pii-card
+              languages: [generic]
+              severity: WARNING
+              message: "신용카드번호로 보이는 값이 하드코딩됨 (개인정보)"
+              patterns:
+                - pattern-regex: '\\b\\d{4}[-\\s]\\d{4}[-\\s]\\d{4}[-\\s]\\d{4}\\b'
+          RULES
+          # auto = 공개 무료 룰, p/secrets = 하드코딩 비밀/자격증명, korean-pii = 한국형 개인정보.
+          semgrep scan --config auto --config p/secrets --config .mori-korean-pii.yml \\
+            --exclude .mori-korean-pii.yml --sarif --output semgrep.sarif . || true
       - name: Push results to MORI
         continue-on-error: true
         env:

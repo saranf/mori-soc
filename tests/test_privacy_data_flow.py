@@ -33,6 +33,13 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertIn("이메일", infer_item({"message": "email leaked"}))
         self.assertIn("주민등록번호", infer_item({"rule_id": "ssn-detector"}))
 
+    def test_korean_pii_rule_ids_classify(self) -> None:
+        # 워크플로 커스텀 룰(korean-pii-*)이 MORI 측에서 PII 로 분류·항목추론돼야 한다.
+        for rid, item in (("korean-pii-rrn", "주민등록번호"), ("korean-pii-phone", "전화번호"),
+                          ("korean-pii-card", "카드번호")):
+            self.assertTrue(is_pii_finding({"rule_id": rid}), rid)
+            self.assertIn(item, infer_item({"rule_id": rid}), rid)
+
     def test_seed_rows_dedupe_and_fields(self) -> None:
         findings = [
             {"rule_id": "py/hardcoded-secret", "file": "config.py", "line": 3, "message": "api key"},

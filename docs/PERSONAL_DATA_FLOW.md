@@ -4,6 +4,10 @@ MORI의 개인정보 증적 도구. **수집→저장→이용→파기** 흐름
 기록·시각화하고 ISMS-P 3.x 통제 증적으로 승격한다. MORI는 코드를 읽지 않는다
 (증적 층 원칙) — 후보 행은 **스캔(고객 CI)** 이 찾은 PII/비밀정보에서 시드한다.
 
+> **한국형 PII 탐지**: Semgrep 워크플로에 커스텀 룰(`korean-pii-rrn`·`-phone`·`-card`)을 런타임 생성해
+> 주민등록번호·휴대전화·카드번호 하드코딩을 탐지한다(고객 파일은 여전히 워크플로 1개). 탐지 결과는
+> `is_pii_finding()`로 분류돼 흐름표 시드로 이어진다. 실 semgrep 실행으로 3종 탐지 검증됨.
+
 ## 1. 왜 모리다운가
 
 - 코드에서 흐름도를 "자동 생성"하는 건 코드를 읽어야 하니 모리답지 않다. 대신
@@ -15,8 +19,8 @@ MORI의 개인정보 증적 도구. **수집→저장→이용→파기** 흐름
 ## 2. 동작 흐름
 
 ```
-[고객 레포 CI]  code-review-semgrep.yml  (semgrep --config auto --config p/secrets)
-   └─ 하드코딩 비밀/자격증명·PII 신호 → findings → /ingest/code-review
+[고객 레포 CI]  code-review-semgrep.yml  (semgrep --config auto --config p/secrets --config korean-pii)
+   └─ 하드코딩 비밀/자격증명 + 한국형 PII(주민번호·휴대전화·카드번호) → findings → /ingest/code-review
                 │
 [MORI]  findings → code_review alert
    ├─ PII 스캔 시드: is_pii_finding() 로 개인정보/비밀정보 finding 선별
