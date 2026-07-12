@@ -4358,7 +4358,7 @@ def render_user_dashboard_html(
         <div style=\"margin-bottom:8px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:12px;color:#111827;line-height:1.6\">${tt('dash.ctl.scan_warn_pr','온디맨드 스캔 = 무료 Semgrep(SAST)로 기존 코드 전체를 스캔해요. 대상 레포에 code-review-semgrep.yml 1개만 두면 이 버튼으로 바로 스캔돼요. (더 깊은 유료 Claude 리뷰는 code-review-fullscan.yml 참고.)')}</div>
         <details style=\"margin-bottom:8px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px\">
           <summary style=\"cursor:pointer;font-size:12px;color:#2563eb;font-weight:600\">${tt('dash.ctl.scan_guide_t','처음이신가요? code-review-semgrep(무료) 셋업 방법 보기')}</summary>
-          <div style=\"font-size:12px;color:#374151;margin-top:6px;line-height:1.6\">
+          <div style=\"font-size:12px;color:#111827;margin-top:6px;line-height:1.6\">
             <div style=\"margin-bottom:4px\">${tt('dash.ctl.scan_guide_what','code-review-semgrep = 대상 GitHub 레포의 .github/workflows/ 에 넣는 무료 자동화 파일이에요. 실행하면 Semgrep(무료 SAST)이 기존 코드 전체를 스캔해 결과를 MORI로 보내요. (MORI는 코드를 가져오지 않아요)')}</div>
             <div style=\"font-weight:600;margin:6px 0 2px\">${tt('dash.ctl.scan_guide_steps','대상 레포에 한 번만 준비하면 돼요:')}</div>
             <ol style=\"margin:0;padding-left:18px\">
@@ -4366,9 +4366,9 @@ def render_user_dashboard_html(
               <li>${tt('dash.ctl.scan_guide_s2','레포 Settings → Secrets 에 1개만 등록: MORI_INGEST_URL (무료 — ANTHROPIC 키 불필요, 등록 방법 아래 ↓)')}</li>
               <li>${tt('dash.ctl.scan_guide_s3','아래에 GitHub 토큰(그 레포 actions:write) 입력 — 저장하지 않고 이번 실행에만 써요')}</li>
             </ol>
-            <details style=\"margin-top:6px;background:#fff;border:1px dashed #d1d5db;border-radius:6px;padding:6px 8px\">
-              <summary style=\"cursor:pointer;font-size:11px;color:#6b7280\">${tt('dash.ctl.scan_sec_t','시크릿 등록 방법 (GitHub에서 처음이면)')}</summary>
-              <ol style=\"margin:6px 0 0;padding-left:18px;font-size:11px;color:#374151;line-height:1.7\">
+            <details style=\"margin-top:6px;background:#fff;border:1px dashed #e5e7eb;border-radius:6px;padding:6px 8px\">
+              <summary style=\"cursor:pointer;font-size:11px;color:#111827\">${tt('dash.ctl.scan_sec_t','시크릿 등록 방법 (GitHub에서 처음이면)')}</summary>
+              <ol style=\"margin:6px 0 0;padding-left:18px;font-size:11px;color:#111827;line-height:1.7\">
                 <li>${tt('dash.ctl.scan_sec_1','대상 레포 페이지 상단 Settings 탭')}</li>
                 <li>${tt('dash.ctl.scan_sec_2','좌측 메뉴 Secrets and variables → Actions')}</li>
                 <li>${tt('dash.ctl.scan_sec_3','New repository secret 버튼 클릭')}</li>
@@ -4387,14 +4387,14 @@ def render_user_dashboard_html(
                 <div>${tt('dash.ctl.scan_files_root','레포 루트')}/</div>
                 <div>└─ .github/workflows/code-review-semgrep.yml</div>
               </div>
-              <div style=\"font-size:11px;color:#6b7280;margin-top:3px\">${tt('dash.ctl.scan_files_warn','파일 1개면 끝이에요(무료 Semgrep). 더 깊은 유료 Claude 리뷰는 아래 고급 참고.')}</div>
+              <div style=\"font-size:11px;color:#111827;margin-top:3px\">${tt('dash.ctl.scan_files_warn','파일 1개면 끝이에요(무료 Semgrep). 더 깊은 유료 Claude 리뷰는 아래 고급 참고.')}</div>
             </div>
-            <pre id=\"scan_tpl\" style=\"display:none;margin-top:6px;max-height:240px;overflow:auto;background:#0b1021;color:#e5e7eb;padding:10px;border-radius:8px;font-size:11px;line-height:1.45;white-space:pre\"></pre>
+            <pre id=\"scan_tpl\" style=\"display:none;margin-top:6px;max-height:240px;overflow:auto;background:#111827;color:#e5e7eb;padding:10px;border-radius:8px;font-size:11px;line-height:1.45;white-space:pre\"></pre>
           </div>
         </details>
-        <details style=\"margin-bottom:8px;background:#fffbeb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px\">
-          <summary style=\"cursor:pointer;font-size:12px;color:#b45309;font-weight:600\">${tt('dash.ctl.fs_t','고급: 유료 Claude 심층 리뷰 (선택)')}</summary>
-          <div style=\"font-size:12px;color:#374151;margin-top:6px;line-height:1.6\">
+        <details style=\"margin-bottom:8px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px\">
+          <summary style=\"cursor:pointer;font-size:12px;color:#ca8a04;font-weight:600\">${tt('dash.ctl.fs_t','고급: 유료 Claude 심층 리뷰 (선택)')}</summary>
+          <div style=\"font-size:12px;color:#111827;margin-top:6px;line-height:1.6\">
             <div style=\"margin-bottom:4px\">${tt('dash.ctl.fs_what','Semgrep(무료)보다 깊은 로직 리뷰가 필요하면 Claude fullscan을 쓰세요. Anthropic 크레딧이 듭니다. 파일 2개 + 시크릿 2개.')}</div>
             <div style=\"font-family:monospace;font-size:11px;color:#111827;line-height:1.5\">
               <div>${tt('dash.ctl.scan_files_root','레포 루트')}/</div>
@@ -4407,8 +4407,8 @@ def render_user_dashboard_html(
               <button onclick=\"showCodeReviewScript()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">${tt('dash.ctl.fs_py','② 스크립트(.py) 복사')}</button>
               <span id=\"scan_fs_msg\" style=\"font-size:11px;color:#16a34a\"></span>
             </div>
-            <pre id=\"scan_fs\" style=\"display:none;margin-top:6px;max-height:240px;overflow:auto;background:#0b1021;color:#e5e7eb;padding:10px;border-radius:8px;font-size:11px;line-height:1.45;white-space:pre\"></pre>
-            <div style=\"font-size:11px;color:#6b7280;margin-top:3px\">${tt('dash.ctl.fs_run','실행: 대상 레포 Actions → code-review-fullscan → Run workflow.')}</div>
+            <pre id=\"scan_fs\" style=\"display:none;margin-top:6px;max-height:240px;overflow:auto;background:#111827;color:#e5e7eb;padding:10px;border-radius:8px;font-size:11px;line-height:1.45;white-space:pre\"></pre>
+            <div style=\"font-size:11px;color:#111827;margin-top:3px\">${tt('dash.ctl.fs_run','실행: 대상 레포 Actions → code-review-fullscan → Run workflow.')}</div>
           </div>
         </details>
         <div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px\">
@@ -4416,9 +4416,9 @@ def render_user_dashboard_html(
           <input id=\"scan_ref\" placeholder=\"${tt('dash.ctl.scan_ref_ph','브랜치(기본 main)')}\" value=\"main\" style=\"${inp};width:150px\" />
         </div>
         <input id=\"scan_token\" type=\"password\" placeholder=\"${tt('dash.ctl.scan_token_ph','GitHub 토큰 (actions:write · 저장 안 함)')}\" style=\"${inp};width:100%;box-sizing:border-box;margin-bottom:4px\" />
-        <details style=\"margin-bottom:8px;background:#fff;border:1px dashed #d1d5db;border-radius:6px;padding:6px 8px\">
-          <summary style=\"cursor:pointer;font-size:11px;color:#6b7280\">${tt('dash.ctl.scan_tok_t','GitHub 토큰이 뭔가요? 어떻게 발급하나요?')}</summary>
-          <div style=\"font-size:11px;color:#374151;margin-top:6px;line-height:1.7\">
+        <details style=\"margin-bottom:8px;background:#fff;border:1px dashed #e5e7eb;border-radius:6px;padding:6px 8px\">
+          <summary style=\"cursor:pointer;font-size:11px;color:#111827\">${tt('dash.ctl.scan_tok_t','GitHub 토큰이 뭔가요? 어떻게 발급하나요?')}</summary>
+          <div style=\"font-size:11px;color:#111827;margin-top:6px;line-height:1.7\">
             <div style=\"margin-bottom:4px\">${tt('dash.ctl.scan_tok_what','MORI가 그 레포의 리뷰 워크플로를 원격 실행하려면 GitHub 권한이 필요해요. 개인 액세스 토큰(PAT)을 발급해 아래에 넣으면 이번 실행에만 쓰고 저장하지 않아요. (스캔은 GitHub에서 돌고 MORI는 코드를 안 가져와요)')}</div>
             <div style=\"font-weight:600;margin:4px 0 2px\">${tt('dash.ctl.scan_tok_how','발급 방법 (fine-grained 권장):')}</div>
             <ol style=\"margin:0;padding-left:18px\">
@@ -4438,7 +4438,7 @@ def render_user_dashboard_html(
         </div>
         <details style=\"margin-top:8px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px\">
           <summary style=\"cursor:pointer;font-size:12px;color:#16a34a;font-weight:600\">${tt('dash.ctl.scan_res_t','스캔 후 결과는 어디서 확인하나요?')}</summary>
-          <div style=\"font-size:12px;color:#374151;margin-top:6px;line-height:1.7\">
+          <div style=\"font-size:12px;color:#111827;margin-top:6px;line-height:1.7\">
             <div style=\"font-weight:600;margin-bottom:2px\">${tt('dash.ctl.scan_res_step1','1) 먼저 GitHub에서 실행 확인')}</div>
             <div style=\"margin-bottom:6px\">${tt('dash.ctl.scan_res_gh','대상 레포 → Actions 탭 → \"code-review-semgrep\" 실행(초록 체크)이 떠야 해요. 안 뜨면 그 레포에 code-review-semgrep.yml·시크릿이 없는 거예요.')}</div>
             <div style=\"font-weight:600;margin-bottom:2px\">${tt('dash.ctl.scan_res_step2','2) MORI에서 결과 확인 (잠시 후 새로고침)')}</div>
@@ -4447,15 +4447,15 @@ def render_user_dashboard_html(
               <li>${tt('dash.ctl.scan_res_gap','대시보드 \"미조치 코드 보안 리뷰\" 타일 — 미처리 건수(누르면 트리아지로).')}</li>
               <li>${tt('dash.ctl.scan_res_ctl','Compliance → 통제 카탈로그 2.8.1·2.8.5 / A.8.25·A.8.28 — 이 통제에 증적으로 연결(통제별 증적 PDF/CSV).')}</li>
             </ul>
-            <div style=\"color:#6b7280;margin-top:4px\">${tt('dash.ctl.scan_res_note','※ 반영에 1~3분 걸릴 수 있어요. 바로 안 보이면 페이지 새로고침(또는 워커 주기 후) 하세요. 안 보이면: 레포 MORI_INGEST_URL 시크릿이 이 MORI 주소인지·MORI가 외부에서 접근 가능한지 확인.')}</div>
+            <div style=\"color:#111827;margin-top:4px\">${tt('dash.ctl.scan_res_note','※ 반영에 1~3분 걸릴 수 있어요. 바로 안 보이면 페이지 새로고침(또는 워커 주기 후) 하세요. 안 보이면: 레포 MORI_INGEST_URL 시크릿이 이 MORI 주소인지·MORI가 외부에서 접근 가능한지 확인.')}</div>
           </div>
         </details>
         <div style=\"margin-top:10px\">
           <div style=\"font-size:12px;font-weight:600;color:#111827;display:flex;align-items:center;gap:6px\">${tt('dash.ctl.scan_hist_t','최근 코드 리뷰 스캔 이력')} <button onclick=\"loadRecentCodeReviewScans()\" class=\"secondary\" style=\"width:auto;padding:2px 8px;font-size:11px\">${tt('dash.btn.reload','새로고침')}</button> <button onclick=\"backfillCodeReviewEvidence()\" class=\"secondary\" style=\"width:auto;padding:2px 8px;font-size:11px\" title=\"${tt('dash.ctl.scan_backfill_hint','자동 승격 도입 전 과거 스캔을 2.8 통제 증적으로 소급 반영')}\">${tt('dash.ctl.scan_backfill','과거 스캔 증적 반영')}</button></div>
-          <div id=\"scan_recent\" style=\"margin-top:6px;font-size:12px;color:#374151\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>
+          <div id=\"scan_recent\" style=\"margin-top:6px;font-size:12px;color:#111827\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>
           <details style=\"margin-top:8px;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px\">
-            <summary style=\"cursor:pointer;font-size:12px;color:#374151;font-weight:600\">${tt('dash.ctl.scan_legend_t','결과 읽는 법 — 배지·용어 설명')}</summary>
-            <ul style=\"margin:6px 0 0;padding-left:16px;font-size:12px;color:#374151;line-height:1.7\">
+            <summary style=\"cursor:pointer;font-size:12px;color:#111827;font-weight:600\">${tt('dash.ctl.scan_legend_t','결과 읽는 법 — 배지·용어 설명')}</summary>
+            <ul style=\"margin:6px 0 0;padding-left:16px;font-size:12px;color:#111827;line-height:1.7\">
               <li>${tt('dash.ctl.scan_legend_verified','‘검증됨(OIDC)’: GitHub이 서명한 레포·커밋·실행ID를 MORI가 검증한 결과예요 — 출처 위조 불가. ‘미검증’은 서명 없이(정적 토큰/무인증) 받은 결과라 출처를 그대로 신뢰하기 어려워요.')}</li>
               <li>${tt('dash.ctl.scan_legend_findings','‘findings N건’: 스캔이 찾은 보안 이슈 수. 각 건은 Alert Triage 탭에 code_review 배지로 떠서 접수→조사중→완료로 처리해요.')}</li>
               <li>${tt('dash.ctl.scan_legend_pii','개인정보(PII)도 함께 탐지돼요 — 주민등록번호·휴대전화·카드번호·하드코딩 비밀키. 발견되면 ‘개인정보 흐름도’ 화면의 [PII 스캔으로 시드]로 흐름표 후보 행이 자동 생성돼요(3.x 개인정보 통제 증적으로 연결).')}</li>
@@ -4662,7 +4662,7 @@ def render_user_dashboard_html(
           const q = new URLSearchParams(); if (env.repo) q.set('repo', env.repo); if (env.commit) q.set('commit', env.commit);
           const csvUrl = '/controls/code-review/findings.csv' + (q.toString() ? ('?'+q.toString()) : '');
           const dl = ` · <a href=\"#\" onclick=\"event.preventDefault();openCsvPreview({title:tt('dash.ctl.scan_csv_title','코드 리뷰 findings CSV 미리보기'),filename:'mori-code-review-findings.csv',url:'${csvUrl}'})\" style=\"color:#2563eb;text-decoration:none\">${tt('dash.ctl.scan_csv_dl','결과 CSV')}</a>`;
-          return `<div style=\"padding:5px 0;border-bottom:1px solid #f3f4f6\">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style=\"color:#6b7280\">${escapeHtml(when)}</span> ${verified}${link}${dl}</div>`;
+          return `<div style=\"padding:5px 0;border-bottom:1px solid #f3f4f6\">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style=\"color:#111827\">${escapeHtml(when)}</span> ${verified}${link}${dl}</div>`;
         }).join('');
       } catch(e) { box.innerHTML = `<span class=\"empty\">${tt('dash.ctl.scan_hist_err','이력을 불러오지 못했어요')}</span>`; }
     }
@@ -4687,7 +4687,7 @@ def render_user_dashboard_html(
         if (!r.ok) { el.textContent = ''; return; }
         const d = await r.json();
         if (!d.configured) {
-          el.innerHTML = `<span style=\"color:#ea580c\">${tt('dash.ctl.key_none','키 없음 · 휴리스틱')}</span>`;
+          el.innerHTML = `<span style=\"color:#ca8a04\">${tt('dash.ctl.key_none','키 없음 · 휴리스틱')}</span>`;
         } else {
           const src = d.source === 'env' ? tt('dash.ctl.key_env','환경변수') : tt('dash.ctl.key_db','저장됨');
           el.innerHTML = `<span style=\"color:#16a34a\">Claude ${tt('dash.ctl.key_on','연결됨')} · ${src} ${escapeHtml(d.masked||'')}</span>`;
@@ -4703,8 +4703,8 @@ def render_user_dashboard_html(
       try { const r = await fetch('/controls/claude-key'); if (r.ok) st = await r.json(); } catch(e) {}
       const statusLine = st.configured
         ? `<span style=\"color:#16a34a\">${tt('dash.ctl.key_on','연결됨')} · ${st.source==='env'?tt('dash.ctl.key_env','환경변수'):tt('dash.ctl.key_db','저장됨')} ${escapeHtml(st.masked||'')}</span>`
-        : `<span style=\"color:#ea580c\">${tt('dash.ctl.key_none','키 없음 · 휴리스틱')}</span>`;
-      const envNote = st.env_locked ? `<div class=\"subtext\" style=\"color:#ea580c;margin-top:6px\">${tt('dash.ctl.key_envlock','환경변수 키가 설정돼 있어 UI 저장값보다 우선합니다.')}</div>` : '';
+        : `<span style=\"color:#ca8a04\">${tt('dash.ctl.key_none','키 없음 · 휴리스틱')}</span>`;
+      const envNote = st.env_locked ? `<div class=\"subtext\" style=\"color:#ca8a04;margin-top:6px\">${tt('dash.ctl.key_envlock','환경변수 키가 설정돼 있어 UI 저장값보다 우선합니다.')}</div>` : '';
       box.innerHTML = `<div style=\"font-weight:700;color:#2563eb;margin-bottom:6px\">${tt('dash.ctl.key_ttl','Claude API 키 설정')}</div>
         <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.ctl.key_help','키를 저장하면 법령 변환이 Claude로 더 정확해져요. 키는 서버에만 저장되고 화면엔 마스킹돼 보여요.')}</div>
         <div style=\"margin-bottom:8px;font-size:12px\">${tt('dash.ctl.key_cur','현재 상태')}: ${statusLine}</div>
