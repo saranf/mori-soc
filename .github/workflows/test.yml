@@ -9,6 +9,23 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # 실제 PostgreSQL 을 붙여 DB 백엔드 테스트를 강제 실행한다(‘DB 테스트 skip 금지’).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mori
+          POSTGRES_PASSWORD: pg
+          POSTGRES_DB: mori_soc
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mori"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      PYTHONPATH: src
+      MORI_QUERY_BACKEND: postgres
+      MORI_DATABASE_URL: postgresql://mori:pg@localhost:5432/mori_soc
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,16 +45,26 @@ jobs:
             ldap3==2.9.1 \
             httpx==0.28.1 \
             reportlab==4.2.5 \
+            pyyaml \
             ruff
 
       - name: Lint (ruff — critical errors)
         run: ruff check --select E9,F63,F7,F82 src tests
 
-      - name: Unit tests
-        env:
-          PYTHONPATH: src
-        # Postgres-backed tests self-skip when MORI_DATABASE_URL is unset.
+      - name: Unit + integration tests (Postgres-backed)
         run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      # DB E2E 가 실제로 실행됐는지 강제 검증 — 스킵되면 CI 실패(silent skip 방지).
+      - name: DB E2E must run (fresh install · migration · state persistence)
+        run: |
+          set -o pipefail
+          python -m unittest -v \
+            tests.test_migration_e2e \
+            tests.test_state_persistence \
+            tests.test_risk_register_persistence 2>&1 | tee db_e2e.log
+          if grep -qiE "skipped" db_e2e.log; then
+            echo "::error::DB E2E tests were skipped — PostgreSQL enforcement is broken"; exit 1
+          fi
 
   catalog:
     runs-on: ubuntu-latest
@@ -63,3 +90,43 @@ jobs:
           python controls/_build_catalog_json.py
           git diff --exit-code -- src/mori_soc/data/controls_catalog.json \
             || { echo "::error::controls_catalog.json is stale — run 'python controls/_build_catalog_json.py' and commit"; exit 1; }
+
+  build:
+    # Dockerfile 이 실제로 빌드되는지 검증(배포 전 이미지 깨짐 방지).
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build MORI image
+        run: docker build -t mori-soc:ci .
+
+      - name: Trivy image scan (container — informational)
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: mori-soc:ci
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+
+  deps:
+    # 의존성 취약점 스캔(informational — 권고 발생 시 CI 를 막지 않되 로그로 노출).
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: pip-audit (dependency vulnerabilities)
+        continue-on-error: true
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip install \
+            fastapi==0.115.12 uvicorn==0.34.0 "psycopg[binary]==3.2.6" \
+            ldap3==2.9.1 httpx==0.28.1 reportlab==4.2.5
+          pip-audit --progress-spinner off || true

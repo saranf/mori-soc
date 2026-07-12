@@ -68,6 +68,7 @@ class RiskRegisterPostgresTests(unittest.TestCase):
         from mori_soc.repositories import PostgresStateRepository
 
         self.repo = PostgresStateRepository(DATABASE_URL)
+        self.repo.apply_schema()  # 앱 부팅과 동일하게 스키마 자립 적용(테이블 부재 방지)
         self.vuln_id = f"CVE-TEST-{uuid.uuid4().hex[:8]}"
 
     def tearDown(self) -> None:
