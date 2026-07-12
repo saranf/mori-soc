@@ -48,7 +48,8 @@ jobs:
       - name: Semgrep scan (free OSS rules)
         run: |
           python3 -m pip install --quiet semgrep
-          semgrep scan --config auto --sarif --output semgrep.sarif . || true
+          # auto = 공개 무료 룰, p/secrets = 하드코딩 비밀/자격증명(개인정보·시크릿) 탐지.
+          semgrep scan --config auto --config p/secrets --sarif --output semgrep.sarif . || true
       - name: Push results to MORI
         continue-on-error: true
         env:

@@ -31,6 +31,7 @@ class InMemoryStateRepository(StateRepository):
         self._account_approvals: dict[str, dict[str, Any]] = {}
         self._catalog_edits: dict[str, dict[str, Any]] = {}
         self._control_evidence: dict[str, dict[str, Any]] = {}
+        self._personal_data_flow: dict[str, dict[str, Any]] = {}
 
     # ── user_profiles ──────────────────────────────────────────────────────────
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:
@@ -146,6 +147,16 @@ class InMemoryStateRepository(StateRepository):
 
     def delete_control_evidence(self, evidence_id: str) -> None:
         self._control_evidence.pop(evidence_id, None)
+
+    # ── personal_data_flow (개인정보 처리흐름표) ─────────────────────────────────
+    def load_personal_data_flow(self) -> dict[str, dict[str, Any]]:
+        return copy.deepcopy(self._personal_data_flow)
+
+    def save_personal_data_flow(self, flow_id: str, record: dict[str, Any]) -> None:
+        self._personal_data_flow[flow_id] = copy.deepcopy(record)
+
+    def delete_personal_data_flow(self, flow_id: str) -> None:
+        self._personal_data_flow.pop(flow_id, None)
 
 
 __all__ = ["InMemoryStateRepository"]

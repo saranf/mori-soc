@@ -183,5 +183,21 @@ class StateRepository(ABC):
         """Remove one manual evidence record."""
         raise NotImplementedError
 
+    # ── personal_data_flow: id -> 개인정보 처리흐름 레코드 (013) ──────────────────
+    @abstractmethod
+    def load_personal_data_flow(self) -> dict[str, dict[str, Any]]:
+        """All personal-data-flow rows keyed by id."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_personal_data_flow(self, flow_id: str, record: dict[str, Any]) -> None:
+        """Upsert one personal-data-flow row (idempotent on ``id``)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_personal_data_flow(self, flow_id: str) -> None:
+        """Remove one personal-data-flow row."""
+        raise NotImplementedError
+
 
 __all__ = ["StateRepository"]

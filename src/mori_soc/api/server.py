@@ -232,6 +232,7 @@ def create_app(
     # Catalog edits (admin/NLP overlay): control_id -> record; manual evidence: id -> record (M2-8)
     catalog_edits: dict[str, dict[str, Any]] = {}
     control_evidence: dict[str, dict[str, Any]] = {}
+    personal_data_flow: dict[str, dict[str, Any]] = {}
 
     # ── Ensure schema before any load_* (self-healing on pre-existing volumes) ─
     # docker-entrypoint-initdb.d only runs on a *fresh* Postgres volume, so a DB
@@ -257,6 +258,7 @@ def create_app(
     account_approvals.update(state_repo.load_account_approvals())
     catalog_edits.update(state_repo.load_catalog_edits())
     control_evidence.update(state_repo.load_control_evidence())
+    personal_data_flow.update(state_repo.load_personal_data_flow())
     # LDAP 가입 승인으로 만든 계정의 역할을 복원(비밀번호는 LDAP이 검증하므로 role만).
     for _skey, _sval in settings.items():
         if _skey.startswith("ldaprole:") and _sval:  # 빈 값(삭제됨)은 건너뜀
@@ -1447,6 +1449,7 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
         account_approvals=account_approvals,
         catalog_edits=catalog_edits,
         control_evidence=control_evidence,
+        personal_data_flow=personal_data_flow,
         guides=guides,
         user_dashboard_prefs=user_dashboard_prefs,
         admin_dashboard_preferences=admin_dashboard_preferences,
@@ -1509,6 +1512,12 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
     def _delete_control_evidence(evidence_id: str) -> None:
         state_repo.delete_control_evidence(evidence_id)
 
+    def _persist_personal_data_flow(flow_id: str) -> None:
+        state_repo.save_personal_data_flow(flow_id, personal_data_flow[flow_id])
+
+    def _delete_personal_data_flow(flow_id: str) -> None:
+        state_repo.delete_personal_data_flow(flow_id)
+
     ctx.persist_user_profile = _persist_user_profile
     ctx.persist_asset_owner = _persist_asset_owner
     ctx.delete_asset_owner = _delete_asset_owner
@@ -1526,6 +1535,8 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
     ctx.delete_catalog_edit = _delete_catalog_edit
     ctx.persist_control_evidence = _persist_control_evidence
     ctx.delete_control_evidence = _delete_control_evidence
+    ctx.persist_personal_data_flow = _persist_personal_data_flow
+    ctx.delete_personal_data_flow = _delete_personal_data_flow
 
     # ── Zabbix write-back (Level 1, comment-only) ─────────────────────────────
     # Read-only by default. When MORI_ZABBIX_WRITEBACK_ENABLED=true (and creds
@@ -1815,6 +1826,9 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
     # ── Per-source asset API (Fleet / Zabbix / Trivy) ─────────────────────────
     from mori_soc.api.routes.sources import register_sources
     register_sources(ctx)
+
+    from mori_soc.api.routes.privacy import register_privacy
+    register_privacy(ctx)
 
     return app
 

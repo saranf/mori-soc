@@ -5,5 +5,5 @@ domain: "3. 개인정보 처리단계별 요구사항"
 section: "3.2 개인정보 보유 및 이용 시 보호조치"
 title_ko: "개인정보 현황관리"
 title_en: "Personal-data inventory management"
-evidence_sources: []
+evidence_sources: ["privacy_flow"]
 status: "draft"

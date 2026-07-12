@@ -548,5 +548,31 @@ class PostgresStateRepository(StateRepository):
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM control_evidence WHERE id = %s", (evidence_id,))
 
+    # ── personal_data_flow (개인정보 처리흐름표 — 013) ────────────────────────────
+    def load_personal_data_flow(self) -> dict[str, dict[str, Any]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("SELECT id, record FROM personal_data_flow")
+            out: dict[str, dict[str, Any]] = {}
+            for r in cur.fetchall():
+                rec = r[1] if isinstance(r[1], dict) else {}
+                rec.setdefault("id", r[0])
+                out[r[0]] = rec
+            return out
+
+    def save_personal_data_flow(self, flow_id: str, record: dict[str, Any]) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO personal_data_flow (id, record, updated_at)
+                VALUES (%s, %s, now())
+                ON CONFLICT (id) DO UPDATE SET record=EXCLUDED.record, updated_at=now()
+                """,
+                (flow_id, Jsonb(record) if Jsonb is not None else record),
+            )
+
+    def delete_personal_data_flow(self, flow_id: str) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM personal_data_flow WHERE id = %s", (flow_id,))
+
 
 __all__ = ["PostgresStateRepository", "PSYCOPG_AVAILABLE"]

@@ -604,6 +604,7 @@ def render_user_dashboard_html(
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openControlEditor()\" data-i18n=\"dash.ctl.add\">통제 추가</button>
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openNlpImport()\" data-i18n=\"dash.ctl.nlp\">법령 텍스트 임포트(NLP)</button>
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openCodeReviewScan()\" data-i18n=\"dash.ctl.scan\">GitHub 코드 보안 리뷰</button>
+            <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openPrivacyFlow()\" data-i18n=\"dash.pf.btn\">개인정보 흐름도</button>
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openClaudeKey()\" data-i18n=\"dash.ctl.key_btn\">Claude 키</button>
             <span id=\"ctl_key_status\" style=\"font-size:11px;color:#111827\"></span>
             <span style=\"width:1px;height:20px;background:#e5e7eb\"></span>
@@ -4457,6 +4458,117 @@ def render_user_dashboard_html(
       loadRecentCodeReviewScans();
     }
     window.openCodeReviewScan = openCodeReviewScan;
+
+    // ── 개인정보 처리흐름도 (ISMS-P 3.x) ─────────────────────────────────────────
+    const PF_FIELDS = ['item','subject','collection_source','storage_location','storage_table','purpose','retention','destruction','third_party','overseas','note'];
+    function openPrivacyFlow() {
+      const box = document.getElementById('ctl_nlp');
+      document.getElementById('ctl_editor').style.display = 'none';
+      const inp = 'background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:5px 8px;font-size:12px;width:100%;box-sizing:border-box';
+      const fld = PF_FIELDS.map(k => `<div><label style=\"font-size:10px;color:#6b7280\">${tt('dash.pf.f_'+k, k)}${k==='item'?' *':''}</label><input id=\"pf_${k}\" style=\"${inp}\"></div>`).join('');
+      box.innerHTML = `<div style=\"font-weight:700;color:#7c3aed;margin-bottom:4px\">${tt('dash.pf.title','개인정보 처리흐름도 (ISMS-P 3.x)')}</div>
+        <div class=\"subtext\" style=\"margin-bottom:8px\">${tt('dash.pf.help','개인정보 항목이 수집→저장→이용→파기로 흐르는 경로와 저장위치(DB/테이블)를 기록해요. 스캔에서 발견된 개인정보/비밀정보로 후보를 자동 시드할 수 있어요. MORI는 코드를 읽지 않아요.')}</div>
+        <div style=\"display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px\">
+          <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"seedPrivacyFlow()\">${tt('dash.pf.seed','PII 스캔으로 시드')}</button>
+          <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"openCsvPreview({title:tt('dash.pf.title','개인정보 처리흐름도 (ISMS-P 3.x)'),filename:'mori-personal-data-flow.csv',url:'/privacy/data-flow.csv'})\">${tt('dash.pf.csv','CSV')}</button>
+          <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"promotePrivacyFlow()\">${tt('dash.pf.promote','3.x 통제 증적 승격')}</button>
+          <button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"loadPrivacyFlow()\">${tt('dash.pf.reload','새로고침')}</button>
+        </div>
+        <div style=\"font-size:12px;font-weight:600;color:#111827;margin:6px 0 4px\">${tt('dash.pf.diagram','처리 흐름도 (수집→저장→이용→파기)')}</div>
+        <div id=\"pf_diagram\" style=\"overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px;padding:6px;background:#fff\"></div>
+        <div style=\"font-size:12px;font-weight:600;color:#111827;margin:10px 0 4px\">${tt('dash.pf.add','행 추가')}</div>
+        <div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:6px\">${fld}</div>
+        <div style=\"display:flex;gap:6px\"><button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"savePrivacyFlow()\" id=\"pf_save_btn\">${tt('dash.pf.save','저장')}</button><button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px;display:none\" onclick=\"pfClearForm()\" id=\"pf_cancel_btn\">${tt('dash.pf.cancel','취소')}</button><span id=\"pf_msg\" style=\"font-size:11px;color:#16a34a;align-self:center\"></span></div>
+        <div id=\"pf_rows\" style=\"margin-top:10px;font-size:12px\"></div>`;
+      box.style.display = 'block';
+      window._pfEdit = '';
+      loadPrivacyFlow();
+    }
+    window.openPrivacyFlow = openPrivacyFlow;
+
+    function pfClearForm() {
+      PF_FIELDS.forEach(k => { const el = document.getElementById('pf_'+k); if (el) el.value=''; });
+      window._pfEdit = '';
+      const sb = document.getElementById('pf_save_btn'); if (sb) sb.textContent = tt('dash.pf.save','저장');
+      const cb = document.getElementById('pf_cancel_btn'); if (cb) cb.style.display='none';
+    }
+    window.pfClearForm = pfClearForm;
+
+    async function loadPrivacyFlow() {
+      const rowsBox = document.getElementById('pf_rows');
+      const dia = document.getElementById('pf_diagram');
+      if (!rowsBox) return;
+      try {
+        const res = await fetch('/privacy/data-flow');
+        if (!res.ok) { rowsBox.innerHTML = `<span class=\"empty\">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; return; }
+        const d = await res.json();
+        const rows = d.rows || [];
+        // 다이어그램(인라인 SVG — 쿠키 인증)
+        try { const sv = await fetch('/privacy/data-flow.svg'); dia.innerHTML = sv.ok ? await sv.text() : ''; } catch(e){ dia.innerHTML=''; }
+        if (!rows.length) { rowsBox.innerHTML = `<span class=\"empty\">${tt('dash.pf.empty','흐름표가 비어 있어요. 행을 추가하거나 PII 스캔으로 시드하세요.')}</span>`; return; }
+        rowsBox.innerHTML = rows.map(r => {
+          const badge = r.source==='pii_scan' ? ` <span style=\"background:#faf5ff;color:#7c3aed;border:1px solid #e9d5ff;border-radius:5px;padding:0 5px;font-size:10px\">PII 시드</span>` : '';
+          const cells = ['item','storage_location','storage_table','purpose','destruction','third_party','overseas']
+            .map(k => `<td style=\"padding:3px 6px;border-bottom:1px solid #f3f4f6\">${escapeHtml(r[k]||'—')}</td>`).join('');
+          return `<tr><td style=\"padding:3px 6px;border-bottom:1px solid #f3f4f6\"><b>${escapeHtml(r.item||'(미기재)')}</b>${badge}</td>${cells}<td style=\"padding:3px 6px;border-bottom:1px solid #f3f4f6;white-space:nowrap\"><a href=\"#\" onclick=\"event.preventDefault();pfEditRow('${r.id}')\" style=\"color:#2563eb\">${tt('dash.pf.edit','수정')}</a> · <a href=\"#\" onclick=\"event.preventDefault();pfDeleteRow('${r.id}')\" style=\"color:#dc2626\">${tt('dash.pf.del','삭제')}</a></td></tr>`;
+        }).join('');
+        const head = ['f_item','f_storage_location','f_storage_table','f_purpose','f_destruction','f_third_party','f_overseas']
+          .map(k => `<th style=\"padding:3px 6px;text-align:left;color:#6b7280;font-size:10px\">${tt('dash.pf.'+k,k)}</th>`).join('');
+        rowsBox.innerHTML = `<div style=\"overflow-x:auto\"><table style=\"width:100%;border-collapse:collapse\"><tr><th style=\"padding:3px 6px;text-align:left;color:#6b7280;font-size:10px\">${tt('dash.pf.f_item','항목')}</th>${head}<th></th></tr>${rowsBox.innerHTML}</table></div>`;
+        window._pfRows = rows;
+      } catch(e) { rowsBox.innerHTML = `<span class=\"empty\">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
+    }
+    window.loadPrivacyFlow = loadPrivacyFlow;
+
+    async function savePrivacyFlow() {
+      const msg = document.getElementById('pf_msg');
+      const body = {}; PF_FIELDS.forEach(k => { body[k] = (document.getElementById('pf_'+k)||{}).value || ''; });
+      if (!body.item.trim()) { if (msg){ msg.style.color='#dc2626'; msg.textContent = tt('dash.pf.item_required','개인정보 항목은 필수예요'); } return; }
+      const editId = window._pfEdit || '';
+      const url = editId ? ('/privacy/data-flow/'+editId) : '/privacy/data-flow';
+      const method = editId ? 'PUT' : 'POST';
+      const res = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      if (!res.ok) { if (msg){ msg.style.color='#dc2626'; msg.textContent = tt('dash.pf.denied','권한이 없어요 (admin·security)'); } return; }
+      if (msg){ msg.style.color='#16a34a'; msg.textContent = '✓'; }
+      pfClearForm(); loadPrivacyFlow();
+    }
+    window.savePrivacyFlow = savePrivacyFlow;
+
+    function pfEditRow(id) {
+      const r = (window._pfRows||[]).find(x => x.id===id); if (!r) return;
+      PF_FIELDS.forEach(k => { const el=document.getElementById('pf_'+k); if (el) el.value = r[k]||''; });
+      window._pfEdit = id;
+      const sb = document.getElementById('pf_save_btn'); if (sb) sb.textContent = tt('dash.pf.save','저장');
+      const cb = document.getElementById('pf_cancel_btn'); if (cb) cb.style.display='inline-block';
+      const f = document.getElementById('pf_item'); if (f) f.focus();
+    }
+    window.pfEditRow = pfEditRow;
+
+    async function pfDeleteRow(id) {
+      const res = await fetch('/privacy/data-flow/'+id, {method:'DELETE'});
+      if (res.ok) loadPrivacyFlow();
+    }
+    window.pfDeleteRow = pfDeleteRow;
+
+    async function seedPrivacyFlow() {
+      const res = await fetch('/privacy/data-flow/seed-from-scan', {method:'POST'});
+      const msg = document.getElementById('pf_msg');
+      if (!res.ok) { if (msg){ msg.style.color='#dc2626'; msg.textContent = tt('dash.pf.denied','권한이 없어요 (admin·security)'); } return; }
+      const d = await res.json();
+      if (msg){ msg.style.color='#16a34a'; msg.textContent = tt('dash.pf.seeded','시드됨: ')+(d.seeded||0); }
+      loadPrivacyFlow();
+    }
+    window.seedPrivacyFlow = seedPrivacyFlow;
+
+    async function promotePrivacyFlow() {
+      const res = await fetch('/privacy/data-flow/promote-evidence', {method:'POST'});
+      const msg = document.getElementById('pf_msg');
+      if (!res.ok) { if (msg){ msg.style.color='#dc2626'; msg.textContent = tt('dash.pf.promote_fail','승격 실패(흐름표가 비었거나 권한 없음)'); } return; }
+      const d = await res.json();
+      if (msg){ msg.style.color='#16a34a'; msg.textContent = tt('dash.pf.promoted','통제 증적 승격됨: ')+(d.evidence_promoted||0); }
+    }
+    window.promotePrivacyFlow = promotePrivacyFlow;
+
     async function runCodeReviewScan() {
       const msg = document.getElementById('scan_msg');
       const repo_url = document.getElementById('scan_url').value.trim();

@@ -69,6 +69,8 @@ class RouteContext:
     catalog_edits: dict[str, dict[str, Any]] = field(default_factory=dict)
     # control_evidence: id -> 수기 증적 레코드 (M2-8)
     control_evidence: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # personal_data_flow: id -> 개인정보 처리흐름 레코드 (013)
+    personal_data_flow: dict[str, dict[str, Any]] = field(default_factory=dict)
     guides: dict[str, dict[str, Any]] = field(default_factory=dict)
     user_dashboard_prefs: dict[str, dict[str, Any]] = field(default_factory=dict)
 
@@ -109,6 +111,8 @@ class RouteContext:
     delete_catalog_edit: Optional[Callable[[str], None]] = None
     persist_control_evidence: Optional[Callable[[str], None]] = None
     delete_control_evidence: Optional[Callable[[str], None]] = None
+    persist_personal_data_flow: Optional[Callable[[str], None]] = None
+    delete_personal_data_flow: Optional[Callable[[str], None]] = None
 
     # ── Zabbix write-back (Level 1, comment-only) ─────────────────────────────
     # Optional hook: given the resolved Alert, the persisted triage entry, and

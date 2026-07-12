@@ -5,5 +5,5 @@ domain: "3. 개인정보 처리단계별 요구사항"
 section: "3.4 개인정보 파기 시 보호조치"
 title_ko: "개인정보 파기"
 title_en: "Destruction of personal data"
-evidence_sources: []
+evidence_sources: ["privacy_flow"]
 status: "draft"
