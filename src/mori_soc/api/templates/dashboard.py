@@ -4453,6 +4453,16 @@ def render_user_dashboard_html(
         <div style=\"margin-top:10px\">
           <div style=\"font-size:12px;font-weight:600;color:#111827;display:flex;align-items:center;gap:6px\">${tt('dash.ctl.scan_hist_t','최근 코드 리뷰 스캔 이력')} <button onclick=\"loadRecentCodeReviewScans()\" class=\"secondary\" style=\"width:auto;padding:2px 8px;font-size:11px\">${tt('dash.btn.reload','새로고침')}</button> <button onclick=\"backfillCodeReviewEvidence()\" class=\"secondary\" style=\"width:auto;padding:2px 8px;font-size:11px\" title=\"${tt('dash.ctl.scan_backfill_hint','자동 승격 도입 전 과거 스캔을 2.8 통제 증적으로 소급 반영')}\">${tt('dash.ctl.scan_backfill','과거 스캔 증적 반영')}</button></div>
           <div id=\"scan_recent\" style=\"margin-top:6px;font-size:12px;color:#374151\"><span class=\"empty\">${tt('dash.dyn.loading','로딩 중…')}</span></div>
+          <details style=\"margin-top:8px;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px\">
+            <summary style=\"cursor:pointer;font-size:12px;color:#374151;font-weight:600\">${tt('dash.ctl.scan_legend_t','결과 읽는 법 — 배지·용어 설명')}</summary>
+            <ul style=\"margin:6px 0 0;padding-left:16px;font-size:12px;color:#374151;line-height:1.7\">
+              <li>${tt('dash.ctl.scan_legend_verified','‘검증됨(OIDC)’: GitHub이 서명한 레포·커밋·실행ID를 MORI가 검증한 결과예요 — 출처 위조 불가. ‘미검증’은 서명 없이(정적 토큰/무인증) 받은 결과라 출처를 그대로 신뢰하기 어려워요.')}</li>
+              <li>${tt('dash.ctl.scan_legend_findings','‘findings N건’: 스캔이 찾은 보안 이슈 수. 각 건은 Alert Triage 탭에 code_review 배지로 떠서 접수→조사중→완료로 처리해요.')}</li>
+              <li>${tt('dash.ctl.scan_legend_csv','‘결과 CSV’: 그 스캔의 findings 목록(파일·라인·심각도·룰)을 파일로 받아 확인해요.')}</li>
+              <li>${tt('dash.ctl.scan_legend_backfill','‘과거 스캔 증적 반영’: 이력의 스캔을 2.8 개발보안 통제(2.8.1·2.8.5·A.8.25·A.8.28) 증적으로 소급 등록해요.')}</li>
+              <li>${tt('dash.ctl.scan_legend_ctl','반영 확인: Compliance → 통제 카탈로그의 해당 통제 상세에 날짜 찍힌 증적 레코드로 연결돼요(통제별 증적 PDF/CSV로도 확인).')}</li>
+            </ul>
+          </details>
         </div>`;
       box.style.display = 'block';
       loadRecentCodeReviewScans();
@@ -4476,6 +4486,7 @@ def render_user_dashboard_html(
         </div>
         <div style=\"font-size:12px;font-weight:600;color:#111827;margin:6px 0 4px\">${tt('dash.pf.diagram','처리 흐름도 (수집→저장→이용→파기)')}</div>
         <div id=\"pf_diagram\" style=\"overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px;padding:6px;background:#fff\"></div>
+        <div style=\"margin-top:4px;font-size:11px;color:#6b7280;line-height:1.6\">${tt('dash.pf.legend','읽는 법: ‘PII 시드’ 배지 = 스캔에서 자동으로 온 후보 행이에요(저장위치·테이블은 담당자가 채워요). 단계는 수집→저장→이용→파기 순이고, 오른쪽 ‘제3자제공/국외이전’ 표시는 그 항목에 해당 처리가 있다는 뜻이에요. ‘3.x 통제 증적 승격’을 누르면 3.1.1·3.2.1·3.4.1 통제 상세에 증적으로 연결돼요.')}</div>
         <div style=\"font-size:12px;font-weight:600;color:#111827;margin:10px 0 4px\">${tt('dash.pf.add','행 추가')}</div>
         <div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:6px\">${fld}</div>
         <div style=\"display:flex;gap:6px\"><button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"savePrivacyFlow()\" id=\"pf_save_btn\">${tt('dash.pf.save','저장')}</button><button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px;display:none\" onclick=\"pfClearForm()\" id=\"pf_cancel_btn\">${tt('dash.pf.cancel','취소')}</button><span id=\"pf_msg\" style=\"font-size:11px;color:#16a34a;align-self:center\"></span></div>
