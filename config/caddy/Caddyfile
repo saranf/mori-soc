@@ -1,13 +1,13 @@
-# MORI HTTPS 리버스 프록시 — Caddy 가 Let's Encrypt 인증서를 자동 발급/갱신한다.
-# 요구: (1) PUBLIC_DOMAIN 이 이 서버 공인 IP 로 DNS 연결 (2) 호스트 80·443 인터넷 개방.
-# 결과: https://PUBLIC_DOMAIN → mori-api:8000 (포트 없이 HTTPS). MORI_INGEST_URL 을
-#       https://PUBLIC_DOMAIN 로 쓰면 GitHub Actions 가 인증서 검증된 채로 push 가능.
-
+# MORI 전용 HTTPS (Caddy) — 호스트 빈 포트 18443 에서 TLS 종단 → mori-api:8000.
+# 80·443 이 다른 서비스(예: lawtoyou nginx)에 점유돼 있어도 충돌 없음(다른 포트).
+# 인증서는 certbot(DNS-01)로 발급한 /etc/letsencrypt 를 /certs 로 마운트해 그대로 사용
+# (Caddy 자동 ACME 는 끔 — 80/443 이 없어 HTTP-01/ALPN 을 못 쓰므로).
 {
-	email {$ACME_EMAIL}
+	auto_https off
 }
 
-{$PUBLIC_DOMAIN} {
+:18443 {
+	tls /certs/live/mori.rmstudio.co.kr/fullchain.pem /certs/live/mori.rmstudio.co.kr/privkey.pem
 	encode zstd gzip
 	reverse_proxy mori-api:8000
 }

@@ -1,130 +1,97 @@
-# MORI HTTPS 설정 (Let's Encrypt) + 서버 실행
+# MORI HTTPS (Let's Encrypt) — 도커 자체완결 · 포트 충돌 없음
 
-`https://mori.rmstudio.co.kr` 로 MORI 를 열어 GitHub Actions 가 **인증서 검증된 채로** 결과를
-push 하게 한다. (직전 실패 `unknown url type` 은 시크릿에 스킴이 없어서였음 — 여기서 함께 해결.)
+이 서버는 **호스트 80·443 을 `lawtoyou_nginx_1`(다른 프로젝트)이 점유**한다. 그래서 MORI 는
+**남의 nginx 를 건드리지 않고**, MORI compose 안에서 **빈 포트 18443 에 전용 Caddy** 를 띄워
+HTTPS 를 종단한다. 인증서는 `certbot`(도커, DNS-01)로 발급 → Caddy 가 그 파일을 그대로 사용.
 
-## 0. 상황 — 포트 충돌 주의
+결과: `https://mori.rmstudio.co.kr:18443` (유효 인증서). GitHub Actions 가 여기로 push 한다.
 
-이 서버는 **호스트 80·443 을 이미 `lawtoyou_nginx_1`(다른 프로젝트 nginx) 이 점유**한다
-(`docker ps` 확인). 그래서 **새 프록시로 80/443 을 다시 잡으면 충돌**한다. 정답은 **이미 443 을
-쥔 그 nginx 에 `mori.rmstudio.co.kr` 가상호스트(server_name)를 얹어** MORI(:18000)로 프록시하는 것.
-같은 포트를 **SNI(도메인)로 분기**하므로 충돌이 없다.
+> host 에 **아무것도 설치하지 않는다**(certbot 도 도커로 실행). lawtoyou nginx 는 손대지 않는다.
 
 ---
 
-## 1. MORI 최신 배포 (먼저)
+## STEP 1 — MORI 최신 배포 + 다시 올리기
 
 ```bash
 cd /backup/rmstudio/mori
-git pull                     # 최신(개인정보 흐름/PDF/스킴보정 포함)
+git pull origin main
 docker compose up -d --build mori-api mori-worker
-docker compose ps            # mori-api healthy 확인
-curl -s http://127.0.0.1:18000/health   # {"status":"ok"} 류
+docker compose ps                                   # mori-api 가 Up(healthy) 인지
+curl -s http://127.0.0.1:18000/health && echo "  <-- MORI OK"
 ```
 
-`.env` 에 공개 URL 을 https 로(선택이지만 권장 — UI 안내·복사 URL 이 정확해짐):
+## STEP 2 — Let's Encrypt 인증서 발급 (도커 certbot · DNS-01)
+
+80/443 을 못 쓰므로 **DNS 인증**을 쓴다(포트 불필요). 대화식으로 TXT 레코드를 알려주면 DNS 에 넣는다.
 
 ```bash
-echo 'MORI_PUBLIC_URL=https://mori.rmstudio.co.kr' >> .env
-docker compose up -d mori-api
+sudo docker run -it --rm \
+  -v /etc/letsencrypt:/etc/letsencrypt \
+  certbot/certbot certonly --manual --preferred-challenges dns \
+  -d mori.rmstudio.co.kr -m admin@rmstudio.co.kr --agree-tos --no-eff-email
 ```
 
----
+화면에 이렇게 뜬다 →
+```
+Please deploy a DNS TXT record under the name:
+_acme-challenge.mori.rmstudio.co.kr  with the following value:
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+```
+1. rmstudio.co.kr DNS 관리에서 **TXT 레코드** 추가:
+   - 이름: `_acme-challenge.mori`  (또는 `_acme-challenge.mori.rmstudio.co.kr`)
+   - 값: 화면의 `XXXX...` 문자열
+2. 1~2분 후 다른 창에서 전파 확인:
+   ```bash
+   dig +short TXT _acme-challenge.mori.rmstudio.co.kr @8.8.8.8
+   ```
+   값이 보이면 → certbot 화면에서 **Enter**.
+3. 성공 시: `/etc/letsencrypt/live/mori.rmstudio.co.kr/fullchain.pem` 등 생성. 확인:
+   ```bash
+   sudo ls -l /etc/letsencrypt/live/mori.rmstudio.co.kr/
+   ```
 
-## 2. Let's Encrypt 인증서 발급 (certbot · webroot)
+## STEP 3 — MORI 전용 Caddy(18443) 기동
 
-80 은 `lawtoyou_nginx_1` 이 서빙 중이므로 **standalone 불가 → webroot** 로 발급한다.
+`docker-compose.yml` 에 `mori-caddy` 서비스가 이미 있다(git pull 로 받음). 인증서가 생겼으니:
 
 ```bash
-# (a) ACME 챌린지용 웹루트 준비
-sudo mkdir -p /var/www/certbot
-
-# (b) 443 nginx(lawtoyou_nginx_1)가 이 경로의 챌린지를 서빙하도록,
-#     config/nginx/mori.rmstudio.co.kr.conf 의 80 블록을 그 nginx 의 conf.d 에 먼저 넣는다.
-#     그 nginx 의 conf 마운트 위치 찾기:
-docker inspect lawtoyou_nginx_1 --format '{{json .Mounts}}' | tr ',' '\n' | grep -i conf
-#   → 예: /path/lawtoyou/nginx/conf.d 를 컨테이너 /etc/nginx/conf.d 로 마운트
-sudo cp config/nginx/mori.rmstudio.co.kr.conf <그_conf.d_경로>/
-#     이 컨테이너가 /var/www/certbot 를 못 보면, 챌린지 location 의 root 를 그 컨테이너가
-#     접근 가능한 경로로 맞추거나 아래 (d) DNS 방식을 쓴다.
-docker exec lawtoyou_nginx_1 nginx -t && docker exec lawtoyou_nginx_1 nginx -s reload
-
-# (c) certbot 로 발급 (호스트에 certbot 설치돼 있어야: apt install certbot)
-sudo certbot certonly --webroot -w /var/www/certbot \
-  -d mori.rmstudio.co.kr --agree-tos -m admin@rmstudio.co.kr --no-eff-email
-#   → /etc/letsencrypt/live/mori.rmstudio.co.kr/ 에 fullchain.pem·privkey.pem 생성
+cd /backup/rmstudio/mori
+docker compose up -d mori-caddy
+docker compose logs --tail=20 mori-caddy          # 에러 없이 서비스 시작됐는지
 ```
 
-> **(d) 웹루트가 번거로우면 DNS-01**: `sudo certbot certonly --manual --preferred-challenges dns
-> -d mori.rmstudio.co.kr` 로 DNS TXT 레코드 한 번 추가해 발급(80 불필요). 갱신 시 재입력 필요하므로
-> 가능하면 webroot 를 권장.
-
----
-
-## 3. 443 프록시 활성화
-
-`config/nginx/mori.rmstudio.co.kr.conf` 는 80·443 블록을 모두 담고 있다. 인증서가 생겼으니
-그 nginx 에 (이미 2-b 에서 넣었다면) reload 만:
+## STEP 4 — 확인
 
 ```bash
-docker exec lawtoyou_nginx_1 nginx -t && docker exec lawtoyou_nginx_1 nginx -s reload
+curl -sSI https://mori.rmstudio.co.kr:18443/health   # HTTP/2 200 + 인증서 검증 통과
 ```
+`SSL certificate problem` 이 없으면 성공. (브라우저로 `https://mori.rmstudio.co.kr:18443/ui` 도 확인)
 
-- **프록시 대상 주의**: 그 nginx 는 컨테이너다. `proxy_pass http://127.0.0.1:18000` 은 컨테이너
-  자신을 가리키므로, **`http://172.17.0.1:18000`(docker0 게이트웨이)** 로 바꾼다(파일 주석 참고).
-  인증서 파일도 그 컨테이너 안에서 보이도록 `/etc/letsencrypt` 볼륨 마운트가 있어야 한다
-  (없으면 lawtoyou compose 에 `- /etc/letsencrypt:/etc/letsencrypt:ro` 추가 후 재기동).
+## STEP 5 — GitHub 레포 시크릿을 https 로 (직전 push 실패 해결)
 
-확인:
+대상 레포 Settings → Secrets and variables → Actions:
 
-```bash
-curl -sSI https://mori.rmstudio.co.kr/health   # 200 + 유효 인증서
-```
-
----
-
-## 4. GitHub 레포 시크릿 — https 로 (직전 실패 해결)
-
-레포 Settings → Secrets → Actions:
-
-- `MORI_INGEST_URL = https://mori.rmstudio.co.kr`  ← **스킴 포함!** (이게 직전 push 실패 원인)
+- `MORI_INGEST_URL = https://mori.rmstudio.co.kr:18443`   ← **스킴 + 포트 포함** (직전 `unknown url type` 원인 해결)
 - (유료 Claude 경로면) `ANTHROPIC_API_KEY = <크레딧 있는 키>`
 
-그리고 대상 레포에 **최신 워크플로/스크립트 재복사**(MORI UI 고급 팝업) 후 재스캔.
+그리고 대상 레포에 **최신 워크플로/스크립트 재복사**(MORI UI 고급 팝업) → 재스캔.
 
----
+## STEP 6 — 인증서 자동 갱신 (90일)
 
-## 5. 자동 갱신
-
-certbot 은 보통 `certbot.timer` 로 자동 갱신된다. 갱신 후 nginx reload 훅:
+DNS-01 수동 발급은 자동 갱신이 안 된다. 90일마다 STEP 2 를 다시 하거나, rmstudio.co.kr DNS
+공급자용 certbot 플러그인(cloudflare/route53 등)이 있으면 아래처럼 자동화:
 
 ```bash
-sudo certbot renew --dry-run
-# 갱신 훅: /etc/letsencrypt/renewal-hooks/deploy/ 에 reload 스크립트 배치
-echo 'docker exec lawtoyou_nginx_1 nginx -s reload' | sudo tee /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
-sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+# 예: cloudflare — API 토큰을 ~/cf.ini 에 두고
+sudo docker run --rm -v /etc/letsencrypt:/etc/letsencrypt -v ~/cf.ini:/cf.ini:ro \
+  certbot/dns-cloudflare renew --dns-cloudflare --dns-cloudflare-credentials /cf.ini
+docker compose restart mori-caddy
 ```
 
 ---
 
-## 부록 — 80/443 이 비어있는 서버라면 (Caddy 자동 HTTPS)
+## (참고) 깔끔한 `:443`(포트 없는 URL) 을 원하면
 
-다른 서버(80/443 미사용)에서는 `config/caddy/Caddyfile` + 아래 compose 서비스로 **인증서 자동**:
-
-```yaml
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports: ["80:80", "443:443", "443:443/udp"]
-    environment:
-      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-mori.rmstudio.co.kr}
-      ACME_EMAIL: ${ACME_EMAIL:-admin@rmstudio.co.kr}
-    volumes:
-      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    networks: [soc]
-    depends_on: [mori-api]
-```
-
-이 서버는 80/443 이 점유돼 **적용 불가** — §1~4 의 nginx vhost 방식을 쓴다.
+`lawtoyou_nginx_1` 에 `config/nginx/mori.rmstudio.co.kr.conf` 가상호스트를 얹고 그 nginx 에
+인증서를 마운트하면 `https://mori.rmstudio.co.kr`(포트 없이)로 열 수 있다. 단 **남의 프로젝트
+nginx 설정·볼륨을 수정**해야 하므로, 우선은 위 18443 자체완결 방식을 권장한다.

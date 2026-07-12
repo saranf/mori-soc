@@ -93,6 +93,20 @@ services:
       retries: 10
     networks: [soc]
 
+  # ── MORI 전용 HTTPS 프록시 (빈 포트 18443 · certbot 인증서 사용, 80/443 무충돌) ──
+  # 인증서 발급: docs/HTTPS_SETUP.md (docker certbot DNS-01) → /etc/letsencrypt 생성 후 up.
+  mori-caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${MORI_HTTPS_PORT:-18443}:18443"
+    volumes:
+      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /etc/letsencrypt:/certs:ro
+      - mori-caddy-data:/data
+    networks: [soc]
+    depends_on: [mori-api]
+
   # ── Unified worker (runs all enabled pollers in a single loop) ──
   mori-worker:
     build:
@@ -485,6 +499,7 @@ networks:
     driver: bridge
 
 volumes:
+  mori-caddy-data:
   mori-postgres-data:
   grafana-data:
   loki-data:
