@@ -4395,20 +4395,19 @@ def render_user_dashboard_html(
         <details style=\"margin-bottom:8px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px\">
           <summary style=\"cursor:pointer;font-size:12px;color:#ca8a04;font-weight:600\">${tt('dash.ctl.fs_t','고급: 유료 Claude 심층 리뷰 (선택)')}</summary>
           <div style=\"font-size:12px;color:#111827;margin-top:6px;line-height:1.6\">
-            <div style=\"margin-bottom:4px\">${tt('dash.ctl.fs_what','Semgrep(무료)보다 깊은 로직 리뷰가 필요하면 Claude fullscan을 쓰세요. Anthropic 크레딧이 듭니다. 파일 2개 + 시크릿 2개.')}</div>
+            <div style=\"margin-bottom:4px\">${tt('dash.ctl.fs_what','Semgrep(무료)보다 깊은 로직 리뷰가 필요하면 Claude fullscan을 쓰세요. Anthropic 크레딧이 듭니다. 한 번의 Claude 호출로 보안 findings(2.8)와 개인정보 흐름(3.x)이 함께 나와요. 파일 1개 + 시크릿 2개.')}</div>
             <div style=\"font-family:monospace;font-size:11px;color:#111827;line-height:1.5\">
               <div>${tt('dash.ctl.scan_files_root','레포 루트')}/</div>
-              <div>├─ .github/workflows/code-review-fullscan.yml&nbsp;&nbsp;← ①</div>
-              <div>└─ scripts/code_review_fullscan.py&nbsp;&nbsp;← ②</div>
+              <div>└─ .github/workflows/code-review-fullscan.yml&nbsp;&nbsp;← ${tt('dash.ctl.fs_only','이 파일 하나만')}</div>
             </div>
+            <div style=\"margin:4px 0;font-size:11px;color:#111827\">${tt('dash.ctl.fs_noscript','스캐너(.py)는 MORI가 서빙 — 워크플로가 실행 때 최신본을 자동으로 받아요(재복사 불필요).')}</div>
             <div style=\"margin:4px 0\">${tt('dash.ctl.fs_secrets','레포 Secrets 2개: ANTHROPIC_API_KEY(console.anthropic.com 발급) · MORI_INGEST_URL')}</div>
             <div style=\"display:flex;gap:6px;flex-wrap:wrap;align-items:center\">
-              <button onclick=\"showFullscanWorkflow()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">${tt('dash.ctl.fs_yml','① 워크플로(.yml) 복사')}</button>
-              <button onclick=\"showCodeReviewScript()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">${tt('dash.ctl.fs_py','② 스크립트(.py) 복사')}</button>
+              <button onclick=\"showFullscanWorkflow()\" class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\">${tt('dash.ctl.fs_yml','워크플로(.yml) 복사')}</button>
               <span id=\"scan_fs_msg\" style=\"font-size:11px;color:#16a34a\"></span>
             </div>
             <pre id=\"scan_fs\" style=\"display:none;margin-top:6px;max-height:240px;overflow:auto;background:#111827;color:#e5e7eb;padding:10px;border-radius:8px;font-size:11px;line-height:1.45;white-space:pre\"></pre>
-            <div style=\"font-size:11px;color:#111827;margin-top:3px\">${tt('dash.ctl.fs_run','실행: 대상 레포 Actions → code-review-fullscan → Run workflow.')}</div>
+            <div style=\"font-size:11px;color:#111827;margin-top:3px\">${tt('dash.ctl.fs_run','실행: 대상 레포 Actions → code-review-fullscan → Run workflow. → 스캔 이력에 Claude(유료) 배지 + 개인정보 흐름도가 함께 갱신돼요.')}</div>
           </div>
         </details>
         <div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px\">
@@ -4666,21 +4665,6 @@ def render_user_dashboard_html(
       } catch(e) { pre.textContent = '(불러오기 실패)'; pre.style.display='block'; }
     }
     window.showFullscanWorkflow = showFullscanWorkflow;
-    async function showCodeReviewScript() {
-      const pre = document.getElementById('scan_fs');
-      const msg = document.getElementById('scan_fs_msg');
-      try {
-        const res = await fetch('/controls/code-review/workflow-template');
-        const d = await res.json();
-        const c = d.script_content || '';
-        pre.textContent = c || tt('dash.ctl.scan_script_missing','(스크립트를 불러올 수 없어요 — MORI 저장소 scripts/code_review_fullscan.py 참고)');
-        pre.style.display = 'block';
-        if (c && navigator.clipboard) {
-          try { await navigator.clipboard.writeText(c); if (msg) msg.textContent = tt('dash.ctl.scan_script_copied','클립보드에 복사됨 — 레포 scripts/code_review_fullscan.py 로 저장'); } catch(e) {}
-        }
-      } catch(e) { pre.textContent = '(불러오기 실패)'; pre.style.display='block'; }
-    }
-    window.showCodeReviewScript = showCodeReviewScript;
     async function loadRecentCodeReviewScans() {
       const box = document.getElementById('scan_recent');
       if (!box) return;
