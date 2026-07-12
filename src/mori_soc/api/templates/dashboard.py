@@ -4576,11 +4576,28 @@ def render_user_dashboard_html(
       const d = await res.json();
       const defs = (d.defaults||[]).map(x => escapeHtml(x.item)).filter((v,i,a)=>a.indexOf(v)===i).join(', ');
       const custom = (d.custom||[]).map(t => `${t.term}=${t.item}`).join('\\n');
+      let opts = {route_match:false, orm_extra:false};
+      try { const o = await fetch('/privacy/flow-opts'); if (o.ok) opts = await o.json(); } catch(e){}
+      const ck = (id,on,label) => `<label style=\"display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#111827;margin-right:12px\"><input type=\"checkbox\" id=\"${id}\" ${on?'checked':''}> ${label}</label>`;
       el.innerHTML = `<div style=\"color:#111827;margin-bottom:4px\">${tt('dash.pf.criteria_help','스캔은 기본셋 + 아래 커스텀 기준을 함께 써요. 한 줄에 하나씩 <b>정규식=항목라벨</b> (예: 배송지|shippingAddr=주소).')}</div>
         <div style=\"color:#111827;font-size:11px;margin-bottom:4px\">${tt('dash.pf.criteria_default','기본 탐지 항목')}: ${defs}</div>
         <textarea id=\"pf_criteria_txt\" style=\"width:100%;box-sizing:border-box;min-height:80px;font-family:monospace;font-size:12px;border:1px solid #e5e7eb;border-radius:6px;padding:6px\">${escapeHtml(custom)}</textarea>
-        <div style=\"margin-top:6px\"><button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"savePiiCriteria()\">${tt('dash.pf.criteria_save','기준 저장')}</button> <span id=\"pf_criteria_msg\" style=\"font-size:11px;color:#16a34a\"></span></div>`;
+        <div style=\"margin-top:6px\"><button class=\"secondary\" style=\"width:auto;padding:4px 10px;font-size:12px\" onclick=\"savePiiCriteria()\">${tt('dash.pf.criteria_save','기준 저장')}</button> <span id=\"pf_criteria_msg\" style=\"font-size:11px;color:#16a34a\"></span></div>
+        <div style=\"margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb\">
+          <div style=\"font-size:11px;font-weight:600;color:#111827;margin-bottom:4px\">${tt('dash.pf.opts_title','무료 파서 고급 옵션(옵트인)')}</div>
+          ${ck('pf_opt_route', opts.route_match, tt('dash.pf.opt_route','항목별 라우트 매칭(수집·이용·파기 경로 연결)'))}
+          ${ck('pf_opt_orm', opts.orm_extra, tt('dash.pf.opt_orm','추가 ORM 파싱(TypeORM·Sequelize·JPA)'))}
+          <button class=\"secondary\" style=\"width:auto;padding:3px 10px;font-size:11px;margin-left:6px\" onclick=\"saveFlowOpts()\">${tt('dash.pf.opts_save','옵션 저장')}</button>
+          <span id=\"pf_opts_msg\" style=\"font-size:11px;color:#16a34a\"></span>
+        </div>`;
     }
+    async function saveFlowOpts() {
+      const body = {route_match:(document.getElementById('pf_opt_route')||{}).checked||false, orm_extra:(document.getElementById('pf_opt_orm')||{}).checked||false};
+      const res = await fetch('/privacy/flow-opts', {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      const msg = document.getElementById('pf_opts_msg');
+      if (msg){ if(res.ok){ msg.style.color='#16a34a'; msg.textContent = tt('dash.pf.criteria_saved','저장됨 — 다음 스캔부터 반영'); } else { msg.style.color='#dc2626'; msg.textContent = tt('dash.pf.denied','권한이 없어요 (admin·security)'); } }
+    }
+    window.saveFlowOpts = saveFlowOpts;
     window.togglePiiCriteria = togglePiiCriteria;
 
     async function savePiiCriteria() {

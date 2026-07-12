@@ -35,6 +35,9 @@ FIELD_MAP: list[tuple[str, str, str]] = [
 SKIP_DIRS = {"node_modules", ".git", "dist", "build", ".next", "coverage", "vendor", ".venv"}
 CODE_EXT = {".ts", ".tsx", ".js", ".jsx", ".py", ".java", ".go", ".rb", ".sql", ".prisma"}
 
+# MORI 가 어드민 설정으로 주입(옵트인 고급 분석). 기본 off — 아래 마커 라인을 서빙 시 치환.
+_OPTS = {"route_match": False, "orm_extra": False}  # MORI-INJECT-OPTS
+
 
 def _classify(name: str) -> tuple[str, str] | None:
     low = name.lower()
@@ -79,6 +82,49 @@ def parse_prisma(root: Path) -> dict[str, dict]:
     return acc
 
 
+def parse_orm_extra(root: Path) -> dict[str, dict]:
+    """(옵트인) TypeORM·Sequelize·JPA 엔티티 → {item:{store,tables,enc,category}}.
+
+    Prisma 외 ORM 도 커버. 데코레이터/정의 패턴에서 클래스(테이블)·필드를 뽑는다.
+    """
+    acc: dict[str, dict] = {}
+
+    def add(table: str, field: str) -> None:
+        cl = _classify(field)
+        if not cl:
+            return
+        item, cat = cl
+        a = acc.setdefault(item, {"store": set(), "tables": set(), "enc": set(), "category": cat})
+        a["store"].add(f"{table}.{field}")
+        a["tables"].add(table)
+        enc = _encryption(field)
+        if enc:
+            a["enc"].add(enc)
+
+    for fp in root.rglob("*"):
+        if fp.is_dir() or fp.suffix not in {".ts", ".js", ".java"} or any(p in SKIP_DIRS for p in fp.parts):
+            continue
+        try:
+            text = fp.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        # TypeORM / JPA: @Entity ... class X { ... 필드들 ... }
+        for m in re.finditer(r"@(?:Entity|Table)\b[^)]*\)?\s*(?:export\s+)?(?:public\s+)?(?:abstract\s+)?class\s+([A-Za-z_]\w*)\b(.*?)\n\}", text, re.S):
+            table, body = m.group(1), m.group(2)
+            # TS 프로퍼티: (@Column 등 있든 없든) name: Type
+            for fm in re.finditer(r"\b([A-Za-z_]\w*)\s*:\s*(?:string|number|Date|boolean|Buffer|[A-Za-z_]\w*(?:<[^>]*>)?)\s*[;\n]", body):
+                add(table, fm.group(1))
+            # JPA 필드: private String email;
+            for fm in re.finditer(r"(?:private|public|protected)\s+[\w<>.]+\s+([A-Za-z_]\w*)\s*;", body):
+                add(table, fm.group(1))
+        # Sequelize: X.init({ field: {...} }) 또는 sequelize.define('X', { field: ... })
+        for m in re.finditer(r"(?:sequelize\.define\(\s*['\"]([A-Za-z_]\w*)['\"]|class\s+([A-Za-z_]\w*)\s+extends\s+Model)[^{]*\{(.*?)\n\s*\}", text, re.S):
+            table = m.group(1) or m.group(2) or "Model"
+            for fm in re.finditer(r"\b([A-Za-z_]\w*)\s*:\s*\{[^}]*type\s*:", m.group(3)):
+                add(table, fm.group(1))
+    return acc
+
+
 def scan_conventions(root: Path) -> dict[str, list[str]]:
     """mask 함수·수집 페이지·파기 라우트를 전역 수집(항목별 매칭은 이름으로)."""
     hits = {"mask": [], "collect": [], "dispose": [], "provide": []}
@@ -102,20 +148,55 @@ def scan_conventions(root: Path) -> dict[str, list[str]]:
     return hits
 
 
+def route_hits_by_item(root: Path, item_names: set[str]) -> dict[str, dict[str, list[str]]]:
+    """(옵트인) route/api/controller 파일에서 각 항목의 필드가 등장하면 단계별로 연결.
+
+    경로로 단계 판단: signup/checkout→수집, erase/withdraw/delete→파기, 그 외 api→이용.
+    """
+    res: dict[str, dict[str, list[str]]] = {n: {"collect": [], "use": [], "dispose": []} for n in item_names}
+    for fp in root.rglob("*"):
+        if fp.is_dir() or fp.suffix not in {".ts", ".tsx", ".js", ".py", ".java", ".go", ".rb"} or any(p in SKIP_DIRS for p in fp.parts):
+            continue
+        rel = str(fp.relative_to(root))
+        low = rel.lower()
+        if not re.search(r"route|/api/|controller|handler|resolver|/pages/api", low):
+            continue
+        try:
+            text = fp.read_text(encoding="utf-8", errors="ignore").lower()
+        except OSError:
+            continue
+        stage = ("dispose" if re.search(r"erase|withdraw|purge|/destroy|delete|탈퇴|파기", low)
+                 else "collect" if re.search(r"signup|register|checkout|join|/new", low) else "use")
+        for name in item_names:
+            cl0 = _classify(name)  # name 자체가 라벨이므로 필드 근사 매칭
+            for rx, item, _ in FIELD_MAP:
+                if item == name and re.search(rx, text):
+                    res[name][stage].append(rel)
+                    break
+    for n in res:
+        for st in res[n]:
+            res[n][st] = sorted(set(res[n][st]))[:4]
+    return res
+
+
 def build_flow(root: Path) -> dict:
     items = parse_prisma(root)
+    if _OPTS.get("orm_extra"):
+        for it, a in parse_orm_extra(root).items():
+            base = items.setdefault(it, {"store": set(), "tables": set(), "enc": set(), "category": a["category"]})
+            base["store"] |= a["store"]; base["tables"] |= a["tables"]; base["enc"] |= a["enc"]
     conv = scan_conventions(root)
+    routes = route_hits_by_item(root, set(items.keys())) if _OPTS.get("route_match") else {}
     out_items = []
     for item, a in items.items():
-        # 이용: 이 항목 이름과 매칭되는 mask 함수
-        cl = None
         use = []
         for fn, rel in conv["mask"]:
             if _classify(fn) and _classify(fn)[0] == item:
                 use.append(f"마스킹 mask{fn}()")
-        # 파기: 파기 관련 파일에서 항목/컬럼 언급
-        dispose = sorted({p for p in conv["dispose"]})[:4]
-        collect = sorted({p for p in conv["collect"]})[:5]
+        rh = routes.get(item, {})
+        collect = ([f"수집 라우트: {p}" for p in rh.get("collect", [])] or sorted(set(conv["collect"]))[:5])
+        dispose = ([f"파기 라우트: {p}" for p in rh.get("dispose", [])] or [f"파기 경로: {p}" for p in sorted(set(conv["dispose"]))[:4]])
+        use += [f"이용 라우트: {p}" for p in rh.get("use", [])]
         out_items.append({
             "item": item,
             "category": a["category"],
@@ -123,7 +204,7 @@ def build_flow(root: Path) -> dict:
             "store": sorted(a["store"]),
             "encryption": " + ".join(sorted(a["enc"])),
             "use": sorted(set(use)),
-            "dispose": [f"파기 경로: {p}" for p in dispose],
+            "dispose": dispose,
             "table": sorted(a["tables"])[0] if a["tables"] else "",
         })
     tables = sorted({t for a in items.values() for t in a["tables"]})

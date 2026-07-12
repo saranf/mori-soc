@@ -10,6 +10,7 @@ import csv as csv_mod
 import hashlib
 import io
 import json
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -95,6 +96,14 @@ def register_privacy(ctx: RouteContext) -> None:
             ctx.log_action(_user(request), "PRIVACY_FLOW_RESET", f"{len(ids)} rows cleared")
         return {"ok": True, "cleared": len(ids)}
 
+    def _flow_opts() -> dict[str, bool]:
+        raw = (ctx.settings or {}).get("privacy_flow_opts", "")
+        try:
+            d = json.loads(raw) if raw else {}
+        except Exception:
+            d = {}
+        return {"route_match": bool(d.get("route_match")), "orm_extra": bool(d.get("orm_extra"))}
+
     # ── 무료 개인정보 흐름 파서(스크립트) 서빙 — 워크플로가 fetch 해서 실행(파일 1개 유지) ──
     @app.get("/privacy/flow-scanner.py", tags=["Privacy"], response_class=Response)
     def flow_scanner_py() -> Response:
@@ -107,7 +116,27 @@ def register_privacy(ctx: RouteContext) -> None:
                 break
             except OSError:
                 continue
+        # 어드민 옵트인 옵션을 스크립트에 주입(라우트 매칭·추가 ORM 파싱).
+        opts = _flow_opts()
+        content = re.sub(r"^_OPTS = \{.*\}  # MORI-INJECT-OPTS$",
+                         f"_OPTS = {json.dumps(opts)}  # MORI-INJECT-OPTS",
+                         content, count=1, flags=re.M)
         return Response(content=content, media_type="text/x-python; charset=utf-8")
+
+    # ── 어드민 파서 옵션(옵트인 고급 분석) ────────────────────────────────────────
+    @app.get("/privacy/flow-opts", tags=["Privacy"])
+    def get_flow_opts(request: Request) -> dict[str, Any]:
+        _require_privacy_role(request)
+        return _flow_opts()
+
+    @app.put("/privacy/flow-opts", tags=["Privacy"])
+    def put_flow_opts(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        _require_privacy_role(request)
+        opts = {"route_match": bool(payload.get("route_match")), "orm_extra": bool(payload.get("orm_extra"))}
+        ctx.settings["privacy_flow_opts"] = json.dumps(opts)
+        if ctx.persist_setting:
+            ctx.persist_setting("privacy_flow_opts", _user(request))
+        return {"ok": True, **opts}
 
     # ── 스캔용 PII 룰(YAML) — 기본셋 + 어드민 커스텀 기준. 워크플로가 스캔 때 가져감 ──
     @app.get("/privacy/pii-rules.yml", tags=["Privacy"], response_class=Response)

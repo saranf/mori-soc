@@ -207,6 +207,15 @@ class PrivacyRouteTests(unittest.TestCase):
             self.assertEqual(d["meta"]["summary"]["items"], 12)
             self.assertEqual(len(d["meta"]["gaps"]), 1)
 
+    def test_flow_opts_roundtrip_and_injection(self) -> None:
+        c = self._client()
+        self.assertEqual(c.put("/privacy/flow-opts", json={"route_match": True, "orm_extra": True}).json()["route_match"], True)
+        self.assertTrue(c.get("/privacy/flow-opts").json()["orm_extra"])
+        script = c.get("/privacy/flow-scanner.py").text
+        inj = [ln for ln in script.splitlines() if "MORI-INJECT-OPTS" in ln][0]
+        self.assertIn('"route_match": true', inj)   # 어드민 옵션이 스크립트에 주입됨
+        self.assertIn('"orm_extra": true', inj)
+
     def test_role_gate_blocks_non_privileged(self) -> None:
         from fastapi.testclient import TestClient
 
