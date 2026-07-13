@@ -72,6 +72,16 @@ def _warn_insecure_defaults() -> list[str]:
     admin_pw = os.environ.get("MORI_ADMIN_PASSWORD", "1234")
     if admin_pw in ("1234", "admin", "password"):
         flagged.append("MORI_ADMIN_PASSWORD")
+    # 인증이 꺼진 채로 뜨면 모든 API/대시보드가 무인증 공개다 — 조용히 넘기지 않고 크게 경고.
+    _auth_env = os.environ.get("MORI_AUTH_ENABLED", "").strip()
+    _ldap_on = bool(os.environ.get("MORI_LDAP_ENABLED", "").strip()
+                    or os.environ.get("MORI_LDAP_URL", "").strip())
+    if not _auth_env and not _ldap_on:
+        logger.warning(
+            "[security] AUTH DISABLED — 세션 인증이 꺼져 모든 API·대시보드가 무인증 공개 상태입니다. "
+            "운영 배포 전 MORI_AUTH_ENABLED=true 를 반드시 설정하세요."
+        )
+        flagged.append("MORI_AUTH_ENABLED")
     if flagged:
         logger.warning(
             "[security] insecure default credentials detected for: %s — update .env before production use",

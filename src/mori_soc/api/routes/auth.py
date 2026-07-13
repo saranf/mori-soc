@@ -9,6 +9,7 @@ verbatim from the original ``create_app`` closures; only the unpacking preamble
 """
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -64,7 +65,11 @@ def register_auth(ctx: RouteContext) -> None:
         _log_action(username, "LOGIN", f"role={_role}")
         from fastapi.responses import JSONResponse
         resp = JSONResponse({"ok": True, "username": username})
-        resp.set_cookie("mori_session", token, httponly=True, samesite="lax", max_age=86400 * 7)
+        # HTTPS 배포 시 MORI_COOKIE_SECURE=true 로 Secure 속성 부여(평문 전송 세션 스니핑 방지).
+        # 기본 off — HTTP 데모에서 Secure 쿠키는 전송되지 않아 로그인이 끊기므로.
+        _secure = os.environ.get("MORI_COOKIE_SECURE", "").strip().lower() in ("1", "true", "yes", "on")
+        resp.set_cookie("mori_session", token, httponly=True, samesite="lax",
+                        secure=_secure, max_age=86400 * 7)
         return resp
 
     @app.get("/auth/logout", include_in_schema=False)

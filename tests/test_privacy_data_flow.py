@@ -240,6 +240,22 @@ class PrivacyRouteTests(unittest.TestCase):
         # 미인증: 세션 미들웨어(401) 또는 라우트 role gate(403) 어느 쪽이든 차단돼야 한다.
         self.assertIn(c.get("/privacy/data-flow").status_code, (401, 403))
 
+    def test_authenticated_non_privileged_role_forbidden(self) -> None:
+        # 로그인은 됐지만 privacy/증적 권한이 없는 role(monitor)은 403 이어야 한다(RBAC 우회 방지).
+        from fastapi.testclient import TestClient
+
+        from mori_soc.api.server import create_app
+
+        store = InMemoryQueryStore()
+        with patch.dict(os.environ, {"MORI_DEMO_SEED": "0", "MORI_AUTH_ENABLED": "1"}, clear=False):
+            c = TestClient(create_app(QueryService(store)))
+            login = c.post("/auth/login", json={"username": "monitor", "password": "1234"})
+        self.assertEqual(login.status_code, 200, login.text)   # 인증 자체는 성공
+        # 권한 없는 role → admin·security 전용 자원은 403
+        self.assertEqual(c.get("/privacy/data-flow").status_code, 403)
+        self.assertEqual(c.get("/evidence").status_code, 403)
+        self.assertEqual(c.get("/controls/code-review/findings.csv").status_code, 403)
+
 
 if __name__ == "__main__":
     unittest.main()
