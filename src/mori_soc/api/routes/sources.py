@@ -133,7 +133,11 @@ def register_sources(ctx: RouteContext) -> None:
         token = request.headers.get("x-mori-oidc", "").strip()
         if not token:
             return None
-        from mori_soc.services.oidc_verify import OidcError, fetch_github_jwks, verify_github_oidc
+        from mori_soc.services.oidc_verify import (
+            OidcError,
+            fetch_github_jwks,
+            verify_github_oidc,
+        )
 
         audience = _os.getenv("MORI_OIDC_AUDIENCE", "mori-ingest").strip() or "mori-ingest"
         allowed = _os.getenv("MORI_OIDC_ALLOWED_REPOS", "").strip()
@@ -203,7 +207,8 @@ def register_sources(ctx: RouteContext) -> None:
         if severity != "all":
             rows = [r for r in rows if (r.get(severity, 0) or 0) > 0]
         if format == "csv":
-            import io, csv as csv_mod
+            import csv as csv_mod
+            import io
             buf = io.StringIO()
             if rows:
                 _trivy_header_map = {"hostname": "호스트명", "critical": "심각", "high": "높음", "medium": "중간", "low": "낮음", "info": "정보", "total": "합계", "latest_cve": "최근CVE", "action_plan": "조치계획", "action_target_date": "목표완료일"}
@@ -286,7 +291,8 @@ def register_sources(ctx: RouteContext) -> None:
         본문은 단일 alert 객체 또는 ``{"alerts": [...]}`` 배치 모두 허용(각 alert 는
         ``rule`` 을 포함해야 함). 인증/백엔드 조건은 /ingest/trivy 와 동일.
         """
-        import json as _json, os as _os
+        import json as _json
+        import os as _os
 
         _require_ingest_auth(request)
 
@@ -535,7 +541,10 @@ def register_sources(ctx: RouteContext) -> None:
         import os as _os
         from pathlib import Path as _Path
 
-        from mori_soc.services.code_review_dispatch import fullscan_template, workflow_template
+        from mori_soc.services.code_review_dispatch import (
+            fullscan_template,
+            workflow_template,
+        )
 
         aud = _os.getenv("MORI_OIDC_AUDIENCE", "mori-ingest").strip() or "mori-ingest"
         # 스캐너 스크립트는 단일 소스(scripts/code_review_fullscan.py)에서 읽어 서빙.

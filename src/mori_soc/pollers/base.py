@@ -22,7 +22,11 @@ from datetime import datetime, timezone
 from mori_soc.collectors.base import BaseCollector
 from mori_soc.models import SourceSync
 from mori_soc.repositories import BaseRepository, InMemoryRepository, PostgresRepository
-from mori_soc.services import CollectorIngestionService, EnvelopeEntityMapper, IngestionReport
+from mori_soc.services import (
+    CollectorIngestionService,
+    EnvelopeEntityMapper,
+    IngestionReport,
+)
 
 logger = logging.getLogger("mori.poller")
 

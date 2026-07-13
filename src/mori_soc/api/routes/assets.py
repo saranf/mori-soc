@@ -18,7 +18,7 @@ from typing import Any
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from mori_soc.api.payloads import build_assets_payload, _assets_csv, _isoformat
+from mori_soc.api.payloads import _assets_csv, _isoformat, build_assets_payload
 from mori_soc.api.routes.context import RouteContext
 
 logger = logging.getLogger("mori_soc.api")
@@ -128,10 +128,10 @@ def register_assets(ctx: RouteContext) -> None:
         if source not in valid_sources:
             raise HTTPException(status_code=400, detail=f"source must be one of: {', '.join(sorted(valid_sources))}")
 
-        from mori_soc.pollers.zabbix import ZabbixPoller
         from mori_soc.pollers.fleet import FleetPoller
-        from mori_soc.pollers.wazuh import WazuhPoller
         from mori_soc.pollers.trivy import TrivyPoller
+        from mori_soc.pollers.wazuh import WazuhPoller
+        from mori_soc.pollers.zabbix import ZabbixPoller
         from mori_soc.services import EnvelopeEntityMapper as _EM
 
         poller_map: dict[str, type] = {

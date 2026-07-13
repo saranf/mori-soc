@@ -14,7 +14,10 @@ from typing import Any
 
 from fastapi import HTTPException, Request
 
-from mori_soc.api.payloads import _dashboard_preferences_response, _merge_dashboard_preferences
+from mori_soc.api.payloads import (
+    _dashboard_preferences_response,
+    _merge_dashboard_preferences,
+)
 from mori_soc.api.routes.context import RouteContext
 
 

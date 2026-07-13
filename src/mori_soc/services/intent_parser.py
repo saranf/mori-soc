@@ -7,7 +7,6 @@ from mori_soc.api.contracts import QueryRequest, QueryScope
 
 from .query_catalog import get_template_query
 
-
 QUERY_GUIDE_EXAMPLES = (
     "오프라인 호스트 보여줘",
     "최근 24시간 wazuh high alert 요약",

@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from mori_soc.api.server import _SecretRedactionFilter, _load_file_secrets
+from mori_soc.api.server import _load_file_secrets, _SecretRedactionFilter
 
 
 class FileSecretTests(unittest.TestCase):

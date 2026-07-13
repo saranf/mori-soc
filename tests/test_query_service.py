@@ -4,8 +4,19 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 from mori_soc.api.contracts import QueryRequest, QueryScope
-from mori_soc.models import Alert, Host, HostAlias, HostObservation, QueryResult, Vulnerability
-from mori_soc.services.query_service import InMemoryQueryStore, QueryService, query_response_to_csv
+from mori_soc.models import (
+    Alert,
+    Host,
+    HostAlias,
+    HostObservation,
+    QueryResult,
+    Vulnerability,
+)
+from mori_soc.services.query_service import (
+    InMemoryQueryStore,
+    QueryService,
+    query_response_to_csv,
+)
 from mori_soc.services.views import (
     host_risk_summary_view,
     host_timeline_view,

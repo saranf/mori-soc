@@ -17,7 +17,12 @@ from typing import Iterable
 
 from mori_soc.collectors.base import BaseCollector
 from mori_soc.models import SourceSync
-from mori_soc.pollers.base import BasePollerService, PollerCycleResult, _env_flag, _repository_from_env
+from mori_soc.pollers.base import (
+    BasePollerService,
+    PollerCycleResult,
+    _env_flag,
+    _repository_from_env,
+)
 from mori_soc.pollers.fleet import FleetPoller
 from mori_soc.pollers.ldap_sync import LdapSyncPoller
 from mori_soc.pollers.trivy import TrivyPoller

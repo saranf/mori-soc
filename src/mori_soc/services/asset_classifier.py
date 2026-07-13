@@ -89,8 +89,9 @@ def classify_server(hostname: str) -> ServerClassification:
     hostname:
         Zabbix 등 모니터링에서 수집한 호스트명 (대소문자 무관).
     """
-    low = hostname.lower().lstrip("server-")  # strip 'server-' prefix from host_id style names
-    # strip leading 'server-' or 'pc-' style normalised prefixes
+    # 정규화된 'server-'/'pc-' 접두사만 제거(lstrip 은 문자셋을 지워 'elephant'→'lephant'
+    # 같은 오류를 내므로 startswith 로 안전하게 제거).
+    low = hostname.lower()
     for prefix in ("server-", "pc-"):
         if low.startswith(prefix):
             low = low[len(prefix):]

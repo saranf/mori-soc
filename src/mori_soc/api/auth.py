@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from typing import Any
 from urllib.parse import quote as _url_quote
 from urllib.parse import urlsplit as _urlsplit
-from typing import Any
 
 # CSRF: 쿠키 세션으로 인증된 상태변경 요청에만 Origin allowlist 를 적용한다.
 _CSRF_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
@@ -75,11 +75,19 @@ def _origin_allowed(origin: str, host_header: str) -> bool:
 
 try:
     from ldap3 import (
-        Server as _LdapServer,
-        Connection as _LdapConnection,
         ALL as _LDAP_ALL,
-        SUBTREE as _LDAP_SUBTREE,
+    )
+    from ldap3 import (
         MODIFY_REPLACE as _LDAP_MODIFY_REPLACE,
+    )
+    from ldap3 import (
+        SUBTREE as _LDAP_SUBTREE,
+    )
+    from ldap3 import (
+        Connection as _LdapConnection,
+    )
+    from ldap3 import (
+        Server as _LdapServer,
     )
     LDAP3_AVAILABLE = True
 except ImportError:  # pragma: no cover - exercised by runtime guard tests

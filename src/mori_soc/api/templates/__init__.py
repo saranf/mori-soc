@@ -7,14 +7,24 @@ layer. The larger dashboard/console templates are moved here incrementally.
 """
 
 from mori_soc.api.templates._common import (
-    DOCS_PORTAL_URL, FLEET_UI_URL, ZABBIX_UI_URL, WAZUH_UI_URL, GRAFANA_UI_URL,
-    USER_DASHBOARD_CARD_LABELS, USER_DASHBOARD_SECTION_LABELS,
-    USER_DASHBOARD_ASSET_COLUMN_LABELS, USER_DASHBOARD_GUIDE_LABELS,
-    DEFAULT_USER_DASHBOARD_PREFERENCES, DEFAULT_UI_PAYLOAD,
+    DEFAULT_UI_PAYLOAD,
+    DEFAULT_USER_DASHBOARD_PREFERENCES,
+    DOCS_PORTAL_URL,
+    FLEET_UI_URL,
+    GRAFANA_UI_URL,
+    USER_DASHBOARD_ASSET_COLUMN_LABELS,
+    USER_DASHBOARD_CARD_LABELS,
+    USER_DASHBOARD_GUIDE_LABELS,
+    USER_DASHBOARD_SECTION_LABELS,
+    WAZUH_UI_URL,
+    ZABBIX_UI_URL,
+)
+from mori_soc.api.templates.auth_pages import (
+    render_login_html,
+    render_signup_request_html,
 )
 from mori_soc.api.templates.console import render_query_console_html
 from mori_soc.api.templates.dashboard import render_user_dashboard_html
-from mori_soc.api.templates.auth_pages import render_login_html, render_signup_request_html
 
 __all__ = [
     'render_query_console_html', 'render_user_dashboard_html',

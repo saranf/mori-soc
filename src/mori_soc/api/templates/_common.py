@@ -6,15 +6,14 @@ import json
 import os
 
 from mori_soc.api.i18n import (
-    _i18n_script,
-    _i18n_toggle_html,
-    _DASHBOARD_I18N,
     _ADMIN_I18N,
+    _DASHBOARD_I18N,
     _LOGIN_I18N,
     _SIGNUP_I18N,
+    _i18n_script,
+    _i18n_toggle_html,
 )
 from mori_soc.services.intent_parser import QUERY_GUIDE_EXAMPLES
-
 
 DOCS_PORTAL_URL = os.getenv("MORI_DOCS_PORTAL_URL", "http://mori.rmstudio.co.kr:37854/")
 FLEET_UI_URL = os.getenv("MORI_FLEET_UI_URL", "")

@@ -9,25 +9,25 @@ from __future__ import annotations
 import json
 import os
 import re
-import urllib.request
 import urllib.error
-from urllib.parse import quote as _url_quote
+import urllib.request
 from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import quote as _url_quote
 
 from mori_soc.api.contracts import QueryRequest, QueryScope
+from mori_soc.api.templates import (
+    DEFAULT_USER_DASHBOARD_PREFERENCES,
+    DOCS_PORTAL_URL,
+    USER_DASHBOARD_ASSET_COLUMN_LABELS,
+    USER_DASHBOARD_CARD_LABELS,
+    USER_DASHBOARD_GUIDE_LABELS,
+    USER_DASHBOARD_SECTION_LABELS,
+)
 from mori_soc.services.intent_parser import NaturalLanguageQueryParser
 from mori_soc.services.query_service import InMemoryQueryStore, QueryService
 from mori_soc.services.views import host_risk_summary_view, latest_host_status_view
-from mori_soc.api.templates import (
-    DOCS_PORTAL_URL,
-    DEFAULT_USER_DASHBOARD_PREFERENCES,
-    USER_DASHBOARD_CARD_LABELS,
-    USER_DASHBOARD_SECTION_LABELS,
-    USER_DASHBOARD_ASSET_COLUMN_LABELS,
-    USER_DASHBOARD_GUIDE_LABELS,
-)
 
 
 def build_query_request(payload: Mapping[str, Any]) -> QueryRequest:

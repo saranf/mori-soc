@@ -34,5 +34,12 @@ where = ["src"]
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-# CI 게이트는 치명 오류(구문·미정의)만 강제. 확장(E,I,B,UP,SIM)은 단계적 도입(백로그 #32).
-select = ["E9", "F63", "F7", "F82"]
+# 치명 오류(구문·미정의) + import 정렬(I) + 버그베어(B, 잠재버그). 노이즈 큰 룰
+# (E501 라인길이·RUF 한글 유니코드·F401/403 star-import)은 단계적 도입(백로그).
+select = ["E9", "F63", "F7", "F82", "I", "B"]
+# 방어적 광범위 except(감사·인제스트에서 의도적)와 대형 HTML/JS 문자열은 예외 처리.
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+# 테스트는 assert 패턴상 B011/B017 허용.
+"tests/*" = ["B011", "B017"]

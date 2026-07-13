@@ -231,7 +231,13 @@ def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import mm
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.platypus import (
+            Paragraph,
+            SimpleDocTemplate,
+            Spacer,
+            Table,
+            TableStyle,
+        )
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("reportlab not installed; PDF output unavailable") from exc
     from mori_soc.services.reports import _get_pdf_font
@@ -401,7 +407,13 @@ def evidence_document_pdf(doc: dict[str, Any]) -> bytes:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import mm
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.platypus import (
+            Paragraph,
+            SimpleDocTemplate,
+            Spacer,
+            Table,
+            TableStyle,
+        )
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("reportlab not installed; PDF output unavailable") from exc
     from mori_soc.services.reports import _get_pdf_font

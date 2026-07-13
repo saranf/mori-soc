@@ -190,7 +190,7 @@ def build_flow(root: Path) -> dict:
     out_items = []
     for item, a in items.items():
         use = []
-        for fn, rel in conv["mask"]:
+        for fn, _rel in conv["mask"]:
             if _classify(fn) and _classify(fn)[0] == item:
                 use.append(f"마스킹 mask{fn}()")
         rh = routes.get(item, {})

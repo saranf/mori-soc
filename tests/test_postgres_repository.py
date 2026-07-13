@@ -3,7 +3,11 @@ import unittest
 from datetime import datetime, timezone
 
 from mori_soc.models import Alert, Host, SourceSync
-from mori_soc.repositories import PostgresRepository, RepositorySnapshot, snapshot_to_query_store
+from mori_soc.repositories import (
+    PostgresRepository,
+    RepositorySnapshot,
+    snapshot_to_query_store,
+)
 
 PSYCOPG_AVAILABLE = importlib.util.find_spec("psycopg") is not None
 

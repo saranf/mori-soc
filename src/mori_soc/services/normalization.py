@@ -20,7 +20,6 @@ from mori_soc.models import (
     Vulnerability,
 )
 
-
 ASSET_BUCKET_BY_SOURCE = {
     "fleet": "pc",
     "zabbix": "server",

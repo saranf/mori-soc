@@ -245,8 +245,8 @@ def register_vulnerabilities(ctx: RouteContext) -> None:
             try:
                 impact_in = int(payload["impact"])
                 likelihood_in = int(payload["likelihood"])
-            except (TypeError, ValueError):
-                raise HTTPException(status_code=400, detail="impact/likelihood must be integers 1..3")
+            except (TypeError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail="impact/likelihood must be integers 1..3") from exc
             if not (1 <= impact_in <= 3 and 1 <= likelihood_in <= 3):
                 raise HTTPException(status_code=400, detail="impact/likelihood must be in 1..3")
             assessment = grade_from_axes(impact_in, likelihood_in)

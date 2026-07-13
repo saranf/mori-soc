@@ -17,10 +17,15 @@ from typing import Any
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from mori_soc.api.auth import DEFAULT_ROLE_PERMISSIONS, ldap_add_user, parse_account_view_roles
-from mori_soc.api.templates import render_login_html, render_signup_request_html
+from mori_soc.api.auth import (
+    DEFAULT_ROLE_PERMISSIONS,
+    ldap_add_user,
+    parse_account_view_roles,
+)
 from mori_soc.api.payloads import _isoformat
 from mori_soc.api.routes.context import RouteContext
+from mori_soc.api.templates import render_login_html, render_signup_request_html
+
 
 def _cookie_secure() -> bool:
     """세션 쿠키 Secure 속성 여부 — HTTPS(MORI_PUBLIC_URL) 면 자동, 또는 명시 강제."""

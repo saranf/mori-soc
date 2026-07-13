@@ -31,7 +31,10 @@ class StatePersistenceRoundTripTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        from mori_soc.api.server import create_app_from_env, create_query_service_from_env
+        from mori_soc.api.server import (
+            create_app_from_env,
+            create_query_service_from_env,
+        )
 
         # 스키마 자립 적용 — 테스트 실행 순서와 무관하게 hosts 등 전 테이블을 보장(순서 의존성 제거).
         dsn = os.getenv("MORI_DATABASE_URL", "").strip()

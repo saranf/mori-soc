@@ -15,17 +15,17 @@ from typing import Any
 from fastapi import HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from mori_soc.services.query_catalog import PHASE1_QUERY_CATALOG
-from mori_soc.api.templates import (
-    render_user_dashboard_html,
-    render_query_console_html,
-    FLEET_UI_URL,
-    ZABBIX_UI_URL,
-    WAZUH_UI_URL,
-    GRAFANA_UI_URL,
-)
 from mori_soc.api.payloads import _source_coverage
 from mori_soc.api.routes.context import RouteContext
+from mori_soc.api.templates import (
+    FLEET_UI_URL,
+    GRAFANA_UI_URL,
+    WAZUH_UI_URL,
+    ZABBIX_UI_URL,
+    render_query_console_html,
+    render_user_dashboard_html,
+)
+from mori_soc.services.query_catalog import PHASE1_QUERY_CATALOG
 
 
 def register_pages(ctx: RouteContext) -> None:

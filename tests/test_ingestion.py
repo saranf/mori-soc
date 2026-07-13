@@ -3,9 +3,18 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 from mori_soc.api.contracts import QueryRequest, QueryScope
-from mori_soc.collectors import FleetLogCollector, TrivyCollector, WazuhAlertCollector, ZabbixEventCollector
+from mori_soc.collectors import (
+    FleetLogCollector,
+    TrivyCollector,
+    WazuhAlertCollector,
+    ZabbixEventCollector,
+)
 from mori_soc.repositories import InMemoryRepository
-from mori_soc.services import CollectorIngestionService, EnvelopeEntityMapper, QueryService
+from mori_soc.services import (
+    CollectorIngestionService,
+    EnvelopeEntityMapper,
+    QueryService,
+)
 from mori_soc.worker import run_ingestion_cycle
 
 

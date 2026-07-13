@@ -28,7 +28,8 @@ def register_incidents(ctx: RouteContext) -> None:
 
     @app.get("/incidents", tags=["Incidents"])
     def incidents_list(date_from: str = "", date_to: str = "", search: str = "", format: str = "json") -> Any:
-        import io, csv as csv_mod
+        import csv as csv_mod
+        import io
         all_items = list(incidents.values())
         # Date filtering on created_at
         if date_from:
@@ -37,8 +38,8 @@ def register_incidents(ctx: RouteContext) -> None:
                 if from_dt.tzinfo is None:
                     from_dt = from_dt.replace(tzinfo=timezone.utc)
                 all_items = [i for i in all_items if i.get("created_at", "") >= _isoformat(from_dt)]
-            except ValueError:
-                raise HTTPException(status_code=400, detail="date_from must be ISO format (YYYY-MM-DD)")
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="date_from must be ISO format (YYYY-MM-DD)") from exc
         if date_to:
             try:
                 to_dt = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
@@ -47,8 +48,8 @@ def register_incidents(ctx: RouteContext) -> None:
                 # Include the whole day
                 to_dt = to_dt.replace(hour=23, minute=59, second=59)
                 all_items = [i for i in all_items if i.get("created_at", "") <= _isoformat(to_dt)]
-            except ValueError:
-                raise HTTPException(status_code=400, detail="date_to must be ISO format (YYYY-MM-DD)")
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="date_to must be ISO format (YYYY-MM-DD)") from exc
         # Text search: title, analyst, status
         if search:
             kw = search.lower()

@@ -6,14 +6,6 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from mori_soc.services.query_service import InMemoryQueryStore, QueryService
-from mori_soc.api.templates import (
-    render_login_html,
-    render_signup_request_html,
-    render_user_dashboard_html,
-    render_query_console_html,
-    DEFAULT_UI_PAYLOAD,
-)
 from mori_soc.api.auth import (
     DEFAULT_ROLE_PERMISSIONS,
     build_session_auth_middleware,
@@ -21,16 +13,24 @@ from mori_soc.api.auth import (
     read_auth_config,
     verify_credentials,
 )
-from mori_soc.api.routes import RouteContext
-from mori_soc.repositories import InMemoryStateRepository, StateRepository
 from mori_soc.api.payloads import (
+    _default_dashboard_preferences,
+    _isoformat,
     build_dashboard_payload,
     build_pdca_payload,
     build_query_request,
     interpret_query_text,
-    _default_dashboard_preferences,
-    _isoformat,
 )
+from mori_soc.api.routes import RouteContext
+from mori_soc.api.templates import (
+    DEFAULT_UI_PAYLOAD,
+    render_login_html,
+    render_query_console_html,
+    render_signup_request_html,
+    render_user_dashboard_html,
+)
+from mori_soc.repositories import InMemoryStateRepository, StateRepository
+from mori_soc.services.query_service import InMemoryQueryStore, QueryService
 
 try:
     from fastapi import FastAPI, HTTPException, Request
@@ -1697,7 +1697,10 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
     # comment onto the underlying problem event. Every attempt — success or
     # failure — is recorded as an evidence event, so the write-back is auditable
     # even when Zabbix rejects it (missing permission, resolved event, etc.).
-    from mori_soc.integrations import ZabbixWritebackConfig, build_zabbix_writeback_client
+    from mori_soc.integrations import (
+        ZabbixWritebackConfig,
+        build_zabbix_writeback_client,
+    )
     from mori_soc.integrations.zabbix_transport import ZabbixApiError
 
     _zabbix_writeback_config = ZabbixWritebackConfig.from_env()

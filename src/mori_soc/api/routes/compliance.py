@@ -15,6 +15,8 @@ from typing import Any
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 
+from mori_soc.api.payloads import build_crosscheck_payload, build_pdca_payload
+from mori_soc.api.routes.context import RouteContext
 from mori_soc.services.reports import (
     REPORT_TYPES,
     build_risk_register_report,
@@ -22,8 +24,6 @@ from mori_soc.services.reports import (
     report_to_csv,
     report_to_pdf,
 )
-from mori_soc.api.payloads import build_crosscheck_payload, build_pdca_payload
-from mori_soc.api.routes.context import RouteContext
 
 logger = logging.getLogger("mori_soc.api.compliance")
 
@@ -629,7 +629,11 @@ def register_compliance(ctx: RouteContext) -> None:
         import csv as csv_mod
         import io as io_mod
         import zipfile
-        from mori_soc.services.control_catalog import evidence_document_csv, evidence_document_pdf
+
+        from mori_soc.services.control_catalog import (
+            evidence_document_csv,
+            evidence_document_pdf,
+        )
         user = ctx.get_session_username(request) if ctx.get_session_username else ""
         catalog = _merged_catalog()
         host_lists = _evidence_host_lists()
@@ -805,7 +809,10 @@ def register_compliance(ctx: RouteContext) -> None:
         저장하지 않는다(이 호출에만 사용).
         """
         _require_ev(request)
-        from mori_soc.services.code_review_dispatch import dispatch_workflow, parse_github_repo
+        from mori_soc.services.code_review_dispatch import (
+            dispatch_workflow,
+            parse_github_repo,
+        )
 
         repo_url = str(payload.get("repo_url", "")).strip()
         token = str(payload.get("github_token", "")).strip()
@@ -1197,7 +1204,8 @@ def register_compliance(ctx: RouteContext) -> None:
             )
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"compliance pdca unavailable: {exc}") from exc
-        import io, csv as csv_mod
+        import csv as csv_mod
+        import io
         buf = io.StringIO()
         header_map = {
             "source": "출처",

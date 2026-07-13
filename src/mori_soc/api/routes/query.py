@@ -12,14 +12,14 @@ from typing import Any
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
-from mori_soc.services.query_service import query_response_to_csv
 from mori_soc.api.payloads import (
+    _query_csv_filename,
     build_dashboard_payload,
     build_query_request,
     interpret_query_text,
-    _query_csv_filename,
 )
 from mori_soc.api.routes.context import RouteContext
+from mori_soc.services.query_service import query_response_to_csv
 
 
 def register_query(ctx: RouteContext) -> None:

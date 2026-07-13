@@ -16,7 +16,16 @@ from mori_soc.api.server import (
     render_query_console_html,
     render_user_dashboard_html,
 )
-from mori_soc.models import Alert, ControlCheckResult, Host, HostAlias, HostObservation, QueryResult, SourceSync, Vulnerability
+from mori_soc.models import (
+    Alert,
+    ControlCheckResult,
+    Host,
+    HostAlias,
+    HostObservation,
+    QueryResult,
+    SourceSync,
+    Vulnerability,
+)
 from mori_soc.services.query_service import InMemoryQueryStore, QueryService
 
 FASTAPI_AVAILABLE = importlib.util.find_spec("fastapi") is not None

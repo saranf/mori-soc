@@ -596,9 +596,10 @@ def _get_pdf_font() -> str:
     if _pdf_font_name is not None:
         return _pdf_font_name
     try:
+        import os as _os
+
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
-        import os as _os
         for name, path in _KOREAN_FONT_CANDIDATES:
             if _os.path.exists(path):
                 try:
@@ -660,7 +661,10 @@ def report_to_pdf(report: dict[str, Any]) -> bytes:
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import mm
         from reportlab.platypus import (
-            SimpleDocTemplate, Paragraph, Table, TableStyle,
+            Paragraph,
+            SimpleDocTemplate,
+            Table,
+            TableStyle,
         )
     except ImportError as exc:  # pragma: no cover - runtime guard
         raise RuntimeError("reportlab not installed; PDF output unavailable") from exc

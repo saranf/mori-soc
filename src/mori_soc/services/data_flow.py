@@ -349,7 +349,13 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         from reportlab.lib.pagesizes import A4, landscape
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import mm
-        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+        from reportlab.platypus import (
+            Paragraph,
+            SimpleDocTemplate,
+            Spacer,
+            Table,
+            TableStyle,
+        )
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("reportlab not installed; PDF output unavailable") from exc
     import io
