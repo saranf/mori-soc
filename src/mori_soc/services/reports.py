@@ -613,6 +613,40 @@ def _get_pdf_font() -> str:
     return _pdf_font_name
 
 
+def pdf_table(headers: list[Any], rows: list[list[Any]], col_widths: list[float],
+              *, font: str | None = None):
+    """공유 PDF 테이블 flowable — 팔레트(검정 텍스트·중립 그리드)만 사용.
+
+    증적 PDF(control_catalog)·SoA(soa) 등이 각자 만들던 Table+Style을 한 곳으로.
+    headers/rows 는 원시값(자동 escape+Paragraph). reportlab Table 반환.
+    """
+    from reportlab.lib import colors
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.platypus import Paragraph, Table, TableStyle
+    f = font or _get_pdf_font()
+    black = colors.HexColor("#111827")
+    cell = ParagraphStyle("pdfcell", parent=getSampleStyleSheet()["Normal"], fontName=f,
+                          fontSize=8, leading=10.5, textColor=black)
+
+    def _esc(x: Any) -> str:
+        return str(x if x is not None else "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    data = [[Paragraph(f"<b>{_esc(h)}</b>", cell) for h in headers]]
+    data += [[Paragraph(_esc(x), cell) for x in r] for r in rows]
+    t = Table(data, colWidths=col_widths, repeatRows=1)
+    t.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), f),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("TEXTCOLOR", (0, 0), (-1, -1), black),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e5e7eb")),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f9fafb")]),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    return t
+
+
 def report_to_pdf(report: dict[str, Any]) -> bytes:
     """리포트 JSON을 PDF 바이트로 변환한다.
 

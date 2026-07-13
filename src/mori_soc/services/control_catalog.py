@@ -419,19 +419,9 @@ def evidence_document_pdf(doc: dict[str, Any]) -> bytes:
         return str(s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     def _table(headers: list[str], rows: list[list[Any]], widths: list[float]) -> Table:
-        data = [[Paragraph(f"<b>{esc(x)}</b>", cell) for x in headers]]
-        data += [[Paragraph(esc(x), cell) for x in r] for r in rows]
-        t = Table(data, colWidths=widths, repeatRows=1)
-        t.setStyle(TableStyle([
-            ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e293b")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f1f5f9")]),
-            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ]))
-        return t
+        # 공유 헬퍼로 위임 — 팔레트(검정·중립) 통일, 중복 스타일 제거.
+        from mori_soc.services.reports import pdf_table
+        return pdf_table(headers, rows, widths, font=font)
 
     buf = io.BytesIO()
     docp = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,

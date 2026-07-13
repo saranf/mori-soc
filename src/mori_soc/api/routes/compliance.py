@@ -48,6 +48,18 @@ def register_compliance(ctx: RouteContext) -> None:
         sess = sessions.get(token) if sessions else None
         return sess.get("role") if sess else None
 
+    def _require_ev(request: Request) -> None:
+        """admin·security 전용 자원 공통 게이트. 미충족 시 403."""
+        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="admin 또는 security 권한이 필요합니다.")
+
+    def _persist_evidence(rec: dict[str, Any]) -> dict[str, Any]:
+        """증적 레코드 저장 공통 보일러플레이트(메모리+영속)."""
+        ctx.control_evidence[rec["id"]] = rec
+        if ctx.persist_control_evidence:
+            ctx.persist_control_evidence(rec["id"])
+        return rec
+
     def _require_catalog_admin(request: Request) -> str:
         """카탈로그 정본 편집(추가/수정/삭제·NLP 임포트)은 admin 전용."""
         if ctx.auth_enabled and _evidence_role(request) != "admin":
@@ -204,8 +216,7 @@ def register_compliance(ctx: RouteContext) -> None:
         admin·security 롤 전용(인프라·헬프데스크는 조치 현황만). PDCA 집계
         (build_pdca_payload)를 재사용하고, 예외 만료 임박은 vuln_actions 에서 계산.
         """
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="evidence gaps require admin or security role")
+        _require_ev(request)
         try:
             pdca = build_pdca_payload(get_query_service(), vuln_actions=vuln_actions, alert_triage=triage_store)
         except Exception as exc:
@@ -263,8 +274,7 @@ def register_compliance(ctx: RouteContext) -> None:
         정본 controls/*.yaml → 패키지 JSON 아티팩트를 읽어 framework→domain→section→
         controls 트리와 증적 소스 커버리지(lite/full)를 반환한다(한/영 병기).
         """
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="control catalog requires admin or security role")
+        _require_ev(request)
         # 장기 무재기동 서버도 일정 스냅샷이 돌도록 열람 시 도래 여부 확인(최선노력).
         _maybe_run_scheduled_snapshot()
         from mori_soc.services.control_catalog import build_tree
@@ -515,8 +525,7 @@ def register_compliance(ctx: RouteContext) -> None:
     @app.get("/controls/detail/{control_id}", tags=["Compliance"])
     def control_detail(control_id: str, request: Request) -> dict[str, Any]:
         """한 통제의 증적 상세(매핑·결함·증적 소스 + 라이브 실증적 + 현재 공백). admin·security 전용."""
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="control detail requires admin or security role")
+        _require_ev(request)
         from mori_soc.services.control_catalog import build_control_detail
         detail = build_control_detail(control_id, gaps=_live_gaps(), metrics=_source_metrics(),
                                       catalog=_merged_catalog(), evidence_records=_evidence_for(control_id))
@@ -533,8 +542,7 @@ def register_compliance(ctx: RouteContext) -> None:
 
         변경은 control_status 에 write-through 영속(재시작 후 유지)되고, action-audit-log 에 기록된다.
         """
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="control status edit requires admin or security role")
+        _require_ev(request)
         valid_ids = {c.get("id") for c in _merged_catalog().get("controls", [])}
         if valid_ids and control_id not in valid_ids:
             raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
@@ -572,8 +580,7 @@ def register_compliance(ctx: RouteContext) -> None:
     @app.get("/controls/detail/{control_id}/evidence.pdf", tags=["Compliance"])
     def control_evidence_pdf_route(control_id: str, request: Request) -> Any:
         """증적 문서 PDF — 자산 인벤토리 + 문서화 증적을 표로. admin·security 전용."""
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="control evidence PDF requires admin or security role")
+        _require_ev(request)
         from mori_soc.services.control_catalog import evidence_document_pdf
         user = ctx.get_session_username(request) if ctx.get_session_username else ""
         doc = _evidence_document(control_id, user or "")
@@ -590,8 +597,7 @@ def register_compliance(ctx: RouteContext) -> None:
     @app.get("/controls/detail/{control_id}/evidence.csv", tags=["Compliance"])
     def control_evidence_csv_route(control_id: str, request: Request) -> Any:
         """증적 문서 CSV — 자산 인벤토리 표 + 문서화 증적 표. admin·security 전용."""
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="control evidence CSV requires admin or security role")
+        _require_ev(request)
         from mori_soc.services.control_catalog import evidence_document_csv
         user = ctx.get_session_username(request) if ctx.get_session_username else ""
         doc = _evidence_document(control_id, user or "")
@@ -617,8 +623,7 @@ def register_compliance(ctx: RouteContext) -> None:
         scope=mapped(기본): 증적 소스가 있거나 문서화 증적이 있는 통제만. scope=all: 전 통제.
         각 통제 폴더에 evidence.pdf + evidence.csv, 루트에 INDEX.csv.
         """
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="evidence bundle requires admin or security role")
+        _require_ev(request)
         import csv as csv_mod
         import io as io_mod
         import zipfile
@@ -797,8 +802,7 @@ def register_compliance(ctx: RouteContext) -> None:
         /ingest/code-review 로 돌아온다. MORI 는 코드를 clone/스캔하지 않으며 토큰도
         저장하지 않는다(이 호출에만 사용).
         """
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="code review scan requires admin or security role")
+        _require_ev(request)
         from mori_soc.services.code_review_dispatch import dispatch_workflow, parse_github_repo
 
         repo_url = str(payload.get("repo_url", "")).strip()
@@ -833,8 +837,7 @@ def register_compliance(ctx: RouteContext) -> None:
     # ── M2-8: 통제별 수기 증적 레코드 (admin·security) ────────────────────────────
     @app.get("/controls/detail/{control_id}/evidence-records", tags=["Compliance"])
     def list_evidence_records(control_id: str, request: Request) -> dict[str, Any]:
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="evidence records require admin or security role")
+        _require_ev(request)
         rows = sorted(_evidence_for(control_id),
                       key=lambda r: str(r.get("collected_at") or r.get("created_at") or ""), reverse=True)
         return {"control_id": control_id, "records": rows, "total": len(rows)}
@@ -842,8 +845,7 @@ def register_compliance(ctx: RouteContext) -> None:
     @app.post("/controls/detail/{control_id}/evidence-records", tags=["Compliance"])
     def add_evidence_record(control_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
         """수기 증적 기록 추가 {title, body?, collected_by?, collected_at?, reference?}. admin·security."""
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="evidence records require admin or security role")
+        _require_ev(request)
         import uuid
         title = str(payload.get("title", "")).strip()
         if not title:
@@ -862,9 +864,7 @@ def register_compliance(ctx: RouteContext) -> None:
             "reference": str(payload.get("reference", "")).strip(), "source": "manual",
             "created_at": datetime.now(tz=timezone.utc).isoformat(), "created_by": user or "unknown",
         }
-        ctx.control_evidence[rec["id"]] = rec
-        if ctx.persist_control_evidence:
-            ctx.persist_control_evidence(rec["id"])
+        _persist_evidence(rec)
         if ctx.log_action:
             ctx.log_action(user or "unknown", "CONTROL_EVIDENCE_ADD", f"{control_id}: {title}")
         return rec
@@ -960,9 +960,7 @@ def register_compliance(ctx: RouteContext) -> None:
             "reference": f"auto:{kind} 라이브 증적 스냅샷", "source": "auto",
             "created_at": now.isoformat(), "created_by": user or "system",
         }
-        ctx.control_evidence[rec["id"]] = rec
-        if ctx.persist_control_evidence:
-            ctx.persist_control_evidence(rec["id"])
+        _persist_evidence(rec)
         return rec
 
     @app.post("/controls/detail/{control_id}/evidence-records/auto", tags=["Compliance"])
@@ -972,8 +970,7 @@ def register_compliance(ctx: RouteContext) -> None:
         휘발성 라이브 증적(Fleet 자산·Zabbix 경보·계정·매핑 등)을 전 엔티티 상세로 캡처해
         수기 증적처럼 영속화한다. 심사 대비 '이 날 이만큼의 증적이 있었다' 시점 증거.
         """
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="evidence records require admin or security role")
+        _require_ev(request)
         from mori_soc.services.control_catalog import build_control_detail
         detail = build_control_detail(control_id, gaps=_live_gaps(), metrics=_source_metrics(limit=200),
                                       catalog=_merged_catalog())
@@ -1097,8 +1094,7 @@ def register_compliance(ctx: RouteContext) -> None:
     @app.get("/compliance/log-review", tags=["Compliance"])
     def get_log_review(request: Request) -> dict[str, Any]:
         """접속기록 보존현황 + 월간 점검 이력. admin·security."""
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="log review requires admin or security role")
+        _require_ev(request)
         recs = _log_review_records()
         this_month = datetime.now(tz=timezone.utc).strftime("%Y-%m")
         done = any(str(r.get("collected_at", "")).startswith(this_month) for r in recs)
@@ -1111,8 +1107,7 @@ def register_compliance(ctx: RouteContext) -> None:
     @app.post("/compliance/log-review/run", tags=["Compliance"])
     def run_log_review(request: Request) -> dict[str, Any]:
         """이번 달 접속기록 점검 수행 — 보존현황 스냅샷을 로그 통제 증적으로 적립. admin·security."""
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="log review requires admin or security role")
+        _require_ev(request)
         import uuid
         user = ctx.get_session_username(request) if ctx.get_session_username else ""
         ret = _log_retention_status()
@@ -1137,18 +1132,47 @@ def register_compliance(ctx: RouteContext) -> None:
                    "body": body, "collected_by": user or "system", "collected_at": today,
                    "reference": "log_review 제8조 월1회 점검", "source": "log_review",
                    "created_at": now.isoformat(), "created_by": user or "system"}
-            ctx.control_evidence[rec["id"]] = rec
-            if ctx.persist_control_evidence:
-                ctx.persist_control_evidence(rec["id"])
+            _persist_evidence(rec)
             created += 1
         if ctx.log_action:
             ctx.log_action(user or "system", "LOG_REVIEW_RUN", f"{month}: {created} controls")
         return {"ok": True, "month": month, "created": created, "retention": ret}
 
+    # ── SoA (ISO 27001 적용선언서, clause 6.1.3) — 카탈로그 + control_status 조립 ──────
+    def _soa_rows() -> list[dict[str, Any]]:
+        from mori_soc.services.soa import build_soa_rows
+        return build_soa_rows(_merged_catalog(), ctx.control_status)
+
+    @app.get("/compliance/soa", tags=["Compliance"])
+    def compliance_soa(request: Request) -> dict[str, Any]:
+        """ISO 27001 적용선언서(SoA) — 통제별 적용여부·근거·이행상태. admin·security."""
+        _require_ev(request)
+        from mori_soc.services.soa import soa_summary
+        rows = _soa_rows()
+        return {"rows": rows, "summary": soa_summary(rows)}
+
+    @app.get("/compliance/soa.csv", tags=["Compliance"])
+    def compliance_soa_csv(request: Request) -> Any:
+        _require_ev(request)
+        from mori_soc.services.soa import soa_to_csv
+        return StreamingResponse(iter(["﻿" + soa_to_csv(_soa_rows())]), media_type="text/csv",
+                                 headers={"Content-Disposition": 'attachment; filename="mori-soa.csv"'})
+
+    @app.get("/compliance/soa.pdf", tags=["Compliance"])
+    def compliance_soa_pdf(request: Request) -> Any:
+        _require_ev(request)
+        from mori_soc.services.soa import soa_summary, soa_to_pdf
+        rows = _soa_rows()
+        try:
+            pdf = soa_to_pdf(rows, soa_summary(rows))
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"SoA PDF unavailable: {exc}") from exc
+        return StreamingResponse(iter([pdf]), media_type="application/pdf",
+                                 headers={"Content-Disposition": 'attachment; filename="mori-soa.pdf"'})
+
     @app.delete("/controls/detail/{control_id}/evidence-records/{evidence_id}", tags=["Compliance"])
     def delete_evidence_record(control_id: str, evidence_id: str, request: Request) -> dict[str, Any]:
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="evidence records require admin or security role")
+        _require_ev(request)
         rec = ctx.control_evidence.get(evidence_id)
         if rec is None or rec.get("control_id") != control_id:
             raise HTTPException(status_code=404, detail="증적 레코드를 찾을 수 없습니다.")

@@ -587,6 +587,19 @@ def render_user_dashboard_html(
         <div id=\"pdca_pending_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
       </section>
 
+      <!-- SoA (ISO 27001 적용선언서) 내보내기 -->
+      <section class=\"card\" id=\"soa_card\">
+        <div style=\"display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap\">
+          <h2 style=\"margin:0\" data-i18n=\"dash.soa.title\">적용선언서 (SoA · ISO 27001)</h2>
+          <div style=\"display:flex;gap:6px;align-items:center;flex-wrap:wrap\">
+            <a href=\"/compliance/soa.csv\" download style=\"background:#f9fafb;border:1px solid #e5e7eb;color:#2563eb;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none\">CSV</a>
+            <a href=\"/compliance/soa.pdf\" target=\"_blank\" style=\"background:#f9fafb;border:1px solid #e5e7eb;color:#2563eb;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none\">PDF</a>
+          </div>
+        </div>
+        <div class=\"subtext\" data-i18n=\"dash.soa.sub\">ISO 27001 필수 산출물 — 통제별 적용여부·근거·이행상태를 카탈로그와 통제 상태에서 생성해요. 통제 상태를 채울수록 근거·이행상태가 실질화돼요.</div>
+        <div id=\"soa_summary\" style=\"margin-top:8px;font-size:13px;color:#111827\"></div>
+      </section>
+
       <!-- 상세 분석 (기본 접힘 처음 보는 담당자에겐 과부하라 뒤로) -->
       <details class=\"card\" style=\"padding:0\">
         <summary style=\"cursor:pointer;padding:16px 18px;font-weight:700;color:#111827;font-size:15px\" data-i18n=\"dash.pdca.detail_toggle\">상세 분석 통제 카탈로그 · 통제 상태 · 카테고리 · PDCA Cycle (펼치기)</summary>
@@ -676,7 +689,7 @@ def render_user_dashboard_html(
         <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
           <h2 style=\"margin:0\" data-i18n=\"dash.acc.trail_title\">접속 발자취 (누가 · 언제 · 어디서)</h2>
           <div style=\"display:flex;gap:10px;align-items:center\">
-            <span id=\"acc_trail_meta\" style=\"font-size:12px;color:#6b7280\"></span>
+            <span id=\"acc_trail_meta\" style=\"font-size:12px;color:#111827\"></span>
             <a id=\"acc_trail_grafana\" href=\"#\" target=\"_blank\" style=\"display:none;color:#2563eb;font-size:12px;text-decoration:none\" data-i18n=\"dash.acc.trail_full\">전체는 Loki에서 →</a>
           </div>
         </div>
@@ -3515,6 +3528,21 @@ def render_user_dashboard_html(
 
     // ── Guide Tab ─────────────────────────────────────────────────────────
     // ── Compliance PDCA ──────────────────────────────────────────────────────
+    async function loadSoaSummary() {
+      const el = document.getElementById('soa_summary'); if (!el) return;
+      try {
+        const res = await fetch('/compliance/soa');
+        if (!res.ok) { el.textContent = tt('dash.dyn.error_prefix','오류: ') + 'HTTP ' + res.status; return; }
+        const s = (await res.json()).summary || {};
+        el.textContent = tt('dash.soa.total','통제') + ' ' + (s.total||0)
+          + ' · ' + tt('dash.soa.applicable','적용') + ' ' + (s.applicable||0)
+          + ' · ' + tt('dash.soa.excluded','제외') + ' ' + (s.excluded||0)
+          + ' · ' + tt('dash.soa.implemented','이행') + ' ' + (s.implemented||0)
+          + ' · ' + tt('dash.soa.evidence','증적연결') + ' ' + (s.evidence_wired||0);
+      } catch(e) { el.textContent = tt('dash.dyn.error_prefix','오류: ') + e.message; }
+    }
+    window.loadSoaSummary = loadSoaSummary;
+
     async function loadCompliance() {
       const cardsEl = document.getElementById('pdca_cards');
       const statusEl = document.getElementById('pdca_status_chart');
@@ -3522,6 +3550,7 @@ def render_user_dashboard_html(
       const cycleEl = document.getElementById('pdca_cycle_chart');
       const pendingEl = document.getElementById('pdca_pending_table');
       if (cardsEl) cardsEl.innerHTML = '<div class=\"empty\" style=\"padding:16px;color:#111827\">' + tt('dash.dyn.loading','로딩 중…') + '</div>';
+      loadSoaSummary();
       try {
         const res = await fetch('/compliance/pdca');
         if (!res.ok) throw new Error(res.status);
@@ -4810,10 +4839,10 @@ def render_user_dashboard_html(
         const rows = d.entries || [];
         if (meta) meta.textContent = tt('dash.acc.trail_recent','최근') + ' ' + (d.shown||rows.length) + tt('dash.acc.trail_count','건 미리보기');
         if (!rows.length) { el.innerHTML = `<span class=\"empty\">${tt('dash.acc.trail_empty','최근 접속기록 없음')}</span>`; return; }
-        const rBadge = (res) => { const c = res==='success'?'#16a34a':(res==='fail'?'#dc2626':'#6b7280'); const t = res==='success'?tt('dash.acc.trail_ok','성공'):(res==='fail'?tt('dash.acc.trail_fail','실패'):'-'); return `<span style=\"background:${c}22;border:1px solid ${c};color:${c};border-radius:5px;padding:1px 6px;font-size:10px\">${t}</span>`; };
-        el.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"text-align:left;color:#6b7280\">`
+        const rBadge = (res) => { const c = res==='success'?'#16a34a':(res==='fail'?'#dc2626':'#111827'); const t = res==='success'?tt('dash.acc.trail_ok','성공'):(res==='fail'?tt('dash.acc.trail_fail','실패'):'-'); return `<span style=\"background:${c}22;border:1px solid ${c};color:${c};border-radius:5px;padding:1px 6px;font-size:10px\">${t}</span>`; };
+        el.innerHTML = `<table style=\"width:100%;border-collapse:collapse;font-size:12px\"><thead><tr style=\"text-align:left;color:#111827\">`
           + `<th style=\"padding:4px 6px\">${tt('dash.acc.trail_time','시각')}</th><th style=\"padding:4px 6px\">${tt('dash.acc.trail_user','계정')}</th><th style=\"padding:4px 6px\">${tt('dash.acc.trail_event','유형')}</th><th style=\"padding:4px 6px\">${tt('dash.acc.trail_host','호스트')}</th><th style=\"padding:4px 6px\">${tt('dash.acc.trail_ip','출발 IP')}</th><th style=\"padding:4px 6px\">${tt('dash.acc.trail_result','결과')}</th></tr></thead><tbody>`
-          + rows.map(e => { const ev = (_TRAIL_EV[e.event]||[e.event])[lang==='en'?1:0] || e.event; return `<tr style=\"border-top:1px solid #f3f4f6\"><td style=\"padding:4px 6px;white-space:nowrap\">${escapeHtml(e.time||'')}</td><td style=\"padding:4px 6px;font-family:monospace\">${escapeHtml(e.user||'')}</td><td style=\"padding:4px 6px\">${escapeHtml(ev)}${e.detail?` <span style=\"color:#6b7280\">${escapeHtml(e.detail)}</span>`:''}</td><td style=\"padding:4px 6px\">${escapeHtml(e.host||'-')}</td><td style=\"padding:4px 6px;font-family:monospace\">${escapeHtml(e.source_ip||'-')}</td><td style=\"padding:4px 6px\">${rBadge(e.result)}</td></tr>`; }).join('')
+          + rows.map(e => { const ev = (_TRAIL_EV[e.event]||[e.event])[lang==='en'?1:0] || e.event; return `<tr style=\"border-top:1px solid #f3f4f6\"><td style=\"padding:4px 6px;white-space:nowrap\">${escapeHtml(e.time||'')}</td><td style=\"padding:4px 6px;font-family:monospace\">${escapeHtml(e.user||'')}</td><td style=\"padding:4px 6px\">${escapeHtml(ev)}${e.detail?` <span style=\"color:#111827\">${escapeHtml(e.detail)}</span>`:''}</td><td style=\"padding:4px 6px\">${escapeHtml(e.host||'-')}</td><td style=\"padding:4px 6px;font-family:monospace\">${escapeHtml(e.source_ip||'-')}</td><td style=\"padding:4px 6px\">${rBadge(e.result)}</td></tr>`; }).join('')
           + `</tbody></table>`;
       } catch(e) { el.innerHTML = `<span class=\"empty\">${tt('dash.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`; }
     }
