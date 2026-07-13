@@ -81,7 +81,7 @@ flowchart LR
 | **위험성 평가** | CVE별 3×3 매트릭스 = 영향도(자산 중요도) × 발생가능성 → **점수(1~9)** + 위험처리 결정·잔여위험·DoA 자동분류 (admin·security) |
 | **통제 카탈로그** | ISMS-P 101 + ISO 27001:2022 93 = **194 인증기준**(한/영) — **58 검토완료 · 136 초안**(초안은 UI에 라벨; 커버리지는 검토완료+증적 연결만 집계) — 트리 + 이행상태 편집·영속 + **admin 직접 편집(추가/수정/삭제)** + **법령 텍스트 NLP 임포트**(Claude/휴리스틱) + **수기 증적 문서화 + 실증적 상세 자동 스냅샷(정기·일괄)** + **증적 문서**(자산 인벤토리 표) **CSV/PDF 다운로드** |
 | **코드 보안 리뷰 증적 (SDLC / 2.8)** | 개발보안(ISMS-P 2.8.1·2.8.5 · ISO A.8.25·A.8.28)용 6번째 증적 소스 — 각 레포 CI가 **무료 Semgrep(SAST, 기본)** 또는 **유료 Claude 심층 리뷰**를 돌려 `/ingest/code-review`로 결과를 보냄. **MORI는 코드를 가져오지 않음.** findings는 호스트 없는 `code_review` alert(트리아지 재사용) + **스캔 런 → 2.8 통제 증적 자동 승격**(0건이어도 "통제 작동"). 출처(repo·commit·run)는 **GitHub OIDC 서명으로 검증** — 위조 차단. findings CSV·과거 스캔 소급 반영. UI에서 repo URL+토큰으로 `workflow_dispatch` 원격 스캔. |
-| **개인정보 처리흐름도 (개인정보 3.x)** | 스캔이 발견한 **개인정보(주민번호·전화·카드·이메일·성별·생년월일·주소…)**로 **수집→저장→이용→파기** 라이프사이클을 자동 생성 — **무료**(Prisma 스키마·관례 파서로 "엇비슷") / **유료 Claude**(코드 이해로 "완벽": 암호화·마스킹·제3자·파기 갭까지). 흐름도(SVG)·요약카드·CSV·**감사관용 PDF**, **3.1.1·3.2.1·3.4.1 통제 증적 승격**. 어드민이 **PII 기준(정규식) + 고급 옵션(라우트 매칭·추가 ORM)**을 옵트인. 읽기 전용 증적. (admin·security) |
+| **개인정보 처리흐름도 (개인정보 3.x)** | 스캔이 발견한 **개인정보(주민번호·전화·카드·이메일·성별·생년월일·주소…)**로 **수집→저장→이용→파기** 라이프사이클을 자동 생성 — **무료**(Prisma 스키마·관례 파서: 후보 생성) / **유료 Claude**(시맨틱 보강: 암호화·마스킹·제3자·파기 갭 제안). **기술적 후보 지도이지 법적 판단이 아니며, 모든 결과는 사람 검토가 필요**. 흐름도(SVG)·요약카드·CSV·**감사관용 PDF**, **3.1.1·3.2.1·3.4.1 통제 증적 승격**. 어드민이 **PII 기준(정규식) + 고급 옵션(라우트 매칭·추가 ORM)**을 옵트인. 읽기 전용 증적. (admin·security) |
 | **계정 거버넌스** | 서버·PC 로컬 계정(osquery) × LDAP × 승인대장 대조 → 퇴사자 잔존·미등록 특권·미승인 sudo·휴면 검출 · IP 팀/용도 선별 CSV (기본 admin·security, admin이 열람 역할 조정) |
 | **자동 증적** | 자산 담당자·중요도, CVE 조치·예외, 위험성 평가, Triage·인시던트 변경을 _who/when/what_ 으로 누적 → **6종 CSV/PDF** |
 | **역할별 화면** | 위험성 평가·통제는 admin·security 전용, 인프라·헬프데스크는 **내 담당 서버 조치율**만 |
@@ -188,7 +188,7 @@ docker compose up -d mori-worker      # 재적용
 | [기존 스택 연결 (브라운필드)](docs/BROWNFIELD_CONNECT.md) | `.env`만으로 read-only 연결 (한/영) |
 | [LDAP 통합 인증](docs/LDAP_INTEGRATION.md) | 계정 하나로 MORI·Grafana·Zabbix·Fleet (한/영) |
 | [코드 리뷰 증적](docs/CODE_REVIEW_EVIDENCE.md) | SDLC/2.8 증적 소스 · 무료/유료 2모드 · OIDC provenance · 고객 셋업 |
-| [개인정보 처리흐름도](docs/PERSONAL_DATA_FLOW.md) | 개인정보 3.x · 수집→저장→이용→파기 · 무료(엇비슷)/Claude(완벽) · PII 기준·PDF |
+| [개인정보 처리흐름도](docs/PERSONAL_DATA_FLOW.md) | 개인정보 3.x · 수집→저장→이용→파기 · 무료(후보)/Claude(시맨틱) · 사람 검토 필수 · PII 기준·PDF |
 | [배포 가이드](docs/DEPLOYMENT.md) | 서버 배포·운영·트러블슈팅 |
 | [HTTPS 설정](docs/HTTPS_SETUP.md) | Let's Encrypt·포트 충돌 없는 nginx vhost·서버 실행 |
 | [기능 정의서](docs/FUNCTIONAL_SPEC.md) · [로드맵](docs/IMPLEMENTATION_ROADMAP.md) | 기능 명세 / Phase 0~5 구현 로드맵 |

@@ -81,7 +81,7 @@ flowchart LR
 | **Risk assessment** | Per-CVE 3×3 matrix = impact (asset criticality) × likelihood → **score (1–9)** + treatment decision, residual risk, DoA auto-classify (admin·security) |
 | **Control catalog** | ISMS-P 101 + ISO 27001:2022 93 = **194 controls** (KO/EN) — **58 reviewed · 136 draft** (drafts labeled in UI; coverage counts reviewed+evidence-wired only) — tree + editable/persisted status + **admin direct edit (add/edit/delete)** + **regulation-text NLP import** (Claude/heuristic) + **documented manual evidence + detailed live-evidence snapshot (scheduled/bulk)** + **evidence document** (asset-inventory tables) **CSV/PDF** |
 | **Code-review evidence (SDLC / 2.8)** | A 6th evidence source for **secure development** (ISMS-P 2.8.1·2.8.5 · ISO A.8.25·A.8.28) — each repo's CI runs **free Semgrep (SAST, default)** or **paid Claude deep review** and pushes findings to `/ingest/code-review`; **MORI never fetches code**. Findings become hostless `code_review` alerts (reused in Triage) + **scan run → auto-promoted to 2.8 control evidence** (even 0 findings = "control operated"). Provenance (repo·commit·run) is **verified by GitHub OIDC signature** — forgery-resistant. Findings CSV · backfill past scans. On-demand scan from the UI via `workflow_dispatch`. |
-| **Personal-data lifecycle map (Privacy 3.x)** | From PII found by the scan (resident-reg no.·phone·card·email·gender·birth·address…), auto-builds the **collect→store→use→dispose** lifecycle — **free** (Prisma-schema/convention parser, "roughly there") / **paid Claude** (semantic: encryption·masking·3rd-party·disposal gaps, "perfect"). Flow diagram (SVG)·summary cards·CSV·**auditor PDF**, promoted to controls **3.1.1·3.2.1·3.4.1**. Admin opts into **PII criteria (regex) + advanced options (route matching·extra ORM)**. Read-only evidence. (admin·security) |
+| **Personal-data lifecycle map (Privacy 3.x)** | From PII found by the scan (resident-reg no.·phone·card·email·gender·birth·address…), auto-builds a **collect→store→use→dispose** lifecycle — **free** (Prisma-schema/convention parser: candidate generation) / **paid Claude** (semantic enrichment: encryption·masking·3rd-party·disposal-gap suggestions). **A technical candidate map, not a legal determination — all results require human review.** Flow diagram (SVG)·summary cards·CSV·**auditor PDF**, promoted to controls **3.1.1·3.2.1·3.4.1**. Admin opts into **PII criteria (regex) + advanced options (route matching·extra ORM)**. Read-only evidence. (admin·security) |
 | **Account governance** | Server/PC local accounts (osquery) × LDAP × approval ledger → detects leavers, unregistered privilege, unapproved sudo, dormant · IP team/purpose CSV export (defaults to admin·security, admin configures view roles) |
 | **Automatic evidence** | Asset owner/criticality, CVE remediation/exception, risk assessment, triage & incident changes accrued as _who/when/what_ → **6 CSV/PDF reports** |
 | **Role-based views** | Risk & controls are admin·security only; infra/help-desk see **only their own servers'remediation rate** |
@@ -95,7 +95,7 @@ flowchart LR
 |---|---|---|
 | **Zabbix live polling → alert (real-API verified)** | Trivy collector local polling | **FleetDM live poller** |
 | **Trivy/CSOP remote push evidence ingest** (token) | Source freshness / worker cycle | **Wazuh live poller** |
-| **Code-review evidence ingest** — GitHub OIDC-verified provenance (2.8/A.8.25) | Live GitHub Actions run (E2E via real Postgres; first CI run pending) | Reusable workflow · multi-repo dashboard |
+| **Code-review evidence ingest** — GitHub OIDC-verified provenance (2.8/A.8.25) | CI enforces real PostgreSQL (fresh-install + migration E2E), Docker build, Trivy image scan, pip-audit | Reusable workflow · multi-repo dashboard |
 | **Brownfield connect** — via `.env` config only | | LDAP/AD operational sync |
 | Alert Triage / Incidents / **risk assessment** | | Slack / Email alerts |
 | Login·RBAC · PostgreSQL persistence · CSV/PDF evidence | | Live-query caching |
@@ -208,7 +208,7 @@ view roles"** (admin is always included). Target users see the Accounts tab afte
 | [Brownfield Connect](docs/BROWNFIELD_CONNECT.en.md) | Read-only connect via `.env` only (KO/EN) |
 | [LDAP Integration](docs/LDAP_INTEGRATION.en.md) | One account for MORI·Grafana·Zabbix·Fleet (KO/EN) |
 | [Code-review evidence](docs/CODE_REVIEW_EVIDENCE.md) | SDLC/2.8 evidence source · free/paid modes · OIDC provenance · customer setup |
-| [Personal-data flow](docs/PERSONAL_DATA_FLOW.md) | Privacy 3.x · collect→store→use→dispose · free(rough)/Claude(perfect) · PII criteria·PDF |
+| [Personal-data flow](docs/PERSONAL_DATA_FLOW.md) | Privacy 3.x · collect→store→use→dispose · free(candidates)/Claude(semantic) · human review required · PII criteria·PDF |
 | [Deployment](docs/DEPLOYMENT.md) | Server deploy · operations · troubleshooting |
 | [HTTPS setup](docs/HTTPS_SETUP.md) | Let's Encrypt · conflict-free nginx vhost · server run |
 | [Functional Spec](docs/FUNCTIONAL_SPEC.md) · [Roadmap](docs/IMPLEMENTATION_ROADMAP.md) | Feature spec / Phase 0–5 roadmap |
