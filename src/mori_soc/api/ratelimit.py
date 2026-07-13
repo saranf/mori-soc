@@ -68,7 +68,7 @@ def build_rate_limit_middleware():
     hits: dict[str, list[float]] = {}
 
     class _RateLimitMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request, call_next):  # type: ignore[override]
+        async def dispatch(self, request, call_next):
             # 요청 본문 크기 한도(#36) — resource exhaustion 방어. Content-Length 기준(초과 시 413).
             max_bytes = _max_body_bytes()
             if max_bytes > 0:

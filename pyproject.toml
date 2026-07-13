@@ -25,6 +25,7 @@ dev = [
     "pyyaml",
     "ruff",
     "pip-audit",
+    "mypy",
 ]
 
 [tool.setuptools.packages.find]
@@ -43,3 +44,17 @@ ignore = ["B008"]
 [tool.ruff.lint.per-file-ignores]
 # 테스트는 assert 패턴상 B011/B017 허용.
 "tests/*" = ["B011", "B017"]
+
+[tool.mypy]
+# 점진 도입(#33): 이미 잘 타이핑된 핵심·보안 모듈만 게이트. 새 모듈은 files 에 추가한다.
+python_version = "3.12"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+files = [
+    "src/mori_soc/api/errors.py",
+    "src/mori_soc/api/metrics.py",
+    "src/mori_soc/api/ratelimit.py",
+    "src/mori_soc/services/csv_export.py",
+    "src/mori_soc/services/evidence.py",
+]

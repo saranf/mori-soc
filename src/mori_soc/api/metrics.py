@@ -59,7 +59,7 @@ def build_metrics_middleware(metrics: Metrics):
     from starlette.middleware.base import BaseHTTPMiddleware
 
     class _MetricsMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request, call_next):  # type: ignore[override]
+        async def dispatch(self, request, call_next):
             start = time.perf_counter()
             status = 500
             try:

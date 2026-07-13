@@ -43,6 +43,9 @@ jobs:
       - name: Lint (ruff — config in pyproject)
         run: ruff check src tests
 
+      - name: Type check (mypy — curated core modules, config in pyproject)
+        run: mypy
+
       - name: Unit + integration tests (Postgres-backed)
         run: python -m unittest discover -s tests -p "test_*.py" -v
 
