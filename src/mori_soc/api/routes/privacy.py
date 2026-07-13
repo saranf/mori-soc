@@ -6,9 +6,7 @@ MORI 는 코드를 읽지 않는다 — 시드는 스캔 findings(고객 CI)에�
 """
 from __future__ import annotations
 
-import csv as csv_mod
 import hashlib
-import io
 import json
 import re
 import uuid
@@ -19,6 +17,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 
 from mori_soc.api.routes.context import RouteContext
+from mori_soc.services.csv_export import csv_streaming_response
 from mori_soc.services.data_flow import (
     DEFAULT_PII_FIELDS,
     FLOW_FIELDS,
@@ -259,21 +258,12 @@ def register_privacy(ctx: RouteContext) -> None:
     def data_flow_csv(request: Request) -> StreamingResponse:
         _require_privacy_role(request)
         header_map = {
-            "item": "개인정보 항목", "subject": "정보주체", "collection_source": "수집경로",
+            "item": "개인정보 항목", "category": "구분", "subject": "정보주체", "collection_source": "수집경로",
             "storage_location": "저장위치", "storage_table": "테이블/컬럼(또는 코드위치)",
             "purpose": "이용목적", "retention": "보관기간", "destruction": "파기",
             "third_party": "제3자제공", "overseas": "국외이전", "source": "출처", "note": "비고",
         }
-        buf = io.StringIO()
-        writer = csv_mod.DictWriter(buf, fieldnames=list(header_map.keys()), extrasaction="ignore")
-        writer.writerow(header_map)
-        writer.writerows(_sorted_rows())
-        ts = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        return StreamingResponse(
-            iter([buf.getvalue()]),
-            media_type="text/csv; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="mori-personal-data-flow-{ts}.csv"'},
-        )
+        return csv_streaming_response(_sorted_rows(), header_map, "mori-personal-data-flow")
 
     # ── 흐름표 PDF(감사관 제출용) ──────────────────────────────────────────────
     @app.get("/privacy/data-flow.pdf", tags=["Privacy"])

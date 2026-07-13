@@ -545,8 +545,7 @@ def register_sources(ctx: RouteContext) -> None:
         코드 경로·스니펫·메시지가 담기므로 증적 조회와 동일하게 admin·security 전용.
         repo/commit 쿼리로 특정 스캔만 필터 가능(스캔 이력의 '결과 다운로드'). 없으면 전체.
         """
-        import csv as csv_mod
-        import io
+        from mori_soc.services.csv_export import csv_streaming_response
 
         if ctx.auth_enabled:
             role = _session_role(request)
@@ -583,16 +582,7 @@ def register_sources(ctx: RouteContext) -> None:
         header_map = {"repo": "레포", "commit": "커밋", "file": "파일", "line": "라인",
                       "severity": "심각도", "rule": "룰", "title": "제목", "message": "메시지",
                       "verified": "검증", "detected_at": "탐지시각"}
-        buf = io.StringIO()
-        writer = csv_mod.DictWriter(buf, fieldnames=list(header_map.keys()), extrasaction="ignore")
-        writer.writerow(header_map)
-        writer.writerows(rows)
-        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        return StreamingResponse(
-            iter([buf.getvalue()]),
-            media_type="text/csv; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="mori-code-review-findings-{timestamp}.csv"'},
-        )
+        return csv_streaming_response(rows, header_map, "mori-code-review-findings")
 
     # ── 과거 스캔 소급 승격 — 자동승격 도입 전 스캔을 통제 증적으로 backfill ──────────
     @app.post("/controls/code-review/backfill-evidence", tags=["Compliance"])
