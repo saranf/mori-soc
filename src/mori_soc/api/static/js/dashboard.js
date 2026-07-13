@@ -1688,8 +1688,7 @@
     /* ── 호스트 단위 조치 계획 안내 (CVE별 상세 계획 존재 시) ──────────── */
     function showVulnPlansNotice(hostId, hostname, count) {
       document.getElementById('vuln_plans_notice_body').innerHTML =
-        `<div style="margin-bottom:10px"><strong style="color:#ca8a04">${escapeHtml(hostname)}</strong> 호스트에는 이미 <strong style="color:#16a34a">CVE별 상세 조치 계획/예외</strong>가 ${count}건 설정되어 있습니다.</div>
-         <div style="color:#111827">호스트 단위 일괄 계획 대신 <strong style="color:#2563eb">합계 탭</strong>(예: <span style="background:#e5e7eb;color:#2563eb;padding:1px 8px;border-radius:4px">N 건</span> 버튼)에서 각 CVE별 계획을 확인·수정해 주세요.</div>`;
+        tt('dash.dyn.vuln_notice_plan', "<div style='margin-bottom:10px'><strong style='color:#ca8a04'>{h}</strong> 호스트에는 이미 <strong style='color:#16a34a'>CVE별 상세 조치 계획/예외</strong>가 {n}건 설정되어 있습니다.</div><div style='color:#111827'>호스트 단위 일괄 계획 대신 <strong style='color:#2563eb'>합계 탭</strong>에서 각 CVE별 계획을 확인·수정해 주세요.</div>").replace('{h}', escapeHtml(hostname)).replace('{n}', count);
       const openBtn = document.getElementById('vuln_plans_notice_open_list');
       openBtn.onclick = () => { closeVulnPlansNotice(); openVulnListModal(hostId); };
       document.getElementById('vuln_plans_notice_modal').style.display = 'flex';
@@ -1699,8 +1698,7 @@
     /* ── 호스트 단위 조치 예외 안내 (CVE별 상세 예외 존재 시) ──────────── */
     function showVulnExceptionsNotice(hostId, hostname, count) {
       document.getElementById('vuln_plans_notice_body').innerHTML =
-        `<div style="margin-bottom:10px"><strong style="color:#ca8a04">${escapeHtml(hostname)}</strong> 호스트에는 이미 <strong style="color:#ca8a04">CVE별 상세 조치 예외</strong>가 설정되어 있습니다. (총 ${count}건의 CVE별 계획/예외)</div>
-         <div style="color:#111827">호스트 단위 일괄 예외 대신 <strong style="color:#2563eb">합계 탭</strong>(예: <span style="background:#e5e7eb;color:#2563eb;padding:1px 8px;border-radius:4px">N 건</span> 버튼)에서 각 CVE별 예외를 확인·수정해 주세요.</div>`;
+        tt('dash.dyn.vuln_notice_exc', "<div style='margin-bottom:10px'><strong style='color:#ca8a04'>{h}</strong> 호스트에는 이미 <strong style='color:#ca8a04'>CVE별 상세 조치 예외</strong>가 설정되어 있습니다. (총 {n}건)</div><div style='color:#111827'>호스트 단위 일괄 예외 대신 <strong style='color:#2563eb'>합계 탭</strong>에서 각 CVE별 예외를 확인·수정해 주세요.</div>").replace('{h}', escapeHtml(hostname)).replace('{n}', count);
       const openBtn = document.getElementById('vuln_plans_notice_open_list');
       openBtn.onclick = () => { closeVulnPlansNotice(); openVulnListModal(hostId); };
       document.getElementById('vuln_plans_notice_modal').style.display = 'flex';
@@ -1773,7 +1771,7 @@
       const meta = foundVuln
         ? `<div><strong style="color:#2563eb">${escapeHtml(foundVuln.cve||vulnId)}</strong> · <span style="color:#ca8a04;text-transform:uppercase">${escapeHtml(foundVuln.severity)}</span></div>
            <div style="margin-top:3px">${escapeHtml(foundVuln.package_name||'-')} ${foundVuln.installed_version?'('+escapeHtml(foundVuln.installed_version)+')':''} ${foundVuln.fixed_version?'→ <span style="color:#16a34a">'+escapeHtml(foundVuln.fixed_version)+'</span>':''}</div>
-           <div style="margin-top:3px;color:#111827">호스트: ${escapeHtml(foundHost?foundHost.hostname:'-')}</div>`
+           <div style="margin-top:3px;color:#111827">${tt('dash.dyn.host_label','호스트')}: ${escapeHtml(foundHost?foundHost.hostname:'-')}</div>`
         : `<div>vuln_id: ${escapeHtml(vulnId)}</div>`;
       document.getElementById('vuln_action_modal_meta').innerHTML = meta;
       document.getElementById('vuln_action_modal_status').textContent = '';
