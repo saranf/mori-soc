@@ -103,14 +103,38 @@ jobs:
       - name: Build MORI image
         run: docker build -t mori-soc:ci .
 
-      - name: Trivy image scan (container — informational)
+      # 고칠 수 있는 CRITICAL 취약점이 있으면 CI 실패(수용 위험은 .trivyignore 에 사유·만료와 함께).
+      - name: Trivy image scan — fail on fixable CRITICAL
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: mori-soc:ci
+          scanners: vuln
+          severity: CRITICAL
+          ignore-unfixed: "true"
+          trivyignores: .trivyignore
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: "1"
+
+      # HIGH 는 경고(informational) + 결과 아티팩트 보존.
+      - name: Trivy image scan — HIGH (informational)
+        if: always()
         continue-on-error: true
         uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: mori-soc:ci
           scanners: vuln
-          severity: HIGH,CRITICAL
+          severity: HIGH
+          ignore-unfixed: "true"
           exit-code: "0"
+
+      - name: Upload Trivy SARIF
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: trivy-results.sarif
 
   deps:
     # 의존성 취약점 스캔(informational — 권고 발생 시 CI 를 막지 않되 로그로 노출).

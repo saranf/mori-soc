@@ -486,87 +486,63 @@ class PostgresRepository(BaseRepository):
                 conn.rollback()
                 _log.warning("control_check_results 테이블 없음 — control_checks 를 빈 목록으로 반환"
                              "(schema/002 미적용? 부팅 시 apply_schema 로그 확인)")
-            try:
-                cur.execute(
-                    """
-                    SELECT account_id, username, display_name, email, department, status,
-                           is_privileged, last_login_at, password_last_set, created_at
-                    FROM directory_accounts ORDER BY username
-                    """
-                )
-                directory_accounts = [
-                    DirectoryAccount(
-                        account_id=row[0],
-                        username=row[1],
-                        display_name=row[2],
-                        email=row[3],
-                        department=row[4],
-                        status=row[5],
-                        is_privileged=row[6],
-                        last_login_at=row[7],
-                        password_last_set=row[8],
-                        created_at=row[9],
-                    )
-                    for row in cur.fetchall()
-                ]
-                cur.execute(
-                    """
-                    SELECT binding_id, account_id, privilege_type, target, granted_at, expires_at, granted_by
-                    FROM privilege_bindings ORDER BY granted_at DESC NULLS LAST, binding_id
-                    """
-                )
-                privilege_bindings = [
-                    PrivilegeBinding(
-                        binding_id=row[0],
-                        account_id=row[1],
-                        privilege_type=row[2],
-                        target=row[3],
-                        granted_at=row[4],
-                        expires_at=row[5],
-                        granted_by=row[6],
-                    )
-                    for row in cur.fetchall()
-                ]
-                cur.execute(
-                    """
-                    SELECT membership_id, account_id, group_name, source, synced_at
-                    FROM group_memberships ORDER BY group_name, account_id
-                    """
-                )
-                group_memberships = [
-                    GroupMembership(
-                        membership_id=row[0],
-                        account_id=row[1],
-                        group_name=row[2],
-                        source=row[3],
-                        synced_at=row[4],
-                    )
-                    for row in cur.fetchall()
-                ]
-                cur.execute(
-                    """
-                    SELECT observation_id, account_id, observation_type, source, observed_at, detail, severity
-                    FROM account_observations ORDER BY observed_at DESC NULLS LAST, observation_id
-                    """
-                )
-                account_observations = [
-                    AccountObservation(
-                        observation_id=row[0],
-                        account_id=row[1],
-                        observation_type=row[2],
-                        source=row[3],
-                        observed_at=row[4],
-                        detail=row[5],
-                        severity=row[6],
-                    )
-                    for row in cur.fetchall()
-                ]
-            except psycopg.errors.UndefinedTable:
-                conn.rollback()
-                # 4개 계정/권한 테이블이 한 트랜잭션이라 하나만 없어도 전부 빈 목록이 됨 —
-                # 조용히 사라지지 않도록 경고(개별 테이블 분리는 후속 리팩터 백로그).
-                _log.warning("directory/privilege/membership/observation 테이블 일부 없음 — "
-                             "계정·권한 스냅샷을 빈 목록으로 반환(schema 적용 상태 확인 필요)")
+            # 계정/권한 4개 테이블을 **각각 독립 try** 로 조회한다 — 한 테이블이 없어도
+            # 나머지는 정상 반환(예전엔 한 트랜잭션이라 하나만 없어도 전부 빈 목록이 됐음).
+            def _fetch(sql: str, mapper, label: str) -> list:
+                try:
+                    cur.execute(sql)
+                    return [mapper(row) for row in cur.fetchall()]
+                except psycopg.errors.UndefinedTable:
+                    conn.rollback()
+                    _log.warning("%s 테이블 없음 — 해당 목록만 비움(schema 적용 상태 확인)", label)
+                    return []
+
+            directory_accounts = _fetch(
+                """
+                SELECT account_id, username, display_name, email, department, status,
+                       is_privileged, last_login_at, password_last_set, created_at
+                FROM directory_accounts ORDER BY username
+                """,
+                lambda row: DirectoryAccount(
+                    account_id=row[0], username=row[1], display_name=row[2], email=row[3],
+                    department=row[4], status=row[5], is_privileged=row[6], last_login_at=row[7],
+                    password_last_set=row[8], created_at=row[9],
+                ),
+                "directory_accounts",
+            )
+            privilege_bindings = _fetch(
+                """
+                SELECT binding_id, account_id, privilege_type, target, granted_at, expires_at, granted_by
+                FROM privilege_bindings ORDER BY granted_at DESC NULLS LAST, binding_id
+                """,
+                lambda row: PrivilegeBinding(
+                    binding_id=row[0], account_id=row[1], privilege_type=row[2], target=row[3],
+                    granted_at=row[4], expires_at=row[5], granted_by=row[6],
+                ),
+                "privilege_bindings",
+            )
+            group_memberships = _fetch(
+                """
+                SELECT membership_id, account_id, group_name, source, synced_at
+                FROM group_memberships ORDER BY group_name, account_id
+                """,
+                lambda row: GroupMembership(
+                    membership_id=row[0], account_id=row[1], group_name=row[2],
+                    source=row[3], synced_at=row[4],
+                ),
+                "group_memberships",
+            )
+            account_observations = _fetch(
+                """
+                SELECT observation_id, account_id, observation_type, source, observed_at, detail, severity
+                FROM account_observations ORDER BY observed_at DESC NULLS LAST, observation_id
+                """,
+                lambda row: AccountObservation(
+                    observation_id=row[0], account_id=row[1], observation_type=row[2],
+                    source=row[3], observed_at=row[4], detail=row[5], severity=row[6],
+                ),
+                "account_observations",
+            )
 
         return RepositorySnapshot(
             hosts=hosts,
