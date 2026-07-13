@@ -40,7 +40,7 @@ It sits **read-only on top of your existing** **Zabbix · FleetDM · Wazuh · Tr
                    demo-dashboard.png → 01-dashboard.png
      ═══════════════════════════════════════════════════════════════════════ -->
 
-<img width="1370" height="776" alt="image" src="https://github.com/user-attachments/assets/ffffe32e-7a97-488e-a33c-d0d5cc7e6ec6" />
+<img width="1262" height="745" alt="image" src="https://github.com/user-attachments/assets/ac62cb2e-9da6-4453-880a-1cf898823c62" />
 
 
 ---
@@ -141,13 +141,8 @@ docker compose up -d mori-worker      # re-apply
 > Order note: MORI's core is **evidence**, not the AI query — so the control catalog leads and the natural-language query comes last (it's a convenience, not the headline).
 
 ### 1) Control catalog (ISMS-P × ISO 27001)
-<!-- SCREENSHOT GUIDE ③
-     Capture : /ui → Compliance tab → Control Catalog (admin·security)
-     Include : framework→domain→section tree + lite/full coverage % + one control's status-edit panel
-     Save as : docs/images/03-controls-catalog.png -->
-<!-- ![Control catalog](docs/images/03-controls-catalog.png) -->
-> _Put the **control catalog tree + coverage %** screenshot here — `docs/images/03-controls-catalog.png`_
-> 
+<img width="1134" height="807" alt="image" src="https://github.com/user-attachments/assets/c766054e-ea6d-4c81-8cea-4ba3d63e7460" />
+
 
 **Admins edit the catalog directly** — edit/delete controls inline, "Add control", and
 **"Import regulation text (NLP)"**: paste CISA / privacy-law / notice text and it's auto-converted
@@ -165,8 +160,11 @@ documentation & ZIP are admin·security.
 
 ### 2) Vulnerabilities (Trivy) — per-CVE plans & exceptions
 Per-host Critical/High counts + per-CVE remediation plan/exception/expiry + change history.
+<img width="1251" height="721" alt="image" src="https://github.com/user-attachments/assets/30ba1792-36fc-4f64-9e4c-631906179f5a" />
+<img width="985" height="340" alt="image" src="https://github.com/user-attachments/assets/c9213e36-aa9d-441c-b6b7-9bcca047a401" />
 
-![Vulnerability management](docs/images/demo-trivy.png)
+
+
 
 ### 3) Risk assessment matrix
 <img width="794" height="446" alt="image" src="https://github.com/user-attachments/assets/e96674e7-bb75-4e8e-89e0-20b19f96b8ef" />
