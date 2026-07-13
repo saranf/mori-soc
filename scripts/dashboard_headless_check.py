@@ -21,6 +21,12 @@ sys.path.insert(0, "src")
 from mori_soc.api.templates.dashboard import render_user_dashboard_html  # noqa: E402
 
 html = render_user_dashboard_html()
+# P2: JS가 /static/js/dashboard.js 로 외부화됨 → file:// 로드용으로 인라인 주입해 런타임 검증
+_js_path = pathlib.Path(__file__).resolve().parent.parent / "src" / "mori_soc" / "api" / "static" / "js" / "dashboard.js"
+if _js_path.is_file():
+    _js = _js_path.read_text(encoding="utf-8")
+    html = html.replace('<script src="/static/js/dashboard.js"></script>',
+                        "<script>\n" + _js + "\n</script>")
 tmp = pathlib.Path(tempfile.gettempdir()) / "mori_dashboard.html"
 tmp.write_text(html, encoding="utf-8")
 

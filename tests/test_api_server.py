@@ -97,26 +97,33 @@ class QueryRequestBuilderTests(unittest.TestCase):
         self.assertIn("downloadTextFile", html)
 
     def test_render_user_dashboard_html_hides_query_console_controls(self) -> None:
+        import pathlib
+
+        import mori_soc.api.templates.dashboard as _dash_mod
         html = render_user_dashboard_html()
-        self.assertIn("MORI 보안 점검 현황", html)
+        # P2: JS는 static/js/dashboard.js 로 외부화됨 — JS 마커는 결합 문자열에서 검사
+        js = (pathlib.Path(_dash_mod.__file__).parent.parent / "static" / "js"
+              / "dashboard.js").read_text(encoding="utf-8")
+        bundle = html + js
+        self.assertIn("MORI 보안 점검 현황", bundle)
         self.assertIn("http://mori.rmstudio.co.kr:37854/", html)
-        self.assertIn("/dashboard/summary", html)
-        self.assertIn("/dashboard/preferences", html)
+        self.assertIn("/dashboard/summary", bundle)
+        self.assertIn("/dashboard/preferences", bundle)
         self.assertIn("overview_modal", html)
-        self.assertNotIn("Natural Language Query", html)
-        self.assertNotIn("Structured Query Builder", html)
-        self.assertNotIn("MORI 점검·통제 운영 콘솔", html)
-        self.assertNotIn("Open User Dashboard", html)  # admin uses 사용자 대시보드 now
+        self.assertNotIn("Natural Language Query", bundle)
+        self.assertNotIn("Structured Query Builder", bundle)
+        self.assertNotIn("MORI 점검·통제 운영 콘솔", bundle)
+        self.assertNotIn("Open User Dashboard", bundle)  # admin uses 사용자 대시보드 now
         # NLQ section present in /ui
         self.assertIn("자연어 질의 (NLQ)", html)
         self.assertIn("nlq_textarea", html)
         self.assertIn("nlq_run_btn", html)
         self.assertIn("nlq_csv_btn", html)
-        self.assertIn("/interpret", html)
+        self.assertIn("/interpret", bundle)
         # Grafana link and info modal
-        self.assertIn("grafana_url", html)
+        self.assertIn("grafana_url", bundle)
         self.assertIn("info_modal", html)
-        self.assertIn("showInfoModal", html)
+        self.assertIn("showInfoModal", bundle)
 
     def test_interpret_query_text_returns_structured_request(self) -> None:
         interpretation = interpret_query_text("최근 24시간 wazuh high alert 요약")
