@@ -351,6 +351,10 @@ def create_app(
     # rate limit(#12): 세션 auth 뒤에 등록 → 가장 바깥에서 먼저 평가(플러드를 인증 전에 차단).
     from mori_soc.api.ratelimit import build_rate_limit_middleware
     app.add_middleware(build_rate_limit_middleware())
+    # 관측성 메트릭(#40): 가장 바깥에 등록해 모든 요청의 status·latency 를 집계.
+    from mori_soc.api.metrics import Metrics, build_metrics_middleware
+    _metrics = Metrics()
+    app.add_middleware(build_metrics_middleware(_metrics))
 
     # Triage: alert_id -> {status, analyst, note, updated_at}
     triage_store: dict[str, dict[str, Any]] = {}
@@ -1582,6 +1586,7 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
         auth_enabled=_auth_enabled,
         insecure_defaults=insecure_defaults,
         security_posture=_security_posture,
+        metrics=_metrics,
         local_users=local_users,
         sessions=sessions,
         signup_requests=signup_requests,

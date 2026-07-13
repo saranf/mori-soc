@@ -109,6 +109,35 @@ def register_pages(ctx: RouteContext) -> None:
             "security_posture": ctx.security_posture,
         }
 
+    @app.get("/health/live", tags=["Health"])
+    def health_live() -> dict[str, Any]:
+        """Liveness — 프로세스가 살아 요청을 받는가(의존성 무관, 항상 ok)."""
+        return {"status": "ok"}
+
+    @app.get("/health/ready", tags=["Health"])
+    def health_ready() -> Any:
+        """Readiness — 의존성(DB)이 준비됐는가. 미준비면 503(로드밸런서 트래픽 제외용)."""
+        database_url = os.getenv("MORI_DATABASE_URL", "").strip()
+        if not database_url:
+            return {"status": "ready", "database": {"configured": False}}
+        try:
+            import psycopg  # type: ignore
+            with psycopg.connect(database_url, connect_timeout=2) as conn, conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                cur.fetchone()
+        except Exception as exc:
+            raise HTTPException(status_code=503,
+                                detail={"detail": f"database not ready: {exc}",
+                                        "code": "source_unavailable", "retryable": True}) from exc
+        return {"status": "ready", "database": {"configured": True, "reachable": True}}
+
+    @app.get("/metrics", tags=["Health"])
+    def metrics() -> Any:
+        """Prometheus 텍스트 메트릭(#40) — request/latency/error/ingest 카운터."""
+        from fastapi.responses import PlainTextResponse
+        body = ctx.metrics.render() if ctx.metrics is not None else ""
+        return PlainTextResponse(content=body, media_type="text/plain; version=0.0.4")
+
     @app.get("/catalog")
     def catalog() -> dict[str, Any]:
         return {

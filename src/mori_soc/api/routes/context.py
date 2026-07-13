@@ -41,6 +41,7 @@ class RouteContext:
     auth_enabled: bool = False
     insecure_defaults: list[str] = field(default_factory=list)
     security_posture: str = "unknown"
+    metrics: Any = None
 
     # ── In-memory stores (mutated in place; shared by reference) ───────────────
     local_users: dict[str, dict[str, str]] = field(default_factory=dict)
