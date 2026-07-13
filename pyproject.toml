@@ -31,6 +31,10 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+# 정적 자산(CSS 등)을 패키지에 포함(#34) — 비-editable 설치에서도 서빙되도록.
+"mori_soc.api" = ["static/**/*"]
+
 [tool.ruff]
 src = ["src", "tests"]
 

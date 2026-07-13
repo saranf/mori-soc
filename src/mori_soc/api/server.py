@@ -267,6 +267,17 @@ def create_app(
 
     app = FastAPI(title="MORI SOC — Audit-Ready Security Operations API", version="0.2.0")
 
+    # 정적 자산(#34 UI 분리): CSS 등 보간 없는 자산을 별도 파일로 서빙(/static, 무인증).
+    try:
+        from pathlib import Path as _Path
+
+        from fastapi.staticfiles import StaticFiles
+        _static_dir = _Path(__file__).resolve().parent / "static"
+        if _static_dir.is_dir():
+            app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
+    except Exception as exc:  # pragma: no cover - static 마운트 실패해도 앱 기동은 계속
+        logger.warning("[static] mount skipped: %s", exc)
+
     # 에러 택소노미(#39): 모든 에러 응답에 code·retryable 을 실어 UI 재시도 판단을 돕는다.
     from starlette.exceptions import HTTPException as _StarletteHTTPException
     from starlette.responses import JSONResponse as _JSONResponse
