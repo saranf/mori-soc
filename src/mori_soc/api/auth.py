@@ -21,6 +21,41 @@ from typing import Any
 _CSRF_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
+def _isoformat_utc(ts: float) -> str:
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+    return _dt.fromtimestamp(ts, tz=_tz.utc).isoformat()
+
+
+def _session_ttls() -> tuple[int, int]:
+    """(idle 초, absolute 초) — 미활동/절대 수명. env 로 조정."""
+    def _int(name: str, default: int) -> int:
+        try:
+            return max(1, int(os.environ.get(name, "").strip() or default))
+        except ValueError:
+            return default
+    return _int("MORI_SESSION_IDLE_SECONDS", 28800), _int("MORI_SESSION_ABSOLUTE_SECONDS", 604800)
+
+
+def _session_expired(sess: dict[str, Any], now_ts: float) -> bool:
+    """idle(마지막 활동) 또는 absolute(생성) 수명 초과 여부."""
+    from datetime import datetime as _dt
+    idle, absolute = _session_ttls()
+
+    def _age(key: str) -> float:
+        raw = str(sess.get(key) or "")
+        if not raw:
+            return 0.0
+        try:
+            return now_ts - _dt.fromisoformat(raw).timestamp()
+        except ValueError:
+            return 0.0
+
+    created_age = _age("created_at")
+    last_age = _age("last_seen") if sess.get("last_seen") else created_age
+    return created_age > absolute or last_age > idle
+
+
 def _origin_allowed(origin: str, host_header: str) -> bool:
     """Origin(scheme://host:port) 이 자기 자신·MORI_PUBLIC_URL·MORI_ALLOWED_ORIGINS 중 하나인가."""
     origin_host = _urlsplit(origin).netloc.lower()
@@ -358,6 +393,16 @@ def build_session_auth_middleware(sessions: dict[str, dict[str, Any]]):
             ):
                 return await call_next(request)
             token = request.cookies.get("mori_session", "")
+            if token and token in sessions:
+                # 세션 수명(#13): idle/absolute 초과면 서버측 무효화 → 미인증 처리.
+                import time as _time
+                _now = _time.time()
+                if _session_expired(sessions[token], _now):
+                    sessions.pop(token, None)
+                else:
+                    sessions[token]["last_seen"] = _isoformat_utc(_now)
+                if token not in sessions:
+                    token = ""  # 만료 → 아래 미인증 경로로
             if token and token in sessions:
                 # CSRF: 쿠키 인증된 상태변경 요청에 '교차 출처' Origin 이 붙으면 차단한다.
                 # (Origin 이 없는 비브라우저/서버-서버 호출은 통과 — SameSite=Lax 와 이중방어.)

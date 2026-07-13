@@ -29,6 +29,59 @@ def _cookie_secure() -> bool:
     return os.environ.get("MORI_PUBLIC_URL", "").strip().lower().startswith("https://")
 
 
+# ── 로그인 브루트포스 완화(#14) — (username, ip) 별 최근 실패 타임스탬프 ────────────
+# 단일 인스턴스 전제(세션도 인메모리). 다중 인스턴스면 공유 저장소가 필요(백로그).
+_LOGIN_FAILURES: dict[str, list[float]] = {}
+
+
+def _login_cfg() -> tuple[int, int]:
+    """(최대 실패 횟수, 잠금/윈도우 초). env 로 조정."""
+    try:
+        max_fail = int(os.environ.get("MORI_LOGIN_MAX_FAILURES", "5"))
+    except ValueError:
+        max_fail = 5
+    try:
+        window = int(os.environ.get("MORI_LOGIN_LOCKOUT_SECONDS", "900"))
+    except ValueError:
+        window = 900
+    return max(1, max_fail), max(1, window)
+
+
+def _client_ip(request: "Request | None") -> str:
+    if request is None:
+        return "?"
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    client = getattr(request, "client", None)
+    return getattr(client, "host", "?") or "?"
+
+
+def _login_key(username: str, ip: str) -> str:
+    return f"{username.lower()}|{ip}"
+
+
+def _login_locked_seconds(username: str, ip: str) -> int:
+    """현재 잠겨 있으면 남은 초, 아니면 0."""
+    import time
+    max_fail, window = _login_cfg()
+    now = time.time()
+    fails = [t for t in _LOGIN_FAILURES.get(_login_key(username, ip), []) if now - t < window]
+    _LOGIN_FAILURES[_login_key(username, ip)] = fails
+    if len(fails) >= max_fail:
+        return int(window - (now - min(fails))) + 1
+    return 0
+
+
+def _record_login_failure(username: str, ip: str) -> None:
+    import time
+    _LOGIN_FAILURES.setdefault(_login_key(username, ip), []).append(time.time())
+
+
+def _clear_login_failures(username: str, ip: str) -> None:
+    _LOGIN_FAILURES.pop(_login_key(username, ip), None)
+
+
 # 가입 승인 시 부여 가능한 역할
 _SIGNUP_ROLES = {"admin", "security", "monitor", "auditor", "helpdesk", "user"}
 # LDAP 사용자 역할을 재시작 후에도 유지하기 위한 settings 키 접두사
@@ -53,21 +106,31 @@ def register_auth(ctx: RouteContext) -> None:
         return render_login_html(next_url=next)
 
     @app.post("/auth/login", tags=["Auth"])
-    def auth_login(payload: dict[str, Any]) -> dict[str, Any]:
-        """로그인: {username, password} → 세션 쿠키 설정."""
+    def auth_login(payload: dict[str, Any], request: Request = None) -> dict[str, Any]:
+        """로그인: {username, password} → 세션 쿠키 설정. 반복 실패 시 계정 잠금(brute-force 완화)."""
         username = str(payload.get("username", "")).strip()
         password = str(payload.get("password", ""))
         if not username or not password:
             raise HTTPException(status_code=400, detail="아이디와 비밀번호를 입력하세요.")
+        ip = _client_ip(request)
+        locked_for = _login_locked_seconds(username, ip)
+        if locked_for > 0:
+            _log_action(username, "LOGIN_LOCKED", f"ip={ip} {locked_for}s 남음")
+            raise HTTPException(status_code=429,
+                                detail=f"로그인 시도가 너무 많습니다. {locked_for}초 후 다시 시도하세요.")
         if not _verify_credentials(username, password):
-            _log_action(username, "LOGIN_FAIL", "잘못된 비밀번호")
+            _record_login_failure(username, ip)
+            _log_action(username, "LOGIN_FAIL", f"잘못된 비밀번호 ip={ip}")
             raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다.")
+        _clear_login_failures(username, ip)   # 성공 시 실패 카운터 리셋
         token = str(uuid.uuid4())
         _role = local_users.get(username, {}).get("role", "user")
+        _now = _isoformat(datetime.now(tz=timezone.utc))
         sessions[token] = {
             "username": username,
             "role": _role,
-            "created_at": _isoformat(datetime.now(tz=timezone.utc)),
+            "created_at": _now,
+            "last_seen": _now,
         }
         _log_action(username, "LOGIN", f"role={_role}")
         from fastapi.responses import JSONResponse
