@@ -1,6 +1,19 @@
 """사용자 대시보드 페이지 (render_user_dashboard_html)."""
 from mori_soc.api.templates._common import *  # noqa: F401,F403
 
+_TAB_GUIDES_HTML = """    <!-- ── Tab: 가이드·기준 ────────────────────────────────────────── -->
+    <div class=\"tab-panel\" id=\"tab_guides\">
+      <div id=\"guide_sub_tabs\" style=\"display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:20px;flex-wrap:wrap;\"></div>
+      <section class=\"card\" style=\"padding:0\">
+        <div style=\"display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0;\">
+          <h2 id=\"guide_content_title\" style=\"margin:0;font-size:16px\"></h2>
+          <span id=\"guide_updated_at\" style=\"font-size:12px;color:#111827\"></span>
+        </div>
+        <div id=\"guide_content_body\" style=\"padding:16px 20px 20px;color:#111827;line-height:1.8;white-space:pre-wrap;font-size:14px;font-family:inherit\"></div>
+      </section>
+    </div>
+"""
+
 _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
     <div class=\"tab-panel active\" id=\"tab_dashboard\">
       <div style=\"display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;\">
@@ -554,18 +567,7 @@ def render_user_dashboard_html(
       </div>
     </header>
 
-__TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE____TAB_ACCOUNTS__    <!-- ── Tab: 가이드·기준 ────────────────────────────────────────── -->
-    <div class=\"tab-panel\" id=\"tab_guides\">
-      <div id=\"guide_sub_tabs\" style=\"display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:20px;flex-wrap:wrap;\"></div>
-      <section class=\"card\" style=\"padding:0\">
-        <div style=\"display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0;\">
-          <h2 id=\"guide_content_title\" style=\"margin:0;font-size:16px\"></h2>
-          <span id=\"guide_updated_at\" style=\"font-size:12px;color:#111827\"></span>
-        </div>
-        <div id=\"guide_content_body\" style=\"padding:16px 20px 20px;color:#111827;line-height:1.8;white-space:pre-wrap;font-size:14px;font-family:inherit\"></div>
-      </section>
-    </div>
-  </div>
+__TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE____TAB_ACCOUNTS____TAB_GUIDES__  </div>
 
   <dialog id=\"overview_modal\">
     <div class=\"guide-dialog\">
@@ -5199,6 +5201,7 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
         .replace("__TAB_ASSETS__", _TAB_ASSETS_HTML)
         .replace("__TAB_COMPLIANCE__", _TAB_COMPLIANCE_HTML)
         .replace("__TAB_ACCOUNTS__", _TAB_ACCOUNTS_HTML)
+        .replace("__TAB_GUIDES__", _TAB_GUIDES_HTML)
         .replace("__DOCS_PORTAL_URL__", docs_url)
         .replace("__USER_DASHBOARD_PREFS_JSON__", default_preferences_json)
         .replace("__CARD_LABELS_JSON__", card_labels_json)
