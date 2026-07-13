@@ -190,6 +190,7 @@ docker compose up -d mori-worker      # 재적용
 | [코드 리뷰 증적](docs/CODE_REVIEW_EVIDENCE.md) | SDLC/2.8 증적 소스 · 무료/유료 2모드 · OIDC provenance · 고객 셋업 |
 | [개인정보 처리흐름도](docs/PERSONAL_DATA_FLOW.md) | 개인정보 3.x · 수집→저장→이용→파기 · 무료(후보)/Claude(시맨틱) · 사람 검토 필수 · PII 기준·PDF |
 | [배포 가이드](docs/DEPLOYMENT.md) | 서버 배포·운영·트러블슈팅 |
+| [백업·복구](docs/BACKUP_RESTORE.md) | PostgreSQL 덤프=전체 백업 · 복구 · 재해복구 런북 |
 | [HTTPS 설정](docs/HTTPS_SETUP.md) | Let's Encrypt·포트 충돌 없는 nginx vhost·서버 실행 |
 | [기능 정의서](docs/FUNCTIONAL_SPEC.md) · [로드맵](docs/IMPLEMENTATION_ROADMAP.md) | 기능 명세 / Phase 0~5 구현 로드맵 |
 

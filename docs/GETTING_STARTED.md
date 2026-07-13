@@ -98,6 +98,7 @@ docker compose logs -f mori-api # 로그
 ```bash
 ./scripts/mori-backup.sh    # PostgreSQL 논리 백업 생성
 ./scripts/mori-restore.sh   # 백업에서 복구
+# 정기 백업·재해복구 절차: docs/BACKUP_RESTORE.md
 ```
 
 - MORI의 운영 상태(담당자·조치·Triage·인시던트·위험성 평가·통제 이행상태·설정)는 모두
