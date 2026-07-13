@@ -46,7 +46,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
     .badge.online { background: rgba(34, 197, 94, 0.12); color: #16a34a; }
     .badge.offline { background: rgba(248, 113, 113, 0.12); color: #dc2626; }
-    .badge.unknown { background: rgba(250, 204, 21, 0.12); color: #ea580c; }
+    .badge.unknown { background: rgba(250, 204, 21, 0.12); color: #ca8a04; }
     .coverage { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
     .coverage-item { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 14px; }
     .coverage-item strong { display: block; font-size: 22px; margin-top: 8px; }
@@ -92,7 +92,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     .result-badge.wazuh { background: #dbeafe; color: #2563eb; }
     .result-badge.zabbix { background: #e5e7eb; color: #2563eb; }
     .result-badge.fleet { background: #dcfce7; color: #16a34a; }
-    .result-badge.trivy { background: #fef9c3; color: #ea580c; }
+    .result-badge.trivy { background: #fef9c3; color: #ca8a04; }
     .result-badge.code_review { background: #ede9fe; color: #7c3aed; }
     .result-badge.hosts { background: #f9fafb; color: #2563eb; }
     .top-actions button, .guide-chips button, .guide-list button { width: auto; }
@@ -103,7 +103,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     .toggle-item input { width: auto; margin: 0; }
     .guide-banner { margin-top: 12px; border-radius: 12px; padding: 12px; border: 1px solid #e5e7eb; background: #ffffff; }
     .guide-banner strong { display: block; margin-bottom: 6px; }
-    .guide-banner.need-guide { border-color: #ea580c; background: rgba(245, 158, 11, 0.12); }
+    .guide-banner.need-guide { border-color: #ca8a04; background: rgba(245, 158, 11, 0.12); }
     .guide-banner.warning { border-color: #2563eb; background: rgba(56, 189, 248, 0.1); }
     dialog { border: 1px solid #e5e7eb; border-radius: 18px; padding: 0; background: #f9fafb; color: #111827; width: min(760px, calc(100vw - 32px)); }
     dialog::backdrop { background: rgba(2, 6, 23, 0.74); }
@@ -907,7 +907,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       ], items, tt('admin.dyn.none_show_hosts','표시할 호스트가 없습니다.'));
     }
 
-    const UI_TRIAGE_COLORS = {new:'#ea580c', acknowledged:'#2563eb', investigating:'#2563eb', closed:'#16a34a', false_positive:'#111827'};
+    const UI_TRIAGE_COLORS = {new:'#ca8a04', acknowledged:'#2563eb', investigating:'#2563eb', closed:'#16a34a', false_positive:'#111827'};
     let uiTriageData = {};
     async function loadUiTriageData() {
       try { const r = await fetch('/alerts'); const d = await r.json(); (d.alerts||[]).forEach(a => { uiTriageData[a.alert_id] = a.triage || {status:'pending'}; }); } catch(_) {}
@@ -956,7 +956,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         { label: tt('admin.dyn.col.exception','조치 예외'), render: (item) => {
           if (!item.exception_until) return `<span style="color:#111827;font-size:11px">${tt('admin.dyn.none_word','없음')}</span>`;
           const reason = item.exception_reason ? `<br /><span style="color:#111827;font-size:11px">${escapeHtml(item.exception_reason.substring(0,30))}${item.exception_reason.length>30?'…':''}</span>` : '';
-          return `<span style="color:#ea580c;font-size:12px">~${escapeHtml(item.exception_until)}</span>${reason}`;
+          return `<span style="color:#ca8a04;font-size:12px">~${escapeHtml(item.exception_until)}</span>${reason}`;
         }},
       ], items, tt('admin.dyn.none_critical_vuln2','critical 취약점이 없습니다.'));
     }
@@ -1038,7 +1038,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       }
       const statusToBadge = { success: 'online', error: 'offline', running: 'unknown', unknown: 'unknown' };
       sourceCoverageEl.innerHTML = items.map((item) => {
-        const staleBadge = item.is_stale ? ' <span class=\"badge\" style=\"background:#ea580c;color:#000\">STALE</span>' : '';
+        const staleBadge = item.is_stale ? ' <span class=\"badge\" style=\"background:#ca8a04;color:#000\">STALE</span>' : '';
         return `
         <div class=\"coverage-item\">
           <div class=\"metric-label\">${escapeHtml(item.source.toUpperCase())}</div>
@@ -1457,7 +1457,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     let _editingHostname = null; // track if we are editing
 
     const impLabel = { '\uc0c1':tt('admin.s.opt.high','상'), '\uc911':tt('admin.s.opt.mid','중'), '\ud558':tt('admin.s.opt.low','하') };
-    const impColor = { '\uc0c1':'#dc2626', '\uc911':'#ea580c', '\ud558':'#16a34a' };
+    const impColor = { '\uc0c1':'#dc2626', '\uc911':'#ca8a04', '\ud558':'#16a34a' };
 
     async function loadOwners() {
       ownersListEl.innerHTML = `<span class=\"empty\">${tt('admin.dyn.loading','로딩 중…')}</span>`;
@@ -1507,7 +1507,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
       ownCategoryEl.value = o.category || '';
       ownImportanceEl.value = o.importance || '';
       ownerFormTitleEl.textContent = `${hostname} ${tt('admin.dyn.editing','수정 중')}`;
-      ownerFormTitleEl.style.color = '#ea580c';
+      ownerFormTitleEl.style.color = '#ca8a04';
       cancelEditBtn.style.display = '';
       ownerStatusEl.textContent = '';
       // scroll form into view
@@ -1754,7 +1754,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || res.status);
         if (status === 'approved' && data.username) {
-          signupStatusEl.innerHTML = `${tt('admin.dyn.approve_done','승인 완료')} <strong>${data.username}</strong> (${data.role}, ${data.backend}) · ${tt('admin.dyn.signup.initpw','초기 비밀번호')}: <code style="background:#ffffff;padding:1px 6px;border-radius:4px;color:#ea580c">${data.initial_password}</code> ${tt('admin.dyn.signup.copy_note','(사용자에게 전달, 1회 표시)')}`;
+          signupStatusEl.innerHTML = `${tt('admin.dyn.approve_done','승인 완료')} <strong>${data.username}</strong> (${data.role}, ${data.backend}) · ${tt('admin.dyn.signup.initpw','초기 비밀번호')}: <code style="background:#ffffff;padding:1px 6px;border-radius:4px;color:#ca8a04">${data.initial_password}</code> ${tt('admin.dyn.signup.copy_note','(사용자에게 전달, 1회 표시)')}`;
         } else {
           signupStatusEl.textContent = tt('admin.dyn.reject_done','거절 완료');
         }
@@ -1874,10 +1874,10 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const ULOG_CAT = {
       login: ['admin.dyn.cat.login', '로그인', '#2563eb'],
       action: ['admin.dyn.cat.action', '행동', '#2563eb'],
-      asset: ['admin.dyn.cat.asset', '자산', '#ea580c'],
+      asset: ['admin.dyn.cat.asset', '자산', '#ca8a04'],
       vuln: ['admin.dyn.cat.vuln', '취약점', '#dc2626'],
       triage: ['admin.dyn.cat.triage', '트리아지', '#16a34a'],
-      incident: ['admin.dyn.cat.incident', '인시던트', '#ea580c'],
+      incident: ['admin.dyn.cat.incident', '인시던트', '#ca8a04'],
       evidence: ['admin.dyn.cat.evidence', '증적', '#2563eb'],
       account: ['admin.dyn.cat.account', '계정', '#2563eb'],
       control_evidence: ['admin.dyn.cat.control_evidence', '통제증적', '#16a34a'],
@@ -1916,7 +1916,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
             <td style="padding:7px 8px;color:#111827;white-space:nowrap">${escapeHtml(formatTime(l.ts))}</td>
             <td style="padding:7px 8px;font-weight:600;color:${c[2]}">${escapeHtml(tt(c[0], c[1]))}</td>
             <td style="padding:7px 8px;color:#111827">${escapeHtml(l.actor || '-')}</td>
-            <td style="padding:7px 8px;color:#ea580c">${escapeHtml(l.action || '-')}</td>
+            <td style="padding:7px 8px;color:#ca8a04">${escapeHtml(l.action || '-')}</td>
             <td style="padding:7px 8px;color:#111827">${escapeHtml(l.target || '-')}</td>
             <td style="padding:7px 8px;color:#111827">${escapeHtml(l.detail || '-')}</td>
           </tr>`; }).join('')}
@@ -2071,7 +2071,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         listEl.innerHTML = users.map(u => {
           const activeTabs = u.has_override ? u.user_tabs : u.role_default_tabs;
           const overrideBadge = u.has_override
-            ? `<span style=\"background:#fef9c3;color:#ea580c;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px\">${tt('admin.dyn.override_custom','개별 설정')}</span>`
+            ? `<span style=\"background:#fef9c3;color:#ca8a04;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px\">${tt('admin.dyn.override_custom','개별 설정')}</span>`
             : `<span style=\"background:#e5e7eb;color:#2563eb;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px\">${tt('admin.dyn.override_default','역할 기본값')}</span>`;
           const checks = ROLE_PERM_TABS.map(tab => {
             const checked = activeTabs.includes(tab.id) ? 'checked' : '';
@@ -2145,13 +2145,13 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     const STATUS_BADGE = {
       pass:'<span style=\"background:rgba(34,197,94,.12);color:#16a34a;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">PASS</span>',
       fail:'<span style=\"background:rgba(248,113,113,.12);color:#dc2626;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">FAIL</span>',
-      warning:'<span style=\"background:rgba(250,204,21,.12);color:#ea580c;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">WARN</span>',
+      warning:'<span style=\"background:rgba(250,204,21,.12);color:#ca8a04;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700\">WARN</span>',
       not_applicable:'<span style=\"background:rgba(148,163,184,.12);color:#111827;padding:2px 8px;border-radius:6px;font-size:12px\">N/A</span>',
       not_checked:`<span style=\"background:rgba(100,116,139,.12);color:#111827;padding:2px 8px;border-radius:6px;font-size:12px\">${tt('admin.dyn.metric.not_checked','미점검')}</span>`,
     };
     const _statusBadge = (s) => STATUS_BADGE[s] || `<span>${escapeHtml(s||'')}</span>`;
     const _sourceBadge = (src) => {
-      const map = { control_check:'#2563eb', trivy:'#ea580c', alert:'#dc2626' };
+      const map = { control_check:'#2563eb', trivy:'#ca8a04', alert:'#dc2626' };
       const color = map[src] || '#111827';
       return `<span style=\"background:rgba(56,189,248,.08);color:${color};padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700\">${escapeHtml(src||'-')}</span>`;
     };
@@ -2219,9 +2219,9 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           const sla = rec.stale_threshold_seconds || null;
           let statusColor = '#16a34a', statusLabel = (rec.status||'unknown').toUpperCase();
           if (rec.status === 'error') { statusColor = '#dc2626'; }
-          else if (rec.is_stale) { statusColor = '#ea580c'; statusLabel = 'STALE'; }
+          else if (rec.is_stale) { statusColor = '#ca8a04'; statusLabel = 'STALE'; }
           else if (rec.status === 'running') { statusColor = '#2563eb'; }
-          const lagColor = rec.is_stale ? '#ea580c' : (lagSec != null ? '#111827' : '#111827');
+          const lagColor = rec.is_stale ? '#ca8a04' : (lagSec != null ? '#111827' : '#111827');
           const slaText = sla ? _humanizeLag(sla) : '-';
           const errBadge = lastErr ? `<div style=\"color:#dc2626;font-size:11px;margin-top:2px\">${tt('admin.dyn.recent_error_prefix','최근 에러: ')}${escapeHtml(formatTime(rec.last_error_at))}</div>` : '';
           return `<tr>
@@ -2264,22 +2264,22 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <div class=\"metric-card card\"><div class=\"metric-label\">${tt('admin.dyn.metric.total_checks','전체 점검')}</div><div class=\"metric-value\">${total}</div></div>
           <div class=\"metric-card card\"><div class=\"metric-label\">Pass</div><div class=\"metric-value\" style=\"color:#16a34a\">${s.pass||0}</div></div>
           <div class=\"metric-card card\"><div class=\"metric-label\">Fail</div><div class=\"metric-value\" style=\"color:#dc2626\">${s.fail||0}</div></div>
-          <div class=\"metric-card card\"><div class=\"metric-label\">Warning</div><div class=\"metric-value\" style=\"color:#ea580c\">${s.warning||0}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">Warning</div><div class=\"metric-value\" style=\"color:#ca8a04\">${s.warning||0}</div></div>
           <div class=\"metric-card card\"><div class=\"metric-label\">Pass Rate</div><div class=\"metric-value\" style=\"color:#2563eb\">${passRate===null?'':passRate+'%'}</div></div>
-          <div class=\"metric-card card\"><div class=\"metric-label\">${tt('admin.dyn.metric.pending_icon','미조치')}</div><div class=\"metric-value\" style=\"color:#ea580c\">${data.pending_count||0}</div><div class=\"metric-sub\">${tt('admin.dyn.col.control','통제')} ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}</div></div>
+          <div class=\"metric-card card\"><div class=\"metric-label\">${tt('admin.dyn.metric.pending_icon','미조치')}</div><div class=\"metric-value\" style=\"color:#ca8a04\">${data.pending_count||0}</div><div class=\"metric-sub\">${tt('admin.dyn.col.control','통제')} ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}</div></div>
         `;
         const cats = data.categories || [];
         if (!cats.length) {
           catEl.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_category','카테고리 데이터 없음 시드 누락 가능성')}</div>`;
         } else {
           catEl.innerHTML = `<table class=\"result-table\">
-            <thead><tr><th>${tt('admin.dyn.col.category','카테고리')}</th><th>${tt('admin.dyn.col.total','총')}</th><th style=\"color:#16a34a\">Pass</th><th style=\"color:#dc2626\">Fail</th><th style=\"color:#ea580c\">Warning</th><th style=\"color:#111827\">N/A</th><th style=\"color:#111827\">${tt('admin.dyn.col.not_checked','미점검')}</th></tr></thead>
+            <thead><tr><th>${tt('admin.dyn.col.category','카테고리')}</th><th>${tt('admin.dyn.col.total','총')}</th><th style=\"color:#16a34a\">Pass</th><th style=\"color:#dc2626\">Fail</th><th style=\"color:#ca8a04\">Warning</th><th style=\"color:#111827\">N/A</th><th style=\"color:#111827\">${tt('admin.dyn.col.not_checked','미점검')}</th></tr></thead>
             <tbody>${cats.map(c => `<tr>
               <td><strong>${escapeHtml(c.category||'-')}</strong></td>
               <td>${c.total||0}</td>
               <td style=\"color:#16a34a\">${c.pass||0}</td>
               <td style=\"color:#dc2626\">${c.fail||0}</td>
-              <td style=\"color:#ea580c\">${c.warning||0}</td>
+              <td style=\"color:#ca8a04\">${c.warning||0}</td>
               <td style=\"color:#111827\">${c.not_applicable||0}</td>
               <td style=\"color:#111827\">${c.not_checked||0}</td>
             </tr>`).join('')}</tbody></table>`;
@@ -2335,7 +2335,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <thead><tr><th>${tt('admin.dyn.col.severity','심각도')}</th><th>${tt('admin.dyn.col.host','호스트')}</th><th>${tt('admin.dyn.col.message','메시지')}</th><th>Triage</th><th>${tt('admin.dyn.col.analyst','분석관')}</th><th>${tt('admin.dyn.col.observed','발생 시각')}</th></tr></thead>
           <tbody>${rows.map(a => {
             const sev = a.severity || '-';
-            const sevColor = sev==='critical'?'#dc2626':sev==='high'?'#ea580c':'#111827';
+            const sevColor = sev==='critical'?'#dc2626':sev==='high'?'#ca8a04':'#111827';
             const t = a.triage || {};
             return `<tr>
               <td><strong style=\"color:${sevColor}\">${escapeHtml(sev.toUpperCase())}</strong></td>
@@ -2369,7 +2369,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           el.innerHTML = `<div class=\"empty\">${tt('admin.dyn.none_incidents','등록된 인시던트 없음')}</div>`;
           return;
         }
-        const STATUS_COLOR = { open:'#dc2626', investigating:'#ea580c', resolved:'#16a34a', closed:'#111827' };
+        const STATUS_COLOR = { open:'#dc2626', investigating:'#ca8a04', resolved:'#16a34a', closed:'#111827' };
         el.innerHTML = `<table class=\"result-table\">
           <thead><tr><th>${tt('admin.dyn.col.title','제목')}</th><th>${tt('admin.dyn.col.status','상태')}</th><th>${tt('admin.dyn.col.host','호스트')}</th><th>${tt('admin.dyn.col.handler','담당자')}</th><th>${tt('admin.dyn.col.analyst','분석관')}</th><th>${tt('admin.dyn.col.created','등록일')}</th><th>${tt('admin.dyn.col.updated','업데이트')}</th></tr></thead>
           <tbody>${list.slice(0,100).map(i => `<tr>
@@ -2414,12 +2414,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <tbody>${flatRows.slice(0,150).map(v => {
             const act = v.action || {};
             const planTxt = act.plan_text ? `<div>${escapeHtml(act.plan_text.substring(0,80))}${act.plan_text.length>80?'…':''}</div><div style=\"color:#111827;font-size:11px\">${tt('admin.dyn.due_prefix','기한 ')}${escapeHtml(act.plan_target_date||'-')} · ${escapeHtml(act.plan_updated_by||'-')}</div>` : `<span style=\"color:#111827\">${tt('admin.dyn.unregistered','미등록')}</span>`;
-            const excTxt = act.exception_until ? `<div style=\"color:#ea580c\">~${escapeHtml(act.exception_until)}</div><div style=\"color:#111827;font-size:11px\">${escapeHtml((act.exception_reason||'').substring(0,60))}</div>` : '<span style=\"color:#111827\">-</span>';
+            const excTxt = act.exception_until ? `<div style=\"color:#ca8a04\">~${escapeHtml(act.exception_until)}</div><div style=\"color:#111827;font-size:11px\">${escapeHtml((act.exception_reason||'').substring(0,60))}</div>` : '<span style=\"color:#111827\">-</span>';
             return `<tr>
               <td><strong>${escapeHtml(v.hostname||'-')}</strong></td>
               <td style=\"font-family:ui-monospace\">${escapeHtml(v.cve||v.vuln_id||'-')}</td>
               <td style=\"color:#111827\">${escapeHtml(v.package_name||'-')}</td>
-              <td><strong style=\"color:${v.severity==='critical'?'#dc2626':'#ea580c'}\">${escapeHtml((v.severity||'').toUpperCase())}</strong></td>
+              <td><strong style=\"color:${v.severity==='critical'?'#dc2626':'#ca8a04'}\">${escapeHtml((v.severity||'').toUpperCase())}</strong></td>
               <td style=\"color:#111827;font-size:12px\">${planTxt}</td>
               <td style=\"font-size:12px\">${excTxt}</td>
             </tr>`;
@@ -2467,7 +2467,7 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
           <thead><tr><th>${tt('admin.dyn.col.host','호스트')}</th><th>${tt('admin.dyn.col.target_date','목표일')}</th><th>${tt('admin.dyn.col.plan_content','계획 내용')}</th><th>${tt('admin.dyn.col.updated','업데이트')}</th></tr></thead>
           <tbody>${rows.slice(0,100).map(r => `<tr>
             <td><strong>${escapeHtml(r.hostname)}</strong></td>
-            <td style=\"color:#ea580c\">${escapeHtml(r.plan.target_date||'-')}</td>
+            <td style=\"color:#ca8a04\">${escapeHtml(r.plan.target_date||'-')}</td>
             <td style=\"color:#111827\">${escapeHtml((r.plan.text||'').substring(0,200))}${(r.plan.text||'').length>200?'…':''}</td>
             <td style=\"color:#111827;font-size:12px\">${escapeHtml(formatTime(r.plan.updated_at)||'-')} · ${escapeHtml(r.plan.updated_by||'-')}</td>
           </tr>`).join('')}</tbody></table>`;
