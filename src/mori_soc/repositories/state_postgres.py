@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from typing import Any
 
 from .state_base import StateRepository
+
+_log = logging.getLogger("mori_soc.state")
 
 
 def _schema_dir() -> Path | None:
@@ -63,8 +66,9 @@ class PostgresStateRepository(StateRepository):
         """
         schema_dir = _schema_dir()
         if schema_dir is None:
-            print("[schema] no schema dir found; skipping auto-apply")
+            _log.warning("[schema] no schema dir found; skipping auto-apply")
             return
+        failed: list[str] = []
         for f in sorted(schema_dir.glob("*.sql")):
             sql = f.read_text(encoding="utf-8")
             if not sql.strip():
@@ -72,9 +76,13 @@ class PostgresStateRepository(StateRepository):
             try:
                 with self._connect() as conn, conn.cursor() as cur:
                     cur.execute(sql)
-                print(f"[schema] applied {f.name}")
-            except Exception as exc:  # noqa: BLE001 - report and continue
-                print(f"[schema] FAILED {f.name}: {exc}")
+                _log.info("[schema] applied %s", f.name)
+            except Exception:  # noqa: BLE001 - report and continue(부팅은 계속하되 은폐 금지)
+                failed.append(f.name)
+                _log.exception("[schema] FAILED %s — 해당 테이블이 없어 관련 조회가 빈 결과가 될 수 있음", f.name)
+        if failed:
+            _log.error("[schema] %d개 파일 적용 실패: %s (데이터가 조용히 비어 보일 수 있음)",
+                       len(failed), ", ".join(failed))
 
     # ── user_profiles ──────────────────────────────────────────────────────────
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:

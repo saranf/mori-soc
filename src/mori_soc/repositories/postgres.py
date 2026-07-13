@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 from typing import Any
 
@@ -20,6 +21,8 @@ from mori_soc.models import (
 from mori_soc.services.query_service import InMemoryQueryStore
 
 from .base import BaseRepository, RepositorySnapshot
+
+_log = logging.getLogger("mori_soc.repo")
 
 try:
     import psycopg
@@ -481,6 +484,8 @@ class PostgresRepository(BaseRepository):
                 ]
             except psycopg.errors.UndefinedTable:
                 conn.rollback()
+                _log.warning("control_check_results 테이블 없음 — control_checks 를 빈 목록으로 반환"
+                             "(schema/002 미적용? 부팅 시 apply_schema 로그 확인)")
             try:
                 cur.execute(
                     """
@@ -558,6 +563,10 @@ class PostgresRepository(BaseRepository):
                 ]
             except psycopg.errors.UndefinedTable:
                 conn.rollback()
+                # 4개 계정/권한 테이블이 한 트랜잭션이라 하나만 없어도 전부 빈 목록이 됨 —
+                # 조용히 사라지지 않도록 경고(개별 테이블 분리는 후속 리팩터 백로그).
+                _log.warning("directory/privilege/membership/observation 테이블 일부 없음 — "
+                             "계정·권한 스냅샷을 빈 목록으로 반환(schema 적용 상태 확인 필요)")
 
         return RepositorySnapshot(
             hosts=hosts,

@@ -33,6 +33,12 @@ class StatePersistenceRoundTripTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         from mori_soc.api.server import create_app_from_env, create_query_service_from_env
 
+        # 스키마 자립 적용 — 테스트 실행 순서와 무관하게 hosts 등 전 테이블을 보장(순서 의존성 제거).
+        dsn = os.getenv("MORI_DATABASE_URL", "").strip()
+        if dsn and PSYCOPG_AVAILABLE:
+            from mori_soc.repositories.state_postgres import PostgresStateRepository
+            PostgresStateRepository(dsn).apply_schema()
+
         cls.create_app_from_env = staticmethod(create_app_from_env)
         store = create_query_service_from_env().store
         cls.alert_id = store.alerts[0].alert_id if store.alerts else ""

@@ -54,7 +54,8 @@ jobs:
       - name: Unit + integration tests (Postgres-backed)
         run: python -m unittest discover -s tests -p "test_*.py" -v
 
-      # DB E2E 가 실제로 실행됐는지 강제 검증 — 스킵되면 CI 실패(silent skip 방지).
+      # DB E2E 가 실제로 실행됐는지 강제 검증 — DB 미가용으로 통째 스킵되면 CI 실패(silent skip 방지).
+      # (‘no alerts seeded’ 같은 데이터 조건부 스킵은 정상 — postgres/psycopg 미가용 스킵만 잡는다.)
       - name: DB E2E must run (fresh install · migration · state persistence)
         run: |
           set -o pipefail
@@ -62,9 +63,10 @@ jobs:
             tests.test_migration_e2e \
             tests.test_state_persistence \
             tests.test_risk_register_persistence 2>&1 | tee db_e2e.log
-          if grep -qiE "skipped" db_e2e.log; then
-            echo "::error::DB E2E tests were skipped — PostgreSQL enforcement is broken"; exit 1
+          if grep -qiE "skipped.*(postgres|psycopg|MORI_QUERY_BACKEND|MORI_DATABASE_URL)" db_e2e.log; then
+            echo "::error::DB E2E tests skipped for lack of PostgreSQL — enforcement is broken"; exit 1
           fi
+          grep -qE "^OK" db_e2e.log || { echo "::error::DB E2E did not pass"; exit 1; }
 
   catalog:
     runs-on: ubuntu-latest
