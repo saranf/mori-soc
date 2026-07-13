@@ -177,3 +177,19 @@ class PdcaCodeReviewSplitTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class IngestReplayGuardTests(unittest.TestCase):
+    """Ingest replay 방지(#11) — 동일 OIDC jti 재사용 감지."""
+
+    def setUp(self) -> None:
+        from mori_soc.api.routes.sources import _INGEST_REPLAY_SEEN
+        _INGEST_REPLAY_SEEN.clear()
+
+    def test_jti_replay_detected(self) -> None:
+        from mori_soc.api.routes.sources import _is_replayed
+        self.assertFalse(_is_replayed(None))                      # OIDC 없음
+        self.assertFalse(_is_replayed({"jti": "tok-1"}))          # 처음
+        self.assertTrue(_is_replayed({"jti": "tok-1"}))           # 재전송 → replay
+        self.assertFalse(_is_replayed({"jti": "tok-2"}))          # 다른 토큰
+        self.assertFalse(_is_replayed({"repository": "o/r"}))     # jti 없으면 멱등성에 위임

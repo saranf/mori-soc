@@ -8,6 +8,7 @@ stores + the ``get_query_service`` helper from :class:`RouteContext`) is new.
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -19,6 +20,35 @@ from mori_soc.api.routes.context import RouteContext
 
 # 인제스트/증적 영속화 실패는 절대 조용히 삼키지 않는다(증적·개인정보 유실 은폐 방지).
 _log = logging.getLogger("mori_soc.ingest")
+
+# Ingest replay 방지(#11) — OIDC jti(토큰 1회성 ID) 를 본 적 있으면 재전송으로 간주.
+# 단일 인스턴스 인메모리 TTL 캐시(다중 인스턴스는 공유 저장소 필요 — 백로그).
+_INGEST_REPLAY_SEEN: dict[str, float] = {}
+
+
+def _replay_window() -> int:
+    try:
+        return max(1, int(os.environ.get("MORI_INGEST_REPLAY_WINDOW", "86400")))
+    except (ValueError, AttributeError):
+        return 86400
+
+
+def _is_replayed(oidc_claims: dict[str, Any] | None) -> bool:
+    """OIDC jti 기반 replay 여부. jti 없으면(정적 토큰 경로) 결정적 id 멱등성에 맡기고 False."""
+    if not oidc_claims:
+        return False
+    jti = str(oidc_claims.get("jti") or "").strip()
+    if not jti:
+        return False
+    import time as _time
+    now, window = _time.time(), _replay_window()
+    # 오래된 항목 정리(무한 증가 방지)
+    for k in [k for k, t in _INGEST_REPLAY_SEEN.items() if now - t > window]:
+        _INGEST_REPLAY_SEEN.pop(k, None)
+    if jti in _INGEST_REPLAY_SEEN and now - _INGEST_REPLAY_SEEN[jti] < window:
+        return True
+    _INGEST_REPLAY_SEEN[jti] = now
+    return False
 
 # GitHub OIDC JWKS(공개키) 프로세스 캐시 — kid 회전 시에만 재조회.
 _OIDC_JWKS_CACHE: dict[str, Any] = {}
@@ -391,6 +421,13 @@ def register_sources(ctx: RouteContext) -> None:
             verified = True
         run_url = (run_url or "").strip() or str(payload.get("run_url") or "").strip() or (
             f"https://github.com/{resolved_repo}/actions/runs/{run_id}" if resolved_repo and run_id else "")
+        # Replay 방지(#11): 같은 OIDC 토큰(jti)을 이미 봤으면 재처리하지 않고 duplicate 로 응답.
+        if _is_replayed(oidc_claims):
+            if ctx.log_action:
+                ctx.log_action("oidc", "INGEST_REPLAY", f"code_review {resolved_repo}@{(commit or '')[:8]} run={run_id}")
+            _log.warning("ingest replay ignored: repo=%s commit=%s run=%s", resolved_repo, commit, run_id)
+            return {"ok": True, "duplicate": True, "replayed": True, "repo": resolved_repo,
+                    "commit": commit or None, "run_id": run_id or None}
         # 스캔 방식 감지 — SARIF(runs[].tool)면 그 도구(무료), 네이티브 findings 면 Claude(유료).
         tool_label = "스캔"
         if isinstance(payload.get("runs"), list):
