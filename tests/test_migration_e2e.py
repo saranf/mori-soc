@@ -113,6 +113,23 @@ class MigrationE2ETests(unittest.TestCase):
         repo.apply_schema()  # 예외 없이 완료돼야
         self.assertIn("personal_data_flow", self._tables())
 
+    def test_schema_fail_fast_aborts_on_bad_ddl(self) -> None:
+        # 잘못된 DDL + fail-fast → 부팅 중단(불완전 DB 로 서비스 방지). 정상 파일은 idempotent.
+        import os
+        import tempfile
+        from unittest.mock import patch
+
+        from mori_soc.repositories.state_postgres import PostgresStateRepository
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "001_bad.sql"), "w", encoding="utf-8") as fh:
+                fh.write("INSERT INTO nonexistent_table VALUES (1);")
+            with patch.dict(os.environ, {"MORI_SCHEMA_DIR": d, "MORI_SCHEMA_FAIL_FAST": "true"}, clear=False):
+                with self.assertRaises(RuntimeError):
+                    PostgresStateRepository(self._url).apply_schema()
+            # fail-fast off 면 실패해도 부팅 계속(데모).
+            with patch.dict(os.environ, {"MORI_SCHEMA_DIR": d, "MORI_SCHEMA_FAIL_FAST": "false"}, clear=False):
+                PostgresStateRepository(self._url).apply_schema()  # 예외 없음
+
 
 if __name__ == "__main__":
     unittest.main()

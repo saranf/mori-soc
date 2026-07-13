@@ -39,6 +39,17 @@ def _jsonb(payload):
     return Jsonb(payload or []) if Jsonb is not None else (payload or [])
 
 
+def _schema_fail_fast() -> bool:
+    """스키마 적용 실패 시 부팅 중단 여부. 명시 설정이 우선, 없으면 운영 모드에서 기본 활성."""
+    explicit = os.getenv("MORI_SCHEMA_FAIL_FAST", "").strip().lower()
+    if explicit in ("1", "true", "yes", "on"):
+        return True
+    if explicit in ("0", "false", "no", "off"):
+        return False
+    # 미설정 → 운영 모드(MORI_DEMO_MODE=false)면 fail-fast, 데모면 관대.
+    return os.getenv("MORI_DEMO_MODE", "").strip().lower() in ("false", "0", "no", "off")
+
+
 class PostgresStateRepository(StateRepository):
     """PostgreSQL-backed persistence for the Phase 2 UI operational-state stores.
 
@@ -62,7 +73,9 @@ class PostgresStateRepository(StateRepository):
         a pre-existing volume never receives tables added after it was created —
         the app then crashes SELECTing a missing table. Every DDL file is
         ``CREATE TABLE IF NOT EXISTS`` (idempotent), so applying them on each boot
-        closes that gap safely. A per-file error is logged but does not abort boot.
+        closes that gap safely. 각 파일은 독립 트랜잭션이라 한 파일 실패가 다른 테이블/
+        데이터를 손상시키지 않는다. fail-fast(운영 기본)면 실패 시 부팅을 중단해 불완전한
+        DB 상태로 서비스가 정상처럼 뜨는 것을 막는다.
         """
         schema_dir = _schema_dir()
         if schema_dir is None:
@@ -83,6 +96,11 @@ class PostgresStateRepository(StateRepository):
         if failed:
             _log.error("[schema] %d개 파일 적용 실패: %s (데이터가 조용히 비어 보일 수 있음)",
                        len(failed), ", ".join(failed))
+            if _schema_fail_fast():
+                raise RuntimeError(
+                    f"[schema] 스키마 적용 실패로 부팅 중단(fail-fast): {', '.join(failed)}. "
+                    "불완전한 DB 로 서비스하지 않는다. 데모라면 MORI_SCHEMA_FAIL_FAST=false 로 완화 가능."
+                )
 
     # ── user_profiles ──────────────────────────────────────────────────────────
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:
