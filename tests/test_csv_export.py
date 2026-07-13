@@ -38,5 +38,28 @@ class CsvExportTests(unittest.TestCase):
         self.assertEqual(parsed[1], ["=1+2", "ok"])
 
 
+class CsvExportCapTests(unittest.TestCase):
+    def test_export_row_cap_truncates(self) -> None:
+        import os
+        from unittest.mock import patch
+
+        from mori_soc.services.csv_export import _cap_rows
+        rows = [{"a": i} for i in range(10)]
+        with patch.dict(os.environ, {"MORI_MAX_EXPORT_ROWS": "4"}, clear=False):
+            capped, truncated = _cap_rows(rows)
+        self.assertEqual(len(capped), 4)
+        self.assertTrue(truncated)
+
+    def test_no_cap_when_zero(self) -> None:
+        import os
+        from unittest.mock import patch
+
+        from mori_soc.services.csv_export import _cap_rows
+        with patch.dict(os.environ, {"MORI_MAX_EXPORT_ROWS": "0"}, clear=False):
+            capped, truncated = _cap_rows([{"a": i} for i in range(10)])
+        self.assertEqual(len(capped), 10)
+        self.assertFalse(truncated)
+
+
 if __name__ == "__main__":
     unittest.main()
