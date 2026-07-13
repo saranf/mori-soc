@@ -14,9 +14,11 @@
 A one-command **ISMS-P / ISO 27001 audit-evidence platform** (`docker compose up -d`).
 It sits **read-only on top of your existing** **Zabbix · FleetDM · Wazuh · Trivy · Loki**, runs assets, vulnerabilities, alerts, incidents and control checks from a single screen (`/ui`), and **records every change as _who · when · what · on what basis_ automatically**.
 
+> **Core in one line** — **operational signal → human decision → control evidence.** Everything else (monitoring, vulnerabilities, incidents, privacy, code review) is a source or a vertical feeding that spine.
+
 > **An "evidence layer," not a "viewing layer"** — time-series and log visualization are delegated to Grafana/Loki; MORI sits above them to handle **judge → record → prove** (triage → remediation → control mapping → evidence PDF → audit log).
 
-> **Who it's for** — two audiences, one platform: **(1) Korean teams preparing ISMS-P** — the domestic certification workflow, Korean-first; **(2) overseas teams wanting a self-hosted ISO 27001 evidence layer** — an open, self-host alternative to Vanta/Drata that runs read-only on the tools you already have.
+> **Who it's for** — a **self-hosted technical evidence layer for teams that already run Zabbix and open-source security tools** and need to turn that operational reality into audit evidence. Not a SaaS GRC suite (no employee/vendor lifecycle); it complements those by covering the technical-operations side. This English page leads with ISO 27001 / security operations; the [Korean page](./README.ko.md) is the ISMS-P entry point.
 
 > **Honest by design** — the catalog is **58 / 194 controls reviewed** today; the other 136 are draft skeletons, **labeled `draft` in the UI**. Coverage % counts only reviewed **and** evidence-wired controls — no inflation. Audit trust is the whole point, so the numbers stay honest.
 
@@ -100,7 +102,9 @@ flowchart LR
 | Alert Triage / Incidents / **risk assessment** | | Slack / Email alerts |
 | Login·RBAC · PostgreSQL persistence · CSV/PDF evidence | | Live-query caching |
 
-> **Zabbix** is verified end-to-end via the real API (_problem → collect → triage → incident → evidence → resolve_). **Fleet / Wazuh** collectors/parsers are ready; live integration is next.
+> **Integration maturity** (so "works" is unambiguous): **Zabbix — verified with real API** end-to-end (_problem → collect → triage → incident → evidence → resolve_). **Trivy / code-review / Wazuh ingest — tested with sample payloads** over the real HTTP endpoints. **Fleet / Wazuh live pollers — implemented as parser/scaffold only** (env vars are placeholders; no live API yet). None is claimed "production-tested at scale" — large-scale performance is not yet benchmarked.
+
+> **Scope — single-tenant, self-hosted.** MORI targets one organization per deployment: no `organization_id`, tenant isolation, or hosted multi-tenant mode. Run one instance per org behind your own network controls. (Multi-tenant is out of scope, not a roadmap promise.)
 
 ---
 
