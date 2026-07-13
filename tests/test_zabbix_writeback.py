@@ -153,7 +153,21 @@ class ZabbixWritebackConfigTests(unittest.TestCase):
             cfg = ZabbixWritebackConfig.from_env()
         self.assertFalse(cfg.enabled)
         self.assertFalse(cfg.is_operational)
+        self.assertFalse(cfg.dry_run)   # dry-run 도 기본 off
         self.assertIsNone(build_zabbix_writeback_client(cfg))
+
+    def test_dry_run_flag_from_env(self) -> None:
+        # dry-run: 활성화돼도 실제 API 는 호출하지 않는다는 의도를 config 가 노출한다(#29).
+        env = {
+            "MORI_ZABBIX_WRITEBACK_ENABLED": "1",
+            "MORI_ZABBIX_API_URL": "http://zabbix.example/api_jsonrpc.php",
+            "MORI_ZABBIX_API_TOKEN": "api-token",
+            "MORI_ZABBIX_WRITEBACK_DRYRUN": "true",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            cfg = ZabbixWritebackConfig.from_env()
+        self.assertTrue(cfg.dry_run)
+        self.assertTrue(cfg.is_operational)   # 운영 판정과 무관(호출 시점에 dry-run 분기)
 
     def test_enabled_needs_credentials(self) -> None:
         env = {"MORI_ZABBIX_WRITEBACK_ENABLED": "true"}

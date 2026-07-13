@@ -77,6 +77,7 @@ class ZabbixWritebackConfig:
     username: str | None = None
     password: str | None = None
     request_timeout: int = 10
+    dry_run: bool = False
 
     @classmethod
     def from_env(cls) -> "ZabbixWritebackConfig":
@@ -89,6 +90,8 @@ class ZabbixWritebackConfig:
             username=(os.getenv("MORI_ZABBIX_USER", "").strip() or None),
             password=(os.getenv("MORI_ZABBIX_PASSWORD", "").strip() or None),
             request_timeout=int(os.getenv("MORI_ZABBIX_TIMEOUT_SECONDS", "10")),
+            # dry-run: 활성화돼도 실제 Zabbix API 는 호출하지 않고 '무엇을 할지'만 감사 기록.
+            dry_run=_env_flag("MORI_ZABBIX_WRITEBACK_DRYRUN", default=False),
         )
 
     @property

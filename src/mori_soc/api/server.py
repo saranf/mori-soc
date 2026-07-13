@@ -1689,19 +1689,24 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
         outcome = "success"
         error_text = ""
         response: object = None
-        try:
-            if do_ack:
-                response = _zabbix_writeback_client.acknowledge(event_id, message)
-            else:
-                response = _zabbix_writeback_client.add_comment(event_id, message)
-        except ZabbixApiError as exc:
-            outcome = "error"
-            error_text = str(exc)
-            logger.warning("Zabbix write-back (%s) failed for event %s: %s", action_name, event_id, exc)
-        except Exception as exc:  # pragma: no cover - defensive: never break triage
-            outcome = "error"
-            error_text = str(exc)
-            logger.exception("Unexpected Zabbix write-back error for event %s", event_id)
+        if _zabbix_writeback_config.dry_run:
+            # dry-run: 실제 API 호출 없이 의도를 감사만 남긴다(안전한 롤아웃 검증용).
+            outcome = "dry_run"
+            logger.info("Zabbix write-back DRY-RUN (%s) event %s: %s", action_name, event_id, message)
+        else:
+            try:
+                if do_ack:
+                    response = _zabbix_writeback_client.acknowledge(event_id, message)
+                else:
+                    response = _zabbix_writeback_client.add_comment(event_id, message)
+            except ZabbixApiError as exc:
+                outcome = "error"
+                error_text = str(exc)
+                logger.warning("Zabbix write-back (%s) failed for event %s: %s", action_name, event_id, exc)
+            except Exception as exc:  # pragma: no cover - defensive: never break triage
+                outcome = "error"
+                error_text = str(exc)
+                logger.exception("Unexpected Zabbix write-back error for event %s", event_id)
 
         alert_id = getattr(alert, "alert_id", "") or ""
         host_id = getattr(alert, "host_id", "") or ""
@@ -1723,6 +1728,7 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
                 "zabbix_eventid": str(event_id),
                 "message": message,
                 "status": outcome,
+                "dry_run": _zabbix_writeback_config.dry_run,
                 "error": error_text,
                 "response": response,
                 "requested_by": acting_user or "unknown",
@@ -1777,19 +1783,23 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
         outcome = "success"
         error_text = ""
         response: object = None
-        try:
-            if unsuppress:
-                response = _zabbix_writeback_client.unsuppress(event_id, message)
-            else:
-                response = _zabbix_writeback_client.suppress(event_id, message, until=until)
-        except ZabbixApiError as exc:
-            outcome = "error"
-            error_text = str(exc)
-            logger.warning("Zabbix %s failed for event %s: %s", action_name, event_id, exc)
-        except Exception as exc:  # pragma: no cover - defensive
-            outcome = "error"
-            error_text = str(exc)
-            logger.exception("Unexpected Zabbix %s error for event %s", action_name, event_id)
+        if _zabbix_writeback_config.dry_run:
+            outcome = "dry_run"
+            logger.info("Zabbix %s DRY-RUN event %s: %s", action_name, event_id, message)
+        else:
+            try:
+                if unsuppress:
+                    response = _zabbix_writeback_client.unsuppress(event_id, message)
+                else:
+                    response = _zabbix_writeback_client.suppress(event_id, message, until=until)
+            except ZabbixApiError as exc:
+                outcome = "error"
+                error_text = str(exc)
+                logger.warning("Zabbix %s failed for event %s: %s", action_name, event_id, exc)
+            except Exception as exc:  # pragma: no cover - defensive
+                outcome = "error"
+                error_text = str(exc)
+                logger.exception("Unexpected Zabbix %s error for event %s", action_name, event_id)
 
         alert_id = getattr(alert, "alert_id", "") or ""
         host_id = getattr(alert, "host_id", "") or ""
@@ -1813,6 +1823,7 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
                 "reason": reason_text,
                 "message": message,
                 "status": outcome,
+                "dry_run": _zabbix_writeback_config.dry_run,
                 "error": error_text,
                 "response": response,
                 "requested_by": acting_user or "unknown",
@@ -1825,7 +1836,8 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
         except Exception:  # pragma: no cover - audit write must not break the action
             logger.exception("Failed to persist Zabbix %s evidence for event %s", action_name, event_id)
 
-        return {"enabled": True, "ok": outcome == "success", "action": action_name,
+        return {"enabled": True, "ok": outcome in ("success", "dry_run"),
+                "dry_run": outcome == "dry_run", "action": action_name,
                 "error": error_text, "evidence_id": evidence_id,
                 "suppress_until": (None if unsuppress else int(until))}
 
