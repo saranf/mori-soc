@@ -293,6 +293,9 @@ def create_app(
 
     if _auth_enabled:
         app.add_middleware(build_session_auth_middleware(sessions))
+    # rate limit(#12): 세션 auth 뒤에 등록 → 가장 바깥에서 먼저 평가(플러드를 인증 전에 차단).
+    from mori_soc.api.ratelimit import build_rate_limit_middleware
+    app.add_middleware(build_rate_limit_middleware())
 
     # Triage: alert_id -> {status, analyst, note, updated_at}
     triage_store: dict[str, dict[str, Any]] = {}
