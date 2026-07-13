@@ -78,20 +78,7 @@ def render_user_dashboard_html(
         <div id=\"security_hero_body\" style=\"margin-top:12px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
       </section>
       <section class=\"metrics\" id=\"overview_cards\"><div class=\"empty\" style=\"padding:16px;color:#111827\" data-i18n=\"dash.status.overview_loading\">요약 카드를 불러오는 중…</div></section>
-      <style>
-        /* 패널 자유조절: flex-wrap + 네이티브 드래그 리사이즈. 반응형(좁으면 100%로 접힘). */
-        #dash_grid { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
-        #dash_grid > section {
-          flex:0 1 auto; width:460px; max-width:100%; min-width:300px;
-          box-sizing:border-box; resize:horizontal; overflow:auto;
-        }
-        #dash_grid > section > * { min-width:0; }
-        #dash_grid > section .table-wrap { overflow-x:auto; }
-        #dash_grid > section table { max-width:100%; }
-        /* 표가 있는 패널은 기본을 넓게 (드래그로 자유 조절 가능) */
-        #latest_status_section, #risk_summary_section, #recent_activity_section { width:620px; }
-        @media (max-width:640px){ #dash_grid > section { width:100%!important; resize:none; } }
-      </style>
+      <!-- P1: #dash_grid 레이아웃 CSS는 static/css/dashboard.css 로 이관됨 -->
       <div id=\"dash_grid\">
           <!-- 인프라 현황 (24h/12h 전환 + Zabbix/Wazuh 딥링크) -->
           <section class=\"card\" id=\"infra_status_section\">

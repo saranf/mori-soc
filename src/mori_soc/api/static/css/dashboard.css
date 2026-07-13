@@ -171,3 +171,16 @@
       .card { padding: 10px 8px; }
       .list-item .top strong { font-size: 13px; line-height: 1.4; }
     }
+
+    /* 대시보드 패널 그리드(P1: dashboard.py 인라인 <style>에서 이관) —
+       flex-wrap + 네이티브 드래그 리사이즈, 반응형(좁으면 100%로 접힘). */
+    #dash_grid { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+    #dash_grid > section {
+      flex: 0 1 auto; width: 460px; max-width: 100%; min-width: 300px;
+      box-sizing: border-box; resize: horizontal; overflow: auto;
+    }
+    #dash_grid > section > * { min-width: 0; }
+    #dash_grid > section .table-wrap { overflow-x: auto; }
+    #dash_grid > section table { max-width: 100%; }
+    #latest_status_section, #risk_summary_section, #recent_activity_section { width: 620px; }
+    @media (max-width: 640px) { #dash_grid > section { width: 100% !important; resize: none; } }

@@ -31,8 +31,9 @@ class DashboardRenderTest(unittest.TestCase):
             self.assertIn(f'id="{tab}"', self.html, f"탭 패널 {tab} 누락")
         self.assertGreaterEqual(self.html.count('class="tab-panel"'), 6)
 
-    def test_style_and_script_blocks(self) -> None:
-        self.assertIn("<style", self.html)
+    def test_stylesheet_and_script(self) -> None:
+        # CSS는 외부화(P1: /static/css/dashboard.css), JS는 아직 인라인 <script>
+        self.assertIn('href="/static/css/dashboard.css"', self.html)
         self.assertIn("<script", self.html)
 
     def test_key_js_functions_present(self) -> None:
