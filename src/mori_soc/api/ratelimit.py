@@ -33,6 +33,14 @@ def _window() -> int:
         return 60
 
 
+def _max_body_bytes() -> int:
+    """요청 본문 최대 바이트(#36). 0/음수면 비활성. 기본 10MB."""
+    try:
+        return int(os.environ.get("MORI_MAX_BODY_BYTES", str(10 * 1024 * 1024)))
+    except ValueError:
+        return 10 * 1024 * 1024
+
+
 def _limit_for(path: str) -> tuple[str, int] | None:
     for prefix, env_name, default in _LIMITED:
         if path.startswith(prefix):
@@ -61,6 +69,16 @@ def build_rate_limit_middleware():
 
     class _RateLimitMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):  # type: ignore[override]
+            # 요청 본문 크기 한도(#36) — resource exhaustion 방어. Content-Length 기준(초과 시 413).
+            max_bytes = _max_body_bytes()
+            if max_bytes > 0:
+                cl = request.headers.get("content-length", "")
+                if cl.isdigit() and int(cl) > max_bytes:
+                    return _Response(
+                        status_code=413,
+                        content='{"detail":"request body too large","code":"payload_too_large","retryable":false}',
+                        media_type="application/json",
+                    )
             if not _enabled():
                 return await call_next(request)
             limit = _limit_for(request.url.path)

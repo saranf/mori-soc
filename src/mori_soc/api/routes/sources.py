@@ -54,14 +54,32 @@ def _is_replayed(oidc_claims: dict[str, Any] | None) -> bool:
 _OIDC_JWKS_CACHE: dict[str, Any] = {}
 
 
+def _max_findings() -> int:
+    """인제스트 1회 처리 findings 상한(#36 — resource exhaustion 방어). 기본 20000."""
+    try:
+        return int(os.environ.get("MORI_MAX_FINDINGS", "20000"))
+    except ValueError:
+        return 20000
+
+
+def _cap_findings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """상한 초과 시 잘라내되 **조용히 버리지 않고** 로그로 남긴다(silent cap 금지)."""
+    cap = _max_findings()
+    if cap > 0 and len(findings) > cap:
+        _log.warning("ingest findings %d건이 상한 %d 초과 — 초과분 잘림(silent 아님)", len(findings), cap)
+        return findings[:cap]
+    return findings
+
+
 def _extract_code_findings(payload: dict[str, Any]) -> list[dict[str, Any]]:
     """코드 리뷰 인제스트 본문에서 finding dict 목록을 뽑는다.
 
     허용: (1) ``{"findings": [...]}`` (2) SARIF ``{"runs": [{"results": [...]}]}``
     (3) 단일 finding dict. SARIF result → MORI finding 형태로 평탄화한다.
+    상한(#36)을 넘으면 초과분을 잘라 resource exhaustion 을 막고 그 사실을 로그로 남긴다.
     """
     if isinstance(payload.get("findings"), list):
-        return [f for f in payload["findings"] if isinstance(f, dict)]
+        return _cap_findings([f for f in payload["findings"] if isinstance(f, dict)])
     if isinstance(payload.get("runs"), list):  # SARIF
         out: list[dict[str, Any]] = []
         for run in payload["runs"]:
@@ -86,7 +104,7 @@ def _extract_code_findings(payload: dict[str, Any]) -> list[dict[str, Any]]:
                     "line": region.get("startLine") if isinstance(region, dict) else None,
                     "snippet": (snip.get("text") if isinstance(snip, dict) else None),
                 })
-        return out
+        return _cap_findings(out)
     # 단일 finding fallback — 리뷰 finding 으로 볼 수 있는 필드가 있을 때만.
     if any(k in payload for k in ("rule_id", "ruleId", "title", "severity", "level")):
         return [payload]

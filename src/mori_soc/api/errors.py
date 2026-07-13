@@ -17,6 +17,7 @@ _STATUS_MAP: dict[int, tuple[str, bool]] = {
     403: ("forbidden", False),
     404: ("not_found", False),
     409: ("conflict", False),
+    413: ("payload_too_large", False),
     422: ("validation_error", False),
     429: ("rate_limited", True),
     500: ("internal_error", True),

@@ -60,3 +60,34 @@ class RateLimitTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(FASTAPI_AVAILABLE, "requires fastapi")
+class BodyLimitTests(unittest.TestCase):
+    def _client(self, env):
+        from fastapi.testclient import TestClient
+
+        from mori_soc.api.server import create_app
+        from mori_soc.services.query_service import InMemoryQueryStore, QueryService
+        base = {"MORI_DEMO_SEED": "0", "MORI_AUTH_ENABLED": "", **_NO_LOCKOUT}
+        base.update(env)
+        with patch.dict(os.environ, base, clear=False):
+            return TestClient(create_app(QueryService(InMemoryQueryStore())))
+
+    def test_oversized_body_413(self) -> None:
+        with patch.dict(os.environ, {"MORI_DEMO_SEED": "0", "MORI_AUTH_ENABLED": "",
+                                     "MORI_MAX_BODY_BYTES": "500", **_NO_LOCKOUT}, clear=False):
+            from fastapi.testclient import TestClient
+
+            from mori_soc.api.server import create_app
+            from mori_soc.services.query_service import InMemoryQueryStore, QueryService
+            c = TestClient(create_app(QueryService(InMemoryQueryStore())))
+            r = c.post("/auth/login", json={"username": "x" * 1000, "password": "y"})
+        self.assertEqual(r.status_code, 413)
+        self.assertEqual(r.json()["code"], "payload_too_large")
+
+    def test_findings_cap_logs_and_truncates(self) -> None:
+        from mori_soc.api.routes.sources import _extract_code_findings
+        with patch.dict(os.environ, {"MORI_MAX_FINDINGS": "3"}, clear=False):
+            out = _extract_code_findings({"findings": [{"rule_id": str(i)} for i in range(10)]})
+        self.assertEqual(len(out), 3)   # 초과분 잘림
