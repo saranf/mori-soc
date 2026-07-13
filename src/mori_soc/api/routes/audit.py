@@ -74,6 +74,13 @@ def register_audit(ctx: RouteContext) -> None:
         if ctx.auth_enabled and _session_role(request) not in _LOG_VIEW_ROLES:
             raise HTTPException(status_code=403, detail="통합 로그는 admin·security·auditor 전용입니다.")
 
+    @app.get("/admin/audit-log/verify", tags=["Assets"])
+    def audit_log_verify(request: Request) -> dict[str, Any]:
+        """행동 감사로그 hash chain 무결성 검증(#20 변조 감지). admin·security·auditor 전용."""
+        _require_log_view(request)
+        from mori_soc.api.server import verify_audit_chain
+        return verify_audit_chain(action_audit_log)
+
     def _ev(ts, actor, category, action, target, detail, source) -> dict[str, Any]:
         return {
             "ts": str(ts or ""), "actor": str(actor or ""), "category": category,

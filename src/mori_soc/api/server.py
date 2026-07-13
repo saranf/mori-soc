@@ -160,6 +160,39 @@ def _compute_security_posture(auth_enabled: bool, insecure_defaults: list[str]) 
     return "insecure" if (not auth_enabled or insecure_defaults) else "hardened"
 
 
+def _audit_entry_hash(prev_hash: str, entry: dict[str, Any]) -> str:
+    """감사 항목 hash = sha256(prev_hash | canonical(seq,ts,username,action,detail))."""
+    import hashlib
+    import json
+    payload = json.dumps(
+        {k: entry.get(k) for k in ("seq", "ts", "username", "action", "detail")},
+        sort_keys=True, ensure_ascii=False,
+    )
+    return hashlib.sha256(f"{prev_hash}|{payload}".encode()).hexdigest()
+
+
+def verify_audit_chain(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    """보존된 감사 체인의 무결성 검증. 각 항목 해시 재계산 + 연속 항목 링크 확인.
+
+    반환: {ok, count, root_hash, broken_at(첫 불일치 seq 또는 None)}.
+    (오래된 항목은 truncate 되므로 첫 항목의 genesis 링크는 검증 대상이 아니다 — 창 내부 정합성.)
+    """
+    broken_at = None
+    prev_link: str | None = None
+    for e in entries:
+        recomputed = _audit_entry_hash(str(e.get("prev_hash", "")), e)
+        if recomputed != e.get("hash"):
+            broken_at = e.get("seq")
+            break
+        if prev_link is not None and e.get("prev_hash") != prev_link:
+            broken_at = e.get("seq")   # 앞 항목과의 링크 끊김(항목 삭제·재배열)
+            break
+        prev_link = e.get("hash")
+    root = entries[-1].get("hash") if entries else "GENESIS"
+    return {"ok": broken_at is None, "count": len(entries),
+            "root_hash": root, "broken_at": broken_at}
+
+
 def _load_file_secrets() -> None:
     """Docker secrets 규칙(#15): 환경변수 ``<NAME>_FILE`` 이 가리키는 파일 내용을
     ``<NAME>`` 으로 로드한다(``<NAME>`` 이 이미 설정돼 있으면 건너뜀). compose 에
@@ -269,13 +302,22 @@ def create_app(
     action_audit_log: list[dict[str, Any]] = []
 
     def _log_action(username: str, action: str, detail: str = "") -> None:
-        """사용자 행동을 action_audit_log에 기록 (최근 2000건 유지)."""
+        """사용자 행동을 action_audit_log에 기록 (최근 2000건 유지).
+
+        변조 감지(#20): 각 항목은 이전 항목 해시에 연결된 hash chain 을 갖는다.
+        항목이 사후에 바뀌거나 빠지면 체인 검증(/admin/audit-log/verify)이 깨진다.
+        """
+        prev = action_audit_log[-1]["hash"] if action_audit_log else "GENESIS"
+        seq = (action_audit_log[-1]["seq"] + 1) if action_audit_log else 1
         entry = {
+            "seq": seq,
             "ts": _isoformat(datetime.now(tz=timezone.utc)),
             "username": username,
             "action": action,
             "detail": detail,
+            "prev_hash": prev,
         }
+        entry["hash"] = _audit_entry_hash(prev, entry)
         action_audit_log.append(entry)
         if len(action_audit_log) > 2000:
             del action_audit_log[:-2000]

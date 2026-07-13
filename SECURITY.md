@@ -51,7 +51,9 @@ Grafana, PostgreSQL) — report those upstream.
 | **XSS** | Dashboard renders ingest/user data through `escapeHtml` consistently; titles/copy via `textContent`. |
 | **CSRF** | Mitigated by `SameSite=Lax` (blocks cross-site POST). A dedicated CSRF token would need a frontend change and is tracked as future work. |
 | **Ingest** | Bearer `MORI_INGEST_TOKEN` or GitHub OIDC. **Replay protection (nonce/timestamp) is not yet implemented** for the static-token path — treat the token as a secret and prefer OIDC. |
-| **Public endpoints** | `/privacy/pii-rules.yml`, `/privacy/flow-scanner.py`, `/code-review/fullscan.py` are intentionally unauthenticated (CI fetches them). They expose **detection patterns/admin PII terms**, not credentials — acceptable low-sensitivity disclosure by design. |
+| **Public endpoints** | `/privacy/pii-rules.yml`, `/privacy/flow-scanner.py`, `/code-review/fullscan.py`, `/code-review/scanners/manifest.json` are intentionally unauthenticated (CI fetches them). They expose **detection patterns/admin PII terms/checksums**, not credentials — acceptable low-sensitivity disclosure by design. |
+| **Audit log** | Action audit log is **hash-chained** (each entry links to the previous); `GET /admin/audit-log/verify` recomputes the chain and reports tampering/deletion. Append-only in practice (no update/delete API). Persistence to DB + external forwarding + signed export are backlog. |
+| **Abuse / rate limiting** | IP sliding-window limits on `/ingest/*` and `/auth/login` (429). Login lockout per (username, ip). Single-instance in-memory. |
 
 > Known hardening not yet defaulted (needs a deployment decision, not a silent flip):
 > **fail-closed auth default** (auth currently defaults *off* when unset). Set `MORI_AUTH_ENABLED=true`.
