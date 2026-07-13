@@ -129,12 +129,53 @@ def run_ingestion_cycle(
 
 # ── main loop ──────────────────────────────────────────────────────
 
+# 리더 선출(#26) — 여러 worker 인스턴스가 떠도 한 번에 하나만 폴링하도록 PostgreSQL
+# advisory lock 을 잡는다(중복 poll·evidence·race 방지). 리더가 죽으면 세션이 끊겨 락이
+# 풀리고 standby 가 인수한다. DB 미설정(인메모리)·명시 비활성이면 락 없이 그대로 폴링.
+_LEADER_LOCK_KEY = 0x4D4F5249  # "MORI"
+
+
+def _worker_singleton_enabled() -> bool:
+    import os
+    if os.environ.get("MORI_WORKER_SINGLETON", "").strip().lower() in ("0", "false", "no", "off"):
+        return False
+    return bool(os.environ.get("MORI_DATABASE_URL", "").strip())
+
+
+def _try_acquire_leader():
+    """리더 락 획득 시도. 성공하면 (락을 쥔) 연결을 반환, 실패(다른 리더)면 None."""
+    import os
+
+    dsn = os.environ.get("MORI_DATABASE_URL", "").strip()
+    try:
+        import psycopg
+    except Exception:
+        return None
+    try:
+        conn = psycopg.connect(dsn)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("SELECT pg_try_advisory_lock(%s)", (_LEADER_LOCK_KEY,))
+            got = bool(cur.fetchone()[0])
+        if got:
+            return conn
+        conn.close()
+        return None
+    except Exception as exc:  # noqa: BLE001 — 락 인프라 문제로 폴링을 막지 않는다(가용성 우선)
+        logger.warning("leader lock 시도 실패(락 없이 진행): %s", exc)
+        raise _LockUnavailable() from exc
+
+
+class _LockUnavailable(Exception):
+    """advisory lock 을 쓸 수 없음(폴링은 계속)."""
+
+
 def run_forever() -> None:
     """Run all enabled pollers in a single loop (unified worker mode).
 
     각 폴러의 ``poll_interval_seconds`` 를 존중해 소스별 다음 실행 시각을
     관리합니다.  글로벌 루프는 1 초 간격으로 돌며, 각 폴러의 예정 시각이
-    도래하면 해당 폴러만 실행합니다.
+    도래하면 해당 폴러만 실행합니다. 여러 인스턴스가 떠도 리더 하나만 폴링합니다(#26).
     """
     repository = _repository_from_env()
     mapper = EnvelopeEntityMapper()
@@ -156,7 +197,24 @@ def run_forever() -> None:
     source_info = ", ".join(f"{p.source_name}({p.poll_interval_seconds}s)" for p in active)
     logger.info("Unified worker starting — pollers=[%s]", source_info)
 
+    lock_needed = _worker_singleton_enabled()
+    leader_conn = None  # 락을 쥔 연결(프로세스 수명 동안 유지)
+
     while True:
+        if lock_needed and leader_conn is None:
+            try:
+                leader_conn = _try_acquire_leader()
+            except _LockUnavailable:
+                lock_needed = False  # 락 인프라 불가 → 락 없이 폴링(가용성 우선)
+            else:
+                if leader_conn is None:
+                    logger.info("worker standby — 다른 인스턴스가 리더. 5초 후 재시도.")
+                    if run_once:
+                        return
+                    time.sleep(5)
+                    continue
+                logger.info("이 worker 가 리더 — 폴링 시작.")
+
         now = time.monotonic()
         for poller in active:
             if now >= next_run[poller.source_name]:

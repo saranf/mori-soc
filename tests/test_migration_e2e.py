@@ -128,6 +128,17 @@ class MigrationE2ETests(unittest.TestCase):
         self.assertEqual(len(rows), len(rows2))
         self.assertEqual([r["version"] for r in rows2], sorted(r["version"] for r in rows2))
 
+    def test_worker_leader_lock_single_holder(self) -> None:
+        # 리더 선출(#26): 한 번에 한 연결만 advisory lock 을 쥔다.
+        import os
+        from unittest.mock import patch
+        from mori_soc.worker import _try_acquire_leader
+        with patch.dict(os.environ, {"MORI_DATABASE_URL": self._url}, clear=False):
+            c1 = _try_acquire_leader()
+            self.assertIsNotNone(c1)                 # 첫 획득 = 리더
+            self.assertIsNone(_try_acquire_leader())  # 두번째 = standby(None)
+            c1.close()
+
     def test_schema_fail_fast_aborts_on_bad_ddl(self) -> None:
         # 잘못된 DDL + fail-fast → 부팅 중단(불완전 DB 로 서비스 방지). 정상 파일은 idempotent.
         import os
