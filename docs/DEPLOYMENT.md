@@ -147,6 +147,9 @@ curl -X POST http://mori.rmstudio.co.kr:18000/query \
   (`src/mori_soc/api/server.py` → state 백엔드의 `apply_schema`). 즉 새 스키마 파일(예: 012·013)을
   추가하고 `docker compose up -d --build mori-api` 만 해도 반영되며, **볼륨을 지울 필요가 없습니다.**
   (compose 의 initdb 마운트는 최초 빈 볼륨 부트스트랩용일 뿐, 이후 정합성은 앱 self-heal 이 담당.)
+- 적용 이력은 `schema_migrations` 테이블(버전·checksum·적용시각·성공)에 기록됩니다. SQL 파일 내용이
+  바뀌면 checksum 드리프트를 로그로 경고합니다. 적용 목록 확인: **`GET /admin/schema-migrations`**
+  (admin·security). 운영 모드에서 스키마 적용이 실패하면 부팅이 중단됩니다(`MORI_SCHEMA_FAIL_FAST`).
 - 현재 단계는 **조회 API + DB 배포선**까지이며, 실제 보안 데이터 적재 자동화는 후속 수집 연동 작업이 필요합니다.
 - `/dashboard/summary` 와 `/ui` 는 MORI DB 기준 집계이므로, 실시간 수집 worker가 없으면 Zabbix UI/Fleet UI 수치와 차이가 날 수 있습니다.
 

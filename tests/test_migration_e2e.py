@@ -113,6 +113,21 @@ class MigrationE2ETests(unittest.TestCase):
         repo.apply_schema()  # 예외 없이 완료돼야
         self.assertIn("personal_data_flow", self._tables())
 
+    def test_migration_metadata_recorded_with_checksum(self) -> None:
+        # schema_migrations 에 파일별 checksum·성공여부가 기록되고, 목록 조회가 동작(#6).
+        from mori_soc.repositories.state_postgres import PostgresStateRepository
+        repo = PostgresStateRepository(self._url)
+        repo.apply_schema()
+        rows = repo.applied_migrations()
+        self.assertGreaterEqual(len(rows), 13)
+        self.assertTrue(all(r["success"] for r in rows))
+        self.assertTrue(all(len(r["checksum"]) == 64 for r in rows))   # sha256
+        # 재적용해도 개수 동일(idempotent) + 순서 정렬
+        repo.apply_schema()
+        rows2 = repo.applied_migrations()
+        self.assertEqual(len(rows), len(rows2))
+        self.assertEqual([r["version"] for r in rows2], sorted(r["version"] for r in rows2))
+
     def test_schema_fail_fast_aborts_on_bad_ddl(self) -> None:
         # 잘못된 DDL + fail-fast → 부팅 중단(불완전 DB 로 서비스 방지). 정상 파일은 idempotent.
         import os

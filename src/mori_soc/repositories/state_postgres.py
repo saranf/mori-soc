@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from pathlib import Path
@@ -8,6 +9,16 @@ from typing import Any
 from .state_base import StateRepository
 
 _log = logging.getLogger("mori_soc.state")
+
+# migration 메타(#6): 어떤 스키마 파일이 언제·성공여부·checksum 으로 적용됐는지 기록.
+# SQL 파일 내용이 바뀌면 checksum 이 달라져 드리프트를 감지할 수 있다.
+_MIGRATIONS_DDL = (
+    "CREATE TABLE IF NOT EXISTS schema_migrations ("
+    " version TEXT PRIMARY KEY,"
+    " checksum TEXT NOT NULL,"
+    " applied_at TIMESTAMPTZ NOT NULL DEFAULT now(),"
+    " success BOOLEAN NOT NULL DEFAULT true)"
+)
 
 
 def _schema_dir() -> Path | None:
@@ -81,17 +92,21 @@ class PostgresStateRepository(StateRepository):
         if schema_dir is None:
             _log.warning("[schema] no schema dir found; skipping auto-apply")
             return
+        self._ensure_migrations_table()   # 기록 테이블 먼저(파일 적용 전에 존재해야 기록 가능)
         failed: list[str] = []
         for f in sorted(schema_dir.glob("*.sql")):
             sql = f.read_text(encoding="utf-8")
             if not sql.strip():
                 continue
+            checksum = hashlib.sha256(sql.encode("utf-8")).hexdigest()
             try:
                 with self._connect() as conn, conn.cursor() as cur:
                     cur.execute(sql)
+                self._record_migration(f.name, checksum, success=True)
                 _log.info("[schema] applied %s", f.name)
             except Exception:  # noqa: BLE001 - report and continue(부팅은 계속하되 은폐 금지)
                 failed.append(f.name)
+                self._record_migration(f.name, checksum, success=False)
                 _log.exception("[schema] FAILED %s — 해당 테이블이 없어 관련 조회가 빈 결과가 될 수 있음", f.name)
         if failed:
             _log.error("[schema] %d개 파일 적용 실패: %s (데이터가 조용히 비어 보일 수 있음)",
@@ -101,6 +116,44 @@ class PostgresStateRepository(StateRepository):
                     f"[schema] 스키마 적용 실패로 부팅 중단(fail-fast): {', '.join(failed)}. "
                     "불완전한 DB 로 서비스하지 않는다. 데모라면 MORI_SCHEMA_FAIL_FAST=false 로 완화 가능."
                 )
+
+    def _ensure_migrations_table(self) -> None:
+        try:
+            with self._connect() as conn, conn.cursor() as cur:
+                cur.execute(_MIGRATIONS_DDL)
+        except Exception:  # noqa: BLE001 - 기록 실패는 스키마 적용을 막지 않는다(계측만)
+            _log.exception("[schema] schema_migrations 테이블 준비 실패 — 적용 이력 미기록")
+
+    def _record_migration(self, version: str, checksum: str, *, success: bool) -> None:
+        """적용 이력 upsert + 파일 내용 변경(체크섬 드리프트) 감지 경고."""
+        try:
+            with self._connect() as conn, conn.cursor() as cur:
+                cur.execute("SELECT checksum FROM schema_migrations WHERE version = %s", (version,))
+                row = cur.fetchone()
+                if row and row[0] != checksum:
+                    _log.warning("[schema] %s 체크섬 변경 감지(드리프트): 기록 %s → 현재 %s",
+                                 version, row[0][:12], checksum[:12])
+                cur.execute(
+                    "INSERT INTO schema_migrations (version, checksum, applied_at, success) "
+                    "VALUES (%s, %s, now(), %s) "
+                    "ON CONFLICT (version) DO UPDATE SET checksum = EXCLUDED.checksum, "
+                    "applied_at = now(), success = EXCLUDED.success",
+                    (version, checksum, success))
+        except Exception:  # noqa: BLE001
+            _log.exception("[schema] %s 적용 이력 기록 실패", version)
+
+    def applied_migrations(self) -> list[dict[str, Any]]:
+        """적용된 마이그레이션 목록(버전·checksum·적용시각·성공여부). 없으면 빈 목록."""
+        try:
+            with self._connect() as conn, conn.cursor() as cur:
+                cur.execute(
+                    "SELECT version, checksum, applied_at, success FROM schema_migrations "
+                    "ORDER BY version")
+                return [{"version": r[0], "checksum": r[1],
+                         "applied_at": r[2].isoformat() if r[2] else None, "success": r[3]}
+                        for r in cur.fetchall()]
+        except Exception:  # noqa: BLE001
+            return []
 
     # ── user_profiles ──────────────────────────────────────────────────────────
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:

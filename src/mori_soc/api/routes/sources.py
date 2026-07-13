@@ -690,6 +690,17 @@ def register_sources(ctx: RouteContext) -> None:
             raise HTTPException(status_code=500, detail=f"delete failed: {exc}") from exc
         return {"ok": True, "id": event_id}
 
+    # ── 적용된 스키마 마이그레이션 이력(운영 점검용, admin·security) ──────────────
+    @app.get("/admin/schema-migrations", tags=["Sources"])
+    def schema_migrations(request: Request) -> dict[str, Any]:
+        """schema_migrations 기록(버전·checksum·적용시각·성공)을 조회(#6). CLI: 이 엔드포인트."""
+        if ctx.auth_enabled and _session_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="requires admin or security role")
+        fn = getattr(state_repo, "applied_migrations", None)
+        rows = fn() if callable(fn) else []
+        failed = [r for r in rows if not r.get("success")]
+        return {"count": len(rows), "failed": len(failed), "migrations": rows}
+
     # ── AI 심층 개인정보 흐름도 인제스트(유료 fullscan → 구조화 JSON) ────────────
     @app.post("/ingest/privacy-flow", tags=["Sources"])
     def ingest_privacy_flow(payload: dict[str, Any], request: Request, repo: str | None = None,
