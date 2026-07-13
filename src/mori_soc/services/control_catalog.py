@@ -81,6 +81,55 @@ def _coverage(controls: list[dict], sources: set[str]) -> dict[str, Any]:
     return {"total": total, "covered": covered, "pct": pct}
 
 
+# 통제 성숙도(#46) — 194개를 수기 라벨링하지 않고 기존 신호에서 도출한다.
+# 오름차순: draft(미검토) < reviewed(검토됨) < mapped(교차프레임워크 매핑) < auto_evidence(MORI 자동증적).
+_MATURITY_ORDER = ("draft", "reviewed", "mapped", "auto_evidence")
+
+
+def mapped_control_ids(catalog: dict[str, Any]) -> set[str]:
+    """cross-framework 매핑에 등장하는 통제 id 집합(isms_p + iso27001)."""
+    ids: set[str] = set()
+    for m in catalog.get("mappings", []) or []:
+        if m.get("isms_p"):
+            ids.add(str(m["isms_p"]))
+        for x in m.get("iso27001", []) or []:
+            ids.add(str(x))
+    return ids
+
+
+def control_maturity_level(control: dict[str, Any], mapped_ids: set[str], auto_ids: set[str]) -> str:
+    """한 통제의 성숙도 레벨을 '달성한 최고 신호'로 도출.
+
+    auto_evidence(MORI 자동증적 대상)는 검토 상태와 무관하게 최상위 — 실제로 증적이
+    자동 수집되는 상태가 가장 성숙하기 때문. 그 아래로 mapped > reviewed > draft.
+    """
+    cid = str(control.get("id"))
+    if cid in auto_ids:
+        return "auto_evidence"
+    if str(control.get("status")) != "reviewed":
+        return "draft"
+    if cid in mapped_ids:
+        return "mapped"
+    return "reviewed"
+
+
+def maturity_summary(auto_ids: set[str] | None = None,
+                     catalog: dict[str, Any] | None = None) -> dict[str, Any]:
+    """레벨별 통제 수 + 각 통제의 레벨. auto_ids = MORI 자동증적 통제 id 집합."""
+    cat = catalog or load_catalog()
+    mapped = mapped_control_ids(cat)
+    auto = set(auto_ids or ())
+    controls = cat.get("controls", []) or []
+    per: list[dict[str, str]] = []
+    counts = dict.fromkeys(_MATURITY_ORDER, 0)
+    for c in controls:
+        lvl = control_maturity_level(c, mapped, auto)
+        counts[lvl] += 1
+        per.append({"id": str(c.get("id")), "maturity": lvl})
+    return {"order": list(_MATURITY_ORDER), "levels": counts,
+            "total": len(controls), "controls": per}
+
+
 def build_tree(catalog: dict[str, Any] | None = None) -> dict[str, Any]:
     """UI용 트리 + 커버리지 요약을 만든다."""
     cat = catalog or load_catalog()

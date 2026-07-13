@@ -20,7 +20,7 @@ It sits **read-only on top of your existing** **Zabbix · FleetDM · Wazuh · Tr
 
 > **Who it's for** — a **self-hosted technical evidence layer for teams that already run Zabbix and open-source security tools** and need to turn that operational reality into audit evidence. Not a SaaS GRC suite (no employee/vendor lifecycle); it complements those by covering the technical-operations side. This English page leads with ISO 27001 / security operations; the [Korean page](./README.ko.md) is the ISMS-P entry point.
 
-> **Honest by design** — the catalog is **58 / 194 controls reviewed** today; the other 136 are draft skeletons, **labeled `draft` in the UI**. Coverage % counts only reviewed **and** evidence-wired controls — no inflation. Audit trust is the whole point, so the numbers stay honest.
+> **Honest by design** — the catalog is **58 / 194 controls reviewed** today; the other 136 are draft skeletons, **labeled `draft` in the UI**. Coverage % counts only reviewed **and** evidence-wired controls — no inflation. Per-control **maturity** (draft → reviewed → mapped → auto-evidence) is derived from real signals and exposed at `GET /controls/maturity`, so "how far along is each control?" has an honest answer. Audit trust is the whole point, so the numbers stay honest.
 
 <!-- ═══════════════════════════════════════════════════════════════════════
       SCREENSHOT GUIDE ① — hero image (the big first screen at the top of the README)

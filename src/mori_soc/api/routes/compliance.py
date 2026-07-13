@@ -290,6 +290,23 @@ def register_compliance(ctx: RouteContext) -> None:
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"control catalog unavailable: {exc}") from exc
 
+    @app.get("/controls/maturity", tags=["Compliance"])
+    def controls_maturity(request: Request) -> dict[str, Any]:
+        """통제 성숙도 요약(#46) — 레벨별(draft/reviewed/mapped/auto_evidence) 통제 수.
+
+        194개를 수기 라벨링하지 않고 status·매핑·MORI 자동증적 신호에서 도출한다.
+        '나머지는 언제?'에 대한 정직한 진척도 답. admin·security 전용.
+        """
+        _require_ev(request)
+        from mori_soc.services.code_review_dispatch import CODE_REVIEW_CONTROL_IDS
+        from mori_soc.services.control_catalog import maturity_summary
+        from mori_soc.api.routes.privacy import PRIVACY_FLOW_CONTROL_IDS
+        auto_ids = set(CODE_REVIEW_CONTROL_IDS) | set(PRIVACY_FLOW_CONTROL_IDS)
+        try:
+            return maturity_summary(auto_ids=auto_ids, catalog=_merged_catalog())
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"maturity unavailable: {exc}") from exc
+
     def _live_gaps() -> dict[str, Any]:
         """evidence-gaps 카운트를 재계산(통제 증적 팩의 결함 수치용). 실패 시 빈 dict."""
         try:
