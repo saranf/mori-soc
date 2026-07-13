@@ -154,6 +154,9 @@ jobs:
           fi
           # 스캐너는 MORI가 서빙 — 항상 최신본을 받아 실행(레포에 스크립트 재복사 불필요).
           curl -fsS "${MORI_INGEST_URL%/}/code-review/fullscan.py" -o code_review_fullscan.py
+          # 무결성 감사(#16): 받은 스캐너 sha256 + MORI 매니페스트를 로그에 남긴다(핀·대조용).
+          (sha256sum code_review_fullscan.py 2>/dev/null || shasum -a 256 code_review_fullscan.py) || true
+          curl -fsS "${MORI_INGEST_URL%/}/code-review/scanners/manifest.json" || true; echo
           python3 code_review_fullscan.py
 """
 

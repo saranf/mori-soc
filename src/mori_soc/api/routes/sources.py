@@ -574,6 +574,30 @@ def register_sources(ctx: RouteContext) -> None:
                 continue
         return _Response(content=content, media_type="text/x-python; charset=utf-8")
 
+    @app.get("/code-review/scanners/manifest.json", tags=["Sources"])
+    def code_review_scanner_manifest() -> dict[str, Any]:
+        """스캐너 자산의 버전 + SHA256 매니페스트(#16).
+
+        고객 CI 가 받은 스크립트의 sha256 을 이 값과 대조하거나, 특정 버전을 핀해
+        MORI 가 조용히 다른 스크립트로 바꾸는 것을 감지할 수 있다. (같은 출처가 스크립트와
+        해시를 함께 주므로 MORI 자체 침해에는 서명 릴리스가 필요 — 문서 참고.)
+        """
+        import hashlib as _hl
+        from pathlib import Path as _Path
+
+        root = _Path(__file__).resolve().parents[4]
+        files: dict[str, str] = {}
+        for name, rel in (("fullscan.py", "scripts/code_review_fullscan.py"),
+                          ("flow-scanner.py", "scripts/privacy_flow_scan.py")):
+            for cand in (root / rel, _Path.cwd() / rel):
+                try:
+                    files[name] = _hl.sha256(cand.read_bytes()).hexdigest()
+                    break
+                except OSError:
+                    continue
+        return {"version": os.getenv("MORI_SCANNER_VERSION", "").strip() or "dev",
+                "files": files}
+
     # ── 코드 리뷰 findings CSV 다운로드 (개발보안 2.8 증적 원본) ──────────────────
     @app.get("/controls/code-review/findings.csv", tags=["Compliance"])
     def code_review_findings_csv(request: Request, repo: str | None = None, commit: str | None = None) -> StreamingResponse:

@@ -365,6 +365,7 @@ AUTH_PUBLIC_PATHS = {
     # CI 스캐너 자산(고객 GitHub Actions가 세션 없이 GET) — 시크릿 없음.
     # 무료 경로가 쓰는 pii-rules/flow-scanner, 유료 경로가 쓰는 fullscan 스크립트.
     "/privacy/pii-rules.yml", "/privacy/flow-scanner.py", "/code-review/fullscan.py",
+    "/code-review/scanners/manifest.json",
 }
 
 
