@@ -81,6 +81,12 @@ class ZabbixEventCollector(BaseCollector):
         )
         trigger_hosts = self._fetch_trigger_hosts(problems, auth=auth)
 
+        # 여러 호스트가 같은 인터페이스 IP 를 쓰면(컨테이너·NAT·에이전트 집합) 그 IP 는
+        # 신원 키로 쓸 수 없다 — alias 가 하나라도 겹치면 서로 다른 호스트가 한 host_id 로
+        # 병합돼 버린다(예: 50대가 172.19.0.1 공유 → 1대로 붕괴). 공유 IP 는 신원 후보에서
+        # 빼고, 값 자체는 primary_ip 로 계속 보존한다.
+        shared_ips = self._shared_interface_ips(hosts)
+
         records: list[CollectorRecord] = []
         for payload in hosts:
             records.append(
@@ -89,7 +95,7 @@ class ZabbixEventCollector(BaseCollector):
                     record_type="host",
                     observed_at=collected_at,
                     external_id=str(payload.get("hostid") or payload.get("host") or payload.get("name") or "zbx-host"),
-                    host_aliases=self._extract_host_aliases(payload),
+                    host_aliases=self._extract_host_aliases(payload, shared_ips=shared_ips),
                     payload=payload,
                 )
             )
@@ -294,7 +300,31 @@ class ZabbixEventCollector(BaseCollector):
             raw_payload=payload,
         )
 
-    def _extract_host_aliases(self, payload: dict) -> list[str]:
+    def _shared_interface_ips(self, hosts: object) -> frozenset[str]:
+        """2대 이상의 호스트가 공유하는 인터페이스 IP 집합.
+
+        이 IP 들은 host_id 신원(별칭) 후보에서 제외한다 — 공유 IP 를 별칭으로 쓰면
+        서로 다른 호스트가 같은 host_id 로 병합된다(컨테이너/NAT 환경에서 흔함).
+        """
+        if not isinstance(hosts, list):
+            return frozenset()
+        counts: dict[str, int] = {}
+        for payload in hosts:
+            if not isinstance(payload, dict):
+                continue
+            seen: set[str] = set()
+            interfaces = payload.get("interfaces")
+            if isinstance(interfaces, list):
+                for interface in interfaces:
+                    if isinstance(interface, dict):
+                        ip = self._str(interface.get("ip"))
+                        if ip:
+                            seen.add(ip)
+            for ip in seen:
+                counts[ip] = counts.get(ip, 0) + 1
+        return frozenset(ip for ip, count in counts.items() if count > 1)
+
+    def _extract_host_aliases(self, payload: dict, *, shared_ips: frozenset[str] = frozenset()) -> list[str]:
         aliases: list[str] = []
         for key in ("name", "host", "hostid"):
             value = self._str(payload.get(key))
@@ -313,7 +343,9 @@ class ZabbixEventCollector(BaseCollector):
             for interface in interfaces:
                 if isinstance(interface, dict):
                     ip = self._str(interface.get("ip"))
-                    if ip and ip not in aliases:
+                    # 공유 IP 는 신원 키로 쓰면 서로 다른 호스트를 병합시킨다 → 제외
+                    # (primary_ip 로는 그대로 저장되므로 화면·증적에서는 계속 보인다)
+                    if ip and ip not in shared_ips and ip not in aliases:
                         aliases.append(ip)
         return aliases
 

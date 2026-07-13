@@ -162,3 +162,62 @@ class ZabbixEventCollectorApiTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class ZabbixSharedIpIdentityTests(unittest.TestCase):
+    """공유 IP(컨테이너·NAT)가 서로 다른 호스트를 한 host_id 로 병합시키던 회귀 방지."""
+
+    def _collector(self):
+        return ZabbixEventCollector(api_url="http://zabbix.example/api_jsonrpc.php", token="t")
+
+    def test_shared_interface_ip_is_not_used_as_identity_alias(self) -> None:
+        collector = self._collector()
+        # sim-app-01/02/03 이 전부 172.19.0.1 을 공유 (도커 게이트웨이)
+        hosts = [
+            {"hostid": "101", "host": "sim-app-01", "name": "sim-app-01",
+             "interfaces": [{"ip": "172.19.0.1"}]},
+            {"hostid": "102", "host": "sim-app-02", "name": "sim-app-02",
+             "interfaces": [{"ip": "172.19.0.1"}]},
+            {"hostid": "103", "host": "sim-app-03", "name": "sim-app-03",
+             "interfaces": [{"ip": "172.19.0.1"}]},
+        ]
+
+        def fake_api_call(method, params, *, auth=None):
+            if method == "host.get":
+                return hosts
+            if method == "problem.get":
+                return []
+            raise AssertionError(method)
+
+        with patch.object(collector, "_api_call", side_effect=fake_api_call):
+            records = collector._collect_api()
+
+        host_records = [r for r in records if r.record_type == "host"]
+        self.assertEqual(len(host_records), 3)
+        for record in host_records:
+            self.assertNotIn("172.19.0.1", record.host_aliases,
+                             "공유 IP 는 신원 별칭에서 제외돼야 한다(병합 방지)")
+        # 별칭이 서로 겹치지 않아야 세 호스트가 각각 별개로 남는다
+        alias_sets = [set(r.host_aliases) for r in host_records]
+        self.assertFalse(alias_sets[0] & alias_sets[1])
+        self.assertFalse(alias_sets[1] & alias_sets[2])
+
+    def test_unique_interface_ip_is_still_an_identity_alias(self) -> None:
+        collector = self._collector()
+        hosts = [
+            {"hostid": "201", "host": "srv-a", "name": "srv-a", "interfaces": [{"ip": "10.0.0.1"}]},
+            {"hostid": "202", "host": "srv-b", "name": "srv-b", "interfaces": [{"ip": "10.0.0.2"}]},
+        ]
+
+        def fake_api_call(method, params, *, auth=None):
+            if method == "host.get":
+                return hosts
+            if method == "problem.get":
+                return []
+            raise AssertionError(method)
+
+        with patch.object(collector, "_api_call", side_effect=fake_api_call):
+            records = collector._collect_api()
+
+        host_records = [r for r in records if r.record_type == "host"]
+        self.assertIn("10.0.0.1", host_records[0].host_aliases)
+        self.assertIn("10.0.0.2", host_records[1].host_aliases)
