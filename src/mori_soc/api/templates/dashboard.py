@@ -1,60 +1,7 @@
 """사용자 대시보드 페이지 (render_user_dashboard_html)."""
 from mori_soc.api.templates._common import *  # noqa: F401,F403
 
-
-def render_user_dashboard_html(
-    docs_url: str = DOCS_PORTAL_URL,
-    fleet_ui_url: str = FLEET_UI_URL,
-    zabbix_ui_url: str = ZABBIX_UI_URL,
-    wazuh_ui_url: str = WAZUH_UI_URL,
-    grafana_ui_url: str = GRAFANA_UI_URL,
-) -> str:
-    default_preferences_json = json.dumps(DEFAULT_USER_DASHBOARD_PREFERENCES, ensure_ascii=False)
-    card_labels_json = json.dumps(USER_DASHBOARD_CARD_LABELS, ensure_ascii=False)
-    section_labels_json = json.dumps(USER_DASHBOARD_SECTION_LABELS, ensure_ascii=False)
-    guide_labels_json = json.dumps(USER_DASHBOARD_GUIDE_LABELS, ensure_ascii=False)
-    nlq_guide_examples_json = json.dumps(list(QUERY_GUIDE_EXAMPLES), ensure_ascii=False)
-    html = """<!doctype html>
-<html lang=\"ko\">
-<head>
-  <meta charset=\"utf-8\" />
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-  <title data-i18n-doctitle=\"dash.doctitle\">MORI Security Dashboard</title>
-  <link rel="stylesheet" href="/static/css/dashboard.css" />
-</head>
-<body>
-  <div class=\"wrap\">
-    <header class=\"topbar\">
-      <span class=\"brand\">MORI</span>
-      <nav class=\"tabs-nav\" id=\"main_tabs_nav\">
-        <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\" data-i18n=\"dash.tab.dashboard\">대시보드</button>
-        <button data-tab=\"triage\" onclick=\"switchTab('triage')\" data-i18n=\"dash.tab.triage\">Alert Triage</button>
-        <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\" data-i18n=\"dash.tab.incidents\">인시던트</button>
-        <button data-tab=\"assets\" onclick=\"switchTab('assets')\" data-i18n=\"dash.tab.assets\">자산 현황</button>
-        <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\" data-i18n=\"dash.tab.compliance\">Compliance PDCA</button>
-        <button id=\"tab_btn_accounts\" data-tab=\"accounts\" onclick=\"switchTab('accounts')\" data-i18n=\"dash.tab.accounts\" style=\"display:none\">계정</button>
-        <button data-tab=\"guides\" onclick=\"switchTab('guides')\" data-i18n=\"dash.tab.guides\">가이드 &amp; 기준</button>
-      </nav>
-      <div class=\"top-actions\">
-        <a class=\"portal-link\" href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"dash.links.docs\">운영 문서 / 포털</a>
-        <button id=\"refresh_dashboard\" type=\"button\" class=\"secondary\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"dash.actions.refresh\">새로고침</button>
-        <div class=\"account-wrap\" style=\"position:relative\">
-          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" style=\"width:auto;background:#f9fafb;border:1px solid #e5e7eb;color:#111827;font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer\"><span id=\"ui_user_badge\" data-i18n=\"dash.account.title\">계정</span></button>
-          <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
-            <button type=\"button\" onclick=\"openProfileModal()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#111827;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.edit_profile\">프로필 편집</button>
-            <button type=\"button\" onclick=\"shortcutMyServers()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#111827;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.my_servers\">내 서버</button>
-            <a id=\"ui_admin_console_link\" href=\"/admin\" style=\"display:none;width:100%;text-align:left;color:#111827;font-size:13px;font-weight:600;padding:6px 4px;text-decoration:none\" data-i18n=\"dash.account.admin_console\">관리자 콘솔</a>
-            <div style=\"border-top:1px solid #e5e7eb;margin:10px 0\"></div>
-            <div style=\"font-size:12px;color:#111827;margin-bottom:6px\" data-i18n=\"dash.account.language\">언어 / Language</div>
-            __I18N_TOGGLE__
-            <div style=\"border-top:1px solid #e5e7eb;margin:10px 0\"></div>
-            <a href=\"/auth/logout\" class=\"logout-btn\" style=\"display:block;text-align:center\" data-i18n=\"dash.actions.logout\">로그아웃</a>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
+_TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
     <div class=\"tab-panel active\" id=\"tab_dashboard\">
       <div style=\"display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;\">
         <span style=\"font-size:11px;color:#111827;margin-right:auto\" data-i18n=\"dash.panel.resize_hint\">패널 오른쪽-아래 모서리를 드래그해 크기를 조절할 수 있어요 (브라우저에 저장)</span>
@@ -179,7 +126,9 @@ def render_user_dashboard_html(
       <div class=\"status-line\" id=\"dashboard_status\" data-i18n=\"dash.status.initializing\">초기화 중…</div>
     </div>
 
-    <!-- ── Tab: Alert Triage ───────────────────────────────────────────── -->
+"""
+
+_TAB_TRIAGE_HTML = """    <!-- ── Tab: Alert Triage ───────────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_triage\">
       <section class=\"card\">
         <h2 data-i18n=\"dash.card.triage\">Alert Triage</h2>
@@ -190,7 +139,9 @@ def render_user_dashboard_html(
       </section>
     </div>
 
-    <!-- ── Tab: Incidents ─────────────────────────────────────────────── -->
+"""
+
+_TAB_INCIDENTS_HTML = """    <!-- ── Tab: Incidents ─────────────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_incidents\">
       <section class=\"card\">
         <h2 data-i18n=\"dash.card.incidents\">인시던트 관리</h2>
@@ -252,7 +203,9 @@ def render_user_dashboard_html(
       </div>
     </div>
 
-    <!-- ── Tab: 자산 현황 ─────────────────────────────────────────────── -->
+"""
+
+_TAB_ASSETS_HTML = """    <!-- ── Tab: 자산 현황 ─────────────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_assets\">
       <!-- Sub-nav -->
       <nav class=\"asset-sub-nav\">
@@ -375,7 +328,9 @@ def render_user_dashboard_html(
       <div class=\"status-line\" id=\"assets_status\"></div>
     </div>
 
-    <!-- ── Tab: Compliance PDCA ──────────────────────────────────────── -->
+"""
+
+_TAB_COMPLIANCE_HTML = """    <!-- ── Tab: Compliance PDCA ──────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_compliance\">
       <section class=\"card\">
         <h2 data-i18n=\"dash.card.compliance\">Compliance PDCA 대시보드</h2>
@@ -483,7 +438,9 @@ def render_user_dashboard_html(
 
     </div>
 
-    <!-- ── Tab: 계정 거버넌스 (admin·security 전용) ──────────────────────── -->
+"""
+
+_TAB_ACCOUNTS_HTML = """    <!-- ── Tab: 계정 거버넌스 (admin·security 전용) ──────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_accounts\">
 
       <section class=\"card\">
@@ -541,7 +498,63 @@ def render_user_dashboard_html(
       </div>
     </div>
 
-    <!-- ── Tab: 가이드·기준 ────────────────────────────────────────── -->
+"""
+
+
+
+def render_user_dashboard_html(
+    docs_url: str = DOCS_PORTAL_URL,
+    fleet_ui_url: str = FLEET_UI_URL,
+    zabbix_ui_url: str = ZABBIX_UI_URL,
+    wazuh_ui_url: str = WAZUH_UI_URL,
+    grafana_ui_url: str = GRAFANA_UI_URL,
+) -> str:
+    default_preferences_json = json.dumps(DEFAULT_USER_DASHBOARD_PREFERENCES, ensure_ascii=False)
+    card_labels_json = json.dumps(USER_DASHBOARD_CARD_LABELS, ensure_ascii=False)
+    section_labels_json = json.dumps(USER_DASHBOARD_SECTION_LABELS, ensure_ascii=False)
+    guide_labels_json = json.dumps(USER_DASHBOARD_GUIDE_LABELS, ensure_ascii=False)
+    nlq_guide_examples_json = json.dumps(list(QUERY_GUIDE_EXAMPLES), ensure_ascii=False)
+    html = """<!doctype html>
+<html lang=\"ko\">
+<head>
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <title data-i18n-doctitle=\"dash.doctitle\">MORI Security Dashboard</title>
+  <link rel="stylesheet" href="/static/css/dashboard.css" />
+</head>
+<body>
+  <div class=\"wrap\">
+    <header class=\"topbar\">
+      <span class=\"brand\">MORI</span>
+      <nav class=\"tabs-nav\" id=\"main_tabs_nav\">
+        <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\" data-i18n=\"dash.tab.dashboard\">대시보드</button>
+        <button data-tab=\"triage\" onclick=\"switchTab('triage')\" data-i18n=\"dash.tab.triage\">Alert Triage</button>
+        <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\" data-i18n=\"dash.tab.incidents\">인시던트</button>
+        <button data-tab=\"assets\" onclick=\"switchTab('assets')\" data-i18n=\"dash.tab.assets\">자산 현황</button>
+        <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\" data-i18n=\"dash.tab.compliance\">Compliance PDCA</button>
+        <button id=\"tab_btn_accounts\" data-tab=\"accounts\" onclick=\"switchTab('accounts')\" data-i18n=\"dash.tab.accounts\" style=\"display:none\">계정</button>
+        <button data-tab=\"guides\" onclick=\"switchTab('guides')\" data-i18n=\"dash.tab.guides\">가이드 &amp; 기준</button>
+      </nav>
+      <div class=\"top-actions\">
+        <a class=\"portal-link\" href=\"__DOCS_PORTAL_URL__\" target=\"_blank\" rel=\"noreferrer\" data-i18n=\"dash.links.docs\">운영 문서 / 포털</a>
+        <button id=\"refresh_dashboard\" type=\"button\" class=\"secondary\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"dash.actions.refresh\">새로고침</button>
+        <div class=\"account-wrap\" style=\"position:relative\">
+          <button id=\"account_btn\" type=\"button\" onclick=\"toggleAccountMenu()\" style=\"width:auto;background:#f9fafb;border:1px solid #e5e7eb;color:#111827;font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer\"><span id=\"ui_user_badge\" data-i18n=\"dash.account.title\">계정</span></button>
+          <div id=\"account_menu\" style=\"display:none;position:absolute;right:0;top:calc(100% + 6px);background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:12px;min-width:220px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)\">
+            <button type=\"button\" onclick=\"openProfileModal()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#111827;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.edit_profile\">프로필 편집</button>
+            <button type=\"button\" onclick=\"shortcutMyServers()\" style=\"display:block;width:100%;text-align:left;background:transparent;border:none;color:#111827;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer\" data-i18n=\"dash.account.my_servers\">내 서버</button>
+            <a id=\"ui_admin_console_link\" href=\"/admin\" style=\"display:none;width:100%;text-align:left;color:#111827;font-size:13px;font-weight:600;padding:6px 4px;text-decoration:none\" data-i18n=\"dash.account.admin_console\">관리자 콘솔</a>
+            <div style=\"border-top:1px solid #e5e7eb;margin:10px 0\"></div>
+            <div style=\"font-size:12px;color:#111827;margin-bottom:6px\" data-i18n=\"dash.account.language\">언어 / Language</div>
+            __I18N_TOGGLE__
+            <div style=\"border-top:1px solid #e5e7eb;margin:10px 0\"></div>
+            <a href=\"/auth/logout\" class=\"logout-btn\" style=\"display:block;text-align:center\" data-i18n=\"dash.actions.logout\">로그아웃</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+__TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE____TAB_ACCOUNTS__    <!-- ── Tab: 가이드·기준 ────────────────────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_guides\">
       <div id=\"guide_sub_tabs\" style=\"display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:20px;flex-wrap:wrap;\"></div>
       <section class=\"card\" style=\"padding:0\">
@@ -5180,7 +5193,13 @@ def render_user_dashboard_html(
 </body>
 </html>"""
     return (
-        html.replace("__DOCS_PORTAL_URL__", docs_url)
+        html.replace("__TAB_DASHBOARD__", _TAB_DASHBOARD_HTML)
+        .replace("__TAB_TRIAGE__", _TAB_TRIAGE_HTML)
+        .replace("__TAB_INCIDENTS__", _TAB_INCIDENTS_HTML)
+        .replace("__TAB_ASSETS__", _TAB_ASSETS_HTML)
+        .replace("__TAB_COMPLIANCE__", _TAB_COMPLIANCE_HTML)
+        .replace("__TAB_ACCOUNTS__", _TAB_ACCOUNTS_HTML)
+        .replace("__DOCS_PORTAL_URL__", docs_url)
         .replace("__USER_DASHBOARD_PREFS_JSON__", default_preferences_json)
         .replace("__CARD_LABELS_JSON__", card_labels_json)
         .replace("__SECTION_LABELS_JSON__", section_labels_json)
