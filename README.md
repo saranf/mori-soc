@@ -137,25 +137,9 @@ docker compose up -d mori-worker      # re-apply
 
 > Screens below are from demo mode. The `<!-- -->` blocks are **capture guides** (what to shoot, framing, target filename). Uncomment the image tag right below each once you've captured it.
 
-### 1) Natural-language query (NLQ)
-Ask a question ("show offline hosts") → matched to one of 12 intents → results + summary + CSV.
+> Order note: MORI's core is **evidence**, not the AI query — so the control catalog leads and the natural-language query comes last (it's a convenience, not the headline).
 
-![Natural-language query](docs/images/demo-nlq.png)
-
-### 2) Vulnerabilities (Trivy) — per-CVE plans & exceptions
-Per-host Critical/High counts + per-CVE remediation plan/exception/expiry + change history.
-
-![Vulnerability management](docs/images/demo-trivy.png)
-
-### 3) Risk assessment matrix
-<!-- SCREENSHOT GUIDE ②
-     Capture : /ui → Risk Assessment tab (log in as admin or security)
-     Include : the 3×3 matrix (impact × likelihood, counts per cell) + treatment-decision column
-     Save as : docs/images/02-risk-matrix.png -->
-<!-- ![Risk assessment matrix](docs/images/02-risk-matrix.png) -->
-> _Put the **risk assessment matrix** screenshot here — `docs/images/02-risk-matrix.png`_
-
-### 4) Control catalog (ISMS-P × ISO 27001)
+### 1) Control catalog (ISMS-P × ISO 27001)
 <!-- SCREENSHOT GUIDE ③
      Capture : /ui → Compliance tab → Control Catalog (admin·security)
      Include : framework→domain→section tree + lite/full coverage % + one control's status-edit panel
@@ -177,7 +161,20 @@ A top **"All evidence ZIP"** bundles every control's evidence **into one ZIP by 
 (framework/control) with an `INDEX.csv`. Editing & scheduling are admin-only; evidence
 documentation & ZIP are admin·security.
 
-### 5) Account governance (access review)
+### 2) Vulnerabilities (Trivy) — per-CVE plans & exceptions
+Per-host Critical/High counts + per-CVE remediation plan/exception/expiry + change history.
+
+![Vulnerability management](docs/images/demo-trivy.png)
+
+### 3) Risk assessment matrix
+<!-- SCREENSHOT GUIDE ②
+     Capture : /ui → Risk Assessment tab (log in as admin or security)
+     Include : the 3×3 matrix (impact × likelihood, counts per cell) + treatment-decision column
+     Save as : docs/images/02-risk-matrix.png -->
+<!-- ![Risk assessment matrix](docs/images/02-risk-matrix.png) -->
+> _Put the **risk assessment matrix** screenshot here — `docs/images/02-risk-matrix.png`_
+
+### 4) Account governance (access review)
 <!-- SCREENSHOT GUIDE ④
      Capture : /ui → Accounts tab (admin·security)
      Include : unified account list + findings badges (leaver, unapproved sudo…) + approval ledger
@@ -193,13 +190,18 @@ and **export the filtered rows as CSV** (host/IP search + team & purpose dropdow
 to other roles (infra/monitor, auditor, …) from the admin console **Access tab → "Account governance
 view roles"** (admin is always included). Target users see the Accounts tab after re-login.
 
-### 6) Admin console (/admin)
+### 5) Admin console (/admin)
 <!-- SCREENSHOT GUIDE ⑤
      Capture : /admin, 6 tabs (log in as admin)
      Include : the tab bar — Overview · Remediation · Assets/Owners · Access Control (RBAC·approvals·LDAP·account view roles) · Audit & Logs · Settings
      Save as : docs/images/05-admin-console.png -->
 <!-- ![Admin console](docs/images/05-admin-console.png) -->
 > _Put the **admin console (6 tabs)** screenshot here — `docs/images/05-admin-console.png`_
+
+### 6) Natural-language query (NLQ) — convenience, not the headline
+Ask a question ("show offline hosts") → matched to one of 12 intents → results + summary + CSV.
+
+![Natural-language query](docs/images/demo-nlq.png)
 
 ---
 
