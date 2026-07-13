@@ -40,7 +40,8 @@ It sits **read-only on top of your existing** **Zabbix · FleetDM · Wazuh · Tr
                    demo-dashboard.png → 01-dashboard.png
      ═══════════════════════════════════════════════════════════════════════ -->
 
-![MORI unified dashboard](docs/images/demo-dashboard.png)
+<img width="1370" height="776" alt="image" src="https://github.com/user-attachments/assets/ffffe32e-7a97-488e-a33c-d0d5cc7e6ec6" />
+
 
 ---
 
@@ -146,6 +147,7 @@ docker compose up -d mori-worker      # re-apply
      Save as : docs/images/03-controls-catalog.png -->
 <!-- ![Control catalog](docs/images/03-controls-catalog.png) -->
 > _Put the **control catalog tree + coverage %** screenshot here — `docs/images/03-controls-catalog.png`_
+> 
 
 **Admins edit the catalog directly** — edit/delete controls inline, "Add control", and
 **"Import regulation text (NLP)"**: paste CISA / privacy-law / notice text and it's auto-converted
@@ -167,20 +169,12 @@ Per-host Critical/High counts + per-CVE remediation plan/exception/expiry + chan
 ![Vulnerability management](docs/images/demo-trivy.png)
 
 ### 3) Risk assessment matrix
-<!-- SCREENSHOT GUIDE ②
-     Capture : /ui → Risk Assessment tab (log in as admin or security)
-     Include : the 3×3 matrix (impact × likelihood, counts per cell) + treatment-decision column
-     Save as : docs/images/02-risk-matrix.png -->
-<!-- ![Risk assessment matrix](docs/images/02-risk-matrix.png) -->
-> _Put the **risk assessment matrix** screenshot here — `docs/images/02-risk-matrix.png`_
+<img width="794" height="446" alt="image" src="https://github.com/user-attachments/assets/e96674e7-bb75-4e8e-89e0-20b19f96b8ef" />
+
 
 ### 4) Account governance (access review)
-<!-- SCREENSHOT GUIDE ④
-     Capture : /ui → Accounts tab (admin·security)
-     Include : unified account list + findings badges (leaver, unapproved sudo…) + approval ledger
-     Save as : docs/images/04-accounts.png -->
-<!-- ![Account governance](docs/images/04-accounts.png) -->
-> _Put the **account governance (Accounts tab)** screenshot here — `docs/images/04-accounts.png`_
+<img width="1317" height="697" alt="image" src="https://github.com/user-attachments/assets/ad5dd2ec-988d-4b0f-a2aa-c166918e36d7" />
+
 
 The **IP list** in the Accounts tab lets you **filter by team/purpose (asset-owner metadata)**
 and **export the filtered rows as CSV** (host/IP search + team & purpose dropdowns →
@@ -191,17 +185,14 @@ to other roles (infra/monitor, auditor, …) from the admin console **Access tab
 view roles"** (admin is always included). Target users see the Accounts tab after re-login.
 
 ### 5) Admin console (/admin)
-<!-- SCREENSHOT GUIDE ⑤
-     Capture : /admin, 6 tabs (log in as admin)
-     Include : the tab bar — Overview · Remediation · Assets/Owners · Access Control (RBAC·approvals·LDAP·account view roles) · Audit & Logs · Settings
-     Save as : docs/images/05-admin-console.png -->
-<!-- ![Admin console](docs/images/05-admin-console.png) -->
-> _Put the **admin console (6 tabs)** screenshot here — `docs/images/05-admin-console.png`_
+<img width="1403" height="568" alt="image" src="https://github.com/user-attachments/assets/1d9d9c8b-4fd1-4a8d-a89f-4db555129d07" />
+
 
 ### 6) Natural-language query (NLQ) — convenience, not the headline
 Ask a question ("show offline hosts") → matched to one of 12 intents → results + summary + CSV.
 
-![Natural-language query](docs/images/demo-nlq.png)
+<img width="618" height="394" alt="image" src="https://github.com/user-attachments/assets/54a8741c-16d6-4f2a-8bed-f0fb8c7f258c" />
+
 
 ---
 
