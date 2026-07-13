@@ -1096,7 +1096,7 @@
       if (tab === 'logs') { loadUnifiedLog(); }
       if (tab === 'remediation') { loadAdminVulnActions(); loadAdminActionPlans(); }
       if (tab === 'overview') { loadAdminPhase2Health(); loadAdminSourceFreshness(); }
-      if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); loadLdapUsers(); loadAccountViewRoles(); }
+      if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); loadLdapUsers(); loadAccountViewRoles(); loadAccountCollection(); }
     }
 
     // i18n: refresh the active admin tab's dynamic content when the language changes
@@ -1107,7 +1107,7 @@
         switchAdminTab(tab);
         // settings/access 탭은 init 시 1회 렌더되므로 언어 변경 시 직접 재렌더
         if (tab === 'settings') { renderDashboardPreferences(); renderGuideButtons(guideExamplesEl, guideExamples); }
-        if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); loadLdapUsers(); loadAccountViewRoles(); }
+        if (tab === 'access') { loadRolePermissions(); loadUserTabPermissions(); loadSignupRequests(); loadLdapUsers(); loadAccountViewRoles(); loadAccountCollection(); }
       } catch (e) { /* best-effort */ }
     };
 
@@ -1482,6 +1482,64 @@
       } catch(e) {
         statusEl.style.color = '#dc2626';
         statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`;
+      }
+    });
+
+    // ── 계정 수집 on/off + 수집 경로 (admin 조정) ──────────────────────────
+    function _acctColRenderHint() {
+      const src = document.getElementById('acctcol_source')?.value || 'fleet';
+      const on = !!document.getElementById('acctcol_enabled')?.checked;
+      const hint = document.getElementById('acctcol_hint');
+      const cmd = document.getElementById('acctcol_cmd');
+      if (!hint || !cmd) return;
+      // 스크립트 경로일 때만 복붙 명령 노출. 토큰은 환경변수로 넘겨 화면 노출 방지.
+      const show = on && src === 'script';
+      hint.style.display = show ? 'block' : 'none';
+      if (show) {
+        const base = location.origin;
+        cmd.textContent =
+          `# 대상 서버에서 (토큰은 환경변수로 주입 — 화면/스크린샷에 남기지 마세요)\n` +
+          `export MORI_INGEST_URL=${base}\n` +
+          `export MORI_INGEST_TOKEN=<서버 .env 의 MORI_INGEST_TOKEN>\n` +
+          `sudo -E bash scripts/mori-collect-accounts.sh --cron`;
+      }
+    }
+    async function loadAccountCollection() {
+      const en = document.getElementById('acctcol_enabled');
+      const sel = document.getElementById('acctcol_source');
+      if (!en || !sel) return;
+      try {
+        const res = await fetch('/accounts/collection');
+        if (!res.ok) throw new Error(res.status);
+        const d = await res.json();
+        en.checked = d.enabled !== false;
+        sel.value = d.source || 'fleet';
+      } catch (e) { /* 기본값 유지 */ }
+      _acctColRenderHint();
+    }
+    window.loadAccountCollection = loadAccountCollection;
+    document.getElementById('acctcol_enabled')?.addEventListener('change', _acctColRenderHint);
+    document.getElementById('acctcol_source')?.addEventListener('change', _acctColRenderHint);
+    document.getElementById('reload_acctcol')?.addEventListener('click', loadAccountCollection);
+    document.getElementById('save_acctcol')?.addEventListener('click', async () => {
+      const statusEl = document.getElementById('acctcol_status');
+      const enabled = !!document.getElementById('acctcol_enabled')?.checked;
+      const source = document.getElementById('acctcol_source')?.value || 'fleet';
+      statusEl.textContent = tt('admin.dyn.saving', '저장 중...');
+      try {
+        const res = await fetch('/accounts/collection', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({enabled, source}),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        statusEl.style.color = '#16a34a';
+        statusEl.textContent = enabled
+          ? tt('admin.dyn.acctcol_on', '저장되었습니다. 계정 수집이 켜졌습니다.')
+          : tt('admin.dyn.acctcol_off', '저장되었습니다. 계정 수집이 꺼져 MORI가 계정 데이터를 받지 않습니다.');
+        _acctColRenderHint();
+      } catch (e) {
+        statusEl.style.color = '#dc2626';
+        statusEl.textContent = `${tt('admin.dyn.error_prefix', '오류: ')}${e.message}`;
       }
     });
 

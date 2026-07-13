@@ -24,6 +24,10 @@ from mori_soc.services.account_recon import FINDING_KINDS, reconcile
 
 _PRIV_GROUPS = {"root", "wheel", "sudo", "admin", "adm", "domain admins", "administrators"}
 
+# 계정 수집 설정(ui_settings, schema/008). admin 이 어드민 콘솔에서 조정.
+_COLLECT_ENABLED_KEY = "account_collect_enabled"   # "true"(기본) | "false"
+_COLLECT_SOURCE_KEY = "account_collect_source"     # "fleet"(기본) | "script"
+
 
 def _norm_account(a: dict[str, Any], host_type: str) -> dict[str, Any]:
     groups = a.get("groups") or []
@@ -71,7 +75,20 @@ def register_accounts_gov(ctx: RouteContext) -> None:
         sess = sessions.get(token) if sessions else None
         return (sess.get("username", "") if sess else "") or ""
 
+    def _collection_enabled() -> bool:
+        """계정 수집 마스터 스위치(admin). 미설정 시 기본 켬."""
+        raw = str(ctx.settings.get(_COLLECT_ENABLED_KEY, "true")).strip().lower()
+        return raw not in ("false", "0", "no", "off")
+
+    def _collection_source() -> str:
+        """수집 경로. 기본 fleet(osquery via Fleet), 대안 script(push)."""
+        raw = str(ctx.settings.get(_COLLECT_SOURCE_KEY, "fleet")).strip().lower()
+        return raw if raw in ("fleet", "script") else "fleet"
+
     def _require_ingest(request: Request) -> None:
+        # 수집이 꺼져 있으면 민감한 로컬 계정 인벤토리를 아예 받지 않는다(fail-closed).
+        if not _collection_enabled():
+            raise HTTPException(status_code=403, detail="account collection is disabled by admin")
         token_required = os.getenv("MORI_INGEST_TOKEN", "").strip()
         if token_required:
             auth = request.headers.get("authorization", "")
@@ -330,6 +347,39 @@ def register_accounts_gov(ctx: RouteContext) -> None:
             ctx.log_action(actor or "unknown", "ACCOUNT_APPROVAL_REJECT",
                            f"{rec.get('username')} ({rec.get('kind')})")
         return {"ok": True, "id": approval_id}
+
+    # ── 계정 수집 설정 (admin 조정) ────────────────────────────────────────────
+    # 로컬 계정 인벤토리는 민감정보라 "수집 자체"를 admin 이 끄고 켤 수 있어야 한다.
+    # source: fleet(기본, osquery via Fleet) | script(Fleet 없는 호스트용 push 스크립트)
+    @app.get("/accounts/collection", tags=["Accounts"])
+    def get_collection_config(request: Request) -> dict[str, Any]:
+        """계정 수집 on/off + 수집 경로 조회. admin 전용."""
+        _require_admin(request)
+        return {
+            "enabled": _collection_enabled(),
+            "source": _collection_source(),
+            "sources": ["fleet", "script"],
+        }
+
+    @app.post("/accounts/collection", tags=["Accounts"])
+    def set_collection_config(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """계정 수집 설정 {enabled: bool, source: 'fleet'|'script'}. admin 전용."""
+        actor = _require_admin(request)
+        if "enabled" in payload:
+            ctx.settings[_COLLECT_ENABLED_KEY] = "true" if bool(payload.get("enabled")) else "false"
+            if ctx.persist_setting:
+                ctx.persist_setting(_COLLECT_ENABLED_KEY, actor)
+        if "source" in payload:
+            src = str(payload.get("source", "")).strip().lower()
+            if src not in ("fleet", "script"):
+                raise HTTPException(status_code=400, detail="source 는 fleet 또는 script 여야 합니다.")
+            ctx.settings[_COLLECT_SOURCE_KEY] = src
+            if ctx.persist_setting:
+                ctx.persist_setting(_COLLECT_SOURCE_KEY, actor)
+        if ctx.log_action:
+            ctx.log_action(actor or "admin", "ACCOUNT_COLLECTION_SET",
+                           f"enabled={_collection_enabled()} source={_collection_source()}")
+        return {"enabled": _collection_enabled(), "source": _collection_source()}
 
     # ── 열람 역할 설정 (admin 조정) ────────────────────────────────────────────
     @app.get("/accounts/view-roles", tags=["Accounts"])

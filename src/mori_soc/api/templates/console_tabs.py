@@ -262,6 +262,33 @@ _ATAB_ACCESS_HTML = """    <!-- ── Tab: Access Control (가입 요청 + RBAC
         </section>
 
         <section class="card">
+          <h2 data-i18n="admin.h.acct_collect">계정 수집</h2>
+          <div class="subtext" data-i18n="admin.s.sub.acct_collect">서버·PC의 로컬 계정 인벤토리를 수집할지 정합니다. 민감정보라 끄면 MORI가 계정 데이터를 아예 받지 않습니다(/ingest/accounts 403). 기본 수집 경로는 Fleet(osquery)이며, Fleet이 없는 호스트는 스크립트로 push합니다.</div>
+          <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:14px 0">
+            <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="acctcol_enabled" />
+              <span data-i18n="admin.s.lbl.acct_collect_on">계정 수집 사용</span>
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:8px">
+              <span data-i18n="admin.s.lbl.acct_collect_src">수집 경로</span>
+              <select id="acctcol_source">
+                <option value="fleet" data-i18n="admin.s.opt.acct_src_fleet">Fleet (osquery) — 기본</option>
+                <option value="script" data-i18n="admin.s.opt.acct_src_script">스크립트 push (Fleet 없는 호스트)</option>
+              </select>
+            </label>
+          </div>
+          <div id="acctcol_hint" style="display:none;margin:10px 0;padding:10px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-left:3px solid #2563eb;border-radius:8px;font-size:12px;color:#4b5563;line-height:1.7">
+            <div data-i18n="admin.s.acct_collect_script_hint">Fleet이 없는 서버에서는 아래 스크립트를 실행하면 로컬 계정이 수집됩니다(cron 등록 포함). 토큰은 서버의 환경변수로 넘기세요 — 화면에 노출하지 않습니다.</div>
+            <pre id="acctcol_cmd" style="margin:8px 0 0;padding:8px 10px;background:#ffffff;border:1px solid #e5e7eb;border-radius:6px;overflow-x:auto;font-size:11px;color:#111827"></pre>
+          </div>
+          <div class="actions">
+            <button id="save_acctcol" data-i18n="admin.s.btn.save">저장</button>
+            <button id="reload_acctcol" class="secondary" data-i18n="admin.s.btn.refresh">새로고침</button>
+          </div>
+          <div class="status-line" id="acctcol_status"></div>
+        </section>
+
+        <section class="card">
           <h2 data-i18n="admin.h.user_tabs">유저별 대시보드 탭 관리</h2>
           <div class="subtext" data-i18n="admin.s.sub.user_tabs">개별 유저에게 역할 기본값과 다른 탭을 지정합니다. 유저별 설정이 있으면 역할 기본값보다 우선 적용됩니다.</div>
           <div class="actions" style="margin-bottom:12px">
