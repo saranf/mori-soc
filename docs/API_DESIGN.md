@@ -13,6 +13,8 @@ FastAPI (Python 3.12). `server.py` is a thin orchestrator that assembles a `Rout
 
 **Conventions** — JSON in/out; `200` ok · `400` bad body · `401` unauth · `403` role · `404` missing · `503` backend (e.g. ingest needs `MORI_DATABASE_URL`). Reads hit the query backend live per request; writes are cache-aside + write-through to Postgres.
 
+**Error shape** — every error response carries a stable `code` and a `retryable` flag so the UI can decide whether to offer a retry (`{"detail": "...", "code": "...", "retryable": true|false}`). Codes: `validation_error`(400/422) · `auth_required`(401) · `forbidden`(403) · `not_found`(404) · `conflict`(409) · `rate_limited`(429, retryable) · `source_unavailable`(503, retryable) · `external_api_error`(502/504, retryable) · `internal_error`(500, retryable). Applied centrally via an exception handler + middleware responses — see `src/mori_soc/api/errors.py`.
+
 ---
 
 ## Endpoints by domain

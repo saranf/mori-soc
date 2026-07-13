@@ -266,6 +266,19 @@ def create_app(
         state_repo = InMemoryStateRepository()
 
     app = FastAPI(title="MORI SOC — Audit-Ready Security Operations API", version="0.2.0")
+
+    # 에러 택소노미(#39): 모든 에러 응답에 code·retryable 을 실어 UI 재시도 판단을 돕는다.
+    from starlette.exceptions import HTTPException as _StarletteHTTPException
+    from starlette.responses import JSONResponse as _JSONResponse
+
+    from mori_soc.api.errors import error_body
+
+    @app.exception_handler(_StarletteHTTPException)
+    def _http_exc_handler(request, exc):  # noqa: ANN001
+        body = error_body(exc.status_code, exc.detail)
+        headers = getattr(exc, "headers", None)
+        return _JSONResponse(status_code=exc.status_code, content=body, headers=headers)
+
     _load_file_secrets()          # Docker secrets(_FILE) → env (경고 검사 전에 로드)
     _install_secret_redaction()   # 로그 시크릿 마스킹 설치(멱등)
     insecure_defaults = _warn_insecure_defaults()

@@ -77,7 +77,7 @@ def build_rate_limit_middleware():
                 retry = int(window - (now - min(recent))) + 1
                 return _Response(
                     status_code=429,
-                    content='{"detail":"rate limit exceeded"}',
+                    content='{"detail":"rate limit exceeded","code":"rate_limited","retryable":true}',
                     media_type="application/json",
                     headers={"Retry-After": str(max(1, retry))},
                 )

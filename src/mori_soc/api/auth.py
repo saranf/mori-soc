@@ -412,7 +412,7 @@ def build_session_auth_middleware(sessions: dict[str, dict[str, Any]]):
                     if origin and not _origin_allowed(origin, request.headers.get("host", "")):
                         return _StarletteResponse(
                             status_code=403,
-                            content='{"detail":"CSRF: cross-origin state change blocked"}',
+                            content='{"detail":"CSRF: cross-origin state change blocked","code":"forbidden","retryable":false}',
                             media_type="application/json",
                         )
                 return await call_next(request)
@@ -426,7 +426,7 @@ def build_session_auth_middleware(sessions: dict[str, dict[str, Any]]):
                 )
             return _StarletteResponse(
                 status_code=401,
-                content='{"detail":"Unauthorized. Please login at /login"}',
+                content='{"detail":"Unauthorized. Please login at /login","code":"auth_required","retryable":false}',
                 media_type="application/json",
             )
 
