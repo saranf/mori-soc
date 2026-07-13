@@ -33,6 +33,25 @@ Grafana, PostgreSQL) — report those upstream.
   passwords are **for isolated demo use only** and contain **seeded sample data only**.
 - For any non-demo deployment you **must**:
   - Change `MORI_ADMIN_PASSWORD` and all service passwords (`.env`), set `MORI_DEMO_MODE=false`.
-  - Serve over HTTPS behind a reverse proxy.
+  - **Set `MORI_AUTH_ENABLED=true`.** If it is empty and LDAP is off, session auth is **disabled**
+    and every API/dashboard is publicly readable — MORI now logs a loud `[security] AUTH DISABLED`
+    warning at boot and surfaces it on `/health`, but the safe default is still your responsibility.
+  - Serve over HTTPS behind a reverse proxy **and set `MORI_COOKIE_SECURE=true`** (session cookie
+    `Secure` flag; it is off by default so HTTP demos keep working).
   - Restrict RBAC and network exposure; rotate `MORI_INGEST_TOKEN` and Zabbix/Wazuh/Fleet secrets.
 - MORI connects to source tools **read-only**; it does not modify their configuration.
+
+## Security posture (current, honest)
+
+| Area | State |
+|---|---|
+| **RBAC** | `admin`·`security` only for privacy flow, evidence, and code-review findings export (code paths/snippets). Enforced when auth is on; covered by unauthenticated **and** authenticated-non-privileged tests. |
+| **Session cookie** | `HttpOnly` + `SameSite=Lax` always; `Secure` when `MORI_COOKIE_SECURE=true`. |
+| **OIDC** | GitHub Actions provenance verified (issuer/audience/expiry/kid/`alg=none`/repo allowlist) — failure paths tested. |
+| **XSS** | Dashboard renders ingest/user data through `escapeHtml` consistently; titles/copy via `textContent`. |
+| **CSRF** | Mitigated by `SameSite=Lax` (blocks cross-site POST). A dedicated CSRF token would need a frontend change and is tracked as future work. |
+| **Ingest** | Bearer `MORI_INGEST_TOKEN` or GitHub OIDC. **Replay protection (nonce/timestamp) is not yet implemented** for the static-token path — treat the token as a secret and prefer OIDC. |
+| **Public endpoints** | `/privacy/pii-rules.yml`, `/privacy/flow-scanner.py`, `/code-review/fullscan.py` are intentionally unauthenticated (CI fetches them). They expose **detection patterns/admin PII terms**, not credentials — acceptable low-sensitivity disclosure by design. |
+
+> Known hardening not yet defaulted (needs a deployment decision, not a silent flip):
+> **fail-closed auth default** (auth currently defaults *off* when unset). Set `MORI_AUTH_ENABLED=true`.
