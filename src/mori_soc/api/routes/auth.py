@@ -22,6 +22,13 @@ from mori_soc.api.templates import render_login_html, render_signup_request_html
 from mori_soc.api.payloads import _isoformat
 from mori_soc.api.routes.context import RouteContext
 
+def _cookie_secure() -> bool:
+    """세션 쿠키 Secure 속성 여부 — HTTPS(MORI_PUBLIC_URL) 면 자동, 또는 명시 강제."""
+    if os.environ.get("MORI_COOKIE_SECURE", "").strip().lower() in ("1", "true", "yes", "on"):
+        return True
+    return os.environ.get("MORI_PUBLIC_URL", "").strip().lower().startswith("https://")
+
+
 # 가입 승인 시 부여 가능한 역할
 _SIGNUP_ROLES = {"admin", "security", "monitor", "auditor", "helpdesk", "user"}
 # LDAP 사용자 역할을 재시작 후에도 유지하기 위한 settings 키 접두사
@@ -65,11 +72,10 @@ def register_auth(ctx: RouteContext) -> None:
         _log_action(username, "LOGIN", f"role={_role}")
         from fastapi.responses import JSONResponse
         resp = JSONResponse({"ok": True, "username": username})
-        # HTTPS 배포 시 MORI_COOKIE_SECURE=true 로 Secure 속성 부여(평문 전송 세션 스니핑 방지).
-        # 기본 off — HTTP 데모에서 Secure 쿠키는 전송되지 않아 로그인이 끊기므로.
-        _secure = os.environ.get("MORI_COOKIE_SECURE", "").strip().lower() in ("1", "true", "yes", "on")
+        # Secure 쿠키: MORI_PUBLIC_URL 이 https 면 자동 활성(운영자가 변수 빼먹어도 안전),
+        # 또는 MORI_COOKIE_SECURE=true 로 강제. HTTP 데모에서는 off(그래야 로그인 유지).
         resp.set_cookie("mori_session", token, httponly=True, samesite="lax",
-                        secure=_secure, max_age=86400 * 7)
+                        secure=_cookie_secure(), path="/", max_age=86400 * 7)
         return resp
 
     @app.get("/auth/logout", include_in_schema=False)

@@ -14,7 +14,29 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from urllib.parse import quote as _url_quote
+from urllib.parse import urlsplit as _urlsplit
 from typing import Any
+
+# CSRF: 쿠키 세션으로 인증된 상태변경 요청에만 Origin allowlist 를 적용한다.
+_CSRF_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def _origin_allowed(origin: str, host_header: str) -> bool:
+    """Origin(scheme://host:port) 이 자기 자신·MORI_PUBLIC_URL·MORI_ALLOWED_ORIGINS 중 하나인가."""
+    origin_host = _urlsplit(origin).netloc.lower()
+    if not origin_host:
+        return True  # 파싱 불가한 Origin 은 판단보류(차단하지 않음)
+    if origin_host == (host_header or "").lower():
+        return True  # 동일 출처
+    allowed: set[str] = set()
+    pub = os.environ.get("MORI_PUBLIC_URL", "").strip().lower()
+    if pub:
+        allowed.add(_urlsplit(pub).netloc)
+    for extra in os.environ.get("MORI_ALLOWED_ORIGINS", "").split(","):
+        extra = extra.strip().lower()
+        if extra:
+            allowed.add(_urlsplit(extra).netloc if "://" in extra else extra)
+    return origin_host in allowed
 
 try:
     from ldap3 import (
@@ -337,6 +359,16 @@ def build_session_auth_middleware(sessions: dict[str, dict[str, Any]]):
                 return await call_next(request)
             token = request.cookies.get("mori_session", "")
             if token and token in sessions:
+                # CSRF: 쿠키 인증된 상태변경 요청에 '교차 출처' Origin 이 붙으면 차단한다.
+                # (Origin 이 없는 비브라우저/서버-서버 호출은 통과 — SameSite=Lax 와 이중방어.)
+                if request.method in _CSRF_METHODS:
+                    origin = request.headers.get("origin", "")
+                    if origin and not _origin_allowed(origin, request.headers.get("host", "")):
+                        return _StarletteResponse(
+                            status_code=403,
+                            content='{"detail":"CSRF: cross-origin state change blocked"}',
+                            media_type="application/json",
+                        )
                 return await call_next(request)
             # Not authenticated
             accept = request.headers.get("accept", "")

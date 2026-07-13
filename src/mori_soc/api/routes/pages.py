@@ -106,6 +106,7 @@ def register_pages(ctx: RouteContext) -> None:
             "database": db_status,
             "source_coverage": coverage_summary,
             "insecure_defaults": insecure_defaults,
+            "security_posture": ctx.security_posture,
         }
 
     @app.get("/catalog")

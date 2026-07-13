@@ -136,6 +136,30 @@ def create_state_repository_from_env() -> StateRepository:
 # :func:`_i18n_script`.
 
 
+def _production_mode() -> bool:
+    """운영 모드 = MORI_DEMO_MODE 가 명시적으로 거짓. 미설정/참이면 데모(관대)."""
+    return os.getenv("MORI_DEMO_MODE", "").strip().lower() in ("false", "0", "no", "off")
+
+
+def _enforce_secure_boot(auth_enabled: bool) -> None:
+    """fail-closed: 운영 모드에서 인증이 꺼져 있으면 부팅을 거부한다(무인증 공개 서비스 방지)."""
+    if not _production_mode() or auth_enabled:
+        return
+    if os.getenv("MORI_ALLOW_INSECURE_AUTH", "").strip().lower() in ("1", "true", "yes", "on"):
+        logger.warning("[security] 운영 모드인데 인증이 꺼져 있으나 MORI_ALLOW_INSECURE_AUTH 로 강제 허용됨 — 위험")
+        return
+    raise RuntimeError(
+        "[security] 운영 모드(MORI_DEMO_MODE=false)에서 세션 인증이 비활성화되어 부팅을 중단합니다. "
+        "MORI_AUTH_ENABLED=true(또는 LDAP)를 설정하세요. 데모라면 MORI_DEMO_MODE=true, "
+        "의도적 무인증이면 MORI_ALLOW_INSECURE_AUTH=true 를 설정하세요."
+    )
+
+
+def _compute_security_posture(auth_enabled: bool, insecure_defaults: list[str]) -> str:
+    """/health 노출용 — 인증 꺼짐 또는 약한 기본값이 있으면 'insecure'."""
+    return "insecure" if (not auth_enabled or insecure_defaults) else "hardened"
+
+
 def create_app(
     service: QueryService | None = None,
     service_factory=None,
@@ -171,6 +195,8 @@ def create_app(
     # ── Auth configuration (env-driven; see auth.py) ──────────────────────────
     _auth_config = read_auth_config()
     _auth_enabled = _auth_config.auth_enabled
+    _enforce_secure_boot(_auth_enabled)   # 운영 모드 + 인증 꺼짐 → 부팅 거부(fail-closed)
+    _security_posture = _compute_security_posture(_auth_enabled, insecure_defaults)
 
     # Predefined local accounts: username -> {password, role}
     local_users: dict[str, dict[str, str]] = default_local_users(
@@ -1439,6 +1465,7 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
         auth_config=_auth_config,
         auth_enabled=_auth_enabled,
         insecure_defaults=insecure_defaults,
+        security_posture=_security_posture,
         local_users=local_users,
         sessions=sessions,
         signup_requests=signup_requests,
