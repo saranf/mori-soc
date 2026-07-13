@@ -71,30 +71,39 @@ class QueryRequestBuilderTests(unittest.TestCase):
                 create_query_service_from_env()
 
     def test_render_query_console_html_contains_expected_admin_features(self) -> None:
+        import pathlib
+
+        import mori_soc.api.templates.console as _con_mod
         html = render_query_console_html()
+        # P7-2: JS는 static/js/console.js 로 외부화됨 — JS 마커는 결합 문자열에서 검사
+        js = (pathlib.Path(_con_mod.__file__).parent.parent / "static" / "js"
+              / "console.js").read_text(encoding="utf-8")
+        bundle = html + js
+        # HTML 셸(서버 렌더) 마커
         self.assertIn("MORI 관리자 콘솔", html)
         self.assertIn("http://mori.rmstudio.co.kr:37854/", html)
-        self.assertIn("/query", html)
-        self.assertIn("/query?format=csv", html)
-        self.assertIn("/interpret", html)
-        self.assertIn("/dashboard/summary", html)
-        self.assertIn("/dashboard/preferences", html)
         self.assertIn("사용자 대시보드", html)
-        self.assertIn("사용자 대시보드 설정", html)
         self.assertIn("Natural Language Query", html)
         self.assertIn("Structured Query Builder", html)
         self.assertIn("Query Guide", html)
-        self.assertIn("오프라인 호스트 보여줘", html)
-        self.assertIn(DEFAULT_UI_PAYLOAD["intent"], html)
         self.assertIn("overview_modal", html)
-        self.assertIn("resolvePayloadForRun", html)
-        self.assertIn("queryMode = 'natural'", html)
-        self.assertIn("Download CSV", html)
-        self.assertIn("hasQueryResults", html)
-        self.assertIn("showNoResultsAlert", html)
-        self.assertIn("window.alert", html)
-        self.assertIn("extractFilename", html)
-        self.assertIn("downloadTextFile", html)
+        # JS(외부화) 마커
+        self.assertIn("/query", bundle)
+        self.assertIn("/query?format=csv", bundle)
+        self.assertIn("/interpret", bundle)
+        self.assertIn("/dashboard/summary", bundle)
+        self.assertIn("/dashboard/preferences", bundle)
+        self.assertIn("사용자 대시보드 설정", bundle)
+        self.assertIn("오프라인 호스트 보여줘", bundle)
+        self.assertIn(DEFAULT_UI_PAYLOAD["intent"], bundle)
+        self.assertIn("resolvePayloadForRun", bundle)
+        self.assertIn("queryMode = 'natural'", bundle)
+        self.assertIn("Download CSV", bundle)
+        self.assertIn("hasQueryResults", bundle)
+        self.assertIn("showNoResultsAlert", bundle)
+        self.assertIn("window.alert", bundle)
+        self.assertIn("extractFilename", bundle)
+        self.assertIn("downloadTextFile", bundle)
 
     def test_render_user_dashboard_html_hides_query_console_controls(self) -> None:
         import pathlib
