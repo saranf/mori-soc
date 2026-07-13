@@ -66,8 +66,30 @@ curl -s http://127.0.0.1:${MORI_API_PORT:-18000}/health           # {"status":"o
 `tests/test_state_persistence.py`(재기동 후 6개 store 잔존)가 CI 에서 상시 보증한다.
 운영 복구 리허설은 위 수동 절차를 스테이징에서 분기마다 1회 수행할 것을 권장한다.
 
-## 업그레이드와의 관계
+## 업그레이드와 롤백
 
-스키마는 앱 부팅마다 idempotent 재적용된다(`docs/DEPLOYMENT.md` §주의). 업그레이드가 잘못돼도
-데이터는 보존되지만, **업그레이드 전 반드시 위 백업을 만들어** 이미지 롤백 시 함께 복원할 수 있게
-한다(이전 이미지 태그로 되돌린 뒤 필요 시 덤프 복원).
+스키마는 앱 부팅마다 idempotent 재적용되고(`docs/DEPLOYMENT.md` §주의), 각 파일의 적용 이력은
+`schema_migrations`(버전·checksum)에 남는다. 스키마는 **전진(forward)만** 자동화돼 있고 자동
+다운그레이드는 없다. 따라서 업그레이드는 **백업 우선 + 이미지 태그 고정**으로 되돌릴 수 있게 한다.
+
+### 업그레이드 절차(롤백 가능하게)
+
+1. **백업 먼저**: `./scripts/mori-backup.sh` — 업그레이드 직전 상태를 dump 로 남긴다.
+2. **현재 이미지 태그 기록**: `docker compose images mori-api` (되돌릴 지점).
+3. 코드 갱신: `git pull` (또는 태그 체크아웃).
+4. 재빌드·기동: `docker compose up -d --build mori-api mori-worker`.
+5. 검증: `/health` 가 ok, `GET /admin/schema-migrations` 로 새 마이그레이션이 success 인지,
+   핵심 화면(자산·Triage·위험·증적)이 정상인지 확인.
+
+### 롤백 절차(업그레이드가 잘못됐을 때)
+
+1. 코드/이미지를 **이전 태그로 되돌린다**: `git checkout <이전 태그>` → `docker compose up -d --build mori-api`.
+   - 스키마는 append-only(`CREATE TABLE IF NOT EXISTS`)라 새로 추가된 테이블/컬럼이 남아 있어도
+     구버전 앱은 자기 것만 쓰므로 대개 그대로 동작한다.
+2. 데이터까지 되돌려야 하면(예: 마이그레이션이 데이터를 변형) **업그레이드 전 dump 로 복구**:
+   `./scripts/mori-restore.sh <업그레이드전.dump>` → `docker compose restart mori-api`.
+3. 다운타임: 복구는 DB 재적재 시간(수 초~수십 초) 동안 API 를 재시작한다. 무중단이 필요하면
+   스테이징에서 리허설 후 저부하 시간대에 수행한다.
+
+> 파괴적(destructive) 마이그레이션(컬럼 삭제·타입 변경 등)은 현재 스키마 규칙(IF NOT EXISTS)
+> 밖이다. 그런 변경을 도입할 때는 **백업 필수 + 롤백 불가**임을 릴리스 노트에 명시한다.
