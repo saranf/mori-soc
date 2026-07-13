@@ -411,6 +411,33 @@ class PostgresStateRepository(StateRepository):
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM ui_evidence_events WHERE id = %s", (event_id,))
 
+    # ── action audit log (append-only, hash-chained, #20) ──────────────────────
+    def append_audit_event(self, entry: dict[str, Any]) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO ui_audit_log (seq, ts, username, action, detail, prev_hash, hash) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (seq) DO NOTHING",  # append-only
+                (entry.get("seq"), entry.get("ts"), entry.get("username"), entry.get("action"),
+                 entry.get("detail"), entry.get("prev_hash"), entry.get("hash")))
+
+    def load_audit_events(self, limit: int = 2000) -> list[dict[str, Any]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT seq, ts, username, action, detail, prev_hash, hash FROM ("
+                " SELECT * FROM ui_audit_log ORDER BY seq DESC LIMIT %s) t ORDER BY seq ASC",
+                (max(1, int(limit)),))
+            return [
+                {"seq": r[0], "ts": r[1].isoformat() if r[1] else None, "username": r[2],
+                 "action": r[3], "detail": r[4], "prev_hash": r[5], "hash": r[6]}
+                for r in cur.fetchall()
+            ]
+
+    def latest_audit_event(self) -> dict[str, Any] | None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("SELECT seq, hash FROM ui_audit_log ORDER BY seq DESC LIMIT 1")
+            row = cur.fetchone()
+        return {"seq": row[0], "hash": row[1]} if row else None
+
     # ── settings (org-wide key-value) ──────────────────────────────────────────
     def load_settings(self) -> dict[str, str]:
         with self._connect() as conn, conn.cursor() as cur:

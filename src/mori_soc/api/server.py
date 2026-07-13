@@ -322,17 +322,27 @@ def create_app(
     sessions: dict[str, dict[str, Any]] = {}
     # Signup requests: [{id, name, email, department, reason, status, created_at}]
     signup_requests: list[dict[str, Any]] = []
-    # User action audit log: [{ts, username, action, detail}]
+    # User action audit log: [{seq, ts, username, action, detail, prev_hash, hash}]
     action_audit_log: list[dict[str, Any]] = []
+    # 재시작 후에도 체인이 이어지도록 DB 의 마지막 감사 항목(seq·hash)을 head 로 시딩(#20).
+    try:
+        _audit_head = state_repo.latest_audit_event()
+    except Exception:  # pragma: no cover - 감사 head 조회 실패는 부팅을 막지 않음
+        _audit_head = None
 
     def _log_action(username: str, action: str, detail: str = "") -> None:
-        """사용자 행동을 action_audit_log에 기록 (최근 2000건 유지).
+        """사용자 행동을 감사로그에 기록 (인메모리 최근 2000건 + DB 영속, #20).
 
-        변조 감지(#20): 각 항목은 이전 항목 해시에 연결된 hash chain 을 갖는다.
-        항목이 사후에 바뀌거나 빠지면 체인 검증(/admin/audit-log/verify)이 깨진다.
+        변조 감지: 각 항목은 이전 항목 해시에 연결된 hash chain 을 갖는다. 재시작 후에도
+        DB 에서 이어지며, /admin/audit-log/verify 로 검증한다. DB 는 append-only.
         """
-        prev = action_audit_log[-1]["hash"] if action_audit_log else "GENESIS"
-        seq = (action_audit_log[-1]["seq"] + 1) if action_audit_log else 1
+        nonlocal _audit_head
+        if action_audit_log:
+            prev, seq = action_audit_log[-1]["hash"], action_audit_log[-1]["seq"] + 1
+        elif _audit_head:
+            prev, seq = _audit_head["hash"], int(_audit_head["seq"]) + 1
+        else:
+            prev, seq = "GENESIS", 1
         entry = {
             "seq": seq,
             "ts": _isoformat(datetime.now(tz=timezone.utc)),
@@ -345,6 +355,10 @@ def create_app(
         action_audit_log.append(entry)
         if len(action_audit_log) > 2000:
             del action_audit_log[:-2000]
+        try:
+            state_repo.append_audit_event(entry)   # write-through 영속(실패해도 인메모리엔 남김)
+        except Exception:  # pragma: no cover
+            logger.warning("[audit] persist failed for seq=%s (kept in memory)", seq)
 
     # Role permissions: role -> list of allowed tab ids (defaults from auth.py)
     _DEFAULT_ROLE_PERMISSIONS = DEFAULT_ROLE_PERMISSIONS

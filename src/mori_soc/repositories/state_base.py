@@ -102,6 +102,19 @@ class StateRepository(ABC):
         """Upsert one evidence event (idempotent on ``event_id``)."""
         raise NotImplementedError
 
+    # ── action audit log: append-only, hash-chained (#20). 기본 no-op(인메모리 repo) ──
+    def append_audit_event(self, entry: dict[str, Any]) -> None:
+        """감사 항목 1건 append(무결성상 update/delete 없음). 기본 no-op."""
+        return None
+
+    def load_audit_events(self, limit: int = 2000) -> list[dict[str, Any]]:
+        """최근 감사 항목을 seq 오름차순으로(체인 검증용). 기본 빈 목록."""
+        return []
+
+    def latest_audit_event(self) -> dict[str, Any] | None:
+        """가장 최신 감사 항목(재시작 후 체인 head 시딩용). 기본 None."""
+        return None
+
     @abstractmethod
     def delete_evidence_event(self, event_id: str) -> None:
         """Remove one evidence event."""

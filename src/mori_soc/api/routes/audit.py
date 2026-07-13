@@ -76,10 +76,25 @@ def register_audit(ctx: RouteContext) -> None:
 
     @app.get("/admin/audit-log/verify", tags=["Assets"])
     def audit_log_verify(request: Request) -> dict[str, Any]:
-        """행동 감사로그 hash chain 무결성 검증(#20 변조 감지). admin·security·auditor 전용."""
+        """행동 감사로그 hash chain 무결성 검증(#20 변조 감지). admin·security·auditor 전용.
+
+        DB 영속 로그가 있으면 그 전체 체인을, 없으면 인메모리 최근 창을 검증한다.
+        """
         _require_log_view(request)
         from mori_soc.api.server import verify_audit_chain
-        return verify_audit_chain(action_audit_log)
+        entries = action_audit_log
+        source = "memory"
+        repo = getattr(ctx, "state_repo", None)
+        if repo is not None:
+            try:
+                persisted = repo.load_audit_events(limit=100000)
+                if persisted:
+                    entries, source = persisted, "db"
+            except Exception:
+                pass
+        result = verify_audit_chain(entries)
+        result["source"] = source
+        return result
 
     def _ev(ts, actor, category, action, target, detail, source) -> dict[str, Any]:
         return {

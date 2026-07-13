@@ -128,6 +128,25 @@ class MigrationE2ETests(unittest.TestCase):
         self.assertEqual(len(rows), len(rows2))
         self.assertEqual([r["version"] for r in rows2], sorted(r["version"] for r in rows2))
 
+    def test_audit_log_persist_and_chain(self) -> None:
+        # 감사로그 DB 영속 + hash chain 연속성(#20).
+        from mori_soc.api.server import _audit_entry_hash, verify_audit_chain
+        from mori_soc.repositories.state_postgres import PostgresStateRepository
+        repo = PostgresStateRepository(self._url)
+        repo.apply_schema()
+        prev = "GENESIS"
+        for i in range(1, 4):
+            e = {"seq": i, "ts": f"2026-01-01T00:00:0{i}+00:00", "username": "u",
+                 "action": "LOGIN", "detail": f"d{i}", "prev_hash": prev}
+            e["hash"] = _audit_entry_hash(prev, e)
+            repo.append_audit_event(e)
+            prev = e["hash"]
+        loaded = repo.load_audit_events(limit=100)
+        self.assertEqual(len(loaded), 3)
+        self.assertEqual([r["seq"] for r in loaded], [1, 2, 3])   # seq 오름차순
+        self.assertTrue(verify_audit_chain(loaded)["ok"])          # 체인 무결
+        self.assertEqual(repo.latest_audit_event()["seq"], 3)      # head 시딩용
+
     def test_worker_leader_lock_single_holder(self) -> None:
         # 리더 선출(#26): 한 번에 한 연결만 advisory lock 을 쥔다.
         import os
