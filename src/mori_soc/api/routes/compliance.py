@@ -54,7 +54,9 @@ def register_compliance(ctx: RouteContext) -> None:
             raise HTTPException(status_code=403, detail="admin 또는 security 권한이 필요합니다.")
 
     def _persist_evidence(rec: dict[str, Any]) -> dict[str, Any]:
-        """증적 레코드 저장 공통 보일러플레이트(메모리+영속)."""
+        """증적 레코드 저장 공통 보일러플레이트(메모리+영속) + provenance 스탬프(#21)."""
+        from mori_soc.services.evidence import stamp_evidence
+        stamp_evidence(rec)   # content_hash·version·generated_at
         ctx.control_evidence[rec["id"]] = rec
         if ctx.persist_control_evidence:
             ctx.persist_control_evidence(rec["id"])

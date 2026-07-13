@@ -298,13 +298,16 @@ def register_privacy(ctx: RouteContext) -> None:
                 f" · 저장위치: {', '.join(stores[:8]) or '미기재'}"
                 f" · 제3자제공 {len(third)}건 · 국외이전 {len(overseas)}건"
                 f" · 수집→저장→이용→파기 흐름도 첨부(/privacy/data-flow.svg)")
+        from mori_soc.services.evidence import stamp_evidence
         promoted = 0
         for cid in PRIVACY_FLOW_CONTROL_IDS:
             ev_id = "pdf-ev-" + hashlib.sha1(f"privacy-flow|{cid}".encode("utf-8")).hexdigest()[:16]
             rec = {"id": ev_id, "control_id": cid, "title": title, "body": body,
                    "collected_by": "MORI 개인정보 흐름표", "collected_at": collected_at,
                    "reference": "/privacy/data-flow.svg", "source": "privacy_flow",
+                   "source_event_id": ev_id,
                    "created_at": now, "created_by": _user(request) or "privacy_flow"}
+            stamp_evidence(rec)   # content_hash·version·generated_at (#21)
             try:
                 ctx.control_evidence[ev_id] = rec
                 if ctx.persist_control_evidence:

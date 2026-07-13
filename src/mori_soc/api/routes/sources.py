@@ -350,15 +350,17 @@ def register_sources(ctx: RouteContext) -> None:
         body = " · ".join(body_bits)
         now_i = datetime.now(tz=timezone.utc).isoformat()
         n = 0
+        from mori_soc.services.evidence import stamp_evidence
         for cid in CODE_REVIEW_CONTROL_IDS:
             rec = {
                 "id": "cr-ev-" + _hashlib.sha1(f"{scan_ev_id}|{cid}".encode("utf-8")).hexdigest()[:16],
                 "control_id": cid, "title": title, "body": body,
                 "collected_by": "MORI 코드 리뷰 파이프라인", "collected_at": collected_at,
-                "reference": run_url or "", "source": "code_review",
+                "reference": run_url or "", "source": "code_review", "source_event_id": scan_ev_id,
                 "repo": repo or "", "commit": commit or "", "findings_count": findings_count,
                 "verified": verified, "created_at": now_i, "created_by": "code_review",
             }
+            stamp_evidence(rec)   # content_hash·version·generated_at (#21)
             ctx.control_evidence[rec["id"]] = rec  # 메모리엔 항상 반영
             try:
                 if ctx.persist_control_evidence:

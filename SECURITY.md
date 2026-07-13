@@ -53,6 +53,7 @@ Grafana, PostgreSQL) — report those upstream.
 | **Ingest** | Bearer `MORI_INGEST_TOKEN` or GitHub OIDC. **Replay protection (nonce/timestamp) is not yet implemented** for the static-token path — treat the token as a secret and prefer OIDC. |
 | **Public endpoints** | `/privacy/pii-rules.yml`, `/privacy/flow-scanner.py`, `/code-review/fullscan.py`, `/code-review/scanners/manifest.json` are intentionally unauthenticated (CI fetches them). They expose **detection patterns/admin PII terms/checksums**, not credentials — acceptable low-sensitivity disclosure by design. |
 | **Audit log** | Action audit log is **hash-chained** (each entry links to the previous); `GET /admin/audit-log/verify` recomputes the chain and reports tampering/deletion. Append-only in practice (no update/delete API). Persistence to DB + external forwarding + signed export are backlog. |
+| **Evidence provenance** | Every promoted control-evidence record carries `content_hash` (sha256 of its meaningful content) + `version` + `source_event_id` + `generated_at`. Re-promotion with identical content yields the same hash (provably unchanged); any change is detectable. Full append-only snapshot history per promotion is backlog. |
 | **Abuse / rate limiting** | IP sliding-window limits on `/ingest/*` and `/auth/login` (429). Login lockout per (username, ip). Single-instance in-memory. |
 
 > Known hardening not yet defaulted (needs a deployment decision, not a silent flip):
