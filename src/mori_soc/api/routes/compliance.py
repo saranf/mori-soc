@@ -298,9 +298,9 @@ def register_compliance(ctx: RouteContext) -> None:
         '나머지는 언제?'에 대한 정직한 진척도 답. admin·security 전용.
         """
         _require_ev(request)
+        from mori_soc.api.routes.privacy import PRIVACY_FLOW_CONTROL_IDS
         from mori_soc.services.code_review_dispatch import CODE_REVIEW_CONTROL_IDS
         from mori_soc.services.control_catalog import maturity_summary
-        from mori_soc.api.routes.privacy import PRIVACY_FLOW_CONTROL_IDS
         auto_ids = set(CODE_REVIEW_CONTROL_IDS) | set(PRIVACY_FLOW_CONTROL_IDS)
         try:
             return maturity_summary(auto_ids=auto_ids, catalog=_merged_catalog())
