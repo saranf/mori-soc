@@ -35,21 +35,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Install dependencies (single source — pyproject)
         run: |
           python -m pip install --upgrade pip
-          pip install \
-            fastapi==0.115.12 \
-            uvicorn==0.34.0 \
-            "psycopg[binary]==3.2.6" \
-            ldap3==2.9.1 \
-            httpx==0.28.1 \
-            reportlab==4.2.5 \
-            pyyaml \
-            ruff
+          pip install -e ".[dev]"
 
-      - name: Lint (ruff — critical errors)
-        run: ruff check --select E9,F63,F7,F82 src tests
+      - name: Lint (ruff — config in pyproject)
+        run: ruff check src tests
 
       - name: Unit + integration tests (Postgres-backed)
         run: python -m unittest discover -s tests -p "test_*.py" -v
@@ -151,8 +143,6 @@ jobs:
       - name: pip-audit (dependency vulnerabilities)
         continue-on-error: true
         run: |
-          python -m pip install --upgrade pip pip-audit
-          pip install \
-            fastapi==0.115.12 uvicorn==0.34.0 "psycopg[binary]==3.2.6" \
-            ldap3==2.9.1 httpx==0.28.1 reportlab==4.2.5
+          python -m pip install --upgrade pip
+          pip install ".[dev]"
           pip-audit --progress-spinner off || true

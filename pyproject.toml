@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mori-soc"
+version = "0.6.0"
+description = "MORI SOC — self-hosted audit-evidence layer for ISO 27001 / ISMS-P"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+
+# 런타임 의존성 — 단일 출처(#31). Dockerfile·CI 는 이 목록을 설치한다(버전 중복/드리프트 제거).
+dependencies = [
+    "fastapi==0.115.12",
+    "uvicorn==0.34.0",
+    "psycopg[binary]==3.2.6",
+    "ldap3==2.9.1",
+    "httpx==0.28.1",
+    "reportlab==4.2.5",
+]
+
+[project.optional-dependencies]
+# 개발·CI 전용(런타임 아님): 카탈로그 검증(pyyaml)·린트(ruff)·의존성 스캔(pip-audit).
+dev = [
+    "pyyaml",
+    "ruff",
+    "pip-audit",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# CI 게이트는 치명 오류(구문·미정의)만 강제. 확장(E,I,B,UP,SIM)은 단계적 도입(백로그 #32).
+select = ["E9", "F63", "F7", "F82"]

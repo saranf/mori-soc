@@ -6,6 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+COPY pyproject.toml ./
 COPY src ./src
 COPY schema ./schema
 COPY scripts ./scripts
@@ -15,14 +16,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends fonts-nanum \
     && rm -rf /var/lib/apt/lists/*
 
+# 의존성 단일 출처(#31): pyproject.toml 의 dependencies 를 그대로 설치.
 RUN python -m pip install --no-cache-dir --upgrade pip \
-    && python -m pip install --no-cache-dir \
-        fastapi==0.115.12 \
-        uvicorn==0.34.0 \
-        psycopg[binary]==3.2.6 \
-        ldap3==2.9.1 \
-        httpx==0.28.1 \
-        reportlab==4.2.5
+    && python -m pip install --no-cache-dir .
 
 # 비루트 실행(보안·컴플라이언스 도구가 root 컨테이너면 안 됨). PDF/CSV 는 메모리 스트리밍이라
 # 쓰기 경로 불필요, 스키마·소스는 읽기 전용으로 접근한다.
