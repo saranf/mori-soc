@@ -3548,7 +3548,7 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
     // 자동 스냅샷 본문에서 '[라벨] 요약' 집계줄만 뽑아 한 줄 요약으로 (호스트 목록 등 상세는 접힘)
     function _evSummary(body) {
       const parts = String(body || '').split('\\n')
-        .filter(l => /^\\s*\[.+?\]/.test(l)).map(l => l.trim());
+        .filter(l => /^\\s*\\[.+?\\]/.test(l)).map(l => l.trim());
       return parts.length ? escapeHtml(parts.join('   ·   ')) : '';
     }
     function _toggleBody(id, el) {
