@@ -160,6 +160,62 @@ def _compute_security_posture(auth_enabled: bool, insecure_defaults: list[str]) 
     return "insecure" if (not auth_enabled or insecure_defaults) else "hardened"
 
 
+def _load_file_secrets() -> None:
+    """Docker secrets 규칙(#15): 환경변수 ``<NAME>_FILE`` 이 가리키는 파일 내용을
+    ``<NAME>`` 으로 로드한다(``<NAME>`` 이 이미 설정돼 있으면 건너뜀). compose 에
+    평문 시크릿을 넣지 않고 파일 마운트로 주입할 수 있게 한다."""
+    for key in list(os.environ.keys()):
+        if not key.endswith("_FILE"):
+            continue
+        base = key[:-5]
+        if not base or os.environ.get(base):
+            continue
+        path = os.environ.get(key, "").strip()
+        if not path:
+            continue
+        try:
+            with open(path, encoding="utf-8") as fh:
+                os.environ[base] = fh.read().strip()
+        except OSError as exc:
+            logger.warning("[secrets] %s 파일을 읽지 못함: %s", key, exc)
+
+
+# 로그에 값이 새면 마스킹할 시크릿 env 이름들(#15 — 로그 민감정보 방어).
+_SECRET_ENV_NAMES = (
+    "MORI_ADMIN_PASSWORD", "MORI_INGEST_TOKEN", "MORI_DATABASE_URL", "ANTHROPIC_API_KEY",
+    "MORI_LDAP_PASSWORD", "MORI_ZABBIX_API_TOKEN", "MORI_ZABBIX_PASSWORD", "MORI_DB_PASSWORD",
+)
+_redaction_installed = False
+
+
+class _SecretRedactionFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:  # noqa: A003
+        try:
+            msg = record.getMessage()
+        except Exception:
+            return True
+        secrets = [os.environ.get(n, "") for n in _SECRET_ENV_NAMES]
+        hit = [s for s in secrets if s and len(s) >= 4 and s in msg]
+        if hit:
+            for s in hit:
+                msg = msg.replace(s, "***REDACTED***")
+            record.msg, record.args = msg, ()
+        return True
+
+
+def _install_secret_redaction() -> None:
+    """루트 로거·핸들러에 시크릿 마스킹 필터를 설치(멱등)."""
+    global _redaction_installed
+    if _redaction_installed:
+        return
+    root = logging.getLogger()
+    filt = _SecretRedactionFilter()
+    root.addFilter(filt)
+    for h in root.handlers:
+        h.addFilter(filt)
+    _redaction_installed = True
+
+
 def create_app(
     service: QueryService | None = None,
     service_factory=None,
@@ -177,6 +233,8 @@ def create_app(
         state_repo = InMemoryStateRepository()
 
     app = FastAPI(title="MORI SOC — Audit-Ready Security Operations API", version="0.2.0")
+    _load_file_secrets()          # Docker secrets(_FILE) → env (경고 검사 전에 로드)
+    _install_secret_redaction()   # 로그 시크릿 마스킹 설치(멱등)
     insecure_defaults = _warn_insecure_defaults()
 
     # ── 통제 카탈로그(Phase 2) → DB 싱크 (기동 시 최선노력; 실패해도 앱 기동 계속) ──
