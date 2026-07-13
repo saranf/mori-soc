@@ -42,12 +42,17 @@ with sync_playwright() as p:
     page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
     page.goto(tmp.as_uri(), wait_until="domcontentloaded")
     page.wait_for_timeout(1200)
-    # 탭 전환 JS 실행(정의·구문 붕괴 시 여기서 예외)
-    for tab in ("compliance", "accounts", "triage", "assets", "incidents", "guides", "dashboard"):
+    # 탭 전환 JS 실행(정의·구문 붕괴 시 여기서 예외) — ko/en 양쪽 경로 실행
+    for lang in ("ko", "en"):
         try:
-            page.evaluate(f"typeof switchTab==='function' && switchTab('{tab}')")
+            page.evaluate(f"window.lang = '{lang}'")
         except Exception as exc:  # noqa: BLE001
-            page_errors.append(f"switchTab({tab}): {exc}")
+            page_errors.append(f"setLang({lang}): {exc}")
+        for tab in ("compliance", "accounts", "triage", "assets", "incidents", "guides", "dashboard"):
+            try:
+                page.evaluate(f"typeof switchTab==='function' && switchTab('{tab}')")
+            except Exception as exc:  # noqa: BLE001
+                page_errors.append(f"switchTab({tab},{lang}): {exc}")
     page.wait_for_timeout(300)
     browser.close()
 

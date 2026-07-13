@@ -1812,12 +1812,20 @@
     let _riskDoa = 4;  // 위험 수용 기준(DoA) 점수 1~9 /settings/risk 에서 로드
 
     // 점수 중심 배지: 큰 숫자로 'N점' + 등급 라벨(보조). score 생략 시 등급만.
+    // 한글 데이터값 → EN 표시 라벨(내부 키·조인·색상은 한글 유지, 화면 표시만 변환)
+    const _RISK_LV_EN = { '매우높음':'Very High', '높음':'High', '중간':'Medium', '낮음':'Low' };
+    const _AXIS_EN = { '상':'High', '중':'Medium', '하':'Low' };
+    const _IMPL_EN = { '미정':'Undetermined', '이행':'Implemented', '부분이행':'Partially implemented', '미이행':'Not implemented', '해당없음':'N/A' };
+    function _locLevel(v){ return window.lang === 'en' ? (_RISK_LV_EN[v] || v) : v; }
+    function _locAxis(v){ return window.lang === 'en' ? (_AXIS_EN[v] || v) : v; }
+    function _locImpl(v){ return window.lang === 'en' ? (_IMPL_EN[v] || v) : v; }
+
     function _riskBadge(level, small, score) {
       const c = RISK_LEVEL_COLORS[level] || '#111827';
       const scorePart = (score != null && score !== '')
         ? `<strong style="font-size:${small?'12px':'14px'}">${escapeHtml(String(score))}${tt('dash.risk.pt','점')}</strong> · `
         : '';
-      return `<span style="display:inline-flex;align-items:center;gap:2px;background:${c}22;border:1px solid ${c};color:${c};font-weight:700;border-radius:6px;padding:${small?'1px 7px':'2px 10px'};font-size:${small?'11px':'12px'}">${scorePart}${escapeHtml(level||'-')}</span>`;
+      return `<span style="display:inline-flex;align-items:center;gap:2px;background:${c}22;border:1px solid ${c};color:${c};font-weight:700;border-radius:6px;padding:${small?'1px 7px':'2px 10px'};font-size:${small?'11px':'12px'}">${scorePart}${escapeHtml(_locLevel(level)||'-')}</span>`;
     }
     window._riskBadge = _riskBadge;
 
@@ -1947,10 +1955,10 @@
       const m = data.matrix || [[0,0,0],[0,0,0],[0,0,0]];
       const impactByRow = [3,2,1], likeByCol = [1,2,3];
       const impLabel = {3:'상',2:'중',1:'하'}, likeLabel = {1:'하',2:'중',3:'상'};
-      const header = `<tr><td></td>${likeByCol.map(l=>`<td style="text-align:center;color:#111827;font-size:12px;padding-bottom:2px">${likeLabel[l]}</td>`).join('')}</tr>`;
+      const header = `<tr><td></td>${likeByCol.map(l=>`<td style="text-align:center;color:#111827;font-size:12px;padding-bottom:2px">${_locAxis(likeLabel[l])}</td>`).join('')}</tr>`;
       let cells = '';
       for (let r=0;r<3;r++){
-        let rowCells = `<td style="padding:6px 8px;color:#111827;font-size:12px;text-align:right;white-space:nowrap">${impLabel[impactByRow[r]]}</td>`;
+        let rowCells = `<td style="padding:6px 8px;color:#111827;font-size:12px;text-align:right;white-space:nowrap">${_locAxis(impLabel[impactByRow[r]])}</td>`;
         for (let c=0;c<3;c++){
           const imp = impactByRow[r], lk = likeByCol[c];
           const cellScore = imp*lk;
@@ -1963,12 +1971,12 @@
           rowCells += `<td style="padding:0"><div ${click} title="${tt('dash.risk.score','위험점수')} ${cellScore}" style="margin:3px;border-radius:6px;background:${col}${n?'33':'12'};border:1px solid ${col}${n?'':'44'};${accRing}width:60px;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;${n?'cursor:pointer':''}">
             <div style="font-size:9px;color:${col}cc;font-weight:700">${cellScore}${tt('dash.risk.pt','점')}</div>
             <div style="font-size:18px;font-weight:800;color:${n?col:'#e5e7eb'}">${n}</div>
-            <div style="font-size:8px;color:${accepted?'#16a34a':col+'aa'}">${accepted?tt('dash.risk.doa_accept','기본수용'):lvl}</div></div></td>`;
+            <div style="font-size:8px;color:${accepted?'#16a34a':col+'aa'}">${accepted?tt('dash.risk.doa_accept','기본수용'):_locLevel(lvl)}</div></div></td>`;
         }
         cells += `<tr>${rowCells}</tr>`;
       }
       const order = ['매우높음','높음','중간','낮음'];
-      const chips = order.map(lv => { const n=(data.by_level&&data.by_level[lv])||0; return `<span onclick="${n?`openRiskLevelModal('${lv}')`:''}" style="display:inline-flex;align-items:center;gap:5px;margin:0 8px 8px 0;font-size:12px;padding:4px 10px;border:1px solid ${RISK_LEVEL_COLORS[lv]}44;border-radius:8px;background:${RISK_LEVEL_COLORS[lv]}12;${n?'cursor:pointer':'opacity:.5'}"><span style="width:10px;height:10px;border-radius:2px;background:${RISK_LEVEL_COLORS[lv]};display:inline-block"></span>${lv} <strong style="color:${RISK_LEVEL_COLORS[lv]}">${n}</strong></span>`; }).join('');
+      const chips = order.map(lv => { const n=(data.by_level&&data.by_level[lv])||0; return `<span onclick="${n?`openRiskLevelModal('${lv}')`:''}" style="display:inline-flex;align-items:center;gap:5px;margin:0 8px 8px 0;font-size:12px;padding:4px 10px;border:1px solid ${RISK_LEVEL_COLORS[lv]}44;border-radius:8px;background:${RISK_LEVEL_COLORS[lv]}12;${n?'cursor:pointer':'opacity:.5'}"><span style="width:10px;height:10px;border-radius:2px;background:${RISK_LEVEL_COLORS[lv]};display:inline-block"></span>${_locLevel(lv)} <strong style="color:${RISK_LEVEL_COLORS[lv]}">${n}</strong></span>`; }).join('');
       const doaNote = `<div style="margin-top:8px;font-size:11px;color:#111827">${tt('dash.risk.doa_note','DoA 기준: {n}점 이하는 기본 수용가능').replace('{n}', _riskDoa)}</div>`;
       box.innerHTML = `<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
         <div>
@@ -2483,7 +2491,35 @@
           } else {
             // 통제 카탈로그 트리와 동일하게 프레임워크 → 도메인(접기) → 섹션 계층으로 매칭.
             // total = 카탈로그 통제 개수 → 트리 분모(예: 2.보호대책 64)와 정확히 일치.
-            const _fwLabel = { 'isms-p': 'ISMS-P', 'iso27001': 'ISO 27001:2022', 'custom': 'Custom / 법령' };
+            // ISMS-P 도메인/섹션 EN 표시(카탈로그는 한글전용) — ISO는 이미 EN이라 맵에 없으면 원문 유지
+            const _DOMAIN_EN = {
+              '1. 관리체계 수립 및 운영':'1. Management system establishment & operation',
+              '2. 보호대책 요구사항':'2. Protection measure requirements',
+              '3. 개인정보 처리단계별 요구사항':'3. Personal data processing-stage requirements',
+              '1.1 관리체계 기반 마련':'1.1 Management system foundation',
+              '1.2 위험 관리':'1.2 Risk management',
+              '1.3 관리체계 운영':'1.3 Management system operation',
+              '1.4 관리체계 점검 및 개선':'1.4 Management system review & improvement',
+              '2.1 정책, 조직, 자산 관리':'2.1 Policy, organization & asset management',
+              '2.2 인적 보안':'2.2 Human resource security',
+              '2.3 외부자 보안':'2.3 Third-party security',
+              '2.4 물리 보안':'2.4 Physical security',
+              '2.5 인증 및 권한관리':'2.5 Authentication & authorization',
+              '2.6 접근통제':'2.6 Access control',
+              '2.7 암호화 적용':'2.7 Cryptography',
+              '2.8 정보시스템 도입 및 개발 보안':'2.8 System acquisition & development security',
+              '2.9 시스템 및 서비스 운영관리':'2.9 System & service operation',
+              '2.10 시스템 및 서비스 보안관리':'2.10 System & service security',
+              '2.11 사고 예방 및 대응':'2.11 Incident prevention & response',
+              '2.12 재해복구':'2.12 Disaster recovery',
+              '3.1 개인정보 수집 시 보호조치':'3.1 Protection at collection',
+              '3.2 개인정보 보유 및 이용 시 보호조치':'3.2 Protection at retention & use',
+              '3.3 개인정보 제공 시 보호조치':'3.3 Protection at provision',
+              '3.4 개인정보 파기 시 보호조치':'3.4 Protection at destruction',
+              '3.5 정보주체 권리보호':'3.5 Data subject rights',
+            };
+            const _locDomain = (v) => window.lang === 'en' ? (_DOMAIN_EN[v] || v) : v;
+            const _fwLabel = { 'isms-p': 'ISMS-P', 'iso27001': 'ISO 27001:2022', 'custom': window.lang === 'en' ? 'Custom / Regulation' : 'Custom / 법령' };
             // cats 는 payload 에서 이미 트리 순서(ISMS-P 먼저 · 섹션번호 자연정렬)로 정렬됨.
             const groups = [];  // {fw, domain, rows:[], agg:{}}
             cats.forEach(c => {
@@ -2517,9 +2553,9 @@
               const nums = `<span style="color:#16a34a">${a.pass}</span> / <span style="color:#dc2626">${a.fail}</span> / <span style="color:#ca8a04">${a.warning}</span> / ${a.not_checked} / ${a.total}`;
               const domSameAsSec = (g.rows.length === 1 && g.rows[0].category === g.domain);
               if (domSameAsSec) {
-                html += `<div style="margin:4px 0 0 4px;color:#111827;font-size:13px;padding:2px 0">${escapeHtml(g.domain)} <span style="font-size:11px">(${nums})</span></div>`;
+                html += `<div style="margin:4px 0 0 4px;color:#111827;font-size:13px;padding:2px 0">${escapeHtml(_locDomain(g.domain))} <span style="font-size:11px">(${nums})</span></div>`;
               } else {
-                html += `<details style="margin:4px 0 0 4px"><summary style="cursor:pointer;color:#111827;font-size:13px;padding:2px 0">${escapeHtml(g.domain)} <span style="font-size:11px">(${nums})</span></summary>`
+                html += `<details style="margin:4px 0 0 4px"><summary style="cursor:pointer;color:#111827;font-size:13px;padding:2px 0">${escapeHtml(_locDomain(g.domain))} <span style="font-size:11px">(${nums})</span></summary>`
                   + secTable(g.rows) + `</details>`;
               }
             });
@@ -2808,7 +2844,7 @@
     const _CTL_STATUSES = ['미정','이행','부분이행','미이행','해당없음'];
     function _ctlStatusBadge(s) {
       const c = _CTL_STATUS_COLOR[s] || '#111827';
-      return `<span style="background:${c}22;color:${c};border:1px solid ${c};padding:0 6px;border-radius:5px;font-size:10px;margin-left:5px;font-weight:700">${escapeHtml(s)}</span>`;
+      return `<span style="background:${c}22;color:${c};border:1px solid ${c};padding:0 6px;border-radius:5px;font-size:10px;margin-left:5px;font-weight:700">${escapeHtml(_locImpl(s))}</span>`;
     }
     let _ctlCanEdit = false;
     async function loadControlTree() {
@@ -2926,7 +2962,7 @@
         return `<div style="margin-top:8px;padding-top:6px;border-top:1px solid #e5e7eb;color:#111827">${tt('dash.ctl.status','이행 상태')}: ${badge || tt('dash.ctl.status_undecided','미정')}</div>`;
       }
       const inp = 'background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:5px;padding:4px 7px;font-size:12px';
-      const opts = _CTL_STATUSES.map(s => `<option value="${s}"${(rs.status||'미정')===s?' selected':''}>${s}</option>`).join('');
+      const opts = _CTL_STATUSES.map(s => `<option value="${s}"${(rs.status||'미정')===s?' selected':''}>${_locImpl(s)}</option>`).join('');
       const upd = rs.updated_at ? `<span style="color:#111827;font-size:11px;margin-left:8px">${tt('dash.ctl.updated','수정')}: ${escapeHtml(String(rs.updated_at).slice(0,10))} · ${escapeHtml(rs.updated_by||'')}</span>` : '';
       return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb">
         <div style="font-weight:700;color:#16a34a;margin-bottom:6px">${tt('dash.ctl.status_edit','이행 상태 편집')}${upd}</div>
