@@ -1,3 +1,8 @@
+# Wazuh TLS 인증서 생성 정의 (docker-compose.yml 의 generate-indexer-certs 가 읽는다)
+#
+# ip 필드에는 "점이 있는" DNS 이름 또는 IP만 넣는다.
+# 짧은 이름(예: indexer)은 생성기가 "Invalid IP or DNS" 로 거부한다.
+# 이름은 compose 서비스명 = 컨테이너 hostname 과 같아야 TLS 검증이 통과한다.
 nodes:
   indexer:
     - name: wazuh.indexer

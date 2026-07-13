@@ -128,6 +128,7 @@ docker compose up -d mori-worker      # re-apply
 
 > Default `up -d` starts: soc-postgres · mori-api · mori-worker · openldap · phpldapadmin · portal · grafana · loki · fluent-bit.
 > Bundled demo stack (own Zabbix/Wazuh/Fleet): `docker compose --profile bundled up -d` (individual: `--profile zabbix`/`fleet`/`wazuh`). HTTPS proxy: `--profile https up -d mori-caddy` (after issuing certs — see [HTTPS setup](docs/HTTPS_SETUP.md)).
+> Wazuh TLS certificates are generated automatically by the `generate-indexer-certs` service — nothing to do by hand. **Never bind-mount certificates file by file: if the file does not exist yet, Docker creates an empty directory with that name and the service dies with `is a directory`.** Mount the directory. See [Wazuh certificates](docs/WAZUH_CERTS.en.md).
 > Full steps in the [Brownfield connect guide](docs/BROWNFIELD_CONNECT.en.md).
 
 > **Demo credentials** — `admin`/`security`/`monitor` (password `1234`) are for the **isolated demo only**. For any real deployment, change `MORI_ADMIN_PASSWORD` in `.env` and set `MORI_DEMO_MODE=false`.

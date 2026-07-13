@@ -409,11 +409,47 @@ services:
       retries: 12
     networks: [soc]
 
+  # Wazuh TLS 인증서 생성기 (1회 실행 후 종료).
+  # wazuh 3종은 이 서비스가 "정상 종료"된 뒤에야 뜬다(depends_on: service_completed_successfully).
+  # - 인증서가 이미 있으면 재생성하지 않는다(멱등).
+  # - 생성기 파일명과 각 서비스가 기대하는 이름이 달라서, 별칭 3개를 복사로 맞춘다.
+  #   (심볼릭 링크는 컨테이너 안에서 깨질 수 있어 복사를 쓴다.)
+  # 인증서 디렉터리는 반드시 "디렉터리 단위"로 마운트한다 — 파일 단위로 마운트하면
+  # 파일이 없을 때 Docker가 같은 이름의 빈 디렉터리를 만들어 부팅이 깨진다.
+  generate-indexer-certs:
+    profiles: ["bundled", "wazuh"]
+    image: wazuh/wazuh-certs-generator:0.0.2
+    hostname: wazuh-certs-generator
+    volumes:
+      - ./config/wazuh_indexer_ssl_certs:/certificates
+      - ./config/certs.yml:/config/certs.yml:ro
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        if [ -f /certificates/root-ca.pem ]; then
+          echo "[certs] 기존 인증서 발견 - 생성 건너뜀 (멱등)"
+        else
+          echo "[certs] 인증서 생성"
+          /entrypoint.sh          # bash 스크립트다 - sh 로 호출하면 source/함수에서 깨진다
+        fi
+        cd /certificates
+        # 생성기 이름 -> 각 서비스가 기대하는 이름 (권한/소유자 보존: cp -p)
+        cp -fp wazuh.indexer-key.pem   wazuh.indexer.key          # indexer: wazuh.indexer.yml 이 참조
+        cp -fp wazuh.dashboard.pem     wazuh-dashboard.pem        # dashboard: opensearch_dashboards.yml 이 참조
+        cp -fp wazuh.dashboard-key.pem wazuh-dashboard-key.pem
+        echo "[certs] 별칭 보정 완료 (wazuh.indexer.key / wazuh-dashboard.pem / wazuh-dashboard-key.pem)"
+    networks: [soc]
+
   wazuh.manager:
     profiles: ["bundled", "wazuh"]
     image: wazuh/wazuh-manager:4.14.4
     hostname: wazuh.manager
     restart: unless-stopped
+    depends_on:
+      generate-indexer-certs:
+        condition: service_completed_successfully
     ulimits:
       memlock: { soft: -1, hard: -1 }
       nofile: { soft: 655360, hard: 655360 }
@@ -453,6 +489,9 @@ services:
     image: wazuh/wazuh-indexer:4.14.4
     hostname: wazuh.indexer
     restart: unless-stopped
+    depends_on:
+      generate-indexer-certs:
+        condition: service_completed_successfully
     environment:
       OPENSEARCH_JAVA_OPTS: -Xms1g -Xmx1g
     ulimits:
@@ -471,7 +510,10 @@ services:
     hostname: wazuh.dashboard
     restart: unless-stopped
     depends_on:
-      - wazuh.indexer
+      generate-indexer-certs:
+        condition: service_completed_successfully
+      wazuh.indexer:
+        condition: service_started
     environment:
       INDEXER_USERNAME: admin
       INDEXER_PASSWORD: SecretPassword

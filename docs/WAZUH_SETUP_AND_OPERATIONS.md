@@ -1,5 +1,8 @@
 # Wazuh 이해 & 운영 가이드
 
+> TLS 인증서가 안 만들어져 스택이 안 뜨거나 `is a directory` 로 죽는다면 → **[Wazuh 인증서](WAZUH_CERTS.md)** 를 먼저 보세요.
+> (인증서는 `generate-indexer-certs` 서비스가 자동 생성합니다. 인증서를 **파일 단위로 bind-mount 하면 안 됩니다.**)
+
 ## 1. 한 줄 요약
 
 **Wazuh = 오픈소스 SIEM/XDR.** 단말·서버에 에이전트를 깔면, 그 에이전트가 로그·파일변경·
