@@ -132,6 +132,7 @@ class MigrationE2ETests(unittest.TestCase):
         # 리더 선출(#26): 한 번에 한 연결만 advisory lock 을 쥔다.
         import os
         from unittest.mock import patch
+
         from mori_soc.worker import _try_acquire_leader
         with patch.dict(os.environ, {"MORI_DATABASE_URL": self._url}, clear=False):
             c1 = _try_acquire_leader()
