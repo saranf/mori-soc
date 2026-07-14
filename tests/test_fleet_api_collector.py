@@ -217,3 +217,52 @@ class FleetSharedIpAndAccountsTests(unittest.TestCase):
         # include_accounts=False 여도 _capture_accounts 는 직접 호출 시 동작하지만,
         # collect() 경로에서는 호출되지 않는다 — 여기선 게이트가 collect 에 있음을 문서화
         self.assertFalse(c._include_accounts)
+
+
+class FleetPaginationTests(unittest.TestCase):
+    """호스트가 페이지 크기를 넘어도 조용히 누락되지 않아야 한다."""
+
+    class _Paged(FleetApiCollector):
+        def __init__(self, total: int, **kw):
+            super().__init__(api_url="http://fleet:1337", token="t",
+                             include_software=False, include_accounts=False, **kw)
+            self._total = total
+            self.pages_requested: list[int] = []
+
+        def _get(self, path, params=None):
+            if not path.endswith("/hosts"):
+                return {}
+            page = int((params or {}).get("page", 0))
+            per = int((params or {}).get("per_page", 500))
+            self.pages_requested.append(page)
+            start, end = page * per, min((page + 1) * per, self._total)
+            if start >= self._total:
+                return {"hosts": []}
+            return {"hosts": [
+                {"id": i, "hostname": f"h{i:04d}", "primary_ip": f"10.0.{i // 256}.{i % 256}",
+                 "status": "online"}
+                for i in range(start, end)
+            ]}
+
+    def test_paginates_until_last_page(self) -> None:
+        c = self._Paged(total=1200, page_size=500)   # 500 + 500 + 200
+        records = list(c.collect())
+        self.assertEqual(len(records), 1200, "1200대가 모두 수집돼야 한다")
+        self.assertEqual(c.pages_requested, [0, 1, 2])
+        names = {r.payload["hostname"] for r in records}
+        self.assertIn("h0000", names)
+        self.assertIn("h1199", names)   # 마지막 페이지까지
+
+    def test_single_page_stops_immediately(self) -> None:
+        c = self._Paged(total=3, page_size=500)
+        records = list(c.collect())
+        self.assertEqual(len(records), 3)
+        self.assertEqual(c.pages_requested, [0], "페이지가 안 찼으면 추가 요청하지 않는다")
+
+    def test_host_limit_truncates_with_warning(self) -> None:
+        c = self._Paged(total=1000, page_size=100, host_limit=250)
+        with self.assertLogs("mori.collector.fleet", level="WARNING") as logs:
+            records = list(c.collect())
+        self.assertEqual(len(records), 250, "상한까지만 수집")
+        self.assertTrue(any("상한" in m for m in logs.output),
+                        "조용히 버리지 않고 경고를 남겨야 한다")

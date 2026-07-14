@@ -67,7 +67,8 @@ class FleetPoller(BasePollerService):
             api_url=api_url,
             token=token,
             request_timeout=int(os.getenv("MORI_FLEET_TIMEOUT_SECONDS", "10")),
-            host_limit=int(os.getenv("MORI_FLEET_HOST_LIMIT", "500")),
+            host_limit=int(os.getenv("MORI_FLEET_HOST_LIMIT", "5000")),
+            page_size=int(os.getenv("MORI_FLEET_PAGE_SIZE", "500")),
             # 호스트별 상세를 추가 조회해 취약점을 뽑는다(호스트 수만큼 요청 증가).
             include_software=_env_flag("MORI_FLEET_INCLUDE_SOFTWARE", default=True),
             # 로컬 계정(osquery users) 수집 — 실제 저장 여부는 admin 설정이 최종 결정한다.

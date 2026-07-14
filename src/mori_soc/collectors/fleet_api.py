@@ -43,6 +43,9 @@ from .base import BaseCollector, CollectorRecord, NormalizedEnvelope
 
 logger = logging.getLogger("mori.collector.fleet")
 
+# 페이지네이션 방어 상한(서버가 계속 꽉 찬 페이지를 주는 이상 상황 대비)
+_MAX_PAGES = 200
+
 # Fleet 호스트 상태 → MORI HostStatus
 _HOST_STATUS = {"online": "online", "offline": "offline", "mia": "offline", "missing": "offline"}
 
@@ -60,7 +63,8 @@ class FleetApiCollector(BaseCollector):
         api_url: str,
         token: str,
         request_timeout: int = 10,
-        host_limit: int = 500,
+        host_limit: int = 5000,
+        page_size: int = 500,
         include_software: bool = True,
         include_accounts: bool = True,
         verify_tls: bool = True,
@@ -68,7 +72,8 @@ class FleetApiCollector(BaseCollector):
         self._api_url = api_url.rstrip("/")
         self._token = token
         self._request_timeout = request_timeout
-        self._host_limit = host_limit
+        self._host_limit = max(1, host_limit)
+        self._page_size = max(1, min(page_size, host_limit))
         self._include_software = include_software
         self._include_accounts = include_accounts
         self._verify_tls = verify_tls
@@ -85,11 +90,47 @@ class FleetApiCollector(BaseCollector):
         return "fleet"
 
     # ── 수집 ────────────────────────────────────────────────────────
+    def _fetch_hosts(self) -> list[dict[str, Any]]:
+        """호스트 목록을 **페이지 끝까지** 가져온다.
+
+        Fleet 은 ``page``(0-based)·``per_page`` 로 페이지네이션한다. 한 번만 호출하면
+        페이지 크기를 넘는 호스트가 **조용히 누락**되는데, 자산 인벤토리에서 조용한 누락은
+        곧 "대상 범위 불명확" 결함이다. 그래서 끝까지 돌고, 상한(``host_limit``)에 걸려
+        잘리면 **경고를 남긴다**(조용히 버리지 않는다).
+        """
+        hosts: list[dict[str, Any]] = []
+        page = 0
+        while True:
+            payload = self._get(
+                "/api/v1/fleet/hosts", {"page": page, "per_page": self._page_size}
+            )
+            batch = payload.get("hosts") if isinstance(payload, dict) else None
+            if not isinstance(batch, list) or not batch:
+                break
+            hosts.extend(h for h in batch if isinstance(h, dict))
+
+            if len(hosts) >= self._host_limit:
+                logger.warning(
+                    "[fleet] 호스트 상한(%d)에 도달해 이후 호스트를 수집하지 않습니다 — "
+                    "누락 없이 받으려면 MORI_FLEET_HOST_LIMIT 를 늘리세요.",
+                    self._host_limit,
+                )
+                return hosts[: self._host_limit]
+            if len(batch) < self._page_size:
+                break  # 마지막 페이지
+            page += 1
+            if page >= _MAX_PAGES:  # 서버가 계속 꽉 찬 페이지를 주는 이상 상황 방어
+                logger.warning(
+                    "[fleet] 페이지 상한(%d)에 도달해 중단합니다 — 수집된 호스트 %d대.",
+                    _MAX_PAGES, len(hosts),
+                )
+                break
+        return hosts
+
     def collect(self) -> Iterable[CollectorRecord]:
         collected_at = datetime.now(tz=timezone.utc)
-        payload = self._get("/api/v1/fleet/hosts", {"per_page": self._host_limit})
-        hosts = payload.get("hosts") if isinstance(payload, dict) else None
-        if not isinstance(hosts, list):
+        hosts = self._fetch_hosts()
+        if not hosts:
             return []
 
         # VPN/NAT 뒤의 단말은 primary_ip 를 공유한다. IP 를 신원 별칭으로 쓰면 서로 다른
