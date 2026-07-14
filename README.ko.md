@@ -197,6 +197,14 @@ docker compose up -d mori-worker      # 재적용
 
 ---
 
+## 감사의 글 (Acknowledgements)
+
+MORI의 초기 문제 정의는 보안 운영·개인정보보호·제품 기획을 담당하는 실무자와의 대화를 통해 구체화되었습니다. 그의 피드백은 소규모 팀이 일상적인 운영 활동을 ISMS-P / ISO 27001 증적 준비와 연결할 때 겪는 어려움을 짚어주었습니다.
+
+MORI의 아키텍처·구현·테스트·유지보수는 프로젝트 메인테이너가 독자적으로 수행했습니다.
+
+---
+
 > **Alpha / Work in Progress** — 일상 보안 운영 + 감사 증적 시나리오가 동작하며 UI 운영 상태는 PostgreSQL에 영속화됩니다. Zabbix 실시간 폴링과 Fleet 자산 폴링은 실 API로 검증됨(다른 시드 데이터는 데모용). Wazuh 라이브 연동과 Fleet 취약점(실 CVE) 검증은 다음 단계입니다.
 >
 > 라이선스: Apache 2.0 · 전체 기능 체험은 `./scripts/mori-start-demo.sh` 한 줄로.

@@ -195,6 +195,14 @@ Ask a question ("show offline hosts") → matched to one of 12 intents → resul
 
 ---
 
+## Acknowledgements
+
+MORI's initial problem direction was shaped through conversations with a practitioner responsible for security operations, privacy, and product planning. Her feedback highlighted the challenges small teams face when connecting day-to-day operational activities with ISMS-P / ISO 27001 evidence preparation.
+
+The architecture, implementation, testing, and maintenance of MORI were independently carried out by the project maintainer.
+
+---
+
 > **Alpha / Work in Progress** — daily security operations + audit-evidence scenarios work, and UI operational state persists to PostgreSQL. Zabbix live polling and Fleet asset polling are real-API verified (other seed data is for demo). Wazuh live integration and Fleet vulnerability verification (real CVEs) are next.
 >
 > License: Apache 2.0 · Try the full feature set with a single `./scripts/mori-start-demo.sh`.
