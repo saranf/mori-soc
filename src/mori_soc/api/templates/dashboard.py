@@ -417,7 +417,7 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
           <textarea id=\"risk_accept_reason\" rows=\"2\" style=\"width:100%;background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\"></textarea></div>
         <div style=\"display:flex;gap:10px;flex-wrap:wrap\">
           <div style=\"flex:1;min-width:160px\"><label style=\"color:#111827;font-size:13px\" data-i18n=\"dash.risk.f.residual\">잔여 위험</label>
-            <input id=\"risk_residual\" placeholder=\"예: 중간 / 낮음\" style=\"width:100%;background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
+            <input id=\"risk_residual\" data-i18n-placeholder=\"dash.risk.f.residual_ph\" placeholder=\"예: 중간 / 낮음\" style=\"width:100%;background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
           <div style=\"flex:1;min-width:160px\"><label style=\"color:#111827;font-size:13px\" data-i18n=\"dash.risk.f.assessed_by\">평가자</label>
             <input id=\"risk_assessed_by\" style=\"width:100%;background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
         </div>
