@@ -96,14 +96,14 @@ flowchart LR
 
 | Works now | Partially integrated | Next |
 |---|---|---|
-| **Zabbix live polling → alert (real-API verified)** | Trivy collector local polling | **FleetDM live poller** |
+| **Zabbix live polling → alert (real-API verified)**<br>**Fleet live poller → PC assets (real-API verified)** | Trivy collector local polling | **Fleet vulns — verify with real CVEs** |
 | **Trivy/CSOP remote push evidence ingest** (token) | Source freshness / worker cycle | **Wazuh live poller** |
 | **Code-review evidence ingest** — GitHub OIDC-verified provenance (2.8/A.8.25) | CI enforces real PostgreSQL (fresh-install + migration E2E), Docker build, Trivy image scan, pip-audit | Reusable workflow · multi-repo dashboard |
 | **Brownfield connect** — via `.env` config only | | LDAP/AD operational sync |
 | Alert Triage / Incidents / **risk assessment** | | Slack / Email alerts |
 | Login·RBAC · PostgreSQL persistence · CSV/PDF evidence | | Live-query caching |
 
-> **Integration maturity** (so "works" is unambiguous): **Zabbix — verified with real API** end-to-end (_problem → collect → triage → incident → evidence → resolve_). **Trivy / code-review / Wazuh ingest — tested with sample payloads** over the real HTTP endpoints. **Fleet / Wazuh live pollers — implemented as parser/scaffold only** (env vars are placeholders; no live API yet). None is claimed "production-tested at scale" — large-scale performance is not yet benchmarked.
+> **Integration maturity** (so "works" is unambiguous): **Zabbix — verified with real API** end-to-end (_problem → collect → triage → incident → evidence → resolve_). **Fleet — asset path verified with real API** (real osquery host enrolled → poll cycle → PC asset in `/assets` + Fleet deep link; the vulnerability mapping exists but is **not yet verified against real CVEs** — see [Fleet setup](docs/FLEET_SETUP_AND_OPERATIONS.md#6-mori-연동-라이브-rest--설정만으로-동작)). **Trivy / code-review / Wazuh ingest — tested with sample payloads** over the real HTTP endpoints. **Wazuh live poller — parser/scaffold only** (no live API yet). None is claimed "production-tested at scale" — large-scale performance is not yet benchmarked.
 
 > **Scope — single-tenant, self-hosted.** MORI targets one organization per deployment: no `organization_id`, tenant isolation, or hosted multi-tenant mode. Run one instance per org behind your own network controls. (Multi-tenant is out of scope, not a roadmap promise.)
 
@@ -212,6 +212,6 @@ Ask a question ("show offline hosts") → matched to one of 12 intents → resul
 
 ---
 
-> **Alpha / Work in Progress** — daily security operations + audit-evidence scenarios work, and UI operational state persists to PostgreSQL. Zabbix live polling is real-API verified (other seed data is for demo). Fleet / Wazuh live integration is next.
+> **Alpha / Work in Progress** — daily security operations + audit-evidence scenarios work, and UI operational state persists to PostgreSQL. Zabbix live polling and Fleet asset polling are real-API verified (other seed data is for demo). Wazuh live integration and Fleet vulnerability verification (real CVEs) are next.
 >
 > License: Apache 2.0 · Try the full feature set with a single `./scripts/mori-start-demo.sh`.

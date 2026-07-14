@@ -155,18 +155,68 @@ Fleet UI → **Policies** — "예/아니오"로 판정되는 컴플라이언스
 
 ---
 
-## 6. MORI 연동 (현재/예정)
+## 6. MORI 연동 (라이브 REST — 설정만으로 동작)
 
-- **현재**: MORI 자산 탭(PC 자산)에서 각 호스트의 **Fleet ↗ 딥링크**(`MORI_FLEET_UI_URL`)로 Fleet 상세로 이동.
-- **예정(Next)**: `pollers/fleet.py` 로 Fleet API(`/api/v1/fleet/hosts` 등)를 주기 폴링 → 호스트/osquery 결과를 MORI 자산·관측치로 정규화 적재(Zabbix 와 동일 패턴). Trivy 처럼 `POST /ingest/*` HTTP 인제스트로도 확장 가능.
+MORI 는 Fleet REST API 를 주기 폴링해 **PC 자산**과 **소프트웨어 취약점**을 적재한다.
+osquery **로그**(status/result)는 이미 fluent-bit → Loki 로 흐르므로 **다시 수집하지 않는다**
+— 로그 조회는 Grafana/Loki 에 위임하고, MORI 는 증적 층으로 남는다.
+
+### 6-1. 켜는 법
+
+1. **API 토큰 발급** — Fleet UI > **Settings > Users** 에서 **API-only 유저** 생성 후 토큰 복사
+   (또는 `POST /api/v1/fleet/login` 응답의 `token`).
+2. **`.env` 설정** (자세한 항목은 `.env.example` 의 Fleet 절)
+
+   ```bash
+   MORI_ENABLE_FLEET=true
+   MORI_FLEET_API_URL=http://fleet:1337        # 브라운필드: https://fleet.your-corp.com
+   MORI_FLEET_API_TOKEN=<발급받은 토큰>
+   MORI_FLEET_INCLUDE_SOFTWARE=true            # 취약점까지 수집(호스트 수만큼 요청 증가)
+   # MORI_FLEET_INSECURE_TLS=true              # 사내 자체서명 인증서일 때만
+   ```
+
+   셋 중 하나라도 비어 있으면 **수집하지 않는다**(기본 비활성 — 기존 배포에 영향 없음).
+3. **워커 재빌드·재시작** — MORI 코드는 이미지에 들어 있다. 코드를 갱신했다면
+   `docker compose build mori-worker && docker compose up -d mori-worker`.
+   (재빌드를 빠뜨리면 폴러가 예전 코드로 돌아 `skipped` 가 뜬다.)
+
+### 6-2. 무엇이 들어오나
+
+| Fleet | → MORI |
+|---|---|
+| `GET /api/v1/fleet/hosts` | 자산(호스트) — ID 는 **`pc-<hostname>`** 으로 스코프됨 |
+| `GET /api/v1/fleet/hosts/{id}` 의 `software[].vulnerabilities` | 취약점(`source=fleet`) → Triage → Incident → 증적 |
+
+- 자산 탭의 각 PC 에는 **Fleet ↗ 딥링크**(`MORI_FLEET_UI_URL`)가 붙는다 — `pc-` 접두사 기준.
+- 수집 주기 기본값: **하루 1회**(자산), stale 10일 — `docs/collection-standards.md` 기준. `MORI_FLEET_INTERVAL_SECONDS` 로 조정.
+- 정상 동작 시 대시보드 **Source freshness** 에 `fleet / success / N records` 로 보인다.
+
+### 6-3. 확인된 것 / 남은 것
+
+- **확인됨(실 API E2E)**: 실제 Fleet 에 osquery 호스트를 enroll → 폴링 1주기 → PostgreSQL 자산 적재
+  → 로그인한 `/assets` 응답에 `asset_type: PC` 로 노출 → Fleet 딥링크 정상.
+  스키마는 실응답 캡처(`tests/fixtures/fleet/`) 기준이며 추측이 아니다.
+- **남음**: **실 CVE 로는 아직 검증되지 않았다.** 취약점 매핑 코드는 있으나, 검증에 쓴 환경에서
+  Fleet 이 CVE 를 산출하지 못했다(취약점 크론이 해당 배포판에 매칭 실패). 실단말에서 CVE 가 뜨면
+  그 응답을 fixture 로 추가해 검증한다 — **스키마를 추측해 채우지 말 것.**
 
 ---
 
 ## 7. 트러블슈팅
 
+> **먼저 볼 것 — 단말을 붙이려면 Fleet 이 HTTPS 여야 한다.**
+> osquery/fleetd 는 **HTTPS 로만** Fleet 에 접속한다(평문 HTTP 로 붙일 방법이 없다).
+> 그런데 번들 compose 는 `FLEET_SERVER_TLS: "false"` (평문) 이다 → **이 상태로는 실단말 enroll 이 안 된다.**
+> 실제 단말을 붙이려면 둘 중 하나가 필요하다:
+> - Fleet 에 인증서를 주고 `FLEET_SERVER_TLS=true` + `FLEET_SERVER_CERT`/`FLEET_SERVER_KEY`, 또는
+> - Fleet 앞에 **HTTPS 리버스 프록시**(레포의 `--profile https` caddy 등)를 두고 그 주소로 enroll.
+>
+> MORI → Fleet **API 폴링**은 평문 HTTP 로도 동작하므로, 위 제약은 **단말 enroll 에만** 해당한다.
+
 | 증상 | 확인 |
 |---|---|
-| Hosts 에 단말 안 뜸 | 단말→`<서버>:1337` outbound 가능? enroll secret 일치? `orbit`/`fleetd` 서비스 실행 중? |
+| Hosts 에 단말 안 뜸 | **Fleet 이 HTTPS 인가**(위 참고)? 단말→`<서버>:1337` outbound 가능? enroll secret 일치? `orbit`/`fleetd` 서비스 실행 중? |
+| MORI 에 PC 자산이 안 들어옴 | `.env` 의 `MORI_ENABLE_FLEET`/`API_URL`/`API_TOKEN` 셋 다 채워졌나? **워커 이미지 재빌드**했나(`docker compose build mori-worker`)? Source freshness 에 `fleet` 이 `skipped` 면 설정 미비, `error` 면 메시지 확인 |
 | online 인데 데이터 없음 | osquery 스케줄/라이브쿼리 실행해야 결과 로그가 쌓임 |
 | 서버 기동 실패 | `docker compose logs fleet` — mysql/redis 의존성 준비 여부 확인 |
 | 인증서/HTTPS | 운영은 리버스 프록시(HTTPS) 뒤에 두고 `--fleet-url` 을 https 로 |

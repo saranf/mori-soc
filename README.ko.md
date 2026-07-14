@@ -93,14 +93,14 @@ flowchart LR
 
 | 지금 되는 것 | 부분 통합 | 다음 |
 |---|---|---|
-| **Zabbix 실시간 폴링 → alert (실 API 검증)** | Trivy collector 로컬 폴링 | **FleetDM 라이브 폴러** |
+| **Zabbix 실시간 폴링 → alert (실 API 검증)**<br>**Fleet 라이브 폴러 → PC 자산 (실 API 검증)** | Trivy collector 로컬 폴링 | **Fleet 취약점 — 실 CVE 검증** |
 | **Trivy/CSOP 원격 push 증적 인제스트** (토큰) | Source freshness / Worker cycle | **Wazuh 라이브 폴러** |
 | **코드 리뷰 증적 인제스트** — GitHub OIDC 검증 provenance (2.8/A.8.25) | 실 GitHub Actions 런(실 Postgres E2E 검증, 첫 CI 런 대기) | Reusable workflow · 다중 레포 대시보드 |
 | **브라운필드 연결** — `.env` config만으로 | | LDAP/AD 운영 연동 |
 | Alert Triage / 인시던트 / **위험성 평가** | | Slack / Email 알림 |
 | 로그인·RBAC · PostgreSQL 영속 · CSV/PDF 증적 | | 라이브 조회 캐싱 |
 
-> **Zabbix**는 _problem → 수집 → Triage → Incident → 증적 → 해소_ 전 구간이 실 API로 검증됨. **Fleet / Wazuh**는 컬렉터·파서는 준비됐고 라이브 연동은 다음 단계입니다.
+> **Zabbix**는 _problem → 수집 → Triage → Incident → 증적 → 해소_ 전 구간이 실 API로 검증됨. **Fleet**은 **자산 경로가 실 API로 검증**됨(실 osquery 호스트 enroll → 폴링 1주기 → `/assets` 에 PC 자산 + Fleet 딥링크). 취약점 매핑은 구현됐으나 **실 CVE로는 아직 미검증** — [Fleet 연동](docs/FLEET_SETUP_AND_OPERATIONS.md#6-mori-연동-라이브-rest--설정만으로-동작) 참고. **Wazuh** 라이브 폴러는 여전히 스캐폴드 단계입니다.
 
 ---
 
@@ -197,6 +197,6 @@ docker compose up -d mori-worker      # 재적용
 
 ---
 
-> **Alpha / Work in Progress** — 일상 보안 운영 + 감사 증적 시나리오가 동작하며 UI 운영 상태는 PostgreSQL에 영속화됩니다. Zabbix 실시간 폴링은 실 API로 검증됨(다른 시드 데이터는 데모용). Fleet / Wazuh 라이브 연동은 다음 단계입니다.
+> **Alpha / Work in Progress** — 일상 보안 운영 + 감사 증적 시나리오가 동작하며 UI 운영 상태는 PostgreSQL에 영속화됩니다. Zabbix 실시간 폴링과 Fleet 자산 폴링은 실 API로 검증됨(다른 시드 데이터는 데모용). Wazuh 라이브 연동과 Fleet 취약점(실 CVE) 검증은 다음 단계입니다.
 >
 > 라이선스: Apache 2.0 · 전체 기능 체험은 `./scripts/mori-start-demo.sh` 한 줄로.
