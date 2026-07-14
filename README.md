@@ -199,7 +199,9 @@ Ask a question ("show offline hosts") → matched to one of 12 intents → resul
 
 MORI's initial problem direction was shaped through conversations with a practitioner responsible for security operations, privacy, and product planning. Her feedback highlighted the challenges small teams face when connecting day-to-day operational activities with ISMS-P / ISO 27001 evidence preparation.
 
-The architecture, implementation, testing, and maintenance of MORI were independently carried out by the project maintainer.
+The architecture and design decisions, the ISMS-P / ISO 27001 control mapping, and integration testing against real Zabbix and Fleet instances were carried out by the project maintainer.
+
+**On AI use — stated plainly:** a large share of the implementation and documentation was written with an AI coding assistant (Claude / Claude Code), then reviewed, tested, and corrected by the maintainer. MORI also *uses* an LLM as an **opt-in product feature** in two places — converting regulation text into **draft** controls, and an optional deep code-review mode. Both label their output as *draft / requires human review*, and neither is ever counted as verified evidence. The premise of this project is that audit evidence must be honest, so a model's guess is never presented as a fact.
 
 ---
 
