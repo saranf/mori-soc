@@ -76,6 +76,52 @@
     window.switchGuideTab    = switchGuideTab;
     window.logUserAction     = logUserAction;
 
+    // ── 공통 자동 갱신 (탭별 주기 선택 + 브라우저 저장) ───────────────────────
+    // 새 탭에 붙이는 법: 탭 HTML 에 <select id="X_refresh_sec"> (dash.autorefresh.* 키 재사용)
+    // 를 넣고 여기서 createAutoRefresh({key,panelId,selectId,onTick}) 한 번 호출하면 끝.
+    const AUTO_REFRESH_ALLOWED = [0, 30, 60, 180];   // 끄기 / 30초 / 1분 / 3분
+    const AUTO_REFRESH_DEFAULT = 30;
+
+    function createAutoRefresh({ key, panelId, selectId, onTick, isPaused = null, defaultSec = AUTO_REFRESH_DEFAULT }) {
+      const storeKey = `mori.${key}.refreshSec`;
+      let timer = null;
+
+      function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+      function readSec() {
+        const el = document.getElementById(selectId);
+        const raw = el ? el.value : window.localStorage?.getItem(storeKey);
+        const sec = parseInt(raw, 10);
+        // 저장값이 손상됐거나 허용 목록 밖이면 기본값으로 안전 복귀
+        return AUTO_REFRESH_ALLOWED.includes(sec) ? sec : defaultSec;
+      }
+
+      function start() {
+        stop();
+        const sec = readSec();
+        if (!sec) return;                     // 끄기
+        timer = setInterval(() => {
+          const panel = document.getElementById(panelId);
+          if (!panel || !panel.classList.contains('active')) { stop(); return; }  // 탭 이탈 시 해제
+          if (isPaused && isPaused()) return;                                     // 처리 중이면 건너뜀
+          onTick();
+        }, sec * 1000);
+      }
+
+      // 저장된 선택을 셀렉트에 반영하고, 바꾸면 즉시 적용한다.
+      const el = document.getElementById(selectId);
+      if (el) {
+        const saved = parseInt(window.localStorage?.getItem(storeKey), 10);
+        if (AUTO_REFRESH_ALLOWED.includes(saved)) el.value = String(saved);
+        el.addEventListener('change', () => {
+          try { window.localStorage?.setItem(storeKey, el.value); } catch (e) { /* 저장 불가 환경 무시 */ }
+          start();
+        });
+      }
+      return { start, stop };
+    }
+    window.createAutoRefresh = createAutoRefresh;
+
     // ── Tab Navigation ─────────────────────────────────────────────────────
     function logUserAction(action, detail) {
       fetch('/admin/action-audit-log', {
@@ -843,40 +889,15 @@
       if (a.source === 'fleet' && FLEET_URL) return FLEET_URL;
       return '';
     }
-    let _triageTimer = null;
-    const _TRIAGE_REFRESH_KEY = 'mori.triage.refreshSec';
-    const _TRIAGE_REFRESH_ALLOWED = [0, 30, 60, 180];   // 끄기 / 30초 / 1분 / 3분
-
-    function _triageRefreshSec() {
-      const el = document.getElementById('triage_refresh_sec');
-      const raw = el ? el.value : window.localStorage?.getItem(_TRIAGE_REFRESH_KEY);
-      const sec = parseInt(raw, 10);
-      return _TRIAGE_REFRESH_ALLOWED.includes(sec) ? sec : 30;   // 기본 30초
-    }
-
-    function _triageAutoRefresh() {
-      if (_triageTimer) { clearInterval(_triageTimer); _triageTimer = null; }
-      const sec = _triageRefreshSec();
-      if (!sec) return;                       // 끄기
-      _triageTimer = setInterval(() => {
-        const p = document.getElementById('tab_triage');
-        if (!p || !p.classList.contains('active')) { clearInterval(_triageTimer); _triageTimer = null; return; }
-        if (typeof triageModalEl !== 'undefined' && triageModalEl && triageModalEl.open) return;
-        loadTriage();
-      }, sec * 1000);
-    }
-
-    // 선택한 주기는 브라우저에 저장돼 다음 방문에도 유지된다.
-    (function _initTriageRefreshSelect() {
-      const el = document.getElementById('triage_refresh_sec');
-      if (!el) return;
-      const saved = parseInt(window.localStorage?.getItem(_TRIAGE_REFRESH_KEY), 10);
-      if (_TRIAGE_REFRESH_ALLOWED.includes(saved)) el.value = String(saved);
-      el.addEventListener('change', () => {
-        try { window.localStorage?.setItem(_TRIAGE_REFRESH_KEY, el.value); } catch (e) { /* 저장 불가 환경 무시 */ }
-        _triageAutoRefresh();               // 즉시 반영(끄기 선택 시 타이머 해제)
-      });
-    })();
+    const _triageAuto = createAutoRefresh({
+      key: 'triage',
+      panelId: 'tab_triage',
+      selectId: 'triage_refresh_sec',
+      onTick: () => loadTriage(),
+      // 경보를 처리하는 중(모달 열림)엔 화면이 갈리지 않게 멈춘다.
+      isPaused: () => typeof triageModalEl !== 'undefined' && triageModalEl && triageModalEl.open,
+    });
+    function _triageAutoRefresh() { _triageAuto.start(); }
     async function loadTriage() {
       triageTableEl.innerHTML = '<span class="empty">' + tt('dash.dyn.loading', '로딩 중…') + '</span>';
       try {

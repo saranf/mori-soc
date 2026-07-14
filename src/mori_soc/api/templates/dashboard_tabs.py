@@ -152,12 +152,12 @@ _TAB_TRIAGE_HTML = """    <!-- ── Tab: Alert Triage ────────
         <div class=\"table-wrap\" id=\"triage_table\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         <div style=\"margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap\">
           <button id=\"reload_triage\" class=\"secondary\" data-i18n=\"dash.btn.reload\">새로고침</button>
-          <label for=\"triage_refresh_sec\" style=\"font-size:12px;color:#111827\" data-i18n=\"dash.triage.auto_refresh\">자동 갱신</label>
+          <label for=\"triage_refresh_sec\" style=\"font-size:12px;color:#111827\" data-i18n=\"dash.autorefresh.label\">자동 갱신</label>
           <select id=\"triage_refresh_sec\" class=\"inp-sm\" style=\"width:auto;padding:5px 8px;font-size:12px\">
-            <option value=\"30\" data-i18n=\"dash.triage.every_30s\">30초마다</option>
-            <option value=\"60\" data-i18n=\"dash.triage.every_1m\">1분마다</option>
-            <option value=\"180\" data-i18n=\"dash.triage.every_3m\">3분마다</option>
-            <option value=\"0\" data-i18n=\"dash.triage.off\">끄기</option>
+            <option value=\"30\" data-i18n=\"dash.autorefresh.30s\">30초마다</option>
+            <option value=\"60\" data-i18n=\"dash.autorefresh.1m\">1분마다</option>
+            <option value=\"180\" data-i18n=\"dash.autorefresh.3m\">3분마다</option>
+            <option value=\"0\" data-i18n=\"dash.autorefresh.off\">끄기</option>
           </select>
         </div>
       </section>
