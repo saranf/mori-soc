@@ -20,34 +20,11 @@ from fastapi.responses import StreamingResponse
 from mori_soc.api.auth import _ALL_ROLES, parse_account_view_roles
 from mori_soc.api.payloads import _isoformat
 from mori_soc.api.routes.context import RouteContext
-from mori_soc.services.account_recon import FINDING_KINDS, reconcile
-
-_PRIV_GROUPS = {"root", "wheel", "sudo", "admin", "adm", "domain admins", "administrators"}
+from mori_soc.services.account_recon import FINDING_KINDS, normalize_account, reconcile
 
 # 계정 수집 설정(ui_settings, schema/008). admin 이 어드민 콘솔에서 조정.
 _COLLECT_ENABLED_KEY = "account_collect_enabled"   # "true"(기본) | "false"
 _COLLECT_SOURCE_KEY = "account_collect_source"     # "fleet"(기본) | "script"
-
-
-def _norm_account(a: dict[str, Any], host_type: str) -> dict[str, Any]:
-    groups = a.get("groups") or []
-    if isinstance(groups, str):
-        groups = [g.strip() for g in groups.replace(";", ",").split(",") if g.strip()]
-    gl = {str(g).strip().lower() for g in groups}
-    uid = str(a.get("uid", "")).strip()
-    is_sudo = bool(a.get("sudo") or a.get("is_sudo")) or bool(gl & {"sudo", "wheel", "admin"})
-    is_priv = uid == "0" or is_sudo or bool(gl & _PRIV_GROUPS)
-    return {
-        "username": str(a.get("username", "")).strip(),
-        "host_type": host_type,
-        "uid": uid or None, "gid": str(a.get("gid", "")).strip() or None,
-        "shell": a.get("shell") or None, "home": a.get("home") or a.get("directory") or None,
-        "groups": list(groups), "is_privileged": is_priv, "is_sudo": is_sudo,
-        "disabled": bool(a.get("disabled")),
-        "last_login": a.get("last_login") or a.get("last_login_at") or None,
-        "pwd_last_change": a.get("pwd_last_change") or a.get("password_last_set") or None,
-        "source": a.get("source", "osquery"),
-    }
 
 
 def register_accounts_gov(ctx: RouteContext) -> None:
@@ -158,7 +135,7 @@ def register_accounts_gov(ctx: RouteContext) -> None:
         raw = payload.get("accounts")
         if not isinstance(raw, list):
             raise HTTPException(status_code=400, detail="accounts 배열이 필요합니다.")
-        accounts = [_norm_account(a, host_type) for a in raw if str(a.get("username", "")).strip()]
+        accounts = [normalize_account(a, host_type) for a in raw if str(a.get("username", "")).strip()]
         host_accounts[host_key] = accounts
         if ctx.persist_host_accounts:
             ctx.persist_host_accounts(host_key)

@@ -20,6 +20,35 @@ from typing import Any
 _DISABLED_STATUSES = {"disabled", "locked", "deleted", "inactive", "expired"}
 FINDING_KINDS = ("leaver", "orphan_priv", "unapproved_sudo", "dormant")
 
+# 특권으로 보는 그룹. 로컬 계정 정규화(normalize_account)와 검출 로직이 함께 쓴다.
+PRIV_GROUPS = {"root", "wheel", "sudo", "admin", "adm", "domain admins", "administrators"}
+
+
+def normalize_account(a: dict[str, Any], host_type: str) -> dict[str, Any]:
+    """원시 로컬 계정 → host_accounts 저장 형태로 정규화.
+
+    수집 경로가 둘(API ``POST /ingest/accounts`` 푸시 · 워커의 Fleet osquery 폴링)이라
+    양쪽이 **같은 판정**을 쓰도록 여기 한 곳에 둔다. uid 0 · sudo · 특권 그룹이면 특권.
+    """
+    groups = a.get("groups") or []
+    if isinstance(groups, str):
+        groups = [g.strip() for g in groups.replace(";", ",").split(",") if g.strip()]
+    gl = {str(g).strip().lower() for g in groups}
+    uid = str(a.get("uid", "")).strip()
+    is_sudo = bool(a.get("sudo") or a.get("is_sudo")) or bool(gl & {"sudo", "wheel", "admin"})
+    is_priv = uid == "0" or is_sudo or bool(gl & PRIV_GROUPS)
+    return {
+        "username": str(a.get("username", "")).strip(),
+        "host_type": host_type,
+        "uid": uid or None, "gid": str(a.get("gid", "")).strip() or None,
+        "shell": a.get("shell") or None, "home": a.get("home") or a.get("directory") or None,
+        "groups": list(groups), "is_privileged": is_priv, "is_sudo": is_sudo,
+        "disabled": bool(a.get("disabled")),
+        "last_login": a.get("last_login") or a.get("last_login_at") or None,
+        "pwd_last_change": a.get("pwd_last_change") or a.get("password_last_set") or None,
+        "source": a.get("source", "osquery"),
+    }
+
 
 def _age_days(iso: str | None, now: datetime) -> int | None:
     if not iso:
@@ -120,4 +149,4 @@ def reconcile(
     return {"accounts": accounts, "findings": findings, "counts": counts, "summary": summary}
 
 
-__all__ = ["reconcile", "FINDING_KINDS"]
+__all__ = ["reconcile", "FINDING_KINDS", "normalize_account", "PRIV_GROUPS"]

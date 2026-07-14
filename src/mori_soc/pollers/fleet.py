@@ -10,12 +10,15 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 from mori_soc.collectors.base import BaseCollector
 from mori_soc.collectors.fleet_api import FleetApiCollector
 
 from .base import BasePollerService, _env_flag
+
+logger = logging.getLogger("mori.poller.fleet")
 
 
 class FleetPoller(BasePollerService):
@@ -67,9 +70,53 @@ class FleetPoller(BasePollerService):
             host_limit=int(os.getenv("MORI_FLEET_HOST_LIMIT", "500")),
             # 호스트별 상세를 추가 조회해 취약점을 뽑는다(호스트 수만큼 요청 증가).
             include_software=_env_flag("MORI_FLEET_INCLUDE_SOFTWARE", default=True),
+            # 로컬 계정(osquery users) 수집 — 실제 저장 여부는 admin 설정이 최종 결정한다.
+            include_accounts=self._accounts_wanted(),
             # 자체서명 인증서를 쓰는 사내 Fleet 은 명시적으로 검증을 끌 수 있다(옵트인).
             verify_tls=not _env_flag("MORI_FLEET_INSECURE_TLS", default=False),
         )
+
+    # ── 로컬 계정 → host_accounts (계정 거버넌스) ────────────────────────
+    def _state_repository(self):
+        """StateRepository (host_accounts·ui_settings). DB 미설정이면 None."""
+        dsn = os.getenv("MORI_DATABASE_URL", "").strip()
+        if not dsn:
+            return None
+        from mori_soc.repositories import PostgresStateRepository
+
+        return PostgresStateRepository(dsn)
+
+    def _accounts_wanted(self) -> bool:
+        """어드민 설정(ui_settings)이 계정 수집을 허용하는가.
+
+        로컬 계정은 민감정보라 **admin 이 끄면 수집조차 하지 않는다**(fail-closed).
+        ``account_collect_enabled`` 기본 true · ``account_collect_source`` 기본 fleet.
+        source 가 script 면 Fleet 은 계정을 건드리지 않는다(푸시 경로가 정본).
+        """
+        try:
+            repo = self._state_repository()
+            settings = repo.load_settings() if repo else {}
+        except Exception:  # DB 접근 실패 시 보수적으로 수집하지 않는다
+            return False
+        enabled = str(settings.get("account_collect_enabled", "true")).strip().lower()
+        if enabled in ("false", "0", "no", "off"):
+            return False
+        source = str(settings.get("account_collect_source", "fleet")).strip().lower()
+        return source != "script"
+
+    def post_ingest(self, collector: BaseCollector) -> None:
+        """수집한 로컬 계정을 host_accounts 에 저장(호스트별 전체 교체)."""
+        accounts = getattr(collector, "host_accounts", None)
+        if not accounts:
+            return
+        if not self._accounts_wanted():   # 사이클 도중 admin 이 껐을 수도 있다
+            return
+        repo = self._state_repository()
+        if repo is None:
+            return
+        for host_key, rows in accounts.items():
+            repo.save_host_accounts(host_key, rows)
+        logger.info("[fleet] 로컬 계정 저장 — %d 호스트", len(accounts))
 
 
 if __name__ == "__main__":

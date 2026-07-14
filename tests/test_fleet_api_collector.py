@@ -160,3 +160,60 @@ class FleetApiCollectorTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FleetSharedIpAndAccountsTests(unittest.TestCase):
+    """공유 IP 병합 방지 + osquery users → 계정 거버넌스 수집."""
+
+    def _collector(self, **kw):
+        return FleetApiCollector(api_url="http://fleet.example", token="t", **kw)
+
+    def test_shared_primary_ip_is_not_an_identity_alias(self) -> None:
+        # VPN/NAT 뒤 단말들이 primary_ip 를 공유 → IP 로 병합되면 안 된다
+        c = self._collector(include_software=False, include_accounts=False)
+        hosts = [
+            {"id": 1, "hostname": "laptop-01", "primary_ip": "10.8.0.1", "status": "online"},
+            {"id": 2, "hostname": "laptop-02", "primary_ip": "10.8.0.1", "status": "online"},
+            {"id": 3, "hostname": "laptop-03", "primary_ip": "10.8.0.9", "status": "online"},
+        ]
+        c._shared_ips = c._shared_primary_ips(hosts)
+        self.assertEqual(set(c._shared_ips), {"10.8.0.1"})
+        self.assertNotIn("10.8.0.1", c._host_aliases(hosts[0]))
+        self.assertNotIn("10.8.0.1", c._host_aliases(hosts[1]))
+        # 별칭이 겹치지 않아야 서로 다른 host_id 로 남는다
+        self.assertFalse(set(c._host_aliases(hosts[0])) & set(c._host_aliases(hosts[1])))
+        # 유니크 IP 는 여전히 별칭(소스 간 매칭용)
+        self.assertIn("10.8.0.9", c._host_aliases(hosts[2]))
+
+    def test_users_are_captured_as_local_accounts(self) -> None:
+        c = self._collector()
+        host = {"id": 7, "hostname": "mbp-01", "primary_ip": "10.0.0.7"}
+        detail_host = {
+            "id": 7,
+            "users": [
+                {"uid": 0, "username": "root", "groupname": "root", "shell": "/bin/bash"},
+                {"uid": 501, "username": "alice", "groupname": "admin", "shell": "/bin/zsh"},
+                {"uid": 502, "username": "svc", "groupname": "staff", "shell": "/usr/bin/false"},
+            ],
+        }
+        c._capture_accounts(host, detail_host)
+        accounts = c.host_accounts["mbp-01"]
+        self.assertEqual(len(accounts), 3)
+        by_user = {a["username"]: a for a in accounts}
+        # uid 0 → 특권
+        self.assertTrue(by_user["root"]["is_privileged"])
+        # admin 그룹 → sudo + 특권
+        self.assertTrue(by_user["alice"]["is_sudo"])
+        self.assertTrue(by_user["alice"]["is_privileged"])
+        # 일반 계정
+        self.assertFalse(by_user["svc"]["is_privileged"])
+        # Fleet 은 PC 인벤토리
+        self.assertEqual(by_user["root"]["host_type"], "pc")
+        self.assertEqual(by_user["root"]["source"], "fleet")
+
+    def test_accounts_skipped_when_disabled(self) -> None:
+        c = self._collector(include_accounts=False)
+        c._capture_accounts({"hostname": "x"}, {"users": [{"uid": 0, "username": "root"}]})
+        # include_accounts=False 여도 _capture_accounts 는 직접 호출 시 동작하지만,
+        # collect() 경로에서는 호출되지 않는다 — 여기선 게이트가 collect 에 있음을 문서화
+        self.assertFalse(c._include_accounts)

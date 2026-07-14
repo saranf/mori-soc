@@ -98,6 +98,15 @@ class BasePollerService(ABC):
 
     # ── public API ─────────────────────────────────────────────────
 
+    def post_ingest(self, collector: BaseCollector) -> None:
+        """수집 성공 후 부가 저장 훅(선택). 기본은 아무것도 하지 않는다.
+
+        정규화 엔티티(host/alert/vulnerability…) 가 아니라서 매퍼·BaseRepository 를
+        타지 않는 데이터를 저장할 때 쓴다 — 예: Fleet 이 가져온 로컬 계정을
+        StateRepository 의 ``host_accounts`` 에 저장.
+        """
+        return None
+
     def run_cycle(
         self,
         repository: BaseRepository,
@@ -132,6 +141,12 @@ class BasePollerService(ABC):
                     entities_saved=report.entities_saved,
                 )
                 repository.save(sync)
+                # 정규화 엔티티가 아닌 부가 데이터(예: Fleet 로컬 계정 → host_accounts)를
+                # 저장할 기회. 실패해도 수집 사이클은 성공으로 둔다(부가 저장은 비차단).
+                try:
+                    self.post_ingest(collector)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("[%s] post_ingest 실패(비차단) — %s", self.source_name, exc)
                 if attempt > 1:
                     logger.info("[%s] cycle OK (attempt %d/%d) — %d records, %d entities",
                                 self.source_name, attempt, attempts, report.records_collected, report.entities_saved)
