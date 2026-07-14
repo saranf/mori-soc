@@ -2,6 +2,7 @@
 
 from .base import BaseCollector, CollectorRecord, NormalizedEnvelope
 from .code_review import CodeReviewCollector
+from .fleet_api import FleetApiCollector
 from .fleet_logs import FleetLogCollector
 from .ldap_directory import LDAP3_AVAILABLE, LdapDirectoryCollector
 from .trivy import TrivyCollector
@@ -13,6 +14,7 @@ __all__ = [
     "CollectorRecord",
     "NormalizedEnvelope",
     "CodeReviewCollector",
+    "FleetApiCollector",
     "FleetLogCollector",
     "LdapDirectoryCollector",
     "LDAP3_AVAILABLE",
