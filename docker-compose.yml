@@ -72,9 +72,9 @@ services:
       MORI_INGEST_TOKEN: ${MORI_INGEST_TOKEN:-}
       # 데모 임팩트용 인메모리 시드(triage/asset owners/user profiles) — 운영에선 0으로 비활성화
       MORI_DEMO_SEED: ${MORI_DEMO_SEED:-1}
-      MORI_GRAFANA_URL: ${MORI_GRAFANA_URL:-${GRAFANA_URL:-http://mori.rmstudio.co.kr:13000}}
-      MORI_ZABBIX_UI_URL: ${MORI_ZABBIX_UI_URL:-http://mori.rmstudio.co.kr:18081}
-      MORI_FLEET_UI_URL: ${MORI_FLEET_UI_URL:-http://mori.rmstudio.co.kr:1337}
+      MORI_GRAFANA_URL: ${MORI_GRAFANA_URL:-${GRAFANA_URL:-http://localhost:13000}}
+      MORI_ZABBIX_UI_URL: ${MORI_ZABBIX_UI_URL:-http://localhost:18081}
+      MORI_FLEET_UI_URL: ${MORI_FLEET_UI_URL:-http://localhost:1337}
       MORI_WAZUH_UI_URL: ${MORI_WAZUH_UI_URL:-}
       # LDAP 인증 (활성화하려면 MORI_LDAP_ENABLED=true 설정)
       MORI_LDAP_ENABLED: ${MORI_LDAP_ENABLED:-false}
@@ -222,8 +222,8 @@ services:
     depends_on:
       - loki
     environment:
-      GF_SERVER_DOMAIN: ${PUBLIC_DOMAIN:-mori.rmstudio.co.kr}
-      GF_SERVER_ROOT_URL: ${GRAFANA_URL:-http://mori.rmstudio.co.kr:13000}
+      GF_SERVER_DOMAIN: ${PUBLIC_DOMAIN:-localhost}
+      GF_SERVER_ROOT_URL: ${GRAFANA_URL:-http://localhost:13000}
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-1234}
       GF_USERS_ALLOW_SIGN_UP: "false"

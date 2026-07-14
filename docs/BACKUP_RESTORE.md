@@ -22,7 +22,7 @@ BACKUP_DIR=/var/backups/mori ./scripts/mori-backup.sh   # 저장 경로 지정
 
 - cron 예(매일 03:00, 14일 보관):
   ```cron
-  0 3 * * * cd /backup/rmstudio/mori && BACKUP_DIR=/var/backups/mori ./scripts/mori-backup.sh \
+  0 3 * * * cd /opt/mori && BACKUP_DIR=/var/backups/mori ./scripts/mori-backup.sh \
     && find /var/backups/mori -name 'mori-soc-*.dump' -mtime +14 -delete
   ```
 - **오프사이트 복제**: 덤프를 다른 호스트/오브젝트 스토리지로 복사한다(단일 디스크 장애 대비).

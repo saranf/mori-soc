@@ -918,14 +918,14 @@ def _ingested_record_rows(store: InMemoryQueryStore) -> list[dict[str, Any]]:
     ]
 
 
-GRAFANA_BASE_URL = os.getenv("MORI_GRAFANA_URL", "http://mori.rmstudio.co.kr:13000")
+GRAFANA_BASE_URL = os.getenv("MORI_GRAFANA_URL", "http://localhost:13000")
 # Grafana 데이터소스 UID — Grafana 관리 화면 > Configuration > Data sources > 해당 소스 상세에서 확인
 # 기본값 "loki" 는 datasource 이름으로도 동작하지만, UID 를 넣으면 더 안정적
 _LOKI_DATASOURCE_UID = os.getenv("MORI_LOKI_DATASOURCE_UID", "loki")
 _LOKI_DATASOURCE_TYPE = os.getenv("MORI_LOKI_DATASOURCE_TYPE", "loki")
 
 # 호스트 소스 딥링크용 외부 UI URL
-# server- prefix → Zabbix 웹 UI (예: http://mori.rmstudio.co.kr:8080)
+# server- prefix → Zabbix 웹 UI (예: http://localhost:8080)
 _ZABBIX_UI_URL = os.getenv("MORI_ZABBIX_UI_URL", "").rstrip("/")
 # pc- prefix → Fleet 웹 UI (예: https://fleet.example.com)
 _FLEET_UI_URL = os.getenv("MORI_FLEET_UI_URL", "").rstrip("/")

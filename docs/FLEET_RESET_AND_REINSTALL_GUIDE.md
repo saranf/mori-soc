@@ -33,10 +33,10 @@ docker compose down -v
 
 ## 3. Fleet만 정지/제거
 
-배포 경로에서 실행합니다. 현재 서버 기준 경로는 `/backup/rmstudio/mori` 입니다.
+배포 경로에서 실행합니다. 현재 서버 기준 경로는 `/opt/mori` 입니다.
 
 ```bash
-cd /backup/rmstudio/mori
+cd /opt/mori
 docker compose stop fleet mysql redis fleet-init
 docker compose rm -f fleet mysql redis fleet-init
 docker volume ls | grep fleet
@@ -68,7 +68,7 @@ docker volume rm $(docker volume ls -q | grep 'fleet-vulndb$')
 ## 5. Fleet 다시 기동
 
 ```bash
-cd /backup/rmstudio/mori
+cd /opt/mori
 docker compose up -d mysql redis fleet-init fleet
 docker compose ps mysql redis fleet
 docker compose logs fleet --tail=100
@@ -78,7 +78,7 @@ docker compose logs fleet --tail=100
 
 - `mysql`, `redis`, `fleet` 가 `Up` 또는 healthy
 - Fleet 로그에 치명 오류가 없음
-- 브라우저에서 `http://mori.rmstudio.co.kr:1337` 접속 가능
+- 브라우저에서 `http://mori.example.com:1337` 접속 가능
 
 ## 6. 브라우저 쪽 정리
 
@@ -91,7 +91,7 @@ docker compose logs fleet --tail=100
 
 초기화 후에는 예전 admin 계정이 더 이상 유효하지 않을 수 있습니다.
 
-1. `http://mori.rmstudio.co.kr:1337` 접속
+1. `http://mori.example.com:1337` 접속
 2. 초기 setup 화면이 보이면 새 관리자 계정 생성
 3. 로그인 후 `Hosts -> Add hosts -> macOS` 이동
 4. 새 enrollment secret 확인
@@ -115,7 +115,7 @@ Fleet 공식 가이드를 참고합니다.
 ```bash
 mkdir -p ~/fleet-package && cd ~/fleet-package
 ~/.fleetctl/fleetctl package --type=pkg --enable-scripts --fleet-desktop \
-  --fleet-url=http://mori.rmstudio.co.kr:1337 \
+  --fleet-url=http://mori.example.com:1337 \
   --enroll-secret='새로_발급한_SECRET' --insecure
 sudo installer -pkg ./*.pkg -target /
 ```

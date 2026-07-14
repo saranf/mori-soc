@@ -15,7 +15,7 @@ from mori_soc.api.i18n import (
 )
 from mori_soc.services.intent_parser import QUERY_GUIDE_EXAMPLES
 
-DOCS_PORTAL_URL = os.getenv("MORI_DOCS_PORTAL_URL", "http://mori.rmstudio.co.kr:37854/")
+DOCS_PORTAL_URL = os.getenv("MORI_DOCS_PORTAL_URL", "http://localhost:37854/")
 FLEET_UI_URL = os.getenv("MORI_FLEET_UI_URL", "")
 ZABBIX_UI_URL = os.getenv("MORI_ZABBIX_UI_URL", "")
 WAZUH_UI_URL = os.getenv("MORI_WAZUH_UI_URL", "")

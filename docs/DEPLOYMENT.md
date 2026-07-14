@@ -2,18 +2,18 @@
 
 ### 1. 공개 진입점
 
-- 메인 URL: `http://mori.rmstudio.co.kr:37854`
-- 메인 포털: `http://mori.rmstudio.co.kr:37854`
-- Grafana: `http://mori.rmstudio.co.kr:13000`
-- FleetDM: `http://mori.rmstudio.co.kr:1337`
-- 공개 관리 UI: `http://mori.rmstudio.co.kr:18081` (`Zabbix Web`)
+- 메인 URL: `http://mori.example.com:37854`
+- 메인 포털: `http://mori.example.com:37854`
+- Grafana: `http://mori.example.com:13000`
+- FleetDM: `http://mori.example.com:1337`
+- 공개 관리 UI: `http://mori.example.com:18081` (`Zabbix Web`)
 - 내부/로컬 관리 포트
   - `127.0.0.1:8443` → Wazuh Dashboard
 
 ### 2. 서버 사전 준비
 
 - Docker Engine + Docker Compose Plugin 설치
-- 대상 경로 생성: `/backup/rmstudio/mori`
+- 대상 경로 생성: `/opt/mori`
 - Wazuh indexer 요구사항 적용
 
 ```bash
@@ -113,24 +113,24 @@ docker compose logs mori-api --tail=100
 확인 예시:
 
 ```bash
-open http://mori.rmstudio.co.kr:18000/ui
-open http://mori.rmstudio.co.kr:18000/docs
-curl http://mori.rmstudio.co.kr:18000/health
-curl http://mori.rmstudio.co.kr:18000/catalog
-curl http://mori.rmstudio.co.kr:18000/dashboard/summary
-curl -X POST http://mori.rmstudio.co.kr:18000/interpret \
+open http://mori.example.com:18000/ui
+open http://mori.example.com:18000/docs
+curl http://mori.example.com:18000/health
+curl http://mori.example.com:18000/catalog
+curl http://mori.example.com:18000/dashboard/summary
+curl -X POST http://mori.example.com:18000/interpret \
   -H 'Content-Type: application/json' \
   -d '{"text":"오프라인 호스트 보여줘"}'
-curl -X POST http://mori.rmstudio.co.kr:18000/query \
+curl -X POST http://mori.example.com:18000/query \
   -H 'Content-Type: application/json' \
   -d '{"intent":"offline_hosts","scope":{"time_range":"24h"}}'
 ```
 
 브라우저에서 빠르게 확인할 때는:
 
-- `http://mori.rmstudio.co.kr:18000/ui` : 운영자용 대시보드 + 질의 콘솔
-- `http://mori.rmstudio.co.kr:18000/docs` : FastAPI Swagger 문서
-- `http://mori.rmstudio.co.kr:37854` : 메인 포털(여기서 MORI UI 링크 클릭 가능)
+- `http://mori.example.com:18000/ui` : 운영자용 대시보드 + 질의 콘솔
+- `http://mori.example.com:18000/docs` : FastAPI Swagger 문서
+- `http://mori.example.com:37854` : 메인 포털(여기서 MORI UI 링크 클릭 가능)
 
 `/ui`에서는 아래를 한 번에 확인할 수 있습니다.
 
@@ -186,7 +186,7 @@ docker compose up -d soc-postgres mori-api
 먼저 실제 적용값을 확인합니다.
 
 ```bash
-cd /backup/rmstudio/mori
+cd /opt/mori
 grep '^GRAFANA_ADMIN_' .env
 docker compose ps grafana
 ```
@@ -194,7 +194,7 @@ docker compose ps grafana
 비밀번호를 안전하게 현재 컨테이너 기준으로 재설정하려면:
 
 ```bash
-cd /backup/rmstudio/mori
+cd /opt/mori
 docker compose exec grafana grafana cli admin reset-admin-password 1234
 docker compose restart grafana
 ```
@@ -222,14 +222,14 @@ Zabbix 프런트엔드 관리자 기본 계정은 변경하지 않습니다.
 
 개인 PC나 테스트 단말을 연결할 때는 **Active Agent 방식**을 권장합니다.
 
-- Zabbix Server: `mori.rmstudio.co.kr:10051`
+- Zabbix Server: `mori.example.com:10051`
 - 설정 예시: `config/zabbix_agent/zabbix_agent2.active.example.conf`
 - 상세 가이드: `docs/ZABBIX_AGENT_ACTIVE_SETUP.md`
 
 핵심 설정값:
 
-- `Server=mori.rmstudio.co.kr`
-- `ServerActive=mori.rmstudio.co.kr:10051`
+- `Server=mori.example.com`
+- `ServerActive=mori.example.com:10051`
 - `Hostname=<Zabbix Host name과 동일>`
 - `HostMetadata=windows|linux|macos`
 
@@ -251,7 +251,7 @@ docker compose --profile scanner run --rm trivy
 현재 구성은 Fleet가 아래 파일에 osquery 로그를 기록하고,
 Fluent Bit가 이를 Loki로 전송한 뒤 Grafana starter dashboard에서 조회하는 방식입니다.
 
-Fleet UI는 외부에서 `http://mori.rmstudio.co.kr:1337` 로 접속할 수 있으며,
+Fleet UI는 외부에서 `http://mori.example.com:1337` 로 접속할 수 있으며,
 단말 등록은 `Hosts -> Add hosts -> macOS` 순서로 진행합니다.
 
 - Fleet status: `/logs/osqueryd.status.log`
@@ -294,7 +294,7 @@ Fleet 로그인 실패나 host 재설치가 필요하면 `docs/FLEET_RESET_AND_R
 워크플로우는 다음 순서로 동작합니다.
 
 1. 저장소를 체크아웃
-2. `/backup/rmstudio/mori`로 파일 동기화
+2. `/opt/mori`로 파일 동기화
 3. GitHub Secret의 `.env` 내용을 서버에 업로드
 4. Wazuh 인증서가 없으면 자동 생성
 5. `docker compose pull`

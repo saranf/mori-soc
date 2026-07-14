@@ -567,7 +567,7 @@ Each domain's routes are owned by `register_<domain>(ctx)` in `routes/<domain>.p
 The GitHub Actions workflow runs in this order:
 
 1. Repo checkout
-2. Create/verify `/backup/rmstudio/mori` on the server
+2. Create/verify `/opt/mori` on the server
 3. `rsync` the code
 4. Upload `.env` from GitHub Secrets
 5. Prepare Wazuh certificates directory (first-run certificate generation)
@@ -590,7 +590,7 @@ Run `cp .env.example .env` and **change the following values** before deploying:
 ### Server prerequisites
 
 - Docker Engine + Compose plugin
-- Deployment directory: `/backup/rmstudio/mori`
+- Deployment directory: `/opt/mori`
 - Wazuh Indexer kernel parameter: `vm.max_map_count=262144`
 
 ### Rebuild without cache (preserve data volumes)

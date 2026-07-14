@@ -6,7 +6,7 @@
 
 - 서버 Fleet 로그인 루프 이슈를 우회하기 위해 운영 서버에서 Fleet 이미지를 `fleetdm/fleet:5056724`로 고정해 로그인 성공을 확인함
 - Fleet 웹 UI 로그인 확인 완료
-  - URL: `http://mori.rmstudio.co.kr:1337/login`
+  - URL: `http://mori.example.com:1337/login`
 - macOS에서 `fleetctl` 설치 확인 완료
   - 설치 경로: `~/.fleetctl/fleetctl`
   - 확인 버전: `fleetctl 4.82.1`
@@ -39,7 +39,7 @@ mkdir -p ~/fleet-package
 cd ~/fleet-package
 
 ~/.fleetctl/fleetctl package --type=pkg --enable-scripts --fleet-desktop \
-  --fleet-url=http://mori.rmstudio.co.kr:1337 \
+  --fleet-url=http://mori.example.com:1337 \
   --enroll-secret='YOUR_SECRET_HERE' \
   --insecure
 
@@ -105,7 +105,7 @@ Grafana Explore 확인 쿼리:
 
 대시보드 확인 위치:
 
-- Grafana URL: `http://mori.rmstudio.co.kr:13000`
+- Grafana URL: `http://mori.example.com:13000`
 - Dashboard: `MORI SOC Overview`
 
 확인 포인트:

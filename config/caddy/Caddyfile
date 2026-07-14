@@ -7,7 +7,7 @@
 }
 
 :18443 {
-	tls /certs/live/mori.rmstudio.co.kr/fullchain.pem /certs/live/mori.rmstudio.co.kr/privkey.pem
+	tls /certs/live/mori.example.com/fullchain.pem /certs/live/mori.example.com/privkey.pem
 	encode zstd gzip
 	reverse_proxy mori-api:8000
 }

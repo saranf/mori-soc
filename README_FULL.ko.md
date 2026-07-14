@@ -566,7 +566,7 @@ docker compose run --rm --no-deps -e MORI_DEMO_SEED=0 \
 GitHub Actions workflow가 다음 순서로 동작합니다.
 
 1. 저장소 체크아웃
-2. 서버 경로 `/backup/rmstudio/mori` 생성/확인
+2. 서버 경로 `/opt/mori` 생성/확인
 3. `rsync`로 코드 동기화
 4. GitHub Secret의 `.env` 업로드
 5. Wazuh 인증서 디렉터리 준비 (최초 1회 인증서 생성)
@@ -589,7 +589,7 @@ GitHub Actions workflow가 다음 순서로 동작합니다.
 ### 서버 사전 준비
 
 - Docker Engine + Compose Plugin
-- 배포 디렉터리: `/backup/rmstudio/mori`
+- 배포 디렉터리: `/opt/mori`
 - Wazuh Indexer용 커널: `vm.max_map_count=262144`
 
 ### 캐시 재빌드 (데이터 볼륨 유지)

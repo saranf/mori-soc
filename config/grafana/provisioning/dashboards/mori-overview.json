@@ -10,7 +10,7 @@
       "gridPos": {"h": 7, "w": 24, "x": 0, "y": 0},
       "options": {
         "mode": "markdown",
-        "content": "# MORI SOC-lite\n\n- Main Portal: `http://mori.rmstudio.co.kr:37854`\n- Grafana: `http://mori.rmstudio.co.kr:13000`\n- FleetDM: `http://mori.rmstudio.co.kr:1337`\n- Zabbix Web: `http://mori.rmstudio.co.kr:18081`\n- Wazuh Dashboard: `https://127.0.0.1:8443`\n\n이 MVP 대시보드는 **Loki + Fleet 로그 기반 한눈 보드**입니다.\n맥북 등록 후 Fleet에서 Live query 1회를 실행하면 아래 패널이 바로 살아납니다."
+        "content": "# MORI SOC-lite\n\n- Main Portal: `http://mori.example.com:37854`\n- Grafana: `http://mori.example.com:13000`\n- FleetDM: `http://mori.example.com:1337`\n- Zabbix Web: `http://mori.example.com:18081`\n- Wazuh Dashboard: `https://127.0.0.1:8443`\n\n이 MVP 대시보드는 **Loki + Fleet 로그 기반 한눈 보드**입니다.\n맥북 등록 후 Fleet에서 Live query 1회를 실행하면 아래 패널이 바로 살아납니다."
       }
     },
     {

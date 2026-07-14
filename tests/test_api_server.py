@@ -1,6 +1,7 @@
 import importlib.util
 import os
 import unittest
+from mori_soc.api.templates import DOCS_PORTAL_URL
 from datetime import datetime, timezone
 from unittest.mock import patch
 
@@ -81,7 +82,7 @@ class QueryRequestBuilderTests(unittest.TestCase):
         bundle = html + js
         # HTML 셸(서버 렌더) 마커
         self.assertIn("MORI 관리자 콘솔", html)
-        self.assertIn("http://mori.rmstudio.co.kr:37854/", html)
+        self.assertIn(DOCS_PORTAL_URL, html)
         self.assertIn("사용자 대시보드", html)
         self.assertIn("Natural Language Query", html)
         self.assertIn("Structured Query Builder", html)
@@ -115,7 +116,7 @@ class QueryRequestBuilderTests(unittest.TestCase):
               / "dashboard.js").read_text(encoding="utf-8")
         bundle = html + js
         self.assertIn("MORI 보안 점검 현황", bundle)
-        self.assertIn("http://mori.rmstudio.co.kr:37854/", html)
+        self.assertIn(DOCS_PORTAL_URL, html)
         self.assertIn("/dashboard/summary", bundle)
         self.assertIn("/dashboard/preferences", bundle)
         self.assertIn("overview_modal", html)
@@ -248,7 +249,9 @@ class QueryRequestBuilderTests(unittest.TestCase):
         alert_item = next(item for item in payload["recent_activity"] if item["entity_type"] == "alert")
         self.assertIn("grafana_url", alert_item)
         self.assertIsNotNone(alert_item["grafana_url"])
-        self.assertIn("mori.rmstudio.co.kr:13000", alert_item["grafana_url"])
+        from mori_soc.api.payloads import GRAFANA_BASE_URL
+        self.assertTrue(alert_item["grafana_url"].startswith(GRAFANA_BASE_URL),
+                        "Grafana 딥링크는 설정된 GRAFANA_BASE_URL 로 시작해야 한다")
         # counts derived from status_rows (dedup'd) – verify online/offline counts are consistent
         self.assertEqual(payload["overview"]["online_hosts"], 1)
         self.assertEqual(payload["overview"]["unknown_hosts"], 0)
@@ -311,7 +314,7 @@ class FastAPIAppTests(unittest.TestCase):
         response = self.client.get("/dashboard/preferences")
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["docs_url"], "http://mori.rmstudio.co.kr:37854/")
+        self.assertEqual(payload["docs_url"], DOCS_PORTAL_URL)
         self.assertIn("user_dashboard", payload)
         self.assertIn("cards", payload["user_dashboard"])
         self.assertIn("sections", payload["user_dashboard"])
@@ -319,7 +322,7 @@ class FastAPIAppTests(unittest.TestCase):
         update_response = self.client.post(
             "/dashboard/preferences",
             json={
-                "docs_url": "http://mori.rmstudio.co.kr:37854/guide",
+                "docs_url": "http://localhost:37854/guide",
                 "user_dashboard": {
                     "cards": {"ingested_records": True},
                     "sections": {"source_coverage": True},
@@ -328,7 +331,7 @@ class FastAPIAppTests(unittest.TestCase):
         )
         self.assertEqual(update_response.status_code, 200)
         updated = update_response.json()
-        self.assertEqual(updated["docs_url"], "http://mori.rmstudio.co.kr:37854/guide")
+        self.assertEqual(updated["docs_url"], "http://localhost:37854/guide")
         self.assertTrue(updated["user_dashboard"]["cards"]["ingested_records"])
         self.assertTrue(updated["user_dashboard"]["sections"]["source_coverage"])
 
