@@ -22,23 +22,6 @@ It sits **read-only on top of your existing** **Zabbix · FleetDM · Wazuh · Tr
 
 > **Honest by design** — the catalog is **58 / 194 controls reviewed** today; the other 136 are draft skeletons, **labeled `draft` in the UI**. Coverage % counts only reviewed **and** evidence-wired controls — no inflation. Per-control **maturity** (draft → reviewed → mapped → auto-evidence) is derived from real signals and exposed at `GET /controls/maturity`, so "how far along is each control?" has an honest answer. Audit trust is the whole point, so the numbers stay honest.
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-      SCREENSHOT GUIDE ① — hero image (the big first screen at the top of the README)
-     It's the first thing readers see, so this one shot is MORI's "explained in a
-     single picture" face. Use your best-looking screen.
-
-     ▸ Where    : log in as admin → /ui landing screen (unified dashboard)
-     ▸ What      : capture all of the below in one frame (no scrolling)
-                  · the 4 KPI cards — Total Hosts / Offline Hosts /
-                    High Alerts 24h / Critical Vulns (with non-zero demo-seed numbers)
-                  · the Latest Host Status table (offline/unknown hosts on top)
-                  · the left (or top) tab menu — Dashboard/Triage/Incidents/Assets/Compliance
-     ▸ Tips      : browser width ≈1280px, light theme, demo data (no real hostnames/PII).
-                  Fill the top area rather than a wide panorama — reads better as a hero.
-     ▸ Save as   : docs/images/01-dashboard.png  (replace the current demo-dashboard.png)
-     ▸ How to add: save to that path → on line 27 below, just change the image path
-                   demo-dashboard.png → 01-dashboard.png
-     ═══════════════════════════════════════════════════════════════════════ -->
 
 <img width="1262" height="745" alt="image" src="https://github.com/user-attachments/assets/ac62cb2e-9da6-4453-880a-1cf898823c62" />
 
