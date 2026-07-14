@@ -844,15 +844,39 @@
       return '';
     }
     let _triageTimer = null;
+    const _TRIAGE_REFRESH_KEY = 'mori.triage.refreshSec';
+    const _TRIAGE_REFRESH_ALLOWED = [0, 30, 60, 180];   // 끄기 / 30초 / 1분 / 3분
+
+    function _triageRefreshSec() {
+      const el = document.getElementById('triage_refresh_sec');
+      const raw = el ? el.value : window.localStorage?.getItem(_TRIAGE_REFRESH_KEY);
+      const sec = parseInt(raw, 10);
+      return _TRIAGE_REFRESH_ALLOWED.includes(sec) ? sec : 30;   // 기본 30초
+    }
+
     function _triageAutoRefresh() {
-      if (_triageTimer) clearInterval(_triageTimer);
+      if (_triageTimer) { clearInterval(_triageTimer); _triageTimer = null; }
+      const sec = _triageRefreshSec();
+      if (!sec) return;                       // 끄기
       _triageTimer = setInterval(() => {
         const p = document.getElementById('tab_triage');
         if (!p || !p.classList.contains('active')) { clearInterval(_triageTimer); _triageTimer = null; return; }
         if (typeof triageModalEl !== 'undefined' && triageModalEl && triageModalEl.open) return;
         loadTriage();
-      }, 30000);
+      }, sec * 1000);
     }
+
+    // 선택한 주기는 브라우저에 저장돼 다음 방문에도 유지된다.
+    (function _initTriageRefreshSelect() {
+      const el = document.getElementById('triage_refresh_sec');
+      if (!el) return;
+      const saved = parseInt(window.localStorage?.getItem(_TRIAGE_REFRESH_KEY), 10);
+      if (_TRIAGE_REFRESH_ALLOWED.includes(saved)) el.value = String(saved);
+      el.addEventListener('change', () => {
+        try { window.localStorage?.setItem(_TRIAGE_REFRESH_KEY, el.value); } catch (e) { /* 저장 불가 환경 무시 */ }
+        _triageAutoRefresh();               // 즉시 반영(끄기 선택 시 타이머 해제)
+      });
+    })();
     async function loadTriage() {
       triageTableEl.innerHTML = '<span class="empty">' + tt('dash.dyn.loading', '로딩 중…') + '</span>';
       try {
