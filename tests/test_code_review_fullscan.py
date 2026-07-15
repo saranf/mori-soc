@@ -58,6 +58,12 @@ class CollectFilesTests(unittest.TestCase):
         batches = crf.chunk_files(files, batch_max=100)
         self.assertEqual(len(batches), 2)
 
+    def test_claude_body_pins_temperature_zero(self) -> None:
+        # 같은 커밋 재스캔 시 findings 변동을 줄이려 temperature=0 고정(재현성).
+        body = crf._claude_body("claude-sonnet-5", "hi", 4096)
+        self.assertEqual(body["temperature"], 0)
+        self.assertEqual(crf.SCAN_TEMPERATURE, 0)
+
     def test_merge_flow_dedupes_items_across_batches(self) -> None:
         a = {"items": [{"item": "이메일", "store": ["User.email"], "table": "User"}]}
         b = {"items": [{"item": "이메일", "store": ["User.emailHash"], "encryption": "AES"},

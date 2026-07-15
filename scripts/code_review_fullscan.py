@@ -107,11 +107,20 @@ def merge_flow(acc: dict, new: dict) -> dict:
             "summary": {"items": len(merged_items), "tables": len(tables), "encryption": enc}}
 
 
+# 같은 커밋을 다시 스캔했을 때 findings 개수가 들쭉날쭉하면 감사 증적의 신뢰가 깨진다.
+# temperature=0 으로 고정해 재현성을 최대화한다(LLM 특성상 100% 결정적은 아니나 변동 최소화).
+# 완전 재현이 필요하면 규칙 기반 무료 Semgrep 경로(SARIF)를 쓴다.
+SCAN_TEMPERATURE = float(os.getenv("MORI_SCAN_TEMPERATURE", "0"))
+
+
+def _claude_body(model: str, prompt: str, max_tokens: int) -> dict:
+    """Anthropic 요청 바디 — temperature 고정으로 재현성 확보(테스트 가능하게 분리)."""
+    return {"model": model, "max_tokens": max_tokens, "temperature": SCAN_TEMPERATURE,
+            "messages": [{"role": "user", "content": prompt}]}
+
+
 def call_claude(api_key: str, model: str, prompt: str, *, max_tokens: int = 4096) -> str:
-    body = json.dumps({
-        "model": model, "max_tokens": max_tokens,
-        "messages": [{"role": "user", "content": prompt}],
-    }).encode("utf-8")
+    body = json.dumps(_claude_body(model, prompt, max_tokens)).encode("utf-8")
     req = urllib.request.Request(
         "https://api.anthropic.com/v1/messages", data=body,
         headers={"x-api-key": api_key, "anthropic-version": "2023-06-01",
