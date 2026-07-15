@@ -3455,7 +3455,8 @@
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 4px">
           <span style="font-size:12px;font-weight:600;color:#111827">${tt('dash.pf.diagram','처리 흐름도 (수집→저장→이용→파기)')}</span>
           <select id="pf_diagram_view" onchange="loadPrivacyFlow()" class="inp-sm" style="width:auto;padding:4px 8px;font-size:12px">
-            <option value="swimlane">${tt('dash.pf.view_swimlane','총괄(정보주체→처리흐름)')}</option>
+            <option value="overview">${tt('dash.pf.view_overview','총괄(생명주기×조직)')}</option>
+            <option value="swimlane">${tt('dash.pf.view_swimlane','상세(정보주체→처리흐름)')}</option>
             <option value="linear">${tt('dash.pf.view_linear','항목별(단계 표)')}</option>
           </select>
         </div>
@@ -3479,7 +3480,10 @@
         const rows = d.rows || [];
         const meta = d.meta || {};
         const viewSel = document.getElementById('pf_diagram_view');
-        const svgUrl = (viewSel && viewSel.value === 'linear') ? '/privacy/data-flow.svg' : '/privacy/data-flow-swimlane.svg';
+        const view = viewSel ? viewSel.value : 'overview';
+        const svgUrl = view === 'linear' ? '/privacy/data-flow.svg'
+                     : view === 'swimlane' ? '/privacy/data-flow-swimlane.svg'
+                     : '/privacy/data-flow-overview.svg';
         try { const sv = await fetch(svgUrl); if (dia) dia.innerHTML = sv.ok ? await sv.text() : ''; } catch(e){ if (dia) dia.innerHTML=''; }
         if (!rows.length) { rowsBox.innerHTML = `<span class="empty">${tt('dash.pf.empty','흐름표가 비어 있어요.')}</span>`; return; }
         // 요약 카드(AI 심층 결과일 때)

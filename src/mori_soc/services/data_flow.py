@@ -662,6 +662,120 @@ def render_data_flow_swimlane_svg(rows: list[dict[str, Any]]) -> str:
     return "".join(p)
 
 
+def _table_column_map(rows: list[dict[str, Any]]) -> list[tuple[str, list[str]]]:
+    """행들에서 테이블 → 컬럼 리스트 집계(시스템·DB 블록 표시용). 컬럼 없으면 항목명으로 폴백."""
+    tmap: dict[str, list[str]] = {}
+    order: list[str] = []
+    for r in rows:
+        table = str(r.get("table") or r.get("storage_table") or "").split()[0].split("(")[0].strip() or "(미지정 테이블)"
+        cols_raw = str(r.get("storage_column") or "").strip()
+        cols = [c.strip() for c in cols_raw.split(",") if c.strip()] or [str(r.get("item") or "").strip()]
+        if table not in tmap:
+            tmap[table] = []
+            order.append(table)
+        for c in cols:
+            if c and c not in tmap[table]:
+                tmap[table].append(c)
+    return [(t, tmap[t]) for t in order]
+
+
+def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
+    """총괄 개인정보 흐름도(SVG) — 레퍼런스 ① 구조: **생명주기(행) × 조직(열)**.
+
+    열: 생명주기 | 업무 | 정보주체 | 업무담당자(PC) | 시스템·DB(테이블.컬럼) | 연계기관.
+    행 밴드: 수집 / 보유·이용·제공 / 파기. 스캔이 채우는 칸(시스템 테이블·컬럼, 연계기관=제3자)은
+    자동, 업무·담당자는 담당자 확정(자리표시). 무의존성 SVG, 팔레트 6색만.
+    """
+    groups = _swimlane_groups(rows)[:8]
+    tcols = _table_column_map(rows)
+    BLUE, GREEN, YELLOW, RED, BLACK = "#2563eb", "#16a34a", "#ca8a04", "#dc2626", "#111827"
+    # 열 좌표(x, w)
+    cyc_w, biz_w, subj_w, pc_w, sys_w, link_w, gx = 66, 104, 84, 76, 210, 116, 12
+    x_cyc = 8
+    x_biz = x_cyc + cyc_w + gx
+    x_subj = x_biz + biz_w + gx
+    x_pc = x_subj + subj_w + gx
+    x_sys = x_pc + pc_w + gx
+    x_link = x_sys + sys_w + gx
+    width = x_link + link_w + 8
+    # 밴드 높이
+    hold_h = max(90, 26 + len([1 for g in groups]) * 20, 26 + len(tcols) * 18)
+    col_h, disp_h, top = 74, 44, 40
+    height = top + col_h + hold_h + disp_h + 30
+    linked = []
+    for g in groups:
+        for lk in g["linked"]:
+            if lk not in linked:
+                linked.append(lk)
+
+    def box(x, y, w, h, color, title="", lines=None, tcolor=BLACK):
+        s = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="7" fill="#ffffff" stroke="{color}" stroke-width="1.3"/>']
+        yy = y + 16
+        if title:
+            s.append(f'<text x="{x + w/2}" y="{yy}" text-anchor="middle" font-size="10" font-weight="700" fill="{tcolor}">{_esc(title)}</text>')
+            yy += 15
+        for ln in (lines or [])[:8]:
+            t = _esc(ln); t = (t[:32] + "…") if len(t) > 33 else t
+            s.append(f'<text x="{x + 8}" y="{yy}" font-size="8.5" fill="{BLACK}">{t}</text>')
+            yy += 12
+        return "".join(s)
+
+    p = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="100%" '
+         f'style="max-width:{width}px;font-family:system-ui,sans-serif">',
+         '<defs><marker id="ov" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">'
+         '<path d="M0,0 L8,4 L0,8 Z" fill="#111827"/></marker>'
+         '<marker id="ovr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">'
+         '<path d="M0,0 L8,4 L0,8 Z" fill="#dc2626"/></marker></defs>']
+    # 헤더
+    for hx, hw, lab, col in ((x_cyc, cyc_w, "개인정보 생명주기", BLACK), (x_biz, biz_w, "업무", BLACK),
+                             (x_subj, subj_w, "정보주체", BLUE), (x_pc, pc_w, "업무담당자", BLACK),
+                             (x_sys, sys_w, "시스템·DB (테이블.컬럼)", GREEN), (x_link, link_w, "연계기관", RED)):
+        p.append(f'<text x="{hx + hw/2}" y="26" text-anchor="middle" font-size="10" font-weight="700" fill="{col}">{_esc(lab)}</text>')
+
+    if not rows:
+        p.append(f'<text x="{width/2}" y="{height/2}" text-anchor="middle" font-size="13" fill="{BLACK}">'
+                 f'흐름표가 비어 있습니다 — PII 스캔으로 시드하거나 행을 추가하세요.</text>')
+        p.append("</svg>")
+        return "".join(p)
+
+    # 생명주기 밴드 라벨(왼쪽 세로 3구간)
+    y_col, y_hold, y_disp = top, top + col_h, top + col_h + hold_h
+    for by, bh, lab, col in ((y_col, col_h, "수집", BLUE), (y_hold, hold_h, "보유·이용·제공", YELLOW), (y_disp, disp_h, "파기", RED)):
+        p.append(f'<rect x="{x_cyc}" y="{by}" width="{cyc_w}" height="{bh}" rx="6" fill="#ffffff" stroke="{col}" stroke-width="1.4"/>')
+        p.append(f'<text x="{x_cyc + cyc_w/2}" y="{by + bh/2}" text-anchor="middle" font-size="10" font-weight="700" fill="{col}">{_esc(lab)}</text>')
+
+    # 정보주체(고객) — 전체 밴드 높이 원점
+    subj_h = (y_disp + disp_h) - y_col
+    p.append(box(x_subj, y_col, subj_w, subj_h, BLUE, "정보주체(고객)"))
+    # 업무담당자 PC(수집·보유 밴드)
+    p.append(box(x_pc, y_col, pc_w, col_h + hold_h - 4, BLACK, "업무담당자 PC"))
+
+    # 수집: 업무 목록 + 시스템으로 화살표
+    biz_lines = [g["name"] for g in groups] or ["(업무 미지정)"]
+    p.append(box(x_biz, y_col, biz_w, col_h, GREEN, "수집 업무", biz_lines[:3]))
+    p.append(f'<line x1="{x_pc + pc_w}" y1="{y_col + col_h/2}" x2="{x_sys - 3}" y2="{y_col + col_h/2}" stroke="{BLACK}" stroke-width="1.3" marker-end="url(#ov)"/>')
+
+    # 보유·이용·제공: 시스템·DB 박스(테이블.컬럼 리스트) — 사용자가 원한 '컬럼 리스트 매핑'을 여기 표시
+    sys_lines = [f"{t}: {', '.join(cs)}" for t, cs in tcols] or ["(테이블 미확인)"]
+    p.append(box(x_sys, y_hold, sys_w, hold_h, GREEN, "차세대 통합정보시스템 (DB)", sys_lines))
+    # 업무 리스트(보유)
+    p.append(box(x_biz, y_hold, biz_w, hold_h, YELLOW, "보유·이용 업무", biz_lines))
+    # 연계기관(제3자) — 붉은 화살표
+    if linked:
+        p.append(box(x_link, y_hold, link_w, hold_h, RED, "연계기관(제3자)", linked))
+        p.append(f'<line x1="{x_sys + sys_w}" y1="{y_hold + hold_h/2}" x2="{x_link - 3}" y2="{y_hold + hold_h/2}" stroke="{RED}" stroke-width="1.4" marker-end="url(#ovr)"/>')
+
+    # 파기
+    disp_lines = []
+    for g in groups:
+        disp_lines += g["dispose"]
+    p.append(box(x_biz, y_disp, biz_w, disp_h, RED, "파기", disp_lines[:2] or ["개인정보 처리방침에 따라 파기"]))
+    p.append(f'<line x1="{x_sys + sys_w/2}" y1="{y_hold + hold_h}" x2="{x_sys + sys_w/2}" y2="{y_disp + 4}" stroke="{BLACK}" stroke-width="1.2" marker-end="url(#ov)"/>')
+
+    p.append("</svg>")
+    return "".join(p)
+
+
 def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
                          gaps: list[Any] | None = None, summary: dict[str, Any] | None = None) -> bytes:
     """개인정보 처리흐름표 PDF(감사관 제출용). reportlab 필요. 팔레트 6색만.
@@ -863,4 +977,4 @@ __all__ = ["STAGES", "FLOW_FIELDS", "DEFAULT_PII_FIELDS", "is_pii_finding", "inf
            "infer_table", "infer_columns", "infer_encryption", "storage_display",
            "build_file_overview", "derive_concerns", "CONCERN_CONTROLS",
            "seed_rows_from_findings", "build_pii_semgrep_rules", "render_data_flow_svg",
-           "render_data_flow_swimlane_svg", "render_data_flow_pdf"]
+           "render_data_flow_swimlane_svg", "render_data_flow_overview_svg", "render_data_flow_pdf"]

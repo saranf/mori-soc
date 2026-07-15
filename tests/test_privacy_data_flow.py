@@ -185,6 +185,26 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertEqual(rows[0]["storage_column"], "email")
         self.assertEqual(rows[0]["encryption"], "AES-256-GCM")
 
+    def test_render_overview_has_lifecycle_org_and_column_list(self) -> None:
+        from mori_soc.services.data_flow import render_data_flow_overview_svg
+        svg = render_data_flow_overview_svg([
+            {"item": "이메일", "table": "User", "storage_column": "email", "storage_location": "User.email"},
+            {"item": "전화번호", "table": "User", "storage_column": "phone", "storage_location": "User.phone"},
+            {"item": "주민등록번호", "table": "Patient", "storage_column": "rrn", "third_party": "국민건강보험공단"},
+        ])
+        self.assertTrue(svg.startswith("<svg"))
+        # 조직 열
+        for col in ("개인정보 생명주기", "업무", "정보주체", "업무담당자", "시스템·DB", "연계기관"):
+            self.assertIn(col, svg)
+        # 생명주기 밴드
+        for band in ("수집", "보유·이용·제공", "파기"):
+            self.assertIn(band, svg)
+        # DB 컬럼 리스트 매핑(사용자 요청) — 시스템 열에 테이블: 컬럼들
+        self.assertIn("User: email, phone", svg)
+        self.assertIn("Patient: rrn", svg)
+        self.assertIn("국민건강보험공단", svg)          # 연계기관
+        self.assertIn("비어 있습니다", render_data_flow_overview_svg([]))
+
     def test_render_swimlane_starts_from_subject(self) -> None:
         from mori_soc.services.data_flow import render_data_flow_swimlane_svg
         svg = render_data_flow_swimlane_svg([
