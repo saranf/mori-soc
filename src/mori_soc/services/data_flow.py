@@ -667,7 +667,8 @@ def _table_column_map(rows: list[dict[str, Any]]) -> list[tuple[str, list[str]]]
     tmap: dict[str, list[str]] = {}
     order: list[str] = []
     for r in rows:
-        table = str(r.get("table") or r.get("storage_table") or "").split()[0].split("(")[0].strip() or "(미지정 테이블)"
+        raw_tbl = str(r.get("table") or r.get("storage_table") or "").strip()
+        table = (raw_tbl.split() or [""])[0].split("(")[0].strip() or "(미지정 테이블)"
         cols_raw = str(r.get("storage_column") or "").strip()
         cols = [c.strip() for c in cols_raw.split(",") if c.strip()] or [str(r.get("item") or "").strip()]
         if table not in tmap:

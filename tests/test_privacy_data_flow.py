@@ -204,6 +204,8 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertIn("Patient: rrn", svg)
         self.assertIn("국민건강보험공단", svg)          # 연계기관
         self.assertIn("비어 있습니다", render_data_flow_overview_svg([]))
+        # 빈 테이블 행이 섞여도 안전(IndexError 회귀 방지)
+        render_data_flow_overview_svg([{"item": "이름", "collection_source": "가입"}])
 
     def test_render_swimlane_starts_from_subject(self) -> None:
         from mori_soc.services.data_flow import render_data_flow_swimlane_svg
