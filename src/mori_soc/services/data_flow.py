@@ -690,8 +690,8 @@ def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
     groups = _swimlane_groups(rows)[:8]
     tcols = _table_column_map(rows)
     BLUE, GREEN, YELLOW, RED, BLACK = "#2563eb", "#16a34a", "#ca8a04", "#dc2626", "#111827"
-    # 열 좌표(x, w)
-    cyc_w, biz_w, subj_w, pc_w, sys_w, link_w, gx = 66, 104, 84, 76, 210, 116, 12
+    # 열 좌표(x, w) — DB·연계기관은 텍스트가 길어 넓게
+    cyc_w, biz_w, subj_w, pc_w, sys_w, link_w, gx = 62, 96, 82, 82, 250, 150, 16
     x_cyc = 8
     x_biz = x_cyc + cyc_w + gx
     x_subj = x_biz + biz_w + gx
@@ -715,8 +715,9 @@ def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
         if title:
             s.append(f'<text x="{x + w/2}" y="{yy}" text-anchor="middle" font-size="10" font-weight="700" fill="{tcolor}">{_esc(title)}</text>')
             yy += 15
+        maxc = max(10, int((w - 16) / 5.2))   # 박스 폭에 맞춰 글자수 산정(잘림 완화)
         for ln in (lines or [])[:8]:
-            t = _esc(ln); t = (t[:32] + "…") if len(t) > 33 else t
+            t = _esc(ln); t = (t[:maxc] + "…") if len(t) > maxc + 1 else t
             s.append(f'<text x="{x + 8}" y="{yy}" font-size="8.5" fill="{BLACK}">{t}</text>')
             yy += 12
         return "".join(s)
@@ -751,16 +752,23 @@ def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
     # 업무담당자 PC(수집·보유 밴드)
     p.append(box(x_pc, y_col, pc_w, col_h + hold_h - 4, BLACK, "업무담당자 PC"))
 
-    # 수집: 업무 목록 + 시스템으로 화살표
+    # 수집 밴드: 업무 목록. 흐름 화살표 정보주체→담당자PC→시스템DB(수집 경로)
     biz_lines = [g["name"] for g in groups] or ["(업무 미지정)"]
     p.append(box(x_biz, y_col, biz_w, col_h, GREEN, "수집 업무", biz_lines[:3]))
-    p.append(f'<line x1="{x_pc + pc_w}" y1="{y_col + col_h/2}" x2="{x_sys - 3}" y2="{y_col + col_h/2}" stroke="{BLACK}" stroke-width="1.3" marker-end="url(#ov)"/>')
+    ym = y_col + col_h / 2
+    # 정보주체(고객) → 업무담당자 PC (수집 밴드)
+    p.append(f'<line x1="{x_subj + subj_w}" y1="{ym}" x2="{x_pc - 3}" y2="{ym}" stroke="{BLACK}" stroke-width="1.3" marker-end="url(#ov)"/>')
+    p.append(f'<text x="{(x_subj + subj_w + x_pc)/2}" y="{ym - 5}" text-anchor="middle" font-size="7.5" fill="{BLACK}">수집</text>')
 
     # 보유·이용·제공: 시스템·DB 박스(테이블.컬럼 리스트) — 사용자가 원한 '컬럼 리스트 매핑'을 여기 표시
     sys_lines = [f"{t}: {', '.join(cs)}" for t, cs in tcols] or ["(테이블 미확인)"]
     p.append(box(x_sys, y_hold, sys_w, hold_h, GREEN, "차세대 통합정보시스템 (DB)", sys_lines))
     # 업무 리스트(보유)
     p.append(box(x_biz, y_hold, biz_w, hold_h, YELLOW, "보유·이용 업무", biz_lines))
+    # 업무담당자 PC → 시스템·DB (보유 밴드에서 저장·조회)
+    yh = y_hold + hold_h / 2
+    p.append(f'<line x1="{x_pc + pc_w}" y1="{yh}" x2="{x_sys - 3}" y2="{yh}" stroke="{BLACK}" stroke-width="1.3" marker-end="url(#ov)"/>')
+    p.append(f'<text x="{(x_pc + pc_w + x_sys)/2}" y="{yh - 5}" text-anchor="middle" font-size="7.5" fill="{BLACK}">저장·조회</text>')
     # 연계기관(제3자) — 붉은 화살표
     if linked:
         p.append(box(x_link, y_hold, link_w, hold_h, RED, "연계기관(제3자)", linked))
@@ -878,6 +886,77 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
             d.add(String(cx, y + row_h + 1, _clip(g["name"], 22), fontName=font, fontSize=6, fillColor=BLACK))
         return d
 
+    # ── 총괄 흐름도(생명주기×조직) — PDF 포함. 정보주체→담당자PC→시스템DB→연계기관 ─────────
+    def _overview_drawing(width: float) -> "Drawing":
+        groups = _swimlane_groups(rows)[:8]
+        tcols = _table_column_map(rows)
+        cyc_w, biz_w, subj_w, pc_w, gx = 46, 78, 68, 66, 12
+        link_w = 120
+        sys_w = width - (cyc_w + biz_w + subj_w + pc_w + link_w + 6 * gx)
+        sys_w = max(150, sys_w)
+        x_cyc = 0
+        x_biz = x_cyc + cyc_w + gx
+        x_subj = x_biz + biz_w + gx
+        x_pc = x_subj + subj_w + gx
+        x_sys = x_pc + pc_w + gx
+        x_link = x_sys + sys_w + gx
+        col_h = 40
+        hold_h = max(64, 18 + max(len(groups), len(tcols)) * 11)
+        disp_h = 30
+        height = col_h + hold_h + disp_h + 22
+        d = Drawing(width, height)
+        top = height - 14
+
+        def dbox(x, y, w, h, color, title, lines, maxc):
+            d.add(Rect(x, y, w, h, rx=5, ry=5, strokeColor=color, strokeWidth=1.1, fillColor=WHITE))
+            d.add(String(x + w / 2, y + h - 11, title, fontName=font, fontSize=7.5, fillColor=color, textAnchor="middle"))
+            yy = y + h - 22
+            for ln in (lines or [])[:8]:
+                d.add(String(x + 5, yy, _clip(ln, maxc), fontName=font, fontSize=6.2, fillColor=BLACK))
+                yy -= 8.5
+
+        # 헤더
+        for hx, hw, lab, col in ((x_biz, biz_w, "업무", BLACK), (x_subj, subj_w, "정보주체", BLUE),
+                                 (x_pc, pc_w, "담당자PC", BLACK), (x_sys, sys_w, "시스템·DB(테이블.컬럼)", GREEN),
+                                 (x_link, link_w, "연계기관", RED)):
+            d.add(String(hx + hw / 2, top, lab, fontName=font, fontSize=7, fillColor=col, textAnchor="middle"))
+        y_col = top - 12 - col_h
+        y_hold = y_col - hold_h
+        y_disp = y_hold - disp_h
+        # 생명주기 밴드
+        for by, bh, lab, col in ((y_col, col_h, "수집", BLUE), (y_hold, hold_h, "보유·이용·제공", YELLOW), (y_disp, disp_h, "파기", RED)):
+            d.add(Rect(x_cyc, by, cyc_w, bh, rx=4, ry=4, strokeColor=col, strokeWidth=1.2, fillColor=WHITE))
+            d.add(String(x_cyc + cyc_w / 2, by + bh / 2, lab, fontName=font, fontSize=6.5, fillColor=col, textAnchor="middle"))
+        biz_lines = [g["name"] for g in groups] or ["(업무)"]
+        # 정보주체(원점) + 담당자 PC (전체 높이)
+        subj_h = (y_col + col_h) - y_disp
+        dbox(x_subj, y_disp, subj_w, subj_h, BLUE, "정보주체(고객)", [], 12)
+        dbox(x_pc, y_hold, pc_w, col_h + hold_h, BLACK, "담당자 PC", [], 12)
+        dbox(x_biz, y_col, biz_w, col_h, GREEN, "수집 업무", biz_lines[:2], 13)
+        dbox(x_biz, y_hold, biz_w, hold_h, YELLOW, "보유·이용", biz_lines, 13)
+        # 시스템 DB(테이블.컬럼)
+        sys_lines = [f"{t}: {', '.join(cs)}" for t, cs in tcols] or ["(테이블 미확인)"]
+        dbox(x_sys, y_hold, sys_w, hold_h, GREEN, "통합정보시스템(DB)", sys_lines, int((sys_w - 10) / 3.6))
+        # 화살표: 정보주체→PC(수집), PC→DB(저장·조회), DB→연계기관, DB→파기
+        ymc = y_col + col_h / 2
+        ymh = y_hold + hold_h / 2
+        d.add(Line(x_subj + subj_w, ymc, x_pc - 2, ymc, strokeColor=BLACK, strokeWidth=1))
+        d.add(Line(x_pc + pc_w, ymh, x_sys - 2, ymh, strokeColor=BLACK, strokeWidth=1))
+        linked = []
+        for g in groups:
+            for lk in g["linked"]:
+                if lk not in linked:
+                    linked.append(lk)
+        if linked:
+            dbox(x_link, y_hold, link_w, hold_h, RED, "연계기관(제3자)", linked, int((link_w - 10) / 3.6))
+            d.add(Line(x_sys + sys_w, ymh, x_link - 2, ymh, strokeColor=RED, strokeWidth=1))
+        disp_lines = []
+        for g in groups:
+            disp_lines += g["dispose"]
+        dbox(x_biz, y_disp, biz_w, disp_h, RED, "파기", disp_lines[:1] or ["처리방침에 따라 파기"], 13)
+        d.add(Line(x_sys + sys_w / 2, y_hold, x_sys + sys_w / 2, y_disp + disp_h, strokeColor=BLACK, strokeWidth=1))
+        return d
+
     # ── 상세 표(헤더 흰 글자) ──────────────────────────────────────────────────
     headers = ["개인정보 항목", "구분", "수집", "저장(테이블·컬럼)", "이용", "파기", "제3자·국외"]
     data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in headers]]
@@ -923,7 +1002,12 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         "ISMS-P 개인정보 처리단계 필수 증적입니다. '테이블·컬럼(코드위치)' 열에 <b>src/…:라인</b> 형태로 표시된 항목은 "
         "코드 스캔(Semgrep, 고객 CI)에서 자동 발견된 개인정보 처리 지점이며, 저장위치·이용목적·보관/파기는 담당자가 확정합니다. "
         "MORI 는 코드를 저장하지 않고 스캔 결과만 받습니다.", body))
-    story += [Spacer(1, 8), _flow_drawing(content_w), Spacer(1, 4)]
+    # 총괄 흐름도(생명주기×조직) 먼저 — 정보주체→담당자PC→시스템DB(테이블.컬럼)→연계기관
+    story.append(Paragraph("총괄 개인정보 흐름도", h2))
+    story += [_overview_drawing(content_w), Spacer(1, 6)]
+    # 상세 흐름도(파일별 수집→저장→이용→파기)
+    story.append(Paragraph("상세 흐름도 (파일별)", h2))
+    story += [_flow_drawing(content_w), Spacer(1, 4)]
     enc = str(summary.get("encryption") or "").strip()
     story.append(Paragraph("요약", h2))
     story.append(Paragraph(
