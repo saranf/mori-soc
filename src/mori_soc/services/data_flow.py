@@ -17,7 +17,7 @@ STAGES = ("수집", "저장", "이용", "파기")
 # 흐름표 한 행의 필드(빈 값 허용 — 담당자가 점진적으로 채움).
 FLOW_FIELDS = (
     "item", "category", "subject", "collection_source", "storage_location", "storage_table",
-    "purpose", "retention", "destruction", "third_party", "overseas", "note",
+    "storage_column", "purpose", "retention", "destruction", "third_party", "overseas", "note",
 )
 
 # 서비스 시크릿(API키·토큰·자격증명)은 정보주체의 "개인정보"가 아니다 → 흐름표에서 제외.
@@ -127,14 +127,85 @@ _TABLE_PATTERNS = (
 )
 
 
+# 스니펫/코드 근거가 담길 수 있는 키(무료 SARIF·유료 Claude 양쪽 형태 모두 커버).
+_CODE_KEYS = ("snippet", "code", "lines", "context", "message", "description", "title")
+
+
+def _code_hay(finding: dict[str, Any]) -> str:
+    parts: list[str] = []
+    for k in _CODE_KEYS:
+        v = finding.get(k)
+        if isinstance(v, (list, tuple)):
+            v = " ".join(str(x) for x in v)
+        elif isinstance(v, dict):  # SARIF snippet={"text": ...} 등
+            v = str(v.get("text") or v.get("lines") or "")
+        if v:
+            parts.append(str(v))
+    return " ".join(parts)
+
+
+# 테이블/모델 정의 블록 추출(컬럼을 그 안에서만 찾기 위함).
+_BLOCK_PATTERNS = (
+    re.compile(r"model\s+[A-Za-z_]\w*\s*\{(.*?)\}", re.I | re.S),                     # Prisma
+    re.compile(r"create\s+table[^(]*\((.*)\)\s*;?", re.I | re.S),                     # SQL (greedy: VARCHAR(n) 내부 괄호 대응)
+    re.compile(r"@Entity\([^)]*\)\s*(?:export\s+)?(?:abstract\s+)?class\s+[A-Za-z_]\w*\s*\{(.*?)\}", re.I | re.S),  # TypeORM
+)
+
+
+def _table_block(hay: str) -> str:
+    """model/CREATE TABLE/@Entity 정의의 본문(컬럼이 들어있는 부분)을 반환. 없으면 빈 문자열."""
+    for pat in _BLOCK_PATTERNS:
+        m = pat.search(hay)
+        if m:
+            return m.group(1)
+    return ""
+
+
 def infer_table(finding: dict[str, Any]) -> str:
     """finding 스니펫/메시지에서 DB 테이블(모델)명을 추정. 없으면 빈 문자열."""
-    hay = " ".join(str(finding.get(k) or "") for k in ("snippet", "message", "description", "title"))
+    hay = _code_hay(finding)
     for pat in _TABLE_PATTERNS:
         m = pat.search(hay)
         if m:
             return m.group(1)
     return ""
+
+
+def infer_columns(finding: dict[str, Any]) -> list[str]:
+    """스니펫의 테이블/모델 블록에서 **개인정보 컬럼(필드)명**을 추출.
+
+    ``_PII_ITEMS`` 패턴이 곧 컬럼 식별자(email·phone·rrn…)를 매칭하므로, 블록 안에서
+    매칭된 토큰=실제 컬럼명이다. 테이블 블록이 없으면 스니펫 전체에서 찾는다(폴백).
+    식별자형(영문/underscore) 토큰만 취해 한글 라벨·잡음은 제외한다.
+    """
+    hay = _code_hay(finding)
+    if not hay:
+        return []
+    scope = _table_block(hay) or hay
+    cols: list[str] = []
+    seen: set[str] = set()
+    for pat, _label, _cat in _PII_ITEMS_C:
+        for m in pat.finditer(scope):
+            tok = (m.group(0) or "").strip()
+            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", tok) and tok.lower() not in seen:
+                seen.add(tok.lower())
+                cols.append(tok)
+    return cols[:8]
+
+
+def storage_display(row: dict[str, Any]) -> str:
+    """저장 셀 표시값 — 무료·유료·수기 어느 경로든 동일하게 '테이블.컬럼' 우선으로 렌더.
+
+    우선순위: 이미 채워진 storage_location > 테이블.컬럼 조합 > 테이블 > 컬럼.
+    """
+    loc = str(row.get("storage_location") or "").strip()
+    if loc:
+        return loc
+    table = str(row.get("table") or row.get("storage_table") or "").strip()
+    cols = str(row.get("storage_column") or "").strip()
+    if table and cols:
+        return f"{table}.{cols}" if "." not in table else f"{table} ({cols})"
+    return table or cols
 
 
 def infer_stage(file_path: str) -> str | None:
@@ -178,9 +249,21 @@ def seed_rows_from_findings(findings: list[dict[str, Any]], *, repo: str = "",
             continue
         existing_keys.add(key)
         loc = f"{file_}:{line}" if file_ and line is not None else file_
+        columns = infer_columns(f)
+        col_str = ", ".join(columns)
         stage = infer_stage(file_)
-        # 저장위치 = DB 테이블(추출되면) / 아니면 파일 위치. 단계가 '저장'으로 확인될 때만 채운다.
-        store_loc = (f"{table} 테이블" if table else "") if stage == "저장" else ""
+        # DB 모델/테이블 정의(테이블·컬럼 근거)가 있으면 '저장' 단계로 확정 — 경로 힌트보다 강한 근거.
+        if table or columns:
+            stage = "저장"
+        # 저장위치 = 테이블.컬럼(둘 다) > 테이블 > 파일:라인(저장 단계인데 근거 약할 때). 근거 없으면 공백.
+        if table and col_str:
+            store_loc = f"{table}.{col_str}"
+        elif table:
+            store_loc = f"{table} 테이블"
+        elif stage == "저장":
+            store_loc = loc            # 지난 갭 해소: 저장 단계인데 테이블 미추출 시 코드 위치라도 남긴다
+        else:
+            store_loc = ""
         store_tbl = (f"{table} ({loc})" if table else loc) if stage == "저장" else ""
         out.append({
             "item": item,
@@ -189,6 +272,7 @@ def seed_rows_from_findings(findings: list[dict[str, Any]], *, repo: str = "",
             "collection_source": loc if stage == "수집" else "",
             "storage_location": store_loc,
             "storage_table": store_tbl,
+            "storage_column": col_str,
             "purpose": loc if stage == "이용" else "",
             "retention": "",
             "destruction": loc if stage == "파기" else "",
@@ -474,4 +558,5 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
 
 
 __all__ = ["STAGES", "FLOW_FIELDS", "DEFAULT_PII_FIELDS", "is_pii_finding", "infer_item", "infer_stage",
+           "infer_table", "infer_columns", "storage_display",
            "seed_rows_from_findings", "build_pii_semgrep_rules", "render_data_flow_svg", "render_data_flow_pdf"]

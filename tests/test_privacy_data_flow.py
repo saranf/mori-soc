@@ -61,17 +61,39 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertEqual(rows[0]["category"], "일반개인정보")
         self.assertEqual(rows[0]["stage"], "저장")           # db/schema.sql → 저장 단계
 
-    def test_seed_uses_db_table_not_repo(self) -> None:
-        # Prisma model 스니펫 → 저장위치=테이블명(repo 아님)
+    def test_seed_extracts_db_table_and_columns(self) -> None:
+        # P1: Prisma model 스니펫 → 저장위치=테이블.컬럼(repo 아님), 컬럼까지 추출
         rows = seed_rows_from_findings([
             {"rule_id": "pii-prisma-model", "file": "prisma/schema.prisma", "line": 3,
              "snippet": "model User {\n  phone String\n  email String\n}"},
         ], repo="org/app")
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["storage_location"], "User 테이블")
-        self.assertIn("User", rows[0]["storage_table"])
-        self.assertNotIn("org/app", rows[0]["storage_location"])   # repo 이름 미포함
         self.assertEqual(rows[0]["table"], "User")
+        self.assertEqual(rows[0]["storage_column"], "email, phone")     # 컬럼 추출(패턴 우선순위 순)
+        self.assertEqual(rows[0]["storage_location"], "User.email, phone")
+        self.assertNotIn("org/app", rows[0]["storage_location"])        # repo 이름 미포함
+        self.assertEqual(rows[0]["stage"], "저장")                       # 테이블 근거 → 저장 확정
+
+    def test_infer_columns_across_orm_shapes(self) -> None:
+        from mori_soc.services.data_flow import infer_columns, infer_table
+        # SQL CREATE TABLE
+        sql = {"snippet": "CREATE TABLE patients (id INT, resident_reg_num VARCHAR(13), email TEXT)"}
+        self.assertEqual(infer_table(sql), "patients")
+        self.assertEqual(infer_columns(sql), ["resident_reg_num", "email"])
+        # 유료 Claude 형태(코드 근거가 'lines'/'code' 키로 올 수 있음)
+        claude = {"lines": "model Member {\n  ssn String\n  cardNumber String\n}"}
+        self.assertEqual(infer_table(claude), "Member")
+        cols = infer_columns(claude)
+        self.assertIn("ssn", cols)
+        self.assertIn("cardNumber", cols)
+
+    def test_seed_gap_filled_when_store_stage_no_table(self) -> None:
+        # 지난 조사의 갭: 저장 단계인데 테이블 미추출 → 최소한 코드 위치를 남긴다(공백 금지)
+        rows = seed_rows_from_findings([
+            {"rule_id": "pii-field", "file": "db/schema.sql", "line": 7, "message": "email column"},
+        ], repo="org/app")
+        self.assertEqual(rows[0]["stage"], "저장")
+        self.assertEqual(rows[0]["storage_location"], "db/schema.sql:7")   # 더 이상 공백 아님
 
     def test_infer_stage_from_path(self) -> None:
         self.assertEqual(infer_stage("src/app/signup/page.tsx"), "수집")
@@ -214,7 +236,9 @@ class PrivacyRouteTests(unittest.TestCase):
             d = c.get("/privacy/data-flow").json()
             row = d["rows"][0]
             self.assertEqual(row["source"], "ai_flow")
-            self.assertEqual(row["storage_location"], "User")
+            # P1: 유료 경로도 테이블.컬럼으로 표시 + storage_column 채움
+            self.assertEqual(row["storage_location"], "User.emailEnc")
+            self.assertEqual(row["storage_column"], "emailEnc")
             self.assertIn("User.emailEnc", row["storage_table"])
             self.assertIn("AES-256-GCM", row["storage_table"])
             self.assertEqual(d["meta"]["summary"]["items"], 12)

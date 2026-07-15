@@ -774,14 +774,27 @@ def register_sources(ctx: RouteContext) -> None:
                 continue
             table = str(it.get("table") or "").strip()
             enc = str(it.get("encryption") or "").strip()
+            store_list = it.get("store") if isinstance(it.get("store"), list) else []
             store = _join(it.get("store"))
+            # store 항목은 'Table.column' 형태 → 컬럼만 뽑아 storage_column 에 채운다(무료·유료 공통).
+            cols: list[str] = []
+            for s in store_list:
+                txt = str(s or "").split()[0].strip()   # 'User.emailEnc (블라인드…)' → 'User.emailEnc'
+                if "." in txt:
+                    col = txt.split(".", 1)[1]
+                    if col and col not in cols:
+                        cols.append(col)
+            col_str = ", ".join(cols)
+            # 표시값: 테이블.컬럼 우선(둘 다 있으면), 아니면 테이블.
+            storage_loc = f"{table}.{col_str}" if (table and col_str) else table
             if enc:
                 store = (store + "\n보호: " + enc).strip()
             fid = "pdf-ai-" + _hashlib.sha1(f"{resolved_repo}|{name}".encode("utf-8")).hexdigest()[:12]
             ctx.personal_data_flow[fid] = {
                 "id": fid, "item": name, "category": str(it.get("category") or "").strip(),
                 "subject": "", "collection_source": _join(it.get("collect")),
-                "storage_location": table, "storage_table": store,
+                "storage_location": storage_loc, "storage_table": store,
+                "storage_column": col_str,
                 "purpose": _join(it.get("use")), "retention": "",
                 "destruction": _join(it.get("dispose")),
                 "third_party": _join(it.get("third_party")), "overseas": _join(it.get("overseas")),
