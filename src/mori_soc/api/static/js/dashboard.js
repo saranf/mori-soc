@@ -3452,7 +3452,13 @@
           <span id="pf_msg" style="font-size:11px;color:#16a34a"></span>
         </div>
         <div id="pf_criteria" style="display:none;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px"></div>
-        <div style="font-size:12px;font-weight:600;color:#111827;margin:6px 0 4px">${tt('dash.pf.diagram','처리 흐름도 (수집→저장→이용→파기)')}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 4px">
+          <span style="font-size:12px;font-weight:600;color:#111827">${tt('dash.pf.diagram','처리 흐름도 (수집→저장→이용→파기)')}</span>
+          <select id="pf_diagram_view" onchange="loadPrivacyFlow()" class="inp-sm" style="width:auto;padding:4px 8px;font-size:12px">
+            <option value="swimlane">${tt('dash.pf.view_swimlane','총괄(정보주체→처리흐름)')}</option>
+            <option value="linear">${tt('dash.pf.view_linear','항목별(단계 표)')}</option>
+          </select>
+        </div>
         <div id="pf_diagram" style="overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px;padding:6px;background:#fff"></div>
         <div style="margin-top:4px;font-size:11px;color:#111827;line-height:1.6">${tt('dash.pf.legend','읽는 법: ‘PII 시드’ 배지 = 코드 스캔에서 자동 발견된 개인정보 처리 지점이에요(저장위치·테이블에 코드 파일:라인). 단계는 수집→저장→이용→파기 순이고, 오른쪽 ‘제3자/국외’는 그 항목에 해당 처리가 있다는 뜻이에요. 이 표는 읽기 전용 증적이며, ‘3.x 통제 증적 승격’으로 3.1.1·3.2.1·3.4.1 통제에 연결돼요.')}</div>
         <div style="font-size:12px;font-weight:600;color:#111827;margin:10px 0 4px">${tt('dash.pf.detail','처리흐름 상세')}</div>
@@ -3472,7 +3478,9 @@
         const d = await res.json();
         const rows = d.rows || [];
         const meta = d.meta || {};
-        try { const sv = await fetch('/privacy/data-flow.svg'); if (dia) dia.innerHTML = sv.ok ? await sv.text() : ''; } catch(e){ if (dia) dia.innerHTML=''; }
+        const viewSel = document.getElementById('pf_diagram_view');
+        const svgUrl = (viewSel && viewSel.value === 'linear') ? '/privacy/data-flow.svg' : '/privacy/data-flow-swimlane.svg';
+        try { const sv = await fetch(svgUrl); if (dia) dia.innerHTML = sv.ok ? await sv.text() : ''; } catch(e){ if (dia) dia.innerHTML=''; }
         if (!rows.length) { rowsBox.innerHTML = `<span class="empty">${tt('dash.pf.empty','흐름표가 비어 있어요.')}</span>`; return; }
         // 요약 카드(AI 심층 결과일 때)
         const s = meta.summary || {}; const gaps = meta.gaps || [];

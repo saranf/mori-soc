@@ -610,7 +610,7 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
     gaps = gaps or []
     summary = summary or {}
     try:
-        from reportlab.graphics.shapes import Drawing, Line, Polygon, Rect, String
+        from reportlab.graphics.shapes import Drawing, Line, Rect, String
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4, landscape
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -651,22 +651,54 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         # 다중라인(\n)을 <br/>로 — AI 결과의 여러 위치·경로가 줄바꿈으로 보이게.
         return esc(s).replace("\n", "<br/>") if str(s or "").strip() else "—"
 
-    # ── 수집→저장→이용→파기 흐름도(그림) — 팔레트 테두리 박스 + 화살표 ──────────────
+    # ── 총괄 스윔레인 흐름도 — 출발점=정보주체(고객). 팔레트 테두리 박스 + 화살표 ────────
+    # (reportlab 은 y축이 아래→위. 한 행=개인정보 파일. 6개까지 그리고 초과분은 상세표로.)
+    def _clip(t: str, n: int) -> str:
+        t = str(t or "")
+        return (t[:n] + "…") if len(t) > n + 1 else t
+
     def _flow_drawing(width: float) -> "Drawing":
-        h, bw, bh, gap = 46, 90, 30, 26
-        d = Drawing(width, h)
-        n = len(STAGES)
-        total = n * bw + (n - 1) * gap
-        x0 = (width - total) / 2
-        for i, st in enumerate(STAGES):
-            x = x0 + i * (bw + gap)
-            col = STAGE_COLOR[st]
-            d.add(Rect(x, 8, bw, bh, rx=6, ry=6, strokeColor=col, strokeWidth=1.3, fillColor=WHITE))
-            d.add(String(x + bw / 2, 18, st, fontName=font, fontSize=12, fillColor=col, textAnchor="middle"))
-            if i < n - 1:
-                ax = x + bw
-                d.add(Line(ax, 23, ax + gap - 4, 23, strokeColor=BLACK, strokeWidth=1.2))
-                d.add(Polygon([ax + gap - 4, 23, ax + gap - 10, 20, ax + gap - 10, 26], fillColor=BLACK, strokeColor=BLACK))
+        groups = _swimlane_groups(rows)[:6]
+        STG = ("수집", "저장", "이용", "파기")
+        subj_w, link_w, gx, row_h, rgap = 78, 74, 15, 38, 8
+        n = max(len(groups), 1)
+        col_w = (width - subj_w - link_w - 5 * gx) / 4
+        height = 18 + n * (row_h + rgap)
+        d = Drawing(width, height)
+        top = height - 14
+
+        def lab(x: float, w: float, t: str, col: Any) -> None:
+            d.add(String(x + w / 2, height - 9, t, fontName=font, fontSize=7.5, fillColor=col, textAnchor="middle"))
+        lab(0, subj_w, "정보주체(고객)", BLUE)
+        hx = subj_w + gx
+        for st in STG:
+            lab(hx, col_w, st, STAGE_COLOR[st]); hx += col_w + gx
+        lab(hx, link_w, "연계기관", BLACK)
+
+        subj_h = n * (row_h + rgap) - rgap
+        subj_y = top - subj_h
+        d.add(Rect(0, subj_y, subj_w, subj_h, rx=6, ry=6, strokeColor=BLUE, strokeWidth=1.4, fillColor=WHITE))
+        d.add(String(subj_w / 2, subj_y + subj_h / 2, "정보주체", fontName=font, fontSize=9, fillColor=BLACK, textAnchor="middle"))
+
+        for ri, g in enumerate(groups):
+            y = top - (ri + 1) * row_h - ri * rgap
+            cx = subj_w + gx
+            d.add(Line(subj_w, y + row_h / 2, cx - 3, y + row_h / 2, strokeColor=BLACK, strokeWidth=1))
+            content = {"수집": g["collect"], "저장": g["store"], "이용": g["use"], "파기": g["dispose"]}
+            x = cx
+            for si, st in enumerate(STG):
+                col = STAGE_COLOR[st]
+                d.add(Rect(x, y, col_w, row_h, rx=5, ry=5, strokeColor=col, strokeWidth=1.1, fillColor=WHITE))
+                txt = _clip(content[st][0] if content[st] else "—", 15)
+                d.add(String(x + col_w / 2, y + row_h / 2 - 3, txt, fontName=font, fontSize=7, fillColor=BLACK, textAnchor="middle"))
+                if si < len(STG) - 1:
+                    ax = x + col_w
+                    d.add(Line(ax, y + row_h / 2, ax + gx - 3, y + row_h / 2, strokeColor=BLACK, strokeWidth=1))
+                x += col_w + gx
+            if g["linked"]:
+                d.add(Rect(x, y, link_w, row_h, rx=5, ry=5, strokeColor=RED, strokeWidth=1.1, fillColor=WHITE))
+                d.add(String(x + link_w / 2, y + row_h / 2 - 3, _clip(g["linked"][0], 9), fontName=font, fontSize=7, fillColor=BLACK, textAnchor="middle"))
+            d.add(String(cx, y + row_h + 1, _clip(g["name"], 22), fontName=font, fontSize=6, fillColor=BLACK))
         return d
 
     # ── 상세 표(헤더 흰 글자) ──────────────────────────────────────────────────
