@@ -149,6 +149,42 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertEqual(by["Patient"]["required_items"], "주민등록번호")
         self.assertEqual(by["Patient"]["third_party"], "국민건강보험공단")
 
+    def test_encryption_marker_and_concerns(self) -> None:
+        from mori_soc.services.data_flow import (
+            derive_concerns,
+            infer_encryption,
+            seed_rows_from_findings,
+            storage_display,
+        )
+        # 암호화 '표식'은 스캔 근거로만(단정 안 함). MORI 가 암호화하는 게 아니라 상태 기록.
+        self.assertEqual(infer_encryption({"snippet": "email String @encrypted // AES-256-GCM"}), "AES-256-GCM")
+        self.assertEqual(infer_encryption({"snippet": "email String"}), "")
+        # 컬럼에 암호화 표식이 함께 렌더된다(테이블.컬럼 (암호화: X))
+        row = {"storage_location": "User.email", "encryption": "AES-256-GCM"}
+        self.assertEqual(storage_display(row), "User.email (암호화: AES-256-GCM)")
+
+        # 우려사항→통제 매핑: 고유식별정보 암호화 미확인→2.7.1, 제3자→3.3.1, 파기 미기재→3.4.1
+        rows = [
+            {"item": "주민등록번호", "category": "고유식별정보", "storage_location": "Patient.rrn",
+             "third_party": "국민건강보험공단"},
+        ]
+        cs = derive_concerns(rows)
+        controls = {c["controls"][0] for c in cs}
+        self.assertIn("2.7.1", controls)   # 암호화 미확인
+        self.assertIn("3.3.1", controls)   # 제3자 제공
+        self.assertIn("3.4.1", controls)   # 파기 미기재
+        # 암호화가 확인되면 2.7.1 우려는 사라진다(과대경보 방지)
+        rows[0]["encryption"] = "AES-256-GCM"
+        self.assertNotIn("2.7.1", {c["controls"][0] for c in derive_concerns(rows)})
+
+    def test_seed_sets_encryption_marker(self) -> None:
+        rows = seed_rows_from_findings([
+            {"rule_id": "pii-prisma", "file": "prisma/schema.prisma", "line": 2,
+             "snippet": "model User {\n  email String @encrypted // AES-256-GCM\n}"},
+        ], repo="org/app")
+        self.assertEqual(rows[0]["storage_column"], "email")
+        self.assertEqual(rows[0]["encryption"], "AES-256-GCM")
+
     def test_render_swimlane_starts_from_subject(self) -> None:
         from mori_soc.services.data_flow import render_data_flow_swimlane_svg
         svg = render_data_flow_swimlane_svg([

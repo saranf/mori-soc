@@ -794,7 +794,7 @@ def register_sources(ctx: RouteContext) -> None:
                 "id": fid, "item": name, "category": str(it.get("category") or "").strip(),
                 "subject": "", "collection_source": _join(it.get("collect")),
                 "storage_location": storage_loc, "storage_table": store,
-                "storage_column": col_str,
+                "storage_column": col_str, "encryption": enc,
                 "purpose": _join(it.get("use")), "retention": "",
                 "destruction": _join(it.get("dispose")),
                 "third_party": _join(it.get("third_party")), "overseas": _join(it.get("overseas")),

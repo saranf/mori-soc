@@ -17,8 +17,18 @@ STAGES = ("수집", "저장", "이용", "파기")
 # 흐름표 한 행의 필드(빈 값 허용 — 담당자가 점진적으로 채움).
 FLOW_FIELDS = (
     "item", "category", "subject", "collection_source", "storage_location", "storage_table",
-    "storage_column", "purpose", "retention", "destruction", "third_party", "overseas", "note",
+    "storage_column", "encryption", "purpose", "retention", "destruction", "third_party", "overseas", "note",
 )
+
+# 우려사항 → ISMS-P 통제 ID(카탈로그 실재 ID). 레퍼런스 상세도의 '붉은 우려사항' 매핑.
+CONCERN_CONTROLS = {"enc": "2.7.1", "third_party": "3.3.1", "overseas": "3.3.4", "dispose": "3.4.1"}
+_SENSITIVE_CATS = ("고유식별정보", "금융정보", "민감정보")
+
+# 저장 암호화 표식 — 알고리즘/힌트 탐지(코드 근거 기반, 없으면 '미확인'으로 두고 단정 안 함).
+_ENC_ALGO = re.compile(
+    r"(?i)\b(aes[-_]?\d{0,3}(?:[-_]?(?:gcm|cbc|ctr))?|rsa|chacha20|argon2(?:id)?|bcrypt|scrypt|pbkdf2|"
+    r"sha-?(?:256|512))\b")
+_ENC_HINT = re.compile(r"(?i)(encrypt|cipher|암호화|blind[\s_-]?index|[a-z]+enc\b|[a-z]+hash\b|hashed)")
 
 # 서비스 시크릿(API키·토큰·자격증명)은 정보주체의 "개인정보"가 아니다 → 흐름표에서 제외.
 # (보안 findings 로는 code_review 가 별도로 잡는다.) 개인정보 vs secret 을 명확히 분리.
@@ -253,19 +263,70 @@ def build_file_overview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def storage_display(row: dict[str, Any]) -> str:
-    """저장 셀 표시값 — 무료·유료·수기 어느 경로든 동일하게 '테이블.컬럼' 우선으로 렌더.
+def infer_encryption(finding: dict[str, Any]) -> str:
+    """스니펫에서 저장 암호화 알고리즘/적용 여부를 추정. 근거 없으면 빈 문자열(단정 안 함)."""
+    hay = _code_hay(finding)
+    m = _ENC_ALGO.search(hay)
+    if m:
+        return m.group(0)
+    if _ENC_HINT.search(hay):
+        return "적용(알고리즘 미상)"
+    return ""
 
-    우선순위: 이미 채워진 storage_location > 테이블.컬럼 조합 > 테이블 > 컬럼.
+
+def storage_display(row: dict[str, Any]) -> str:
+    """저장 셀 표시값 — '테이블.컬럼' 우선 + **암호화 표식을 컬럼에 붙여** 함께 렌더.
+
+    우선순위: storage_location > 테이블.컬럼 > 테이블 > 컬럼. 암호화가 있으면 '(암호화: X)' 부기.
     """
     loc = str(row.get("storage_location") or "").strip()
-    if loc:
-        return loc
-    table = str(row.get("table") or row.get("storage_table") or "").strip()
-    cols = str(row.get("storage_column") or "").strip()
-    if table and cols:
-        return f"{table}.{cols}" if "." not in table else f"{table} ({cols})"
-    return table or cols
+    if not loc:
+        table = str(row.get("table") or row.get("storage_table") or "").strip()
+        cols = str(row.get("storage_column") or "").strip()
+        loc = (f"{table}.{cols}" if "." not in table else f"{table} ({cols})") if (table and cols) else (table or cols)
+    enc = str(row.get("encryption") or "").strip()
+    if loc and enc and "암호화" not in loc and "보호" not in loc:
+        loc = f"{loc} (암호화: {enc})"
+    return loc
+
+
+def derive_concerns(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """행에서 개인정보 우려사항을 도출하고 **ISMS-P 통제 ID**를 매핑(레퍼런스 ② 붉은 우려사항).
+
+    규칙: 민감범주 저장인데 암호화 미확인→2.7.1 / 제3자 제공→3.3.1 / 국외이전→3.3.4 /
+    저장 항목인데 파기·보유기간 미기재→3.4.1. 근거 있는 것만 올린다(과대경보 방지).
+    """
+    def _c(v: Any) -> str:
+        return str(v or "").strip()
+
+    def _real(v: str) -> bool:
+        return bool(v) and v not in ("없음", "-", "n/a", "N/A")
+
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(text: str, control: str) -> None:
+        key = f"{control}|{text}"
+        if key not in seen:
+            seen.add(key)
+            out.append({"text": text, "controls": [control]})
+
+    for r in rows:
+        item = _c(r.get("item")) or "개인정보"
+        cat = _c(r.get("category"))
+        has_store = bool(storage_display(r))
+        enc = _c(r.get("encryption"))
+        if cat in _SENSITIVE_CATS and has_store and not enc:
+            add(f"{item}({cat}) 저장 암호화 미확인 — 저장 시 암호화 적용·확인 필요", CONCERN_CONTROLS["enc"])
+        tp = _c(r.get("third_party"))
+        if _real(tp):
+            add(f"{item} 제3자 제공({tp}) — 제공 동의·계약 근거 확인", CONCERN_CONTROLS["third_party"])
+        ov = _c(r.get("overseas"))
+        if _real(ov):
+            add(f"{item} 국외이전({ov}) — 고지·동의 및 보호조치 확인", CONCERN_CONTROLS["overseas"])
+        if item and has_store and not _c(r.get("destruction")) and not _c(r.get("retention")):
+            add(f"{item} 보유기간·파기 절차 미기재 — 파기 정책 확인", CONCERN_CONTROLS["dispose"])
+    return out
 
 
 def infer_stage(file_path: str) -> str | None:
@@ -333,6 +394,7 @@ def seed_rows_from_findings(findings: list[dict[str, Any]], *, repo: str = "",
             "storage_location": store_loc,
             "storage_table": store_tbl,
             "storage_column": col_str,
+            "encryption": infer_encryption(f),   # 암호화 '상태' 표식(증적) — MORI 가 암호화하는 게 아님
             "purpose": loc if stage == "이용" else "",
             "retention": "",
             "destruction": loc if stage == "파기" else "",
@@ -780,11 +842,14 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
 
     story.append(Paragraph("처리흐름 상세", h2))
     story.append(table if rows else Paragraph("흐름표가 비어 있습니다 — 스캔에서 개인정보가 발견되지 않았거나 행이 미작성 상태입니다.", body))
-    # 파기 흐름 개선 필요 지점(AI가 짚은 갭) — 감사 고부가.
-    if gaps:
-        story.append(Paragraph("파기 흐름 개선 필요 지점", h2))
-        story.append(Paragraph("<br/>".join("· " + esc(g) for g in gaps),
-                               ParagraphStyle("pdf_gap", parent=body, textColor=RED)))
+    # 우려사항 및 통제 매핑(레퍼런스 ② 붉은 우려사항) — 도출 우려 + 통제 ID + AI 갭.
+    concerns = derive_concerns(rows)
+    if concerns or gaps:
+        story.append(Paragraph("우려사항 및 통제 매핑", h2))
+        red = ParagraphStyle("pdf_gap", parent=body, textColor=RED)
+        lines = [f"· {esc(c['text'])} <b>[{esc(', '.join(c['controls']))}]</b>" for c in concerns]
+        lines += ["· " + esc(g) for g in gaps]
+        story.append(Paragraph("<br/>".join(lines), red))
     story.append(Spacer(1, 6))
     story.append(Paragraph(
         "용어 · '구분' = 민감도(일반/고유식별/비밀/금융). 단계: 수집(3.1)=개인정보를 받는 지점 / 저장(3.2)=보관 위치(DB·테이블·컬럼) / "
@@ -795,6 +860,7 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
 
 
 __all__ = ["STAGES", "FLOW_FIELDS", "DEFAULT_PII_FIELDS", "is_pii_finding", "infer_item", "infer_stage",
-           "infer_table", "infer_columns", "storage_display", "build_file_overview",
+           "infer_table", "infer_columns", "infer_encryption", "storage_display",
+           "build_file_overview", "derive_concerns", "CONCERN_CONTROLS",
            "seed_rows_from_findings", "build_pii_semgrep_rules", "render_data_flow_svg",
            "render_data_flow_swimlane_svg", "render_data_flow_pdf"]
