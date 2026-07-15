@@ -45,6 +45,32 @@ class CollectFilesTests(unittest.TestCase):
             self.assertEqual(len(files), 1)
             self.assertTrue(truncated)
 
+    def test_chunk_files_splits_by_budget(self) -> None:
+        files = [("a.py", "a" * 100), ("b.py", "b" * 100), ("c.py", "c" * 100)]
+        batches = crf.chunk_files(files, batch_max=250)   # 2개까지만 한 배치
+        self.assertEqual([len(b) for b in batches], [2, 1])
+        # 모든 파일이 정확히 한 번씩 포함(누락·중복 없음)
+        flat = [f[0] for b in batches for f in b]
+        self.assertEqual(sorted(flat), ["a.py", "b.py", "c.py"])
+
+    def test_chunk_oversized_file_gets_own_batch(self) -> None:
+        files = [("big.py", "x" * 500), ("small.py", "y" * 10)]
+        batches = crf.chunk_files(files, batch_max=100)
+        self.assertEqual(len(batches), 2)
+
+    def test_merge_flow_dedupes_items_across_batches(self) -> None:
+        a = {"items": [{"item": "이메일", "store": ["User.email"], "table": "User"}]}
+        b = {"items": [{"item": "이메일", "store": ["User.emailHash"], "encryption": "AES"},
+                       {"item": "전화번호", "store": ["User.phone"], "table": "User"}],
+             "gaps": ["파기 미확인"]}
+        m = crf.merge_flow(a, b)
+        by = {i["item"]: i for i in m["items"]}
+        self.assertEqual(set(by), {"이메일", "전화번호"})
+        self.assertEqual(by["이메일"]["store"], ["User.email", "User.emailHash"])  # 병합
+        self.assertEqual(by["이메일"]["encryption"], "AES")                          # 보강
+        self.assertEqual(m["summary"]["items"], 2)
+        self.assertEqual(m["gaps"], ["파기 미확인"])
+
 
 class BuildPromptTests(unittest.TestCase):
     def test_prompt_has_schema_paths_and_line_numbers(self) -> None:

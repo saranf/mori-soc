@@ -28,8 +28,12 @@ SKIP_DIRS = {
     ".git", "node_modules", "vendor", "dist", "build", ".venv", "venv", "__pycache__",
     ".next", ".nuxt", "target", "bin", "obj", ".terraform", "migrations", "backups",
 }
-PER_FILE_MAX = 60_000        # 파일당 상한(대형 생성물 제외)
-DEFAULT_TOTAL_MAX = 160_000  # 1회 전송 총량 상한 — findings+흐름도를 한 호출로 합쳐 여유 확보
+PER_FILE_MAX = 60_000          # 파일당 상한(대형 생성물 제외)
+DEFAULT_TOTAL_MAX = 5_000_000  # 전체 수집 안전상한(폭주 방지) — 실 분할은 아래 배치가 담당
+# 파일이 많으면 한 번의 Claude 호출이 컨텍스트 한도를 넘는다 → 배치로 쪼개 여러 번 호출한다
+# (토큰을 더 쓰더라도 파일을 조용히 버리지 않는다). 배치 예산·개수는 env 로 조정 가능.
+BATCH_MAX = int(os.getenv("MORI_SCAN_BATCH_MAX", "140000"))   # 호출당 전송 문자 예산
+MAX_BATCHES = int(os.getenv("MORI_SCAN_MAX_BATCHES", "20"))   # 호출 횟수 상한(비용 방어)
 
 def collect_files(root: str, *, total_max: int = DEFAULT_TOTAL_MAX,
                   exts: set[str] = CODE_EXTS, skip_dirs: set[str] = SKIP_DIRS) -> tuple[list[tuple[str, str]], bool]:
@@ -58,6 +62,49 @@ def collect_files(root: str, *, total_max: int = DEFAULT_TOTAL_MAX,
             out.append((rel, text))
             total += len(text)
     return out, truncated
+
+
+def chunk_files(files: list[tuple[str, str]], batch_max: int = BATCH_MAX) -> list[list[tuple[str, str]]]:
+    """파일 목록을 호출당 문자 예산(batch_max)으로 배치 분할. 한 파일이 예산보다 커도 자체 배치로 보낸다."""
+    batches: list[list[tuple[str, str]]] = []
+    cur: list[tuple[str, str]] = []
+    size = 0
+    for rel, text in files:
+        if cur and size + len(text) > batch_max:
+            batches.append(cur)
+            cur, size = [], 0
+        cur.append((rel, text))
+        size += len(text)
+    if cur:
+        batches.append(cur)
+    return batches
+
+
+def merge_flow(acc: dict, new: dict) -> dict:
+    """배치별 개인정보 흐름 결과를 병합 — 항목(item) 단위로 store/collect/use/dispose 를 합친다."""
+    if not isinstance(new, dict) or not new:
+        return acc
+    items: dict[str, dict] = {i["item"]: dict(i) for i in (acc.get("items") or [])
+                             if isinstance(i, dict) and i.get("item")}
+    for it in new.get("items") or []:
+        if not isinstance(it, dict) or not it.get("item"):
+            continue
+        name = it["item"]
+        if name in items:
+            cur = items[name]
+            for k in ("collect", "store", "use", "dispose"):
+                cur[k] = list(dict.fromkeys((cur.get(k) or []) + (it.get(k) or [])))
+            for k in ("encryption", "table", "category", "third_party", "overseas"):
+                if not cur.get(k) and it.get(k):
+                    cur[k] = it[k]
+        else:
+            items[name] = dict(it)
+    merged_items = list(items.values())
+    gaps = list(dict.fromkeys((acc.get("gaps") or []) + (new.get("gaps") or [])))
+    tables = {i.get("table") for i in merged_items if i.get("table")}
+    enc = next((i.get("encryption") for i in merged_items if i.get("encryption")), "미확인")
+    return {"items": merged_items, "gaps": gaps,
+            "summary": {"items": len(merged_items), "tables": len(tables), "encryption": enc}}
 
 
 def call_claude(api_key: str, model: str, prompt: str, *, max_tokens: int = 4096) -> str:
@@ -192,23 +239,34 @@ def main() -> int:
         return 0
     model = os.getenv("CLAUDE_MODEL", "").strip() or "claude-sonnet-5"
     files, truncated = collect_files(os.getenv("SCAN_ROOT", "."))
-    print(f"수집: {len(files)} 파일" + (" (일부 잘림 — SCAN 총량 상한)" if truncated else ""))
+    batches = chunk_files(files)
+    if len(batches) > MAX_BATCHES:
+        print(f"경고: 배치 {len(batches)}개 > 상한 {MAX_BATCHES} — 초과 배치는 스킵합니다 "
+              f"(MORI_SCAN_MAX_BATCHES 로 상향 가능).", file=sys.stderr)
+        batches = batches[:MAX_BATCHES]
+        truncated = True
+    print(f"수집: {len(files)} 파일 → {len(batches)} 배치"
+          + (" (일부 잘림)" if truncated else ""))
     findings: list[dict] = []
     flow: dict = {}
-    if files:
-        prompt = build_combined_prompt(files)
-        print(f"Claude 호출(1회 통합: 보안+개인정보): 모델={model}, 프롬프트≈{len(prompt):,}자")
+    for bi, batch in enumerate(batches, 1):
+        prompt = build_combined_prompt(batch)
+        print(f"Claude 호출 {bi}/{len(batches)}(보안+개인정보): 모델={model}, "
+              f"{len(batch)}파일 ≈{len(prompt):,}자")
         try:
-            findings, flow = parse_combined(call_claude(api_key, model, prompt, max_tokens=16000))
+            fds, fl = parse_combined(call_claude(api_key, model, prompt, max_tokens=16000))
         except Exception as exc:
-            print(f"Claude 리뷰 실패: {exc}", file=sys.stderr)
+            print(f"배치 {bi} Claude 리뷰 실패(계속): {exc}", file=sys.stderr)
             msg = str(exc).lower()
             if "model" in msg:
                 print("힌트: CLAUDE_MODEL 을 계정 지원 모델 id로(예: claude-sonnet-4-5).", file=sys.stderr)
             elif "long" in msg or "max" in msg or "token" in msg:
-                print("힌트: 프롬프트가 큽니다 — DEFAULT_TOTAL_MAX 를 낮추세요.", file=sys.stderr)
-            return 1
-    print(f"findings: {len(findings)}건 · 개인정보 {len(flow.get('items') or [])}항목 (모델 {model})")
+                print("힌트: 배치가 큽니다 — MORI_SCAN_BATCH_MAX 를 낮추세요.", file=sys.stderr)
+            continue   # 한 배치 실패가 전체를 무너뜨리지 않음(부분 성공 정직 보고)
+        findings += fds
+        flow = merge_flow(flow, fl)
+    print(f"findings: {len(findings)}건 · 개인정보 {len(flow.get('items') or [])}항목 "
+          f"(모델 {model}, {len(batches)} 배치)")
 
     repo, commit, run_id = (os.getenv("GITHUB_REPOSITORY", ""), os.getenv("GITHUB_SHA", ""),
                             os.getenv("GITHUB_RUN_ID", ""))
