@@ -193,6 +193,66 @@ def infer_columns(finding: dict[str, Any]) -> list[str]:
     return cols[:8]
 
 
+def build_file_overview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """흐름표 행들을 **파일(=테이블/업무) 단위**로 묶어 '개인정보 파일 개요' 표를 만든다.
+
+    레퍼런스(ISMS-P 개인정보 파일 개요)의 열: 파일명 · 정보주체 수 · 개인정보 항목(필수/선택)
+    · 제3자 제공 · 처리 목적. 항목·제3자·목적은 스캔/행에서 **자동 집계**하고, 정보주체 수와
+    필수/선택 구분은 **담당자 입력**(행의 subject_count·requirement 필드)을 반영하되 비면 비워 둔다.
+
+    필수/선택 미지정 행은 항목을 '필수'로 본다(개인정보는 기본 필수라는 보수적 가정 — 담당자가 조정).
+    그룹 키: file_name > business > table > '(미분류)'.
+    """
+    def _clean(v: Any) -> str:
+        return str(v or "").strip()
+
+    def _real(v: str) -> bool:
+        return bool(v) and v not in ("없음", "-", "n/a", "N/A")
+
+    groups: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    for r in rows:
+        key = _clean(r.get("file_name")) or _clean(r.get("business")) or _clean(r.get("table")) or "(미분류)"
+        g = groups.get(key)
+        if g is None:
+            g = {"file_name": key, "required": [], "optional": [],
+                 "third_party": [], "purposes": [], "subject_count": "", "tables": []}
+            groups[key] = g
+            order.append(key)
+        item = _clean(r.get("item"))
+        if item:
+            bucket = "optional" if _clean(r.get("requirement")) == "선택" else "required"
+            other = "required" if bucket == "optional" else "optional"
+            if item not in g[bucket] and item not in g[other]:
+                g[bucket].append(item)
+        tbl = _clean(r.get("table"))
+        if tbl and tbl not in g["tables"]:
+            g["tables"].append(tbl)
+        tp = _clean(r.get("third_party"))
+        if _real(tp) and tp not in g["third_party"]:
+            g["third_party"].append(tp)
+        pu = _clean(r.get("purpose"))
+        if pu and pu not in g["purposes"]:
+            g["purposes"].append(pu)
+        sc = _clean(r.get("subject_count"))
+        if sc and not g["subject_count"]:
+            g["subject_count"] = sc
+
+    out: list[dict[str, Any]] = []
+    for key in order:
+        g = groups[key]
+        out.append({
+            "file_name": g["file_name"],
+            "table": ", ".join(g["tables"]),
+            "subject_count": g["subject_count"],
+            "required_items": ", ".join(g["required"]),
+            "optional_items": ", ".join(g["optional"]),
+            "third_party": ", ".join(g["third_party"]) or "없음",
+            "purpose": ", ".join(g["purposes"]),
+        })
+    return out
+
+
 def storage_display(row: dict[str, Any]) -> str:
     """저장 셀 표시값 — 무료·유료·수기 어느 경로든 동일하게 '테이블.컬럼' 우선으로 렌더.
 
@@ -541,6 +601,29 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         + (f"· 저장 암호화: {esc(enc)}<br/>" if enc else "")
         + f"· 제3자 제공: {n_third}건 · 국외 이전: {n_over}건"
         + (f" · 파기 흐름 개선 지점: {len(gaps)}건" if gaps else ""), body))
+    # ── 개인정보 파일 개요(파일=테이블/업무 단위) — 레퍼런스 ③ ─────────────────────
+    overview = build_file_overview(rows)
+    if overview:
+        story.append(Paragraph("개인정보 파일 개요", h2))
+        ov_head = ["파일명", "정보주체 수", "개인정보 항목(필수/선택)", "제3자 제공", "처리 목적"]
+        ov_data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in ov_head]]
+        for o in overview:
+            req = esc(o["required_items"]) or "—"
+            opt = esc(o["optional_items"])
+            items_cell = f"[필수] {req}" + (f"<br/>[선택] {opt}" if opt else "")
+            ov_data.append([Paragraph(v, cell) for v in (
+                esc(o["file_name"]) or "—", esc(o["subject_count"]) or "미기재",
+                items_cell, esc(o["third_party"]) or "없음", esc(o["purpose"]) or "—")])
+        ov_widths = [40 * mm, 24 * mm, 96 * mm, 40 * mm, 50 * mm]
+        ov_table = Table(ov_data, colWidths=ov_widths, repeatRows=1)
+        ov_table.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("BACKGROUND", (0, 0), (-1, 0), BLACK), ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
+            ("GRID", (0, 0), (-1, -1), 0.4, NEUTRAL), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story += [ov_table, Spacer(1, 8)]
+
     story.append(Paragraph("처리흐름 상세", h2))
     story.append(table if rows else Paragraph("흐름표가 비어 있습니다 — 스캔에서 개인정보가 발견되지 않았거나 행이 미작성 상태입니다.", body))
     # 파기 흐름 개선 필요 지점(AI가 짚은 갭) — 감사 고부가.
@@ -558,5 +641,5 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
 
 
 __all__ = ["STAGES", "FLOW_FIELDS", "DEFAULT_PII_FIELDS", "is_pii_finding", "infer_item", "infer_stage",
-           "infer_table", "infer_columns", "storage_display",
+           "infer_table", "infer_columns", "storage_display", "build_file_overview",
            "seed_rows_from_findings", "build_pii_semgrep_rules", "render_data_flow_svg", "render_data_flow_pdf"]

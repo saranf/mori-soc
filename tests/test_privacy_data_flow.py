@@ -130,6 +130,25 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertIn("seed.ts:14", by_file["prisma/seed.ts"]["storage_table"])
         self.assertEqual(by_file["prisma/seed.ts"]["collection_source"], "")
 
+    def test_build_file_overview_groups_by_table(self) -> None:
+        from mori_soc.services.data_flow import build_file_overview
+        rows = [
+            {"item": "이메일", "table": "User", "purpose": "로그인", "third_party": "없음"},
+            {"item": "전화번호", "table": "User", "requirement": "선택", "subject_count": "31,620,036"},
+            {"item": "주민등록번호", "table": "Patient", "third_party": "국민건강보험공단", "purpose": "진료"},
+        ]
+        ov = build_file_overview(rows)
+        by = {o["file_name"]: o for o in ov}
+        self.assertEqual(set(by), {"User", "Patient"})
+        # User: 이메일=필수, 전화번호=선택
+        self.assertEqual(by["User"]["required_items"], "이메일")
+        self.assertEqual(by["User"]["optional_items"], "전화번호")
+        self.assertEqual(by["User"]["subject_count"], "31,620,036")
+        self.assertEqual(by["User"]["third_party"], "없음")
+        # Patient: 제3자 집계
+        self.assertEqual(by["Patient"]["required_items"], "주민등록번호")
+        self.assertEqual(by["Patient"]["third_party"], "국민건강보험공단")
+
     def test_render_svg_has_stages_and_values(self) -> None:
         svg = render_data_flow_svg([{"item": "이메일", "collection_source": "회원가입",
                                      "storage_location": "user-db", "storage_table": "users",
@@ -175,6 +194,11 @@ class PrivacyRouteTests(unittest.TestCase):
         self.assertIn("user-db", sv.text)
         cs = c.get("/privacy/data-flow.csv")
         self.assertIn("개인정보 항목", cs.text)
+        # 개인정보 파일 개요 CSV(레퍼런스 ③)
+        ov = c.get("/privacy/data-file-overview.csv")
+        self.assertEqual(ov.status_code, 200)
+        self.assertIn("파일명", ov.text)
+        self.assertIn("정보주체 수", ov.text)
         # 승격 → 3.1.1/3.2.1/3.4.1
         p = c.post("/privacy/data-flow/promote-evidence")
         self.assertEqual(p.json()["evidence_promoted"], 3)

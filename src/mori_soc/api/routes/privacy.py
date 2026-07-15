@@ -22,6 +22,7 @@ from mori_soc.services.data_flow import (
     DEFAULT_PII_FIELDS,
     FLOW_FIELDS,
     STAGES,
+    build_file_overview,
     build_pii_semgrep_rules,
     render_data_flow_pdf,
     render_data_flow_svg,
@@ -264,6 +265,18 @@ def register_privacy(ctx: RouteContext) -> None:
             "third_party": "제3자제공", "overseas": "국외이전", "source": "출처", "note": "비고",
         }
         return csv_streaming_response(_sorted_rows(), header_map, "mori-personal-data-flow")
+
+    # ── 개인정보 파일 개요 CSV(레퍼런스 ③: 파일명·정보주체수·필수/선택·제3자·목적) ──────
+    @app.get("/privacy/data-file-overview.csv", tags=["Privacy"])
+    def data_file_overview_csv(request: Request) -> StreamingResponse:
+        _require_privacy_role(request)
+        header_map = {
+            "file_name": "파일명(테이블/업무)", "subject_count": "정보주체 수",
+            "required_items": "개인정보 항목(필수)", "optional_items": "개인정보 항목(선택)",
+            "third_party": "제3자 제공", "purpose": "처리 목적",
+        }
+        return csv_streaming_response(build_file_overview(_sorted_rows()), header_map,
+                                      "mori-personal-data-file-overview")
 
     # ── 흐름표 PDF(감사관 제출용) ──────────────────────────────────────────────
     @app.get("/privacy/data-flow.pdf", tags=["Privacy"])
