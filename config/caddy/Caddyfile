@@ -7,7 +7,8 @@
 }
 
 :18443 {
-	tls /certs/live/mori.example.com/fullchain.pem /certs/live/mori.example.com/privkey.pem
+	# 인증서 도메인은 .env 의 MORI_CERT_DOMAIN 으로 주입(공개 레포엔 placeholder 유지).
+	tls /certs/live/{$MORI_CERT_DOMAIN:mori.example.com}/fullchain.pem /certs/live/{$MORI_CERT_DOMAIN:mori.example.com}/privkey.pem
 	encode zstd gzip
 	reverse_proxy mori-api:8000
 }
