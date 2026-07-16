@@ -212,6 +212,22 @@ class DataFlowServiceTests(unittest.TestCase):
         # 빈 테이블 행이 섞여도 안전(IndexError 회귀 방지)
         render_data_flow_overview_svg([{"item": "이름", "collection_source": "가입"}])
 
+    def test_column_item_map_matches_column_to_item(self) -> None:
+        from mori_soc.services.data_flow import build_column_item_map
+        # 유료 Claude store 형태(슬래시/콤마 혼합, 블라인드 주석) → (테이블,컬럼,항목) 매칭
+        rows = [
+            {"item": "이메일", "storage_table": "User.emailEnc\nUser.emailHash (블라인드 인덱스)\n보호: AES-256"},
+            {"item": "카드번호", "storage_table": "PaymentMethod.cardNumberEnc/cardExpiryEnc"},
+            {"item": "주민등록번호", "table": "User", "storage_column": "rrnEnc"},
+        ]
+        m = build_column_item_map(rows)
+        got = {(x["table"], x["column"], x["item"]) for x in m}
+        self.assertIn(("User", "emailEnc", "이메일"), got)
+        self.assertIn(("User", "emailHash", "이메일"), got)          # 블라인드 주석 제거
+        self.assertIn(("PaymentMethod", "cardNumberEnc", "카드번호"), got)  # 슬래시 분해
+        self.assertIn(("PaymentMethod", "cardExpiryEnc", "카드번호"), got)
+        self.assertIn(("User", "rrnEnc", "주민등록번호"), got)        # 폴백(table+storage_column)
+
     def test_render_swimlane_starts_from_subject(self) -> None:
         from mori_soc.services.data_flow import render_data_flow_swimlane_svg
         svg = render_data_flow_swimlane_svg([

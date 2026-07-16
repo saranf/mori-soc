@@ -693,6 +693,56 @@ def _table_column_map(rows: list[dict[str, Any]]) -> list[tuple[str, list[str]]]
     return [(t, tmap[t]) for t in order]
 
 
+def build_column_item_map(rows: list[dict[str, Any]]) -> list[dict[str, str]]:
+    """**어느 컬럼에 어떤 개인정보 항목이 담기는지** 매칭 — (테이블, 컬럼, 개인정보 항목).
+
+    각 행 = 하나의 개인정보 항목이므로, 그 행의 저장 위치(store 라인 'Table.col' 또는
+    storage_location/table+storage_column)에서 (테이블, 컬럼)을 뽑아 항목과 짝짓는다.
+    유료 Claude 가 컬럼을 '/'·',' 섞어 보내도 모두 개별 컬럼으로 분해한다. 중복 제거·정렬.
+    """
+    out: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+
+    def _emit(table: str, col: str, item: str) -> None:
+        table, col = table.strip(), col.strip().split("(")[0].strip()
+        if not col:
+            return
+        key = (table or "(미지정)", col, item)
+        if key not in seen:
+            seen.add(key)
+            out.append({"table": key[0], "column": col, "item": item})
+
+    for r in rows:
+        item = str(r.get("item") or "").strip() or "?"
+        pairs: list[tuple[str, str]] = []
+        # 1) store 라인(유료): "User.emailEnc (블라인드 인덱스)" 한 줄씩
+        for line in str(r.get("storage_table") or "").split("\n"):
+            line = line.strip()
+            if not line or line.startswith("보호:"):
+                continue
+            head = line.split(".", 1)[0]
+            if "." in line and " " not in head and "," not in head:
+                tbl, rest = line.split(".", 1)
+                for col in re.split(r"[,/]", rest.split("(")[0]):
+                    if col.strip():
+                        pairs.append((tbl, col))
+        # 2) 폴백: table 필드/ storage_location + storage_column
+        if not pairs:
+            tbl = str(r.get("table") or "").strip()
+            loc = str(r.get("storage_location") or "").strip()
+            cols = str(r.get("storage_column") or "").strip()
+            if not tbl and "." in loc and "," not in loc.split(".", 1)[0] and " " not in loc.split(".", 1)[0]:
+                tbl = loc.split(".", 1)[0]
+                cols = cols or loc.split(".", 1)[1]
+            for col in re.split(r"[,/]", cols):
+                if col.strip():
+                    pairs.append((tbl, col))
+        for tbl, col in pairs:
+            _emit(tbl, col, item)
+    out.sort(key=lambda d: (d["table"], d["column"]))
+    return out
+
+
 def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
     """총괄 개인정보 흐름도 — **표준 플로우차트**(도형 의미 + 판단 분기).
 
@@ -1055,27 +1105,27 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
     # 상세 흐름도(파일별 수집→저장→이용→파기)
     story.append(Paragraph("상세 흐름도 (파일별)", h2))
     story += [_flow_drawing(content_w), Spacer(1, 4)]
-    # ── 별도 페이지: DB 테이블·컬럼 매핑(보기 편하게 분리) ─────────────────────────────
-    tcol_map = _table_column_map(rows)
-    if tcol_map:
+    # ── 별도 페이지: DB 컬럼 ↔ 개인정보 항목 매칭(어느 컬럼에 어떤 정보) ────────────────
+    ci_map = build_column_item_map(rows)
+    if ci_map:
         from reportlab.platypus import PageBreak
         story.append(PageBreak())
-        story.append(Paragraph("DB 테이블·컬럼 매핑", h2))
-        story.append(Paragraph("저장 단계에서 개인정보가 실제로 담기는 DB 테이블과 컬럼입니다(스캔 자동 추출). "
-                               "총괄 흐름도의 '저장(DB)' 노드 상세.", body))
-        tc_head = ["DB 테이블", "개인정보 컬럼", "컬럼 수"]
-        tc_data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in tc_head]]
-        for t, cs in tcol_map:
-            tc_data.append([Paragraph(esc(t), cell), Paragraph(esc(", ".join(cs)), cell),
-                            Paragraph(str(len(cs)), cell)])
-        tc_table = Table(tc_data, colWidths=[70 * mm, 150 * mm, 20 * mm], repeatRows=1)
-        tc_table.setStyle(TableStyle([
+        story.append(Paragraph("DB 컬럼 ↔ 개인정보 항목 매칭", h2))
+        story.append(Paragraph("저장 단계에서 <b>어느 DB 컬럼에 어떤 개인정보</b>가 담기는지 매칭한 표입니다"
+                               "(스캔 자동 추출). 총괄 흐름도 '저장(DB)' 노드의 상세.", body))
+        ci_head = ["DB 테이블", "컬럼", "개인정보 항목"]
+        ci_data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in ci_head]]
+        for m in ci_map:
+            ci_data.append([Paragraph(esc(m["table"]), cell), Paragraph(esc(m["column"]), cell),
+                            Paragraph(esc(m["item"]), cell)])
+        ci_table = Table(ci_data, colWidths=[60 * mm, 110 * mm, 70 * mm], repeatRows=1)
+        ci_table.setStyle(TableStyle([
             ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 9),
             ("BACKGROUND", (0, 0), (-1, 0), BLACK), ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
             ("GRID", (0, 0), (-1, -1), 0.4, NEUTRAL), ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ]))
-        story += [tc_table, PageBreak()]
+        story += [ci_table, PageBreak()]
     enc = str(summary.get("encryption") or "").strip()
     story.append(Paragraph("요약", h2))
     story.append(Paragraph(
@@ -1128,6 +1178,6 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
 
 __all__ = ["STAGES", "FLOW_FIELDS", "DEFAULT_PII_FIELDS", "is_pii_finding", "infer_item", "infer_stage",
            "infer_table", "infer_columns", "infer_encryption", "storage_display",
-           "build_file_overview", "derive_concerns", "CONCERN_CONTROLS",
+           "build_file_overview", "build_column_item_map", "derive_concerns", "CONCERN_CONTROLS",
            "seed_rows_from_findings", "build_pii_semgrep_rules", "render_data_flow_svg",
            "render_data_flow_swimlane_svg", "render_data_flow_overview_svg", "render_data_flow_pdf"]

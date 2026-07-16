@@ -294,15 +294,14 @@ def register_privacy(ctx: RouteContext) -> None:
         return csv_streaming_response(build_file_overview(_sorted_rows()), header_map,
                                       "mori-personal-data-file-overview")
 
-    # ── DB 테이블·컬럼 매핑 CSV(별도 — 저장 상세) ────────────────────────────────────
+    # ── DB 컬럼 ↔ 개인정보 항목 매칭 CSV(어느 컬럼에 어떤 정보) ─────────────────────────
     @app.get("/privacy/data-tables.csv", tags=["Privacy"])
     def data_tables_csv(request: Request) -> StreamingResponse:
-        from mori_soc.services.data_flow import _table_column_map
+        from mori_soc.services.data_flow import build_column_item_map
         _require_privacy_role(request)
-        rows = [{"table": t, "columns": ", ".join(cs), "column_count": len(cs)}
-                for t, cs in _table_column_map(_sorted_rows())]
-        header_map = {"table": "DB 테이블", "columns": "개인정보 컬럼", "column_count": "컬럼 수"}
-        return csv_streaming_response(rows, header_map, "mori-personal-data-tables")
+        header_map = {"table": "DB 테이블", "column": "컬럼", "item": "개인정보 항목"}
+        return csv_streaming_response(build_column_item_map(_sorted_rows()), header_map,
+                                      "mori-personal-data-columns")
 
     # ── 흐름표 PDF(감사관 제출용) ──────────────────────────────────────────────
     @app.get("/privacy/data-flow.pdf", tags=["Privacy"])
