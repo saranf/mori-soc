@@ -41,50 +41,84 @@ def register_assets(ctx: RouteContext) -> None:
     def owners_list() -> Any:
         return {"owners": list(asset_owners.values())}
 
-    @app.post("/assets/owners")
-    def owners_upsert(payload: dict[str, Any], request: Request) -> Any:
+    def _upsert_owner(payload: dict[str, Any], changed_by: str) -> dict[str, Any]:
+        """자산 담당자 1건 upsert(변경 감사 포함). 단건 API·CSV import 공통 사용."""
         hostname = str(payload.get("hostname", "")).strip()
         if not hostname:
             raise HTTPException(status_code=400, detail="hostname is required")
-        owner_name = str(payload.get("owner", "")).strip()
-        # 수정자는 현재 로그인한 사용자로 자동 설정
-        changed_by = _get_session_username(request) or "unknown"
         now_str = _isoformat(datetime.now(tz=timezone.utc))
         old_entry = asset_owners.get(hostname, {})
-        new_category = str(payload.get("category", old_entry.get("category", ""))).strip()
-        new_importance = str(payload.get("importance", old_entry.get("importance", ""))).strip()
-        new_exception_until = str(payload.get("exception_until", old_entry.get("exception_until", ""))).strip()
-        new_exception_reason = str(payload.get("exception_reason", old_entry.get("exception_reason", ""))).strip()
         entry = {
             "hostname": hostname,
-            "owner": owner_name,
-            "category": new_category,
-            "importance": new_importance,
-            "exception_until": new_exception_until,
-            "exception_reason": new_exception_reason,
-            "email": str(payload.get("email", "")).strip(),
-            "team": str(payload.get("team", "")).strip(),
+            "owner": str(payload.get("owner", old_entry.get("owner", ""))).strip(),
+            "category": str(payload.get("category", old_entry.get("category", ""))).strip(),
+            "importance": str(payload.get("importance", old_entry.get("importance", ""))).strip(),
+            "exception_until": str(payload.get("exception_until", old_entry.get("exception_until", ""))).strip(),
+            "exception_reason": str(payload.get("exception_reason", old_entry.get("exception_reason", ""))).strip(),
+            "email": str(payload.get("email", old_entry.get("email", ""))).strip(),
+            "team": str(payload.get("team", old_entry.get("team", ""))).strip(),
             "updated_at": now_str,
         }
-        # Audit log: record changes for owner, category, importance, exception_until, exception_reason fields
         for field in ("owner", "category", "importance", "exception_until", "exception_reason"):
             old_val = old_entry.get(field, "")
-            new_val = entry[field]
-            if new_val != old_val:
+            if entry[field] != old_val:
                 audit_entry = {
-                    "log_id": str(uuid.uuid4()),
-                    "hostname": hostname,
-                    "field": field,
-                    "old_value": old_val,
-                    "new_value": new_val,
-                    "changed_by": changed_by,
-                    "changed_at": now_str,
+                    "log_id": str(uuid.uuid4()), "hostname": hostname, "field": field,
+                    "old_value": old_val, "new_value": entry[field],
+                    "changed_by": changed_by, "changed_at": now_str,
                 }
                 asset_audit_log.append(audit_entry)
                 _persist_asset_audit(audit_entry)
         asset_owners[hostname] = entry
         _persist_asset_owner(hostname)
         return entry
+
+    @app.post("/assets/owners")
+    def owners_upsert(payload: dict[str, Any], request: Request) -> Any:
+        return _upsert_owner(payload, _get_session_username(request) or "unknown")
+
+    # 자산 담당자 CSV 가져오기 — export(openCsvPreview)와 짝. 헤더는 한/영 별칭 허용.
+    _OWNER_ALIASES: dict[str, list[str]] = {
+        "hostname": ["호스트명", "host", "호스트", "장비명", "서버명"],
+        "owner": ["담당자", "담당", "관리자"],
+        "team": ["팀", "부서", "소속"],
+        "email": ["이메일", "메일"],
+        "category": ["구분", "분류", "카테고리", "용도"],
+        "importance": ["중요도", "등급"],
+    }
+
+    def _session_role(request: Request) -> str | None:
+        token = request.cookies.get("mori_session", "") if hasattr(request, "cookies") else ""
+        sess = ctx.sessions.get(token) if ctx.sessions else None
+        return (sess or {}).get("role")
+
+    @app.get("/assets/owners/import-template.csv", tags=["Assets"])
+    def owners_import_template() -> StreamingResponse:
+        """자산 담당자 가져오기 양식(헤더 + 예시 1행)."""
+        from mori_soc.services.csv_import import sample_csv
+        example = {"hostname": "web-01", "owner": "홍길동", "team": "인프라팀",
+                   "email": "hong@example.com", "category": "웹서버", "importance": "상"}
+        body = sample_csv(_OWNER_ALIASES, example)
+        return StreamingResponse(
+            iter(["﻿" + body]), media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="mori-asset-owners-template.csv"'})
+
+    @app.post("/assets/owners/import", tags=["Assets"])
+    def owners_import(payload: dict[str, Any], request: Request) -> Any:
+        """CSV 텍스트를 받아 자산 담당자를 일괄 upsert. admin·security 전용(대량 변경)."""
+        if ctx.auth_enabled and _session_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="자산 일괄 가져오기는 admin·security 전용입니다.")
+        from mori_soc.services.csv_import import parse_csv
+        rows, errors = parse_csv(str(payload.get("csv", "")), _OWNER_ALIASES, required=["hostname"])
+        changed_by = _get_session_username(request) or "unknown"
+        imported = 0
+        for row in rows:
+            try:
+                _upsert_owner(row, changed_by)
+                imported += 1
+            except HTTPException as exc:
+                errors.append(f"{row.get('hostname', '?')}: {exc.detail}")
+        return {"imported": imported, "rows": len(rows), "errors": errors}
 
     @app.delete("/assets/owners/{hostname}")
     def owners_delete(hostname: str) -> Any:

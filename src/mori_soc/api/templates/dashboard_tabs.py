@@ -247,6 +247,7 @@ _TAB_ASSETS_HTML = """    <!-- ── Tab: 자산 현황 ───────�
             <div style=\"display:flex;gap:6px;\">
               <button onclick=\"onDemandRefresh('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.assets.refresh\">새로고침</button>
               <button onclick=\"downloadAssetsCSV('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.btn.csv\">CSV 내보내기</button>
+              <button onclick=\"importAssetOwnersCsv()\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.btn.csv_import\">CSV 가져오기</button>
             </div>
           </div>
           <div class=\"asset-search-bar\">
@@ -269,6 +270,7 @@ _TAB_ASSETS_HTML = """    <!-- ── Tab: 자산 현황 ───────�
             <div style=\"display:flex;gap:6px;\">
               <button onclick=\"onDemandRefresh('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.assets.refresh\">새로고침</button>
               <button onclick=\"downloadAssetsCSV('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.btn.csv\">CSV 내보내기</button>
+              <button onclick=\"importAssetOwnersCsv()\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.btn.csv_import\">CSV 가져오기</button>
             </div>
           </div>
           <div class=\"asset-search-bar\">

@@ -4027,6 +4027,84 @@
         });
     }
     window.exportIpCsv = exportIpCsv;
+
+    /* 범용 CSV 가져오기 (openCsvPreview 와 짝). opts:{title,url,templateUrl,onDone}
+       파일 선택 또는 붙여넣기 → POST {csv} → 결과(가져옴/오류) 표시. 팔레트 6색만 사용. */
+    function _ensureCsvImportModal() {
+      let modal = document.getElementById('csv_import_modal');
+      if (modal) return modal;
+      modal = document.createElement('div');
+      modal.id = 'csv_import_modal';
+      modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;';
+      modal.innerHTML = `
+        <div style="background:#fff;border-radius:10px;max-width:640px;width:92%;padding:20px;max-height:88vh;overflow:auto">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <h3 id="csv_import_title" style="margin:0;color:#111827">${tt('dash.csvimport.title','CSV 가져오기')}</h3>
+            <button onclick="document.getElementById('csv_import_modal').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#111827">×</button>
+          </div>
+          <div style="font-size:12px;color:#111827;margin-bottom:10px">${tt('dash.csvimport.hint','파일을 선택하거나 CSV 내용을 붙여넣으세요. 첫 줄은 헤더입니다.')} <a id="csv_import_tpl" href="#" style="color:#2563eb">${tt('dash.csvimport.template','양식 다운로드')}</a></div>
+          <input type="file" id="csv_import_file" accept=".csv,text/csv" style="margin-bottom:8px;font-size:12px" />
+          <textarea id="csv_import_text" rows="7" placeholder="hostname,owner,team,…" style="width:100%;box-sizing:border-box;border:1px solid #e5e7eb;border-radius:6px;padding:8px;font-family:monospace;font-size:12px"></textarea>
+          <div id="csv_import_result" style="margin-top:8px;font-size:12px;color:#111827"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+            <button onclick="document.getElementById('csv_import_modal').style.display='none'" class="secondary" style="width:auto;padding:6px 14px;font-size:13px">${tt('dash.dyn.cancel','취소')}</button>
+            <button id="csv_import_go" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer">${tt('dash.csvimport.run','가져오기')}</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      const fileEl = modal.querySelector('#csv_import_file');
+      fileEl.addEventListener('change', () => {
+        const f = fileEl.files && fileEl.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => { modal.querySelector('#csv_import_text').value = String(reader.result || '').replace(/^﻿/, ''); };
+        reader.readAsText(f, 'utf-8');
+      });
+      return modal;
+    }
+
+    async function openCsvImport(opts) {
+      opts = opts || {};
+      const modal = _ensureCsvImportModal();
+      modal.querySelector('#csv_import_title').textContent = opts.title || tt('dash.csvimport.title', 'CSV 가져오기');
+      modal.querySelector('#csv_import_text').value = '';
+      modal.querySelector('#csv_import_result').textContent = '';
+      modal.querySelector('#csv_import_file').value = '';
+      const tpl = modal.querySelector('#csv_import_tpl');
+      tpl.style.display = opts.templateUrl ? '' : 'none';
+      if (opts.templateUrl) tpl.setAttribute('href', opts.templateUrl);
+      const goBtn = modal.querySelector('#csv_import_go');
+      goBtn.onclick = async () => {
+        const csv = modal.querySelector('#csv_import_text').value;
+        const resEl = modal.querySelector('#csv_import_result');
+        if (!csv.trim()) { resEl.style.color = '#dc2626'; resEl.textContent = tt('dash.csvimport.empty', 'CSV 내용이 비어 있습니다.'); return; }
+        goBtn.disabled = true; resEl.style.color = '#111827'; resEl.textContent = tt('dash.dyn.loading_fetch', '불러오는 중…');
+        try {
+          const r = await fetch(opts.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv }) });
+          const d = await r.json();
+          if (!r.ok) throw new Error((d && d.detail) || r.status);
+          const errs = (d.errors || []);
+          resEl.style.color = errs.length ? '#ca8a04' : '#16a34a';
+          resEl.innerHTML = tt('dash.csvimport.done', '{n}건 가져옴').replace('{n}', '<strong>' + (d.imported || 0) + '</strong>')
+            + (errs.length ? '<br>' + errs.map(e => escapeHtml(e)).join('<br>') : '');
+          if (opts.onDone) { try { opts.onDone(d); } catch (e) {} }
+        } catch (e) {
+          resEl.style.color = '#dc2626'; resEl.textContent = tt('dash.csvimport.fail', '가져오기 실패: ') + String(e.message || e);
+        } finally { goBtn.disabled = false; }
+      };
+      modal.style.display = 'flex';
+    }
+    window.openCsvImport = openCsvImport;
+
+    function importAssetOwnersCsv() {
+      openCsvImport({
+        title: tt('dash.csvimport.assets_title', '자산 담당자 CSV 가져오기'),
+        url: '/assets/owners/import',
+        templateUrl: '/assets/owners/import-template.csv',
+        onDone: () => { try { if (window.loadAssets) window.loadAssets(); } catch (e) {} },
+      });
+    }
+    window.importAssetOwnersCsv = importAssetOwnersCsv;
     async function loadEvidenceGaps() {
       const box = document.getElementById('evidence_gap_box');
       if (!box) return;
