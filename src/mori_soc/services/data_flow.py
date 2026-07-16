@@ -681,19 +681,17 @@ def _table_column_map(rows: list[dict[str, Any]]) -> list[tuple[str, list[str]]]
 
 
 def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
-    """총괄 개인정보 흐름도 — **플로우차트**(노드 → 화살표로 이어지는 흐름).
+    """총괄 개인정보 흐름도 — **표준 플로우차트**(도형 의미 + 판단 분기).
 
-    정보주체(고객) →수집→ 저장(DB: 테이블.컬럼) →이용→ 파기, 저장/이용에서 제공→연계기관(제3자) 분기.
-    격자(스윔레인)가 아니라 연결된 노드+방향 화살표로 그린다. 무의존성 SVG, 팔레트 6색만.
+    타원(시작/끝) · 사각형(처리) · 마름모(판단, Yes/No) · 평행사변형(입출력)으로 위→아래 흐른다:
+    시작 → [입력](평행사변형) → [저장 DB: 테이블.컬럼](사각형) → <제3자 제공?>(마름모)
+    →Yes [연계기관 제공](평행사변형) / →No [이용](사각형) → <보유기간 경과?>(마름모)
+    →Yes [파기](사각형) → 끝 / →No 이용으로 회귀. 무의존성 SVG, 팔레트 6색만.
     """
     groups = _swimlane_groups(rows)[:8]
     tcols = _table_column_map(rows)
     BLUE, GREEN, YELLOW, RED, BLACK = "#2563eb", "#16a34a", "#ca8a04", "#dc2626", "#111827"
-
-    collect = []
-    use = []
-    dispose = []
-    linked = []
+    collect, use, dispose, linked = [], [], [], []
     for g in groups:
         for src, dst in ((g["collect"], collect), (g["use"], use), (g["dispose"], dispose), (g["linked"], linked)):
             for v in src:
@@ -701,66 +699,103 @@ def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
                     dst.append(v)
     db_lines = [f"{t}: {', '.join(cs)}" for t, cs in tcols] or ["(테이블 미확인)"]
 
-    # 수평 흐름 5노드 + 연계기관 분기. 노드 폭·행 높이.
-    nw, nh, agap = 168, 96, 46
-    pad, top = 16, 30
-    width = pad * 2 + 5 * nw + 4 * agap
-    height = top + nh + 70 + nh  # 메인행 + 분기행
-    xs = [pad + i * (nw + agap) for i in range(5)]
-    y = top
-    yb = y + nh + 70   # 연계기관 분기 행
+    nw, cx, bx = 200, 150, 470       # 노드폭, 세로축 좌상단 x, 분기(오른쪽) x
+    width = 720
+    defs = ('<defs><marker id="ov" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">'
+            '<path d="M0,0 L9,4 L0,8 Z" fill="#111827"/></marker>'
+            '<marker id="ovr" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">'
+            '<path d="M0,0 L9,4 L0,8 Z" fill="#dc2626"/></marker></defs>')
 
-    def node(x, yy, color, title, lines):
-        s = [f'<rect x="{x}" y="{yy}" width="{nw}" height="{nh}" rx="10" fill="#ffffff" stroke="{color}" stroke-width="1.8"/>',
-             f'<text x="{x + nw/2}" y="{yy + 18}" text-anchor="middle" font-size="12" font-weight="700" fill="{color}">{_esc(title)}</text>']
-        maxc = int((nw - 18) / 5.4)
-        ln_y = yy + 36
-        for ln in (lines or ["—"])[:5]:
+    def _txt(x, y, t, size=9, col=BLACK, anchor="middle", bold=False):
+        w = ' font-weight="700"' if bold else ""
+        return f'<text x="{x}" y="{y}" text-anchor="{anchor}" font-size="{size}" fill="{col}"{w}>{_esc(t)}</text>'
+
+    def ellipse(x, y, w, h, title):
+        return (f'<ellipse cx="{x + w/2}" cy="{y + h/2}" rx="{w/2}" ry="{h/2}" fill="#ffffff" stroke="{BLACK}" stroke-width="1.6"/>'
+                + _txt(x + w / 2, y + h / 2 + 3, title, 11, BLACK, bold=True))
+
+    def rect(x, y, w, h, color, title, lines=None):
+        s = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="6" fill="#ffffff" stroke="{color}" stroke-width="1.8"/>',
+             _txt(x + w / 2, y + 16, title, 11, color, bold=True)]
+        maxc = int((w - 16) / 5.4); ly = y + 32
+        for ln in (lines or [])[:5]:
             t = _esc(ln); t = (t[:maxc] + "…") if len(t) > maxc + 1 else t
-            s.append(f'<text x="{x + 10}" y="{ln_y}" font-size="9" fill="{BLACK}">{t}</text>')
-            ln_y += 12
+            s.append(f'<text x="{x + 9}" y="{ly}" font-size="9" fill="{BLACK}">{t}</text>'); ly += 12
         return "".join(s)
 
-    def harrow(x1, x2, yy, label, color=BLACK, mid="ov"):
-        s = [f'<line x1="{x1}" y1="{yy}" x2="{x2 - 4}" y2="{yy}" stroke="{color}" stroke-width="1.8" marker-end="url(#{mid})"/>']
+    def para(x, y, w, h, color, title, lines=None):  # 평행사변형(입출력)
+        sk = 14
+        pts = f"{x+sk},{y} {x+w},{y} {x+w-sk},{y+h} {x},{y+h}"
+        s = [f'<polygon points="{pts}" fill="#ffffff" stroke="{color}" stroke-width="1.8"/>',
+             _txt(x + w / 2, y + 16, title, 10.5, color, bold=True)]
+        maxc = int((w - 26) / 5.4); ly = y + 31
+        for ln in (lines or [])[:4]:
+            t = _esc(ln); t = (t[:maxc] + "…") if len(t) > maxc + 1 else t
+            s.append(f'<text x="{x + 15}" y="{ly}" font-size="9" fill="{BLACK}">{t}</text>'); ly += 12
+        return "".join(s)
+
+    def diamond(x, y, w, h, title):  # 마름모(판단)
+        pts = f"{x+w/2},{y} {x+w},{y+h/2} {x+w/2},{y+h} {x},{y+h/2}"
+        return (f'<polygon points="{pts}" fill="#ffffff" stroke="{YELLOW}" stroke-width="1.8"/>'
+                + _txt(x + w / 2, y + h / 2 + 3, title, 10, BLACK, bold=True))
+
+    def vary(x, y1, y2, mid="ov"):   # 세로 화살표
+        return f'<line x1="{x}" y1="{y1}" x2="{x}" y2="{y2 - 4}" stroke="{"#dc2626" if mid=="ovr" else BLACK}" stroke-width="1.7" marker-end="url(#{mid})"/>'
+
+    def hary(x1, x2, y, label="", mid="ov"):  # 가로 화살표 + 라벨
+        s = [f'<line x1="{x1}" y1="{y}" x2="{x2 - 4}" y2="{y}" stroke="{"#dc2626" if mid=="ovr" else BLACK}" stroke-width="1.7" marker-end="url(#{mid})"/>']
         if label:
-            s.append(f'<text x="{(x1 + x2)/2}" y="{yy - 6}" text-anchor="middle" font-size="10" font-weight="600" fill="{color}">{_esc(label)}</text>')
+            s.append(_txt((x1 + x2) / 2, y - 5, label, 9, BLACK, bold=True))
         return "".join(s)
 
-    p = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="100%" '
-         f'style="max-width:{width}px;font-family:system-ui,sans-serif">',
-         '<defs><marker id="ov" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">'
-         '<path d="M0,0 L9,4 L0,8 Z" fill="#111827"/></marker>'
-         '<marker id="ovr" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">'
-         '<path d="M0,0 L9,4 L0,8 Z" fill="#dc2626"/></marker></defs>']
-
+    p = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} 760" width="100%" '
+         f'style="max-width:{width}px;font-family:system-ui,sans-serif">', defs]
     if not rows:
-        p.append(f'<text x="{width/2}" y="{height/2}" text-anchor="middle" font-size="14" fill="{BLACK}">'
-                 f'흐름표가 비어 있습니다 — PII 스캔으로 시드하거나 행을 추가하세요.</text></svg>')
+        p.append(_txt(width / 2, 60, "흐름표가 비어 있습니다 — PII 스캔으로 시드하거나 행을 추가하세요.", 13) + "</svg>")
         return "".join(p)
 
-    # 메인 흐름: 정보주체 → 수집 → 저장(DB) → 이용 → 파기
-    nodes = [
-        (xs[0], BLUE, "정보주체(고객)", ["개인정보 제공"]),
-        (xs[1], BLUE, "수집", collect[:5] or ["개인정보 입력"]),
-        (xs[2], GREEN, "저장 (DB)", db_lines),
-        (xs[3], YELLOW, "이용", use[:5] or ["처리 목적"]),
-        (xs[4], RED, "파기", dispose[:4] or ["처리방침에 따라 파기"]),
-    ]
-    ymid = y + nh / 2
-    for x, col, title, lines in nodes:
-        p.append(node(x, y, col, title, lines))
-    for i, lab in enumerate(("수집", "저장", "이용", "파기")):
-        p.append(harrow(xs[i] + nw, xs[i + 1], ymid, lab))
-
-    # 분기: 저장/이용 → 연계기관(제3자 제공)
+    xc = cx                      # 세로축 노드 좌측 x
+    cxm = xc + nw / 2            # 세로축 중심
+    db_h = max(56, 28 + len(db_lines) * 11)
+    # y 좌표 누적
+    y0 = 12
+    y1 = y0 + 44 + 30            # 입력
+    y2 = y1 + 50 + 30            # 저장(DB)
+    y3 = y2 + db_h + 34          # 제3자 제공? (마름모)
+    y4 = y3 + 62 + 34            # 이용
+    y5 = y4 + 50 + 34            # 보유기간 경과? (마름모)
+    y6 = y5 + 62 + 34            # 파기
+    y7 = y6 + 50 + 30            # 끝
+    # 도형
+    p.append(ellipse(xc + 30, y0, nw - 60, 44, "개인정보 수집 시작"))
+    p.append(para(xc, y1, nw, 50, BLUE, "정보주체 입력", collect[:3] or ["개인정보 제공"]))
+    p.append(rect(xc, y2, nw, db_h, GREEN, "저장 (DB 테이블.컬럼)", db_lines))
+    p.append(diamond(xc, y3, nw, 62, "제3자 제공?"))
+    p.append(rect(xc, y4, nw, 50, YELLOW, "이용", use[:3] or ["처리 목적"]))
+    p.append(diamond(xc, y5, nw, 62, "보유기간 경과·파기사유?"))
+    p.append(rect(xc, y6, nw, 50, RED, "파기", dispose[:2] or ["처리방침에 따라 파기"]))
+    p.append(ellipse(xc + 30, y7, nw - 60, 44, "파기 완료"))
+    # 세로 화살표(스파인)
+    p.append(vary(cxm, y0 + 44, y1))
+    p.append(vary(cxm, y1 + 50, y2, ) + _txt(cxm + 12, (y1 + 50 + y2) / 2, "수집", 8, BLACK, anchor="start"))
+    p.append(vary(cxm, y2 + db_h, y3, ) + _txt(cxm + 12, (y2 + db_h + y3) / 2, "저장", 8, BLACK, anchor="start"))
+    p.append(vary(cxm, y3 + 62, y4) + _txt(cxm + 8, (y3 + 62 + y4) / 2, "No", 8, BLACK, anchor="start"))
+    p.append(vary(cxm, y4 + 50, y5) + _txt(cxm + 12, (y4 + 50 + y5) / 2, "이용", 8, BLACK, anchor="start"))
+    p.append(vary(cxm, y5 + 62, y6, "ovr") + _txt(cxm + 8, (y5 + 62 + y6) / 2, "Yes", 8, RED, anchor="start"))
+    p.append(vary(cxm, y6 + 50, y7))
+    # 분기: 제3자 제공? →Yes→ 연계기관(오른쪽 평행사변형), 다시 스파인 복귀
     if linked:
-        lx = xs[3]
-        p.append(node(lx, yb, RED, "연계기관 (제3자)", linked[:5]))
-        # 이용 노드 아래 → 연계기관 위 (세로 화살표 + 라벨)
-        p.append(f'<line x1="{lx + nw/2}" y1="{y + nh}" x2="{lx + nw/2}" y2="{yb - 4}" stroke="{RED}" stroke-width="1.8" marker-end="url(#ovr)"/>')
-        p.append(f'<text x="{lx + nw/2 + 6}" y="{(y + nh + yb)/2}" font-size="10" font-weight="600" fill="{RED}">제공</text>')
-
+        by = y3 + 8
+        p.append(para(bx, by, 190, 54, RED, "연계기관 제공(제3자)", linked[:3]))
+        p.append(hary(xc + nw, bx, y3 + 31, "Yes", "ovr"))
+    else:
+        p.append(_txt(xc + nw + 60, y3 + 34, "제3자 제공 없음", 9, BLACK, anchor="start"))
+    # 분기: 보유기간 경과? →No→ 이용으로 회귀(오른쪽으로 돌아 위로)
+    rbx = bx + 40
+    p.append(f'<line x1="{xc + nw}" y1="{y5 + 31}" x2="{rbx}" y2="{y5 + 31}" stroke="{BLACK}" stroke-width="1.5"/>')
+    p.append(f'<line x1="{rbx}" y1="{y5 + 31}" x2="{rbx}" y2="{y4 + 25}" stroke="{BLACK}" stroke-width="1.5"/>')
+    p.append(f'<line x1="{rbx}" y1="{y4 + 25}" x2="{xc + nw + 4}" y2="{y4 + 25}" stroke="{BLACK}" stroke-width="1.5" marker-end="url(#ov)"/>')
+    p.append(_txt(rbx - 40, y5 + 24, "No(계속 이용)", 8, BLACK, anchor="middle"))
     p.append("</svg>")
     return "".join(p)
 
@@ -866,8 +901,9 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
             d.add(String(cx, y + row_h + 1, _clip(g["name"], 22), fontName=font, fontSize=6, fillColor=BLACK))
         return d
 
-    # ── 총괄 흐름도(플로우차트) — 정보주체→수집→저장(DB)→이용→파기, 제공→연계기관 분기 ──────
+    # ── 총괄 흐름도(표준 플로우차트) — 타원·사각형·마름모·평행사변형 + Yes/No 분기 ──────────
     def _overview_drawing(width: float) -> "Drawing":
+        from reportlab.graphics.shapes import Ellipse
         groups = _swimlane_groups(rows)[:8]
         tcols = _table_column_map(rows)
         collect, use, dispose, linked = [], [], [], []
@@ -878,45 +914,76 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
                         dst.append(v)
         db_lines = [f"{t}: {', '.join(cs)}" for t, cs in tcols] or ["(테이블 미확인)"]
 
-        agap = 26
-        nw = (width - 4 * agap) / 5
-        nh = 76
-        branch_gap = 46
-        height = nh + branch_gap + nh + 6
-        d = Drawing(width, height)
-        y = height - nh - 4
-        yb = y - branch_gap - nh
-        xs = [i * (nw + agap) for i in range(5)]
+        nw = 150
+        cx = width * 0.32          # 세로 스파인 중심
+        xl = cx - nw / 2
+        bx = cx + nw / 2 + 70      # 분기(오른쪽)
+        db_h = min(52, max(34, 18 + len(db_lines) * 7))
+        # y(위→아래) — reportlab 은 아래가 0 이므로 top 에서 내려가며 배치. 세로 1페이지에 압축.
+        gap = 12
+        heights = [34, 34, db_h, 40, 34, 40, 34, 34]   # 시작·입력·저장·판단·이용·판단·파기·끝
+        total = sum(heights) + gap * (len(heights) - 1) + 10
+        d = Drawing(width, total)
+        ys = []
+        cur = total - 10
+        for h in heights:
+            cur -= h
+            ys.append(cur)
+            cur -= gap
+        y_start, y_in, y_store, y_d1, y_use, y_d2, y_disp, y_end = ys
 
-        def dnode(x, yy, color, title, lines):
-            d.add(Rect(x, yy, nw, nh, rx=8, ry=8, strokeColor=color, strokeWidth=1.6, fillColor=WHITE))
-            d.add(String(x + nw / 2, yy + nh - 13, title, fontName=font, fontSize=8.5, fillColor=color, textAnchor="middle"))
-            ly = yy + nh - 26
-            maxc = int((nw - 12) / 3.7)
-            for ln in (lines or ["—"])[:5]:
-                d.add(String(x + 6, ly, _clip(ln, maxc), fontName=font, fontSize=6.4, fillColor=BLACK))
-                ly -= 8.5
+        def title_lines(x, yy, w, h, color, title, lines, tsize=7.5):
+            d.add(String(x + w / 2, yy + h - 11, title, fontName=font, fontSize=tsize, fillColor=color, textAnchor="middle"))
+            ly = yy + h - 20
+            maxc = int((w - 10) / 3.5)
+            for ln in (lines or [])[:4]:
+                d.add(String(x + 5, ly, _clip(ln, maxc), fontName=font, fontSize=6, fillColor=BLACK)); ly -= 7.5
 
-        def harrow(x1, x2, yy, label, color):
-            d.add(Line(x1, yy, x2 - 2, yy, strokeColor=color, strokeWidth=1.4))
-            d.add(Polygon([x2, yy, x2 - 5, yy - 2.5, x2 - 5, yy + 2.5], fillColor=color, strokeColor=color))
-            d.add(String((x1 + x2) / 2, yy + 3, label, fontName=font, fontSize=6.5, fillColor=color, textAnchor="middle"))
+        def rectn(x, yy, w, h, color, title, lines=None):
+            d.add(Rect(x, yy, w, h, rx=4, ry=4, strokeColor=color, strokeWidth=1.4, fillColor=WHITE))
+            title_lines(x, yy, w, h, color, title, lines)
 
-        nodes = [(xs[0], BLUE, "정보주체(고객)", ["개인정보 제공"]),
-                 (xs[1], BLUE, "수집", collect[:5] or ["개인정보 입력"]),
-                 (xs[2], GREEN, "저장 (DB)", db_lines),
-                 (xs[3], YELLOW, "이용", use[:5] or ["처리 목적"]),
-                 (xs[4], RED, "파기", dispose[:4] or ["처리방침에 따라 파기"])]
-        for x, col, title, lines in nodes:
-            dnode(x, y, col, title, lines)
-        ymid = y + nh / 2
-        for i, lab in enumerate(("수집", "저장", "이용", "파기")):
-            harrow(xs[i] + nw, xs[i + 1], ymid, lab, BLACK)
+        def paran(x, yy, w, h, color, title, lines=None):
+            sk = 10
+            d.add(Polygon([x + sk, yy + h, x + w, yy + h, x + w - sk, yy, x, yy], strokeColor=color, strokeWidth=1.4, fillColor=WHITE))
+            title_lines(x, yy, w, h, color, title, lines)
+
+        def diamondn(x, yy, w, h, title):
+            d.add(Polygon([x + w / 2, yy + h, x + w, yy + h / 2, x + w / 2, yy, x, yy + h / 2], strokeColor=YELLOW, strokeWidth=1.4, fillColor=WHITE))
+            d.add(String(x + w / 2, yy + h / 2 - 2, title, fontName=font, fontSize=6.4, fillColor=BLACK, textAnchor="middle"))
+
+        def ellipsen(x, yy, w, h, title):
+            d.add(Ellipse(x + w / 2, yy + h / 2, w / 2, h / 2, strokeColor=BLACK, strokeWidth=1.4, fillColor=WHITE))
+            d.add(String(x + w / 2, yy + h / 2 - 2, title, fontName=font, fontSize=7.5, fillColor=BLACK, textAnchor="middle"))
+
+        def vdown(y1, y2, label="", color=BLACK):
+            d.add(Line(cx, y1, cx, y2 + 4, strokeColor=color, strokeWidth=1.3))
+            d.add(Polygon([cx, y2, cx - 2.5, y2 + 5, cx + 2.5, y2 + 5], fillColor=color, strokeColor=color))
+            if label:
+                d.add(String(cx + 6, (y1 + y2) / 2, label, fontName=font, fontSize=6, fillColor=color, textAnchor="start"))
+
+        ellipsen(xl + 25, y_start, nw - 50, 40, "수집 시작")
+        paran(xl, y_in, nw, 40, BLUE, "정보주체 입력", collect[:2] or ["개인정보 제공"])
+        rectn(xl, y_store, nw, db_h, GREEN, "저장(DB 테이블.컬럼)", db_lines)
+        diamondn(xl, y_d1, nw, 46, "제3자 제공?")
+        rectn(xl, y_use, nw, 40, YELLOW, "이용", use[:2] or ["처리 목적"])
+        diamondn(xl, y_d2, nw, 46, "보유기간 경과·파기?")
+        rectn(xl, y_disp, nw, 40, RED, "파기", dispose[:1] or ["처리방침 파기"])
+        ellipsen(xl + 25, y_end, nw - 50, 40, "파기 완료")
+        # 스파인 화살표
+        vdown(y_start, y_in + 40)
+        vdown(y_in, y_store + db_h, "수집")
+        vdown(y_store, y_d1 + 46, "저장")
+        vdown(y_d1, y_use + 40, "No")
+        vdown(y_use, y_d2 + 46, "이용")
+        vdown(y_d2, y_disp + 40, "Yes", RED)
+        vdown(y_disp, y_end + 40)
+        # 분기: 제3자 제공? →Yes→ 연계기관
         if linked:
-            dnode(xs[3], yb, RED, "연계기관(제3자)", linked[:5])
-            d.add(Line(xs[3] + nw / 2, y, xs[3] + nw / 2, yb + nh + 2, strokeColor=RED, strokeWidth=1.4))
-            d.add(Polygon([xs[3] + nw / 2, yb + nh, xs[3] + nw / 2 - 2.5, yb + nh + 5, xs[3] + nw / 2 + 2.5, yb + nh + 5], fillColor=RED, strokeColor=RED))
-            d.add(String(xs[3] + nw / 2 + 8, (y + yb + nh) / 2, "제공", fontName=font, fontSize=6.5, fillColor=RED))
+            paran(bx, y_d1 + 3, 150, 42, RED, "연계기관 제공(제3자)", linked[:2])
+            d.add(Line(xl + nw, y_d1 + 23, bx - 2, y_d1 + 23, strokeColor=RED, strokeWidth=1.3))
+            d.add(Polygon([bx, y_d1 + 23, bx - 5, y_d1 + 20.5, bx - 5, y_d1 + 25.5], fillColor=RED, strokeColor=RED))
+            d.add(String((xl + nw + bx) / 2, y_d1 + 26, "Yes", fontName=font, fontSize=6, fillColor=RED, textAnchor="middle"))
         return d
 
     # ── 상세 표(헤더 흰 글자) ──────────────────────────────────────────────────

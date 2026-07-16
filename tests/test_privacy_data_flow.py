@@ -185,7 +185,7 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertEqual(rows[0]["storage_column"], "email")
         self.assertEqual(rows[0]["encryption"], "AES-256-GCM")
 
-    def test_render_overview_is_flowchart_with_arrows(self) -> None:
+    def test_render_overview_is_standard_flowchart(self) -> None:
         from mori_soc.services.data_flow import render_data_flow_overview_svg
         svg = render_data_flow_overview_svg([
             {"item": "이메일", "table": "User", "storage_column": "email", "storage_location": "User.email",
@@ -193,17 +193,21 @@ class DataFlowServiceTests(unittest.TestCase):
             {"item": "주민등록번호", "table": "Patient", "storage_column": "rrn", "purpose": "진료"},
         ])
         self.assertTrue(svg.startswith("<svg"))
-        # 플로우차트 노드(연결된 흐름): 정보주체→수집→저장→이용→파기
-        for node in ("정보주체(고객)", "수집", "저장 (DB)", "이용", "파기"):
-            self.assertIn(node, svg)
-        # 방향 화살표(marker-end)로 노드가 이어져야 '플로우차트'
-        self.assertGreaterEqual(svg.count("marker-end"), 4)
-        # DB 노드에 테이블.컬럼 리스트 매핑
+        # 표준 플로우차트 도형: 타원(시작/끝) + 마름모(판단) + 평행사변형/사각형
+        self.assertIn("<ellipse", svg)                 # 시작/끝 터미널
+        self.assertIn("<polygon", svg)                 # 마름모·평행사변형
+        self.assertIn("개인정보 수집 시작", svg)
+        self.assertIn("파기 완료", svg)
+        self.assertIn("제3자 제공?", svg)               # 판단 마름모
+        self.assertIn("보유기간 경과·파기사유?", svg)
+        self.assertIn("Yes", svg)                       # 분기 라벨
+        self.assertIn("No", svg)
+        # 방향 화살표로 이어진 흐름
+        self.assertGreaterEqual(svg.count("marker-end"), 6)
+        # DB 사각형에 테이블.컬럼 매핑
         self.assertIn("User: email", svg)
         self.assertIn("Patient: rrn", svg)
-        # 제3자 제공 분기 → 연계기관
-        self.assertIn("연계기관 (제3자)", svg)
-        self.assertIn("택배사", svg)
+        self.assertIn("택배사", svg)                     # 제3자 제공 분기
         self.assertIn("비어 있습니다", render_data_flow_overview_svg([]))
         # 빈 테이블 행이 섞여도 안전(IndexError 회귀 방지)
         render_data_flow_overview_svg([{"item": "이름", "collection_source": "가입"}])
