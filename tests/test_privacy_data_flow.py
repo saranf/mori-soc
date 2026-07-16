@@ -204,9 +204,9 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertIn("No", svg)
         # 방향 화살표로 이어진 흐름
         self.assertGreaterEqual(svg.count("marker-end"), 6)
-        # DB 사각형에 테이블.컬럼 매핑
-        self.assertIn("User: email", svg)
-        self.assertIn("Patient: rrn", svg)
+        # 저장 노드는 테이블명만(컬럼 상세는 별도 매핑 표) — 노드가 장황하지 않게
+        self.assertIn("저장 (DB)", svg)
+        self.assertIn("매핑 표 참고", svg)
         self.assertIn("택배사", svg)                     # 제3자 제공 분기
         self.assertIn("비어 있습니다", render_data_flow_overview_svg([]))
         # 빈 테이블 행이 섞여도 안전(IndexError 회귀 방지)

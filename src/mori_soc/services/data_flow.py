@@ -769,7 +769,10 @@ def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
 
     xc = cx                      # 세로축 노드 좌측 x
     cxm = xc + nw / 2            # 세로축 중심
-    db_h = max(56, 28 + len(db_lines) * 11)
+    # 저장 노드는 '테이블명'만 간결히 — 컬럼 상세는 별도 '테이블·컬럼 매핑' 표에서 본다.
+    db_tables = [t for t, _ in tcols] or ["(테이블 미확인)"]
+    db_node_lines = db_tables[:4] + (["…"] if len(db_tables) > 4 else []) + ["※ 컬럼 상세: 매핑 표 참고"]
+    db_h = max(56, 28 + len(db_node_lines) * 11)
     # y 좌표 누적
     y0 = 12
     y1 = y0 + 44 + 30            # 입력
@@ -782,7 +785,7 @@ def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
     # 도형
     p.append(ellipse(xc + 20, y0, nw - 40, 44, "정보주체 (고객)"))   # 흐름 시작 = 고객
     p.append(para(xc, y1, nw, 50, BLUE, "수집 (개인정보 입력)", collect[:3] or ["개인정보 제공"]))
-    p.append(rect(xc, y2, nw, db_h, GREEN, "저장 (DB 테이블.컬럼)", db_lines))
+    p.append(rect(xc, y2, nw, db_h, GREEN, "저장 (DB)", db_node_lines))
     p.append(diamond(xc, y3, nw, 62, "제3자 제공?"))
     p.append(rect(xc, y4, nw, 50, YELLOW, "이용", use[:3] or ["처리 목적"]))
     p.append(diamond(xc, y5, nw, 62, "보유기간 경과·파기사유?"))
@@ -925,13 +928,15 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
                 for v in src:
                     if v and v not in dst:
                         dst.append(v)
-        db_lines = [f"{t}: {', '.join(cs)}" for t, cs in tcols] or ["(테이블 미확인)"]
+        # 저장 노드는 테이블명만(컬럼 상세는 별도 '테이블·컬럼 매핑' 표 페이지).
+        db_tables = [t for t, _ in tcols] or ["(테이블 미확인)"]
+        db_node_lines = db_tables[:3] + (["…"] if len(db_tables) > 3 else [])
 
         nw = 150
         cx = width * 0.32          # 세로 스파인 중심
         xl = cx - nw / 2
         bx = cx + nw / 2 + 70      # 분기(오른쪽)
-        db_h = min(52, max(34, 18 + len(db_lines) * 7))
+        db_h = min(52, max(34, 18 + len(db_node_lines) * 7))
         # y(위→아래) — reportlab 은 아래가 0 이므로 top 에서 내려가며 배치. 세로 1페이지에 압축.
         gap = 12
         heights = [34, 34, db_h, 40, 34, 40, 34, 34]   # 시작·입력·저장·판단·이용·판단·파기·끝
@@ -977,7 +982,7 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
 
         ellipsen(xl + 20, y_start, nw - 40, 40, "정보주체 (고객)")   # 흐름 시작 = 고객
         paran(xl, y_in, nw, 40, BLUE, "수집 (개인정보 입력)", collect[:2] or ["개인정보 제공"])
-        rectn(xl, y_store, nw, db_h, GREEN, "저장(DB 테이블.컬럼)", db_lines)
+        rectn(xl, y_store, nw, db_h, GREEN, "저장 (DB)", db_node_lines)
         diamondn(xl, y_d1, nw, 46, "제3자 제공?")
         rectn(xl, y_use, nw, 40, YELLOW, "이용", use[:2] or ["처리 목적"])
         diamondn(xl, y_d2, nw, 46, "보유기간 경과·파기?")
@@ -1044,12 +1049,33 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         "ISMS-P 개인정보 처리단계 필수 증적입니다. '테이블·컬럼(코드위치)' 열에 <b>src/…:라인</b> 형태로 표시된 항목은 "
         "코드 스캔(Semgrep, 고객 CI)에서 자동 발견된 개인정보 처리 지점이며, 저장위치·이용목적·보관/파기는 담당자가 확정합니다. "
         "MORI 는 코드를 저장하지 않고 스캔 결과만 받습니다.", body))
-    # 총괄 흐름도(생명주기×조직) 먼저 — 정보주체→담당자PC→시스템DB(테이블.컬럼)→연계기관
+    # 총괄 흐름도(정보주체→수집→저장→이용→파기, 표준 플로우차트)
     story.append(Paragraph("총괄 개인정보 흐름도", h2))
     story += [_overview_drawing(content_w), Spacer(1, 6)]
     # 상세 흐름도(파일별 수집→저장→이용→파기)
     story.append(Paragraph("상세 흐름도 (파일별)", h2))
     story += [_flow_drawing(content_w), Spacer(1, 4)]
+    # ── 별도 페이지: DB 테이블·컬럼 매핑(보기 편하게 분리) ─────────────────────────────
+    tcol_map = _table_column_map(rows)
+    if tcol_map:
+        from reportlab.platypus import PageBreak
+        story.append(PageBreak())
+        story.append(Paragraph("DB 테이블·컬럼 매핑", h2))
+        story.append(Paragraph("저장 단계에서 개인정보가 실제로 담기는 DB 테이블과 컬럼입니다(스캔 자동 추출). "
+                               "총괄 흐름도의 '저장(DB)' 노드 상세.", body))
+        tc_head = ["DB 테이블", "개인정보 컬럼", "컬럼 수"]
+        tc_data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in tc_head]]
+        for t, cs in tcol_map:
+            tc_data.append([Paragraph(esc(t), cell), Paragraph(esc(", ".join(cs)), cell),
+                            Paragraph(str(len(cs)), cell)])
+        tc_table = Table(tc_data, colWidths=[70 * mm, 150 * mm, 20 * mm], repeatRows=1)
+        tc_table.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("BACKGROUND", (0, 0), (-1, 0), BLACK), ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
+            ("GRID", (0, 0), (-1, -1), 0.4, NEUTRAL), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        story += [tc_table, PageBreak()]
     enc = str(summary.get("encryption") or "").strip()
     story.append(Paragraph("요약", h2))
     story.append(Paragraph(
