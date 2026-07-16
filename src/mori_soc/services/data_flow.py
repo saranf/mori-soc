@@ -663,19 +663,32 @@ def render_data_flow_swimlane_svg(rows: list[dict[str, Any]]) -> str:
 
 
 def _table_column_map(rows: list[dict[str, Any]]) -> list[tuple[str, list[str]]]:
-    """행들에서 테이블 → 컬럼 리스트 집계(시스템·DB 블록 표시용). 컬럼 없으면 항목명으로 폴백."""
+    """행들에서 **테이블 → 컬럼 리스트** 집계 — 같은 테이블은 한 줄로 병합(중복 제거).
+
+    table 필드가 비면 storage_location('User.email' 또는 'User.email, phone')에서 테이블·컬럼을
+    유도한다. 컬럼도 없으면 항목명으로 폴백. (동일 테이블이 여러 행에 걸쳐도 1회만 나온다.)
+    """
     tmap: dict[str, list[str]] = {}
     order: list[str] = []
     for r in rows:
-        raw_tbl = str(r.get("table") or r.get("storage_table") or "").strip()
-        table = (raw_tbl.split() or [""])[0].split("(")[0].strip() or "(미지정 테이블)"
+        table = str(r.get("table") or "").strip()
         cols_raw = str(r.get("storage_column") or "").strip()
+        loc = str(r.get("storage_location") or "").strip()
+        # 테이블 없으면 저장위치 'Table.col…' 에서 유도
+        if not table and "." in loc and " " not in loc.split(".", 1)[0]:
+            table, tail = loc.split(".", 1)
+            table = table.strip()
+            if not cols_raw:
+                cols_raw = tail.strip()
+        if not table:
+            raw_tbl = str(r.get("storage_table") or "").strip()
+            table = (raw_tbl.split() or [""])[0].split("(")[0].strip() or "(미지정 테이블)"
         cols = [c.strip() for c in cols_raw.split(",") if c.strip()] or [str(r.get("item") or "").strip()]
         if table not in tmap:
             tmap[table] = []
             order.append(table)
         for c in cols:
-            if c and c not in tmap[table]:
+            if c and c not in tmap[table]:   # 같은 테이블 내 컬럼 중복 제거
                 tmap[table].append(c)
     return [(t, tmap[t]) for t in order]
 
@@ -767,8 +780,8 @@ def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
     y6 = y5 + 62 + 34            # 파기
     y7 = y6 + 50 + 30            # 끝
     # 도형
-    p.append(ellipse(xc + 30, y0, nw - 60, 44, "개인정보 수집 시작"))
-    p.append(para(xc, y1, nw, 50, BLUE, "정보주체 입력", collect[:3] or ["개인정보 제공"]))
+    p.append(ellipse(xc + 20, y0, nw - 40, 44, "정보주체 (고객)"))   # 흐름 시작 = 고객
+    p.append(para(xc, y1, nw, 50, BLUE, "수집 (개인정보 입력)", collect[:3] or ["개인정보 제공"]))
     p.append(rect(xc, y2, nw, db_h, GREEN, "저장 (DB 테이블.컬럼)", db_lines))
     p.append(diamond(xc, y3, nw, 62, "제3자 제공?"))
     p.append(rect(xc, y4, nw, 50, YELLOW, "이용", use[:3] or ["처리 목적"]))
@@ -962,8 +975,8 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
             if label:
                 d.add(String(cx + 6, (y1 + y2) / 2, label, fontName=font, fontSize=6, fillColor=color, textAnchor="start"))
 
-        ellipsen(xl + 25, y_start, nw - 50, 40, "수집 시작")
-        paran(xl, y_in, nw, 40, BLUE, "정보주체 입력", collect[:2] or ["개인정보 제공"])
+        ellipsen(xl + 20, y_start, nw - 40, 40, "정보주체 (고객)")   # 흐름 시작 = 고객
+        paran(xl, y_in, nw, 40, BLUE, "수집 (개인정보 입력)", collect[:2] or ["개인정보 제공"])
         rectn(xl, y_store, nw, db_h, GREEN, "저장(DB 테이블.컬럼)", db_lines)
         diamondn(xl, y_d1, nw, 46, "제3자 제공?")
         rectn(xl, y_use, nw, 40, YELLOW, "이용", use[:2] or ["처리 목적"])

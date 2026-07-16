@@ -196,7 +196,7 @@ class DataFlowServiceTests(unittest.TestCase):
         # 표준 플로우차트 도형: 타원(시작/끝) + 마름모(판단) + 평행사변형/사각형
         self.assertIn("<ellipse", svg)                 # 시작/끝 터미널
         self.assertIn("<polygon", svg)                 # 마름모·평행사변형
-        self.assertIn("개인정보 수집 시작", svg)
+        self.assertIn("정보주체 (고객)", svg)          # 흐름 시작 = 고객
         self.assertIn("파기 완료", svg)
         self.assertIn("제3자 제공?", svg)               # 판단 마름모
         self.assertIn("보유기간 경과·파기사유?", svg)
