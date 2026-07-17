@@ -16,6 +16,19 @@ It sits **read-only on top of your existing** **Zabbix · FleetDM · Wazuh · Tr
 
 > **Core in one line** — **operational signal → human decision → control evidence.** Everything else (monitoring, vulnerabilities, incidents, privacy, code review) is a source or a vertical feeding that spine.
 
+**The one flow MORI is built around** (everything below is in service of this):
+
+```
+source → collect → human decision → control → evidence approval → audit package
+```
+
+1. **Collect** technical signals (Zabbix/Fleet/Trivy/code scans push structured results — MORI never reads your code)
+2. **Record** the human decision (triage, confirm/exception, owner sign-off)
+3. **Preserve** it as versioned, hash-chained control evidence (approve → immutable snapshot)
+4. **Reproduce** what was true at any audit date (as-of replay + signed evidence bundle)
+
+Three representative walk-throughs: **operational alert → decision → evidence** · **code PII → human confirmation → privacy package** · **control version change → evidence impact**. The rest — monitoring, vulnerabilities, incidents, **privacy / code-review / account governance are verticals (expansion modules)** hanging off this spine, not the headline.
+
 > **An "evidence layer," not a "viewing layer"** — time-series and log visualization are delegated to Grafana/Loki; MORI sits above them to handle **judge → record → prove** (triage → remediation → control mapping → evidence PDF → audit log).
 
 > **Who it's for** — a **self-hosted technical evidence layer for teams that already run Zabbix and open-source security tools** and need to turn that operational reality into audit evidence. Not a SaaS GRC suite (no employee/vendor lifecycle); it complements those by covering the technical-operations side. This English page leads with ISO 27001 / security operations; the [Korean page](./README.ko.md) is the ISMS-P entry point.
@@ -62,6 +75,14 @@ flowchart LR
 > **Read-only by default.** MORI never writes to your source systems unless you explicitly enable it. The one exception is **optional, opt-in, audited Zabbix write-back** (triage comment / ack / suppress) — off unless `MORI_ZABBIX_WRITEBACK_MODE` is set, and every write is recorded in the audit log. Everything else is ingest/read only.
 
 ## Key features
+
+MORI is structured in **three layers** — the Core is the product; the rest plug into it:
+
+- **Core (the product)** — Control ↔ Decision ↔ Evidence: control governance, evidence trust/approval/freshness, gap workflow, audit packages.
+- **Evidence Sources (plug-ins)** — Zabbix · Fleet · Trivy · Wazuh · code review push structured signals in.
+- **Verticals (expansion modules)** — Privacy (개인정보 3.x) · Account governance · Vulnerability remediation.
+
+The table below is the full inventory across those layers (not a flat feature pile):
 
 | Feature | Summary |
 |---|---|
