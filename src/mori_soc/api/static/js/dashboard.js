@@ -2997,6 +2997,33 @@
     }
     window.loadGapDeadlines = loadGapDeadlines;
 
+    // ── 월별 evidence change report(#15) — 지난달 대비 변경을 MORI 데이터에서 도출 ───────────
+    async function loadChangeReport(month) {
+      const box = document.getElementById('change_report_box');
+      if (!box) return;
+      box.style.display = 'block';
+      box.innerHTML = `<span class="empty">${tt('dash.dyn.loading','로딩 중…')}</span>`;
+      try {
+        const q = month ? ('?month='+encodeURIComponent(month)) : '';
+        const res = await fetch('/controls/change-report'+q);
+        if (!res.ok) { box.innerHTML = `<span class="empty">${tt('dash.ctl.err','불러오지 못했습니다.')}</span>`; return; }
+        const d = await res.json();
+        const kv = (obj) => Object.keys(obj||{}).length ? Object.entries(obj).map(([k,v])=>`${escapeHtml(k)} <b>${v}</b>`).join(' · ') : `<span style="color:#6b7280">${tt('dash.chg.none','변경 없음')}</span>`;
+        const gapList = (arr) => (arr&&arr.length) ? arr.map(g=>`<li>${escapeHtml(g.control_id||'-')} ${escapeHtml(g.title||'')}</li>`).join('') : `<li style="color:#6b7280">${tt('dash.chg.none','변경 없음')}</li>`;
+        box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px"><div style="font-weight:600;color:#111827;font-size:12px">${tt('dash.chg.btn','월별 변경')} — <input id="chg_month" type="month" value="${escapeHtml(d.month||'')}" onchange="loadChangeReport(this.value)" style="font-size:12px;padding:2px 6px;border:1px solid #e5e7eb;border-radius:5px"></div><button class="secondary" style="width:auto;padding:2px 9px;font-size:11px" onclick="document.getElementById('change_report_box').style.display='none'">${tt('dash.dyn.cancel','닫기')}</button></div>
+          <div style="font-size:11px;color:#111827;margin:4px 0 6px;line-height:1.6">${tt('dash.chg.help','읽는 법: 선택한 달에 MORI 데이터에서 실제로 바뀐 것만 모았어요. 새 증적(통제별), 승인/대체 스냅샷, 신규 Gap, Gap 전이(조치·예외·재검증). 별도 BI가 아니라 승인·Gap·증적 데이터에서 바로 나온 값이에요.')}</div>
+          <div style="font-size:12px;line-height:1.9">
+            <div><b style="color:#2563eb">${tt('dash.chg.new_ev','새 증적')}</b>: ${d.new_evidence_count} (${kv(d.new_evidence_by_control)})</div>
+            <div><b style="color:#16a34a">${tt('dash.chg.appr','증적 승인/대체')}</b>: ${kv(d.approvals_by_status)}</div>
+            <div><b style="color:#dc2626">${tt('dash.chg.new_gap','신규 Gap')}</b>: ${d.new_gap_count}</div>
+            <ul style="margin:2px 0 4px;padding-left:16px;font-size:11px">${gapList(d.new_gaps)}</ul>
+            <div><b style="color:#111827">${tt('dash.chg.gap_trans','Gap 전이')}</b>: ${kv(d.gap_transitions)}</div>
+            <div><b style="color:#16a34a">${tt('dash.chg.resolved','재검증(resolved)')}</b>: ${(d.resolved_gaps||[]).length} · <b style="color:#ca8a04">${tt('dash.chg.exc','신규 예외')}</b>: ${(d.new_exceptions||[]).length}</div>
+          </div>`;
+      } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.ctl.err','불러오지 못했습니다.')}</span>`; }
+    }
+    window.loadChangeReport = loadChangeReport;
+
     async function loadControlTree() {
       const box = document.getElementById('control_tree_box');
       if (!box) return;

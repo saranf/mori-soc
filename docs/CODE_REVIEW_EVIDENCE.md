@@ -165,6 +165,15 @@ MORI 는 자동 수집 증적이 많으므로, '초록 Compliant' 하나로 뭉�
 - `POST /controls/audit-sample` — 표본 메타(population/sample 수·method). `.zip` — manifest.json + sample.csv.
 - UI: 통제 카탈로그 헤더 `감사 표본` — 자산 담당자를 모집단(중요도=위험)으로 표본 추출 + ZIP.
 
+### 월별 evidence change report(#15)
+
+경영진·감사용 '지난달 대비 무엇이 바뀌었나'를 MORI 데이터에서 **바로 도출**(별도 BI 아님, 모리다움).
+`services/change_report.py`의 `build_evidence_change_report(start, end, evidence, approvals, gaps)`:
+- new_evidence(+통제별) · approvals_by_status(approved/superseded/revoked…) · new_gaps ·
+  gap_transitions(to 상태별) · resolved_gaps · new_exceptions. 기간은 `month_bounds('YYYY-MM')`.
+- `GET /controls/change-report?month=YYYY-MM`(미지정 시 이번 달). UI: 통제 카탈로그 `월별 변경`
+  패널(월 선택 → 새 증적·승인·Gap·전이 요약).
+
 ### 처리 보장(트랜잭션 경계)
 
 인제스트/증적 파이프라인은 **부분 성공을 정직하게 보고**한다(조용히 성공으로 위장하지 않음).

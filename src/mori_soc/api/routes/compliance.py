@@ -482,6 +482,35 @@ def register_compliance(ctx: RouteContext) -> None:
         return {"gaps": gaps, "open": sum(1 for g in gaps if g.get("status") in OPEN_STATUSES),
                 "total": len(gaps)}
 
+    @app.get("/controls/change-report", tags=["Compliance"])
+    def change_report(request: Request, month: str | None = None) -> dict[str, Any]:
+        """월별 evidence change report(#15) — 새 증적·승인/대체·신규 Gap·조치/예외를 기간 집계.
+
+        month=YYYY-MM(미지정 시 이번 달). 별도 BI 가 아니라 MORI 데이터에서 바로 도출(모리다움).
+        """
+        from datetime import datetime as _dt
+        from datetime import timezone as _tz
+
+        from mori_soc.services.change_report import (
+            build_evidence_change_report,
+            month_bounds,
+        )
+        _require_ev(request)
+        if not month:
+            month = _dt.now(tz=_tz.utc).strftime("%Y-%m")
+        try:
+            start, end = month_bounds(month)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="month must be YYYY-MM") from None
+        repo = ctx.state_repo
+        approvals = repo.load_evidence_approvals(None) if repo is not None else []
+        gaps = repo.load_gaps() if repo is not None else []
+        evidence = list((ctx.control_evidence or {}).values())
+        rep = build_evidence_change_report(start, end, evidence=evidence,
+                                           approvals=approvals, gaps=gaps)
+        rep["month"] = month
+        return rep
+
     @app.get("/gaps/deadlines", tags=["Compliance"])
     def gaps_deadlines(request: Request) -> dict[str, Any]:
         """Gap 조치 기한·예외 만료(#14) — 초과 조치·만료 예외·임박 예외를 표면화(자동연장 금지)."""
