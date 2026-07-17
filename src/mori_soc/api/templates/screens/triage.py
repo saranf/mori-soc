@@ -9,6 +9,8 @@ _TAB_TRIAGE_HTML = """    <!-- ── Tab: 알림 분류 (Alert Triage) ──�
         <h2 data-i18n=\"dash.card.triage\">알림 분류</h2>
         <div class=\"subtext\" data-i18n=\"dash.card.triage.sub\">최근 24시간 경보예요. 상태를 눌러 처리하세요.</div>
         <div style=\"margin:0 0 12px;padding:8px 11px;background:#f9fafb;border:1px solid #e5e7eb;border-left:3px solid #2563eb;border-radius:8px;font-size:12px;color:#4b5563;line-height:1.65\" data-i18n=\"dash.card.triage.help\">이 탭을 열어두면 30초마다 자동으로 갱신돼요(처리 중일 땐 멈춤). 상태를 눌러 접수 → 조사중 → 완료로 처리하고, 소스 배지를 누르면 원본(Zabbix 등)으로 이동합니다.</div>
+        <!-- 요약 스트립: 최근 24h 경보 상태별 집계 (loadTriage 가 실데이터로 채움) -->
+        <div class=\"mori-strip\" id=\"triage_summary\" style=\"display:none;margin-bottom:14px;padding:14px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px\"></div>
         <div class=\"table-wrap\" id=\"triage_table\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         <div style=\"margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap\">
           <button id=\"reload_triage\" class=\"secondary\" data-i18n=\"dash.btn.reload\">새로고침</button>

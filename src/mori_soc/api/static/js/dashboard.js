@@ -987,6 +987,18 @@
         if (!res.ok) { triageTableEl.innerHTML = '<span class="empty">' + tt('dash.dyn.alerts_load_fail', '경보 로드 실패') + '</span>'; return; }
         const data = await res.json();
         const alerts = data.alerts || [];
+        // 요약 스트립: 상태별 집계 (실데이터)
+        try {
+          const sum = document.getElementById('triage_summary');
+          if (sum) {
+            const cnt = (s) => alerts.filter((a) => ((a.triage && a.triage.status) || 'pending') === s).length;
+            sum.innerHTML =
+              `<div class="ms-metric"><span class="ms-k">${escapeHtml(tt('dash.triage.sum_new','미확인'))}</span><span class="ms-v blue">${cnt('pending')}</span></div>`
+              + `<div class="ms-div"></div><div class="ms-metric"><span class="ms-k">${escapeHtml(tt('dash.triage.sum_reviewing','검토 중'))}</span><span class="ms-v amber">${cnt('reviewing')}</span></div>`
+              + `<div class="ms-div"></div><div class="ms-metric"><span class="ms-k">${escapeHtml(tt('dash.triage.sum_resolved','조치 완료'))}</span><span class="ms-v green">${cnt('resolved')}</span></div>`;
+            sum.style.display = alerts.length ? 'flex' : 'none';
+          }
+        } catch (e) {}
         if (!alerts.length) { triageTableEl.innerHTML = '<span class="empty">' + tt('dash.dyn.alerts_empty', '최근 24h 경보 없음') + '</span>'; return; }
         // Cache triage data for history display in modal
         alerts.forEach(a => { if (a.triage) triageDataCache[a.alert_id] = a.triage; });
@@ -1098,6 +1110,18 @@
         if (!res.ok) { incidentsListEl.innerHTML = '<span class="empty">' + tt('dash.dyn.incidents_load_fail', '인시던트 로드 실패') + '</span>'; return; }
         const data = await res.json();
         const list = data.incidents || [];
+        // 요약 스트립: 상태별 집계 (실데이터)
+        try {
+          const sum = document.getElementById('incident_summary');
+          if (sum) {
+            const inSet = (arr) => list.filter((i) => arr.includes(i.status)).length;
+            sum.innerHTML =
+              `<div class="ms-metric"><span class="ms-k">${escapeHtml(tt('dash.inc.sum_open','열림'))}</span><span class="ms-v red">${inSet(['open'])}</span></div>`
+              + `<div class="ms-div"></div><div class="ms-metric"><span class="ms-k">${escapeHtml(tt('dash.inc.sum_investigating','조사 중'))}</span><span class="ms-v amber">${inSet(['investigating'])}</span></div>`
+              + `<div class="ms-div"></div><div class="ms-metric"><span class="ms-k">${escapeHtml(tt('dash.inc.sum_resolved','종결'))}</span><span class="ms-v green">${inSet(['resolved','closed'])}</span></div>`;
+            sum.style.display = list.length ? 'flex' : 'none';
+          }
+        } catch (e) {}
         if (!list.length) { incidentsListEl.innerHTML = '<span class="empty">' + tt('dash.dyn.incidents_empty', '인시던트 없음') + '</span>'; return; }
         const STATUS_COLOR = { open: '#dc2626', investigating: '#ca8a04', resolved: '#16a34a', closed: '#111827' };
         incidentsListEl.innerHTML = list.map(inc => {
