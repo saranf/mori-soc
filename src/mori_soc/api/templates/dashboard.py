@@ -37,10 +37,10 @@ def render_user_dashboard_html(
       <span class=\"brand\">MORI</span>
       <nav class=\"tabs-nav\" id=\"main_tabs_nav\">
         <button class=\"active\" data-tab=\"dashboard\" onclick=\"switchTab('dashboard')\" data-i18n=\"dash.tab.dashboard\">대시보드</button>
-        <button data-tab=\"triage\" onclick=\"switchTab('triage')\" data-i18n=\"dash.tab.triage\">Alert Triage</button>
+        <button data-tab=\"triage\" onclick=\"switchTab('triage')\" data-i18n=\"dash.tab.triage\">알림 분류</button>
         <button data-tab=\"incidents\" onclick=\"switchTab('incidents')\" data-i18n=\"dash.tab.incidents\">인시던트</button>
         <button data-tab=\"assets\" onclick=\"switchTab('assets')\" data-i18n=\"dash.tab.assets\">자산 현황</button>
-        <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\" data-i18n=\"dash.tab.compliance\">Compliance PDCA</button>
+        <button data-tab=\"compliance\" onclick=\"switchTab('compliance')\" data-i18n=\"dash.tab.compliance\">심사 준비</button>
         <button id=\"tab_btn_accounts\" data-tab=\"accounts\" onclick=\"switchTab('accounts')\" data-i18n=\"dash.tab.accounts\" style=\"display:none\">계정</button>
         <button data-tab=\"guides\" onclick=\"switchTab('guides')\" data-i18n=\"dash.tab.guides\">가이드 &amp; 기준</button>
       </nav>

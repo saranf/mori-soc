@@ -25,12 +25,12 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
     <header class="topbar">
       <span class="brand" data-i18n="admin.brand">MORI 콘솔</span>
       <nav class="tabs-nav" id="admin_tabs_nav">
-        <button class="active" data-atab="overview" onclick="switchAdminTab('overview')" data-i18n="admin.tab.overview">Overview</button>
-        <button data-atab="remediation" onclick="switchAdminTab('remediation')" data-i18n="admin.tab.remediation">Remediation</button>
-        <button data-atab="assets" onclick="switchAdminTab('assets')" data-i18n="admin.tab.assets">자산 / Owners</button>
-        <button data-atab="access" onclick="switchAdminTab('access')" data-i18n="admin.tab.access">Access Control</button>
-        <button data-atab="logs" onclick="switchAdminTab('logs')" data-i18n="admin.tab.logs">Audit &amp; Logs</button>
-        <button data-atab="settings" onclick="switchAdminTab('settings')" data-i18n="admin.tab.settings">Settings</button>
+        <button class="active" data-atab="overview" onclick="switchAdminTab('overview')" data-i18n="admin.tab.overview">현황</button>
+        <button data-atab="remediation" onclick="switchAdminTab('remediation')" data-i18n="admin.tab.remediation">조치</button>
+        <button data-atab="assets" onclick="switchAdminTab('assets')" data-i18n="admin.tab.assets">자산·담당자</button>
+        <button data-atab="access" onclick="switchAdminTab('access')" data-i18n="admin.tab.access">권한 관리</button>
+        <button data-atab="logs" onclick="switchAdminTab('logs')" data-i18n="admin.tab.logs">감사 로그</button>
+        <button data-atab="settings" onclick="switchAdminTab('settings')" data-i18n="admin.tab.settings">설정</button>
       </nav>
       <div class="top-actions">
         <span id="admin_user_badge" style="font-size:13px;color:#111827"></span>
