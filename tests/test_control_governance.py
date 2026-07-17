@@ -79,6 +79,27 @@ class ControlGovernanceServiceTests(unittest.TestCase):
         # 해시 방식 메타는 content_hash 대상에서 제외(내용 아님)
         self.assertEqual(content_hash(v), content_hash({**v, "canonicalization": "other"}))
 
+    def test_framework_version_license_metadata(self) -> None:
+        # 리뷰 #8: 공식 원문 배포는 라이선스 문제 → content_origin·license·redistribution 등 기록.
+        v = build_framework_version(framework_id="ISMS-P", version="2023", now="2026-01-01",
+                                    license_meta={"content_origin": "official", "license": "KISA",
+                                                  "redistribution_allowed": False, "source_url": "https://kisa"})
+        self.assertEqual(v["license"]["content_origin"], "official")
+        self.assertFalse(v["license"]["redistribution_allowed"])
+        self.assertEqual(v["license"]["source_url"], "https://kisa")
+        # 라이선스 미지정이면 기본(빈 값·배포 불가 보수적)
+        v2 = build_framework_version(framework_id="X", version="1", now="2026-01-01")
+        self.assertFalse(v2["license"]["redistribution_allowed"])
+
+    def test_catalog_import_marks_mori_summary(self) -> None:
+        # 카탈로그 import 버전은 공식 원문 미포함 → content_origin=mori_summary
+        from mori_soc.services.control_governance import plan_catalog_import
+        plan = plan_catalog_import([{"id": "1.1", "framework": "isms-p", "version": "2023",
+                                     "title_ko": "t"}], now="2026-01-01")
+        fv = plan["framework_versions"][0]
+        self.assertEqual(fv["license"]["content_origin"], "mori_summary")
+        self.assertTrue(fv["license"]["redistribution_allowed"])
+
     def test_version_state_machine(self) -> None:
         from mori_soc.services.control_governance import can_version_transition
         self.assertTrue(can_version_transition("draft", "active"))

@@ -104,16 +104,31 @@ def build_framework_version(*, framework_id: str, version: str, effective_from: 
                             effective_to: str | None = None, status: str = "draft",
                             source_type: str = "user_upload", source_hash: str = "",
                             supersedes: str | None = None, change_reason: str = "",
-                            importer_version: str = "", now: str = "",
-                            created_by: str = "") -> dict[str, Any]:
-    """기준 버전 레코드. id = framework_id:version(중복 시 서비스층에서 거부)."""
+                            importer_version: str = "", license_meta: dict[str, Any] | None = None,
+                            now: str = "", created_by: str = "") -> dict[str, Any]:
+    """기준 버전 레코드. id = framework_id:version(중복 시 서비스층에서 거부).
+
+    라이선스 메타(#8): 공식 원문 배포는 라이선스 문제라 content_origin·license·redistribution/
+    modification/commercial_use·source_url·imported_by_user 를 함께 기록한다. MORI 기본 배포는
+    통제 코드·번호·요약만, 공식 원문은 사용자가 import — 이 메타로 배포 가능 여부를 표시한다.
+    """
     fid = _slug(framework_id)
     fv_id = f"{fid}:{_slug(version)}"
+    lic = license_meta or {}
     rec: dict[str, Any] = {
         "id": fv_id, "framework_version_id": fv_id, "framework_id": fid, "version": str(version),
         "effective_from": effective_from, "effective_to": effective_to, "status": status,
         "source_type": source_type, "source_hash": source_hash, "supersedes": supersedes,
         "change_reason": change_reason, "importer_version": importer_version,
+        "license": {
+            "content_origin": str(lic.get("content_origin") or ""),   # official|mori_summary|user
+            "license": str(lic.get("license") or ""),
+            "redistribution_allowed": bool(lic.get("redistribution_allowed", False)),
+            "modification_allowed": bool(lic.get("modification_allowed", False)),
+            "commercial_use_allowed": bool(lic.get("commercial_use_allowed", False)),
+            "source_url": str(lic.get("source_url") or ""),
+            "imported_by_user": bool(lic.get("imported_by_user", False)),
+        },
         "created_at": now, "created_by": created_by,
     }
     _stamp_hash(rec)
@@ -292,7 +307,11 @@ def plan_catalog_import(
         if fw not in frameworks:
             frameworks[fw] = build_framework(framework_id=fw, name=str(c.get("framework") or fw),
                                              now=now, created_by=created_by)
-        fv = build_framework_version(framework_id=fw, version=ver, now=now, created_by=created_by)
+        # 카탈로그 import 는 공식 원문을 담지 않으므로 content_origin=mori_summary(#8).
+        fv = build_framework_version(
+            framework_id=fw, version=ver, now=now, created_by=created_by,
+            license_meta={"content_origin": "mori_summary", "redistribution_allowed": True,
+                          "modification_allowed": True})
         versions[fv["id"]] = fv
         title = str(c.get("title_ko") or c.get("title_en") or cid)
         interp = {"mori_summary": str(c.get("intent_ko") or c.get("intent_en") or ""),

@@ -223,7 +223,9 @@ def register_control_governance(ctx: RouteContext) -> None:
             source_hash=str(payload.get("source_hash", "")),
             supersedes=payload.get("supersedes"),
             change_reason=str(payload.get("change_reason", "")),
-            importer_version=str(payload.get("importer_version", "")), now=_now(), created_by=actor)
+            importer_version=str(payload.get("importer_version", "")),
+            license_meta=payload.get("license") if isinstance(payload.get("license"), dict) else None,
+            now=_now(), created_by=actor)
         if _find(KIND_FRAMEWORK_VERSION, rec["id"]):
             raise HTTPException(status_code=409, detail="이미 존재하는 버전입니다(덮어쓰기 금지).")
         return _save(KIND_FRAMEWORK_VERSION, rec, actor, "GOV_VERSION_CREATE")
