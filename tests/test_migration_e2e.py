@@ -335,6 +335,85 @@ class MigrationE2ETests(unittest.TestCase):
         with self.assertRaises(Exception):
             repo.save_governance("control_relationship", "rel-bad", bad_cov)
 
+    def test_full_control_lifecycle_e2e(self) -> None:
+        """완전한 통제 생명주기 E2E(2차 리뷰 #3) — 실 postgres, 재시작 후 재현까지 한 흐름.
+
+        framework/version/control → 내부통제 → 증적계약 → 운영주기/주기통제 → 평가(근거 고정) →
+        Gap(후보→조치→재검증) → 재시작 → 정규 테이블·이벤트체인·as-of 모두 보존/재현.
+        """
+        from mori_soc.repositories.state_postgres import PostgresStateRepository
+        from mori_soc.services.control_governance import (
+            apply_cycle_control_update,
+            build_assurance_cycle,
+            build_cycle_control,
+            build_evidence_contract,
+            build_framework,
+            build_framework_version,
+            build_organization_control,
+            verify_governance_chain,
+        )
+        from mori_soc.services.gap_workflow import apply_transition, build_gap
+        repo = PostgresStateRepository(self._url)
+        repo.apply_schema()
+
+        # 1) 기준 → 버전 → 통제(정규 테이블 + FK)
+        repo.save_governance("framework", "isms-p", build_framework(framework_id="ISMS-P", name="ISMS-P"))
+        v = build_framework_version(framework_id="ISMS-P", version="2023", now="2026-01-01")
+        repo.save_governance("framework_version", v["id"], v)
+        ctl = {"id": "isms-p:2023:2.9.4", "framework_version_id": "isms-p:2023",
+               "control_uid": "log", "display_code": "2.9.4", "title": "로그", "interpretations": {}}
+        repo.save_governance("control_definition", ctl["id"], ctl)
+
+        # 2) 내부통제 → 증적계약(FK org_control)
+        oc = build_organization_control(code="CORP-LOG-002", title="월간 검토", now="2026-01-01")
+        repo.save_governance("organization_control", oc["id"], oc)
+        ec = build_evidence_contract(organization_control_id=oc["id"], version=1,
+                                     frequency="monthly", now="2026-01-01")
+        repo.save_governance("evidence_contract", ec["id"], ec)
+
+        # 3) 운영주기 → 주기통제 → 증적 승인 → 평가(근거 evidence_set_hash 고정)
+        cyc = build_assurance_cycle(cycle_id="isms-p-2026", name="2026 ISMS-P",
+                                    framework_version_id="isms-p:2023", now="2026-01-01")
+        repo.save_governance("assurance_cycle", cyc["id"], cyc)
+        cc = build_cycle_control(cycle_id="isms-p-2026", control_ref="corp-log-002:v1",
+                                 assignee="김보안", applicability="applicable",
+                                 now="2026-02-01T00:00:00+00:00", created_by="u")
+        apply_cycle_control_update(cc, actor="김보안", now="2026-06-01T00:00:00+00:00",
+                                   evidence_status="approved")
+        apply_cycle_control_update(cc, actor="심사자", now="2026-07-01T00:00:00+00:00",
+                                   assessment_status="effective", evidence_set_hash="sha256:ev1",
+                                   rationale="월간 검토 3건 확인")
+        cc.pop("_changed", None)
+        repo.save_governance("cycle_control", cc["id"], cc)
+
+        # 4) Gap 후보 → 조치 → 재검증(resolution_type)
+        gap = build_gap(source="privacy_flow", control_id="3.4.1", key="dispose",
+                        title="파기 근거 미발견", detail="withdraw 경로 없음", now="2026-03-01T00:00:00+00:00")
+        apply_transition(gap, "confirmed", actor="개발팀", now="2026-03-05T00:00:00+00:00")
+        apply_transition(gap, "remediation", actor="개발팀", now="2026-03-10T00:00:00+00:00")
+        apply_transition(gap, "resolved", actor="심사자", now="2026-04-01T00:00:00+00:00",
+                         resolution_type="automatically_reverified", verifying_scan="scan-0401")
+        repo.save_gap(gap["gap_id"], gap)
+
+        # 5) 재시작(새 repo) → 전부 보존·재현
+        repo2 = PostgresStateRepository(self._url)
+        # 정규 테이블 라운드트립
+        self.assertIn(ec["id"], {r["id"] for r in repo2.load_governance("evidence_contract")})
+        cc2 = {r["id"]: r for r in repo2.load_governance("cycle_control")}[cc["id"]]
+        # 평가 근거 스냅샷 보존(불변)
+        self.assertEqual(cc2["assessments"][0]["evidence_set_hash"], "sha256:ev1")
+        # as-of: 3월(승인 전) vs 7월(effective) 재현
+        from mori_soc.services.control_governance import cycle_control_as_of
+        self.assertEqual(cycle_control_as_of(cc2, "2026-03-15T00:00:00+00:00")["evidence_status"], "missing")
+        jul = cycle_control_as_of(cc2, "2026-07-15T00:00:00+00:00")
+        self.assertEqual(jul["assessment_status"], "effective")
+        # Gap 해결 근거 보존
+        g2 = next(g for g in repo2.load_gaps() if g["gap_id"] == gap["gap_id"])
+        self.assertEqual(g2["status"], "resolved")
+        self.assertEqual(g2["resolution_type"], "automatically_reverified")
+        # 이벤트 원장 체인 무결
+        self.assertTrue(verify_governance_chain(repo2.load_governance_events())["ok"])
+
     def test_governance_normalized3_cycle_fk(self) -> None:
         """정규화 3차(#4): cycle_control 은 실재하는 assurance_cycle 을 참조해야(FK)."""
         from mori_soc.repositories.state_postgres import PostgresStateRepository

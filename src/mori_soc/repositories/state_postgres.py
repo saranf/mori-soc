@@ -548,27 +548,33 @@ class PostgresStateRepository(StateRepository):
     # ── gaps: 기술 Gap 워크플로(#5) ───────────────────────────────────────────
     _GAP_COLS = ("gap_id", "source", "control_id", "key", "title", "detail", "status",
                  "assignee", "due_date", "resolution", "evidence_ref", "created_by",
-                 "created_at", "updated_at", "history")
+                 "created_at", "updated_at", "history", "resolution_detail")
+    # resolution_detail JSONB 로 보관하는 해결 근거 필드(#19).
+    _GAP_RESOLUTION_FIELDS = ("resolution_type", "verifier", "verified_at", "verifying_scan")
 
     def save_gap(self, gap_id: str, record: dict[str, Any]) -> None:
+        rdetail = {k: record.get(k) for k in self._GAP_RESOLUTION_FIELDS if record.get(k) is not None}
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO ui_gaps (gap_id, source, control_id, key, title, detail, status, "
-                "assignee, due_date, resolution, evidence_ref, created_by, updated_at, history) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, now(), %s) "
+                "assignee, due_date, resolution, evidence_ref, created_by, updated_at, history, "
+                "resolution_detail) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, now(), %s, %s) "
                 "ON CONFLICT (gap_id) DO UPDATE SET status = EXCLUDED.status, assignee = EXCLUDED.assignee, "
                 "due_date = EXCLUDED.due_date, resolution = EXCLUDED.resolution, "
-                "evidence_ref = EXCLUDED.evidence_ref, updated_at = now(), history = EXCLUDED.history",
+                "evidence_ref = EXCLUDED.evidence_ref, updated_at = now(), history = EXCLUDED.history, "
+                "resolution_detail = EXCLUDED.resolution_detail",
                 (gap_id, record.get("source"), record.get("control_id"), record.get("key"),
                  record.get("title"), record.get("detail"), record.get("status", "candidate"),
                  record.get("assignee"), record.get("due_date"), record.get("resolution"),
-                 record.get("evidence_ref"), record.get("created_by"), _jsonb(record.get("history", []))))
+                 record.get("evidence_ref"), record.get("created_by"), _jsonb(record.get("history", [])),
+                 _jsonb(rdetail)))
 
     def load_gaps(self, status: str | None = None) -> list[dict[str, Any]]:
         with self._connect() as conn, conn.cursor() as cur:
             base = ("SELECT gap_id, source, control_id, key, title, detail, status, assignee, "
-                    "due_date, resolution, evidence_ref, created_by, created_at, updated_at, history "
-                    "FROM ui_gaps ")
+                    "due_date, resolution, evidence_ref, created_by, created_at, updated_at, history, "
+                    "resolution_detail FROM ui_gaps ")
             if status:
                 cur.execute(base + "WHERE status = %s ORDER BY updated_at DESC", (status,))
             else:
@@ -581,6 +587,9 @@ class PostgresStateRepository(StateRepository):
                 if d.get(k) is not None and hasattr(d[k], "isoformat"):
                     d[k] = d[k].isoformat()
             d["history"] = d.get("history") or []
+            # 해결 근거(#19)를 최상위 키로 복원.
+            for k, v in (d.pop("resolution_detail", None) or {}).items():
+                d[k] = v
             out.append(d)
         return out
 
