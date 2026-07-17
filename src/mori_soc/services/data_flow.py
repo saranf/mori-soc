@@ -322,6 +322,98 @@ def build_processing_tasks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+# 수탁사(처리위탁) 추정 힌트 — 인프라·메시징·결제 등 '처리' 성격 외부 서비스.
+_PROCESSOR_HINTS = (
+    "aws", "amazon", "gcp", "google cloud", "azure", "cloud", "s3", "ec2", "rds",
+    "twilio", "sendgrid", "mailgun", "mailchimp", "ses", "sns", "slack",
+    "kakao", "naver cloud", "ncloud", "nhn", "toss", "iamport", "portone", "stripe", "paypal",
+    "cafe24", "gabia", "가비아", "카페24", "sms", "알리고", "aligo", "solapi",
+    "위탁", "수탁", "outsourc", "processor", "vendor",
+)
+# 국외이전 추정 힌트 — 해외 리전·해외 사업자.
+_OVERSEAS_HINTS = (
+    "aws", "amazon", "gcp", "google", "azure", "stripe", "paypal", "sendgrid",
+    "twilio", "mailgun", "mailchimp", "slack", "global", "overseas", "국외",
+    "us-", "eu-", "ap-northeast", "ap-southeast", "us-east", "us-west",
+)
+
+
+def classify_external_recipients(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """외부 수신자를 **위탁·제3자 제공·국외이전 후보**로 구분한다(#7).
+
+    모리다움 — AI/규칙이 **법적 구분을 확정하지 않는다**. 코드·설정상 외부 전송 근거를
+    추출해 검토 대상(후보)으로 만들고, 최종 구분은 개인정보 담당자가 확인한다.
+    third_party·overseas 필드 값을 수신자로 모아, 힌트로 후보 유형만 제안한다.
+    """
+    def _c(v: Any) -> str:
+        return str(v or "").strip()
+
+    def _real(v: str) -> bool:
+        return bool(v) and v not in ("없음", "-", "n/a", "N/A")
+
+    groups: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+
+    def _rec(name: str) -> dict[str, Any]:
+        g = groups.get(name)
+        if g is None:
+            g = {"recipient": name, "items": [], "purposes": [], "overseas": [], "has_third_party": False}
+            groups[name] = g
+            order.append(name)
+        return g
+
+    for r in rows:
+        item = _c(r.get("item"))
+        purpose = _c(r.get("purpose"))
+        tp = _c(r.get("third_party"))
+        ov = _c(r.get("overseas"))
+        # 제3자/위탁 후보: third_party 필드에 실제 수신자가 있는 경우.
+        if _real(tp):
+            g = _rec(tp)
+            g["has_third_party"] = True
+            if item and item not in g["items"]:
+                g["items"].append(item)
+            if purpose and purpose not in g["purposes"]:
+                g["purposes"].append(purpose)
+            if _real(ov) and ov not in g["overseas"]:
+                g["overseas"].append(ov)
+        # 국외이전 후보: overseas 필드만 있고 수신자명이 별도로 없으면 overseas 값을 수신자로.
+        elif _real(ov):
+            g = _rec(ov)
+            if item and item not in g["items"]:
+                g["items"].append(item)
+            if purpose and purpose not in g["purposes"]:
+                g["purposes"].append(purpose)
+            if ov not in g["overseas"]:
+                g["overseas"].append(ov)
+
+    out: list[dict[str, Any]] = []
+    for name in order:
+        g = groups[name]
+        low = name.lower()
+        types: list[str] = []
+        is_overseas = bool(g["overseas"]) or any(h in low for h in _OVERSEAS_HINTS)
+        is_processor = any(h in low for h in _PROCESSOR_HINTS)
+        if is_processor:
+            types.append("위탁 후보")
+        elif g["has_third_party"]:
+            types.append("제3자 제공 후보")
+        if is_overseas:
+            types.append("국외이전 후보")
+        if not types:
+            types.append("구분 필요")
+        out.append({
+            "recipient": g["recipient"],
+            "candidate_types": " · ".join(types),
+            "items": ", ".join(g["items"]),
+            "purpose": ", ".join(g["purposes"]),
+            "overseas": ", ".join(g["overseas"]),
+            "basis": "코드·설정상 외부 전송 후보",
+            "confirm": "담당자 확인 필요",
+        })
+    return out
+
+
 def infer_encryption(finding: dict[str, Any]) -> str:
     """스니펫에서 저장 암호화 알고리즘/적용 여부를 추정. 근거 없으면 빈 문자열(단정 안 함)."""
     hay = _code_hay(finding)

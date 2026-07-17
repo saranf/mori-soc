@@ -46,6 +46,8 @@ UI: Compliance → 통제 카탈로그 관리자 바(admin·security 전용) →
 | GET | `/privacy/data-flow.csv` | 흐름표 CSV |
 | GET | `/privacy/processing-tasks` | **처리업무 자동 그룹화(#6)** — 흐름 행을 처리업무 단위 초안으로(정보주체·항목·시스템·수집/파기 근거·관련 통제·확인 상태) |
 | GET | `/privacy/processing-tasks.csv` | 처리업무 그룹 CSV |
+| GET | `/privacy/external-recipients` | **외부 수신자 구분(#7)** — 위탁·제3자 제공·국외이전 후보(법적 확정 아님, 담당자 확인 필요) |
+| GET | `/privacy/external-recipients.csv` | 외부 수신자 구분 CSV |
 | GET | `/privacy/data-flow.pdf` | 흐름표 PDF(감사관 제출용, reportlab·팔레트 6색) |
 | POST | `/privacy/data-flow/reset` | 흐름표 전체 리셋(재스캔으로 재생성) |
 | GET | `/privacy/pii-rules.yml` | 스캔용 Semgrep 룰(리터럴+필드명 기본셋+어드민 커스텀). 워크플로가 스캔 때 fetch |
@@ -80,6 +82,19 @@ UI: Compliance → 통제 카탈로그 관리자 바(admin·security 전용) →
   **자동 후보(검토 필요)**. MORI는 확정하지 않고 초안만 낸다.
 
 UI: 개인정보 처리흐름 화면 → `처리업무 그룹` 버튼(`pf_rows`에 렌더 + CSV 내보내기).
+
+## 3-2. 외부 수신자 구분 (#7)
+
+`classify_external_recipients(rows)`는 `third_party`·`overseas` 필드에서 외부 수신자를 모아
+**위탁·제3자 제공·국외이전 후보**로 구분한다. 모리다움 — **법적 구분을 확정하지 않는다**.
+코드·설정상 외부 전송 근거만 추출해 검토 대상(후보)으로 만들고, 최종 구분은 담당자가 확인한다.
+
+- **위탁 후보**: 수신자명이 인프라·메시징·결제 등 처리 성격 힌트(aws·twilio·sendgrid·toss…)와 일치.
+- **제3자 제공 후보**: `third_party` 값이 있으나 처리 성격 힌트에 안 걸리는 경우(기본).
+- **국외이전 후보**: `overseas` 값이 있거나 수신자명이 해외 리전·사업자 힌트(us-·eu-·global…)와 일치.
+- 한 수신자가 **위탁+국외** 처럼 복수 후보가 될 수 있다. 모두 `담당자 확인 필요`로 표시.
+
+UI: `외부 수신자 구분` 버튼 → `pf_rows`에 후보 배지(위탁=파·제3자=노·국외=빨) + CSV.
 
 ## 4. 데이터 모델
 

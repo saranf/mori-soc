@@ -3446,6 +3446,7 @@
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="openCsvPreview({title:tt('dash.pf.title','개인정보 처리흐름도 (ISMS-P 3.x)'),filename:'mori-personal-data-flow.csv',url:'/privacy/data-flow.csv'})">${tt('dash.pf.csv','CSV')}</button>
           <a href="/privacy/data-flow.pdf" target="_blank" class="secondary" style="width:auto;padding:4px 10px;font-size:12px;text-decoration:none;color:#2563eb;border:1px solid #e5e7eb;border-radius:6px">${tt('dash.pf.pdf','PDF')}</a>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadProcessingTasks()">${tt('dash.pf.tasks','처리업무 그룹')}</button>
+          <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadExternalRecipients()">${tt('dash.pf.ext','외부 수신자 구분')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="promotePrivacyFlow()">${tt('dash.pf.promote','3.x 통제 증적 승격')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="togglePiiCriteria()">${tt('dash.pf.criteria','PII 기준 편집')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadPrivacyFlow()">${tt('dash.pf.reload','새로고침')}</button>
@@ -3539,6 +3540,31 @@
       } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
     }
     window.loadProcessingTasks = loadProcessingTasks;
+
+    // ── 외부 수신자 구분(#7) — 위탁·제3자·국외이전 후보 ────────────────────────────────
+    async function loadExternalRecipients() {
+      const box = document.getElementById('pf_rows');
+      if (!box) return;
+      try {
+        const res = await fetch('/privacy/external-recipients');
+        if (!res.ok) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; return; }
+        const d = await res.json();
+        const recs = d.recipients || [];
+        if (!recs.length) { box.innerHTML = `<span class="empty">${tt('dash.pf.ext_empty','외부 수신자 후보가 없어요. 흐름표에 제3자/국외 값이 있으면 표시돼요.')}</span>`; return; }
+        const cols = [['recipient',tt('dash.pf.e_recip','외부 수신자')],['candidate_types',tt('dash.pf.e_type','후보 구분')],['items',tt('dash.pf.t_items','개인정보 항목')],['purpose',tt('dash.pf.e_purpose','목적')],['overseas',tt('dash.pf.e_overseas','국외')],['confirm',tt('dash.pf.e_confirm','확인')]];
+        const th = cols.map(c=>`<th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#111827">${c[1]}</th>`).join('');
+        const chip=(t)=>{const col=t.includes('국외')?'#dc2626':(t.includes('위탁')?'#2563eb':(t.includes('제3자')?'#ca8a04':'#111827'));return `<span style="color:${col};border:1px solid ${col};border-radius:5px;padding:0 5px;font-size:10px;margin-right:3px">${escapeHtml(t)}</span>`;};
+        const trs = recs.map(r=>{
+          const types = String(r.candidate_types||'').split(' · ').map(chip).join('');
+          const c=(v)=>`<td style="padding:4px 6px;border-bottom:1px solid #f3f4f6;font-size:11px;vertical-align:top">${escapeHtml(v||'-')}</td>`;
+          return `<tr><td style="padding:4px 6px;border-bottom:1px solid #f3f4f6;font-size:11px;vertical-align:top"><b>${escapeHtml(r.recipient)}</b></td><td style="padding:4px 6px;border-bottom:1px solid #f3f4f6;vertical-align:top">${types}</td>${c(r.items)}${c(r.purpose)}${c(r.overseas)}<td style="padding:4px 6px;border-bottom:1px solid #f3f4f6;vertical-align:top"><span style="color:#ca8a04;font-size:11px">${escapeHtml(r.confirm)}</span></td></tr>`;
+        }).join('');
+        box.innerHTML = `<div style="font-size:11px;color:#111827;margin-bottom:6px;line-height:1.6">${tt('dash.pf.ext_help','읽는 법: 코드·설정에서 외부로 데이터가 나가는 수신자를 <b>후보</b>로 구분해요 — <span style="color:#2563eb">위탁</span>(인프라·메시징 등 처리 성격), <span style="color:#ca8a04">제3자 제공</span>, <span style="color:#dc2626">국외이전</span>(해외 리전·사업자). 이건 <b>법적 확정이 아니라 검토 대상</b>이고, 위탁/제공/국외 여부는 반드시 개인정보 담당자가 확인해야 해요. 관련 통제: 3.3.1(제3자)·3.3.4(국외).')}</div>
+          <div style="margin-bottom:6px"><button class="secondary" style="width:auto;padding:3px 9px;font-size:11px" onclick="openCsvPreview({title:tt('dash.pf.ext','외부 수신자 구분'),filename:'mori-personal-data-external-recipients.csv',url:'/privacy/external-recipients.csv'})">${tt('dash.pf.csv','CSV')}</button></div>
+          <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table></div>`;
+      } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
+    }
+    window.loadExternalRecipients = loadExternalRecipients;
 
     async function seedPrivacyFlow() {
       const res = await fetch('/privacy/data-flow/seed-from-scan', {method:'POST'});

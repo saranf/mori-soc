@@ -173,6 +173,25 @@ class DataFlowServiceTests(unittest.TestCase):
         # 수집/파기 근거 없으면 이용 통제만
         self.assertEqual(by["Patient"]["controls"], "3.2.1")
 
+    def test_classify_external_recipients(self) -> None:
+        from mori_soc.services.data_flow import classify_external_recipients
+        rows = [
+            {"item": "이메일", "third_party": "AWS SES", "purpose": "메일 발송", "overseas": "us-east-1"},
+            {"item": "주민등록번호", "third_party": "국민건강보험공단", "purpose": "요양급여"},
+            {"item": "이름", "overseas": "Stripe(미국)", "purpose": "결제"},
+        ]
+        recs = classify_external_recipients(rows)
+        by = {r["recipient"]: r for r in recs}
+        # AWS SES: 처리 성격(위탁 후보) + 국외이전 후보
+        self.assertIn("위탁 후보", by["AWS SES"]["candidate_types"])
+        self.assertIn("국외이전 후보", by["AWS SES"]["candidate_types"])
+        # 국민건강보험공단: 제3자 제공 후보(국내)
+        self.assertEqual(by["국민건강보험공단"]["candidate_types"], "제3자 제공 후보")
+        # overseas 필드만 있으면 수신자로 승격 + 국외이전 후보
+        self.assertIn("국외이전 후보", by["Stripe(미국)"]["candidate_types"])
+        # 법적 확정이 아니라 담당자 확인 필요
+        self.assertEqual(by["국민건강보험공단"]["confirm"], "담당자 확인 필요")
+
     def test_encryption_marker_and_concerns(self) -> None:
         from mori_soc.services.data_flow import (
             derive_concerns,

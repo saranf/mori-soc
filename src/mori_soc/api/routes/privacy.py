@@ -25,6 +25,7 @@ from mori_soc.services.data_flow import (
     build_file_overview,
     build_pii_semgrep_rules,
     build_processing_tasks,
+    classify_external_recipients,
     render_data_flow_overview_svg,
     render_data_flow_pdf,
     render_data_flow_svg,
@@ -313,6 +314,23 @@ def register_privacy(ctx: RouteContext) -> None:
         }
         return csv_streaming_response(build_processing_tasks(_sorted_rows()), header_map,
                                       "mori-personal-data-processing-tasks")
+
+    # ── 외부 수신자 구분(#7) — 위탁·제3자 제공·국외이전 후보(담당자 확인 필요) ──────────
+    @app.get("/privacy/external-recipients", tags=["Privacy"])
+    def list_external_recipients(request: Request) -> dict[str, Any]:
+        """코드·설정상 외부 전송 후보를 위탁/제3자/국외이전으로 구분(법적 확정 아님)."""
+        _require_privacy_role(request)
+        return {"recipients": classify_external_recipients(_sorted_rows())}
+
+    @app.get("/privacy/external-recipients.csv", tags=["Privacy"])
+    def external_recipients_csv(request: Request) -> StreamingResponse:
+        _require_privacy_role(request)
+        header_map = {
+            "recipient": "외부 수신자", "candidate_types": "후보 구분", "items": "개인정보 항목",
+            "purpose": "목적", "overseas": "국외(리전/국가)", "basis": "근거", "confirm": "확인",
+        }
+        return csv_streaming_response(classify_external_recipients(_sorted_rows()), header_map,
+                                      "mori-personal-data-external-recipients")
 
     # ── DB 컬럼 ↔ 개인정보 항목 매칭 CSV(어느 컬럼에 어떤 정보) ─────────────────────────
     @app.get("/privacy/data-tables.csv", tags=["Privacy"])
