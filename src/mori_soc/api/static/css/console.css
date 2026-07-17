@@ -1,4 +1,11 @@
-    :root { color-scheme: light; }
+    /* 흰 배경·검은 글자 고정 — 브라우저 다크모드에도 안 바뀜 */
+    :root {
+      color-scheme: light only;
+      /* MORI 6색 팔레트 — 색 하나 = 상태 하나 */
+      --c-blue: #2563eb; --c-green: #16a34a; --c-red: #dc2626; --c-amber: #ca8a04;
+      --c-ink: #111827; --c-paper: #ffffff;
+      --c-line: #e5e7eb; --c-surface: #f9fafb; --c-surface-2: #f3f4f6;
+    }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #ffffff; color: #111827; }
     .wrap { max-width: 1440px; margin: 0 auto; padding: 16px 20px 48px; }
     .hero { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 10px; }

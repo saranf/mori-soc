@@ -1,5 +1,12 @@
 /* Extracted from render_user_dashboard_html (#34 UI 분리 1단계) */
-    :root { color-scheme: light; }
+    /* 흰 배경·검은 글자 고정 — 브라우저 다크모드에도 안 바뀜 */
+    :root {
+      color-scheme: light only;
+      /* MORI 6색 팔레트 — 색 하나 = 상태 하나 (파=현재/링크, 초=완료, 빨=위험, 노=주의) */
+      --c-blue: #2563eb; --c-green: #16a34a; --c-red: #dc2626; --c-amber: #ca8a04;
+      --c-ink: #111827; --c-paper: #ffffff;
+      --c-line: #e5e7eb; --c-surface: #f9fafb; --c-surface-2: #f3f4f6;
+    }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #ffffff; color: #111827; }
     .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 20px 48px; }
     .hero { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
@@ -184,3 +191,50 @@
     #dash_grid > section table { max-width: 100%; }
     #latest_status_section, #risk_summary_section, #recent_activity_section { width: 620px; }
     @media (max-width: 640px) { #dash_grid > section { width: 100% !important; resize: none; } }
+
+    /* ══════════════════════════════════════════════════════════════════
+       MORI 신규 공용 컴포넌트 (첫 화면 재설계) — mori- 네임스페이스로 격리.
+       색 = 상태 매핑: 파=현재/링크, 초=완료, 빨=위험/미조치, 노=진행/주의.
+       ══════════════════════════════════════════════════════════════════ */
+    /* 상태 스트립: "지금 담당/공백/준비율" 한 줄 요약 + 바로 액션 */
+    .mori-strip { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+    .mori-strip .ms-metric { display: flex; flex-direction: column; gap: 3px; }
+    .mori-strip .ms-k { font-size: 12px; color: #111827; font-weight: 600; }
+    .mori-strip .ms-v { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .mori-strip .ms-v small { font-size: 13px; font-weight: 700; color: #111827; }
+    .mori-strip .ms-v.red { color: var(--c-red); }
+    .mori-strip .ms-v.green { color: var(--c-green); }
+    .mori-strip .ms-v.blue { color: var(--c-blue); }
+    .mori-strip .ms-div { width: 1px; align-self: stretch; min-height: 32px; background: var(--c-line); }
+    .mori-strip .ms-cta { margin-left: auto; }
+
+    /* 셋업 진행 레일: 완료(초록)/현재(파랑 '지금')/대기 단계 */
+    .mori-setup-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+    .mori-setup-head .pct { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--c-blue); font-variant-numeric: tabular-nums; }
+    .mori-rail { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .mori-step { padding: 12px 13px; border-radius: 12px; border: 1px solid var(--c-line); background: var(--c-surface); }
+    .mori-step .num { width: 21px; height: 21px; border-radius: 999px; display: grid; place-items: center; font-size: 11px; font-weight: 800; margin-bottom: 8px; }
+    .mori-step .t { font-size: 12.5px; font-weight: 700; line-height: 1.25; }
+    .mori-step .s { font-size: 11px; color: #111827; margin-top: 4px; line-height: 1.35; }
+    .mori-step.done { background: rgba(22,163,74,.11); border-color: transparent; }
+    .mori-step.done .num { background: var(--c-green); color: #fff; }
+    .mori-step.done .s { color: var(--c-green); font-weight: 600; }
+    .mori-step.now { background: var(--c-paper); border-color: var(--c-blue); box-shadow: 0 0 0 3px rgba(37,99,235,.09); }
+    .mori-step.now .num { background: var(--c-blue); color: #fff; }
+    .mori-step.now .t::after { content: "지금"; margin-left: 5px; font-size: 9.5px; font-weight: 800; color: #fff; background: var(--c-blue); padding: 1px 5px; border-radius: 999px; vertical-align: middle; }
+    .mori-step.todo { opacity: .68; }
+    .mori-step.todo .num { background: var(--c-surface-2); color: #111827; }
+
+    /* 의미 칩 (6색) */
+    .mori-chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+    .mori-chip.red { background: rgba(220,38,38,.10); color: var(--c-red); }
+    .mori-chip.amber { background: rgba(202,138,4,.14); color: var(--c-amber); }
+    .mori-chip.green { background: rgba(22,163,74,.11); color: var(--c-green); }
+    .mori-chip.blue { background: rgba(37,99,235,.09); color: var(--c-blue); }
+
+    @media (max-width: 640px) {
+      .mori-rail { grid-template-columns: repeat(2, 1fr); }
+      .mori-strip { gap: 16px; }
+      .mori-strip .ms-div { display: none; }
+      .mori-strip .ms-cta { margin-left: 0; flex-basis: 100%; }
+    }
