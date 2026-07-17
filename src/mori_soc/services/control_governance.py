@@ -355,28 +355,49 @@ def build_cycle_audit_snapshot(
     }
 
 
+# crosswalk 매핑의 커버리지 역할(리뷰 #14) — '재사용 가능'과 '충분함'을 분리한다.
+# 같은 증적이 여러 통제에 연결돼도 각 통제를 '완전히' 충족한다는 뜻은 아니다.
+COVERAGE_ROLES = ("primary", "supporting", "contextual")
+COVERAGE_TYPES = ("full", "partial")
+
+
+def _mapping_entry(m: Any) -> dict[str, Any]:
+    """mapped_controls 항목을 정규화 — 문자열(id) 또는 {control_id, coverage_role, coverage_type}."""
+    if isinstance(m, dict):
+        cid = str(m.get("control_id") or m.get("id") or "")
+        return {"control_id": cid,
+                "coverage_role": str(m.get("coverage_role") or "unspecified"),
+                "coverage_type": str(m.get("coverage_type") or "unspecified"),
+                "limitations": str(m.get("limitations") or "")}
+    return {"control_id": str(m), "coverage_role": "unspecified",
+            "coverage_type": "unspecified", "limitations": ""}
+
+
 # ── 다중기준 crosswalk(P5) — 내부통제 하나가 여러 외부기준을 충족 ──────────────────
 def build_crosswalk(org_controls: list[dict[str, Any]]) -> dict[str, Any]:
     """내부통제의 mapped_controls 를 외부기준(framework)별로 묶어 crosswalk 를 만든다.
 
-    통제 id 는 'framework:version:code' 관례 — 첫 세그먼트를 framework 로 본다.
-    같은 기술 증적을 여러 인증에서 재사용할 수 있음을 보여준다.
+    통제 id 는 'framework:version:code' 관례 — 첫 세그먼트를 framework 로 본다. 같은 기술 증적을
+    여러 인증에서 **재사용**할 수 있음을 보여주되, 각 매핑의 coverage_role(primary/supporting/
+    contextual)·coverage_type(full/partial)을 함께 실어 **'재사용 가능'과 '충분함'을 분리**한다(#14).
     """
     rows = []
     fw_set: set[str] = set()
     for oc in org_controls:
-        by_fw: dict[str, list[str]] = {}
-        for cid in oc.get("mapped_controls") or []:
-            fw = str(cid).split(":", 1)[0]
+        by_fw: dict[str, list[dict[str, Any]]] = {}
+        for m in oc.get("mapped_controls") or []:
+            entry = _mapping_entry(m)
+            fw = entry["control_id"].split(":", 1)[0]
             fw_set.add(fw)
-            by_fw.setdefault(fw, []).append(cid)
+            by_fw.setdefault(fw, []).append(entry)
         rows.append({
             "organization_control_id": oc.get("id"), "code": oc.get("code"),
             "title": oc.get("title"), "frameworks": sorted(by_fw),
             "framework_count": len(by_fw), "mappings": by_fw,
         })
     return {"organization_controls": rows, "frameworks": sorted(fw_set),
-            "reusable_note": "하나의 운영통제·기술증적을 여러 기준에 재사용(중복 증적 방지)."}
+            "reusable_note": "하나의 운영통제·기술증적을 여러 기준에 재사용(중복 증적 방지).",
+            "sufficiency_note": "재사용 가능 ≠ 충분함 — coverage_role/type 으로 각 통제 충족도를 구분한다."}
 
 
 # ── Base + Organization Overlay(P5) — 기준 업데이트와 조직 커스터마이즈 분리 ───────────
@@ -717,4 +738,5 @@ __all__ = [
     "VERSION_TRANSITIONS", "can_version_transition", "apply_version_lifecycle", "periods_overlap",
     "plan_cycle_migration", "governance_event_hash", "build_governance_event",
     "verify_governance_chain", "plan_catalog_import",
+    "COVERAGE_ROLES", "COVERAGE_TYPES",
 ]

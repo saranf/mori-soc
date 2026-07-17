@@ -193,13 +193,25 @@ class ControlGovernanceServiceTests(unittest.TestCase):
 
 
     def test_crosswalk_groups_by_framework(self) -> None:
+        # 문자열 id 와 {control_id, coverage_role} 를 섞어도 처리(#14)
         org = [{"id": "corp-log-002:v1", "code": "CORP-LOG-002", "title": "월간 검토",
-                "mapped_controls": ["isms-p:2023:2.9.4", "iso27001:2022:A.8.15", "isms-p:2023:2.9.5"]}]
+                "mapped_controls": [
+                    {"control_id": "isms-p:2023:2.9.4", "coverage_role": "primary", "coverage_type": "full"},
+                    "iso27001:2022:A.8.15",
+                    "isms-p:2023:2.9.5"]}]
         cw = build_crosswalk(org)
         row = cw["organization_controls"][0]
         self.assertEqual(row["framework_count"], 2)
         self.assertEqual(set(row["frameworks"]), {"isms-p", "iso27001"})
-        self.assertEqual(len(row["mappings"]["isms-p"]), 2)
+        isms = row["mappings"]["isms-p"]
+        self.assertEqual(len(isms), 2)
+        # 재사용 가능 ≠ 충분함 — coverage_role 이 매핑마다 실린다
+        primary = next(m for m in isms if m["control_id"] == "isms-p:2023:2.9.4")
+        self.assertEqual(primary["coverage_role"], "primary")
+        self.assertEqual(primary["coverage_type"], "full")
+        other = next(m for m in isms if m["control_id"] == "isms-p:2023:2.9.5")
+        self.assertEqual(other["coverage_role"], "unspecified")   # 문자열 → 기본
+        self.assertIn("sufficiency_note", cw)
 
     def test_apply_overlay_conflict_flag(self) -> None:
         cdef = build_control_definition(framework_version_id="isms-p:2023", display_code="2.9.4",

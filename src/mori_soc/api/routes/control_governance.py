@@ -337,7 +337,9 @@ def register_control_governance(ctx: RouteContext) -> None:
         rec = build_organization_control(
             code=code, title=title, owner_team=str(payload.get("owner_team", "")),
             frequency=str(payload.get("frequency", "")), scope=str(payload.get("scope", "")),
-            mapped_controls=[str(x) for x in (payload.get("mapped_controls") or [])],
+            # 문자열(id) 또는 {control_id, coverage_role, coverage_type} 둘 다 허용(#14).
+            mapped_controls=[x if isinstance(x, dict) else str(x)
+                             for x in (payload.get("mapped_controls") or [])],
             version=version, supersedes=payload.get("supersedes"), now=_now(), created_by=actor)
         if _find(KIND_ORG_CONTROL, rec["id"]):
             raise HTTPException(status_code=409, detail="이미 존재하는 내부통제 버전입니다.")
