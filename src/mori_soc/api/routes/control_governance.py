@@ -360,10 +360,14 @@ def register_control_governance(ctx: RouteContext) -> None:
         rec = build_scope_snapshot(
             snapshot_id=sid,
             services=[str(x) for x in (payload.get("services") or [])],
-            assets=[str(x) for x in (payload.get("assets") or [])],
+            # 자산은 문자열(id) 또는 dict(당시 hostname·IP·owner·중요도) — 동결 스냅샷(#10).
+            assets=[x if isinstance(x, dict) else str(x) for x in (payload.get("assets") or [])],
             organizations=[str(x) for x in (payload.get("organizations") or [])],
             locations=[str(x) for x in (payload.get("locations") or [])],
             data_processes=[str(x) for x in (payload.get("data_processes") or [])],
+            approved_by=str(payload.get("approved_by", "")),
+            source_query=str(payload.get("source_query", "")),
+            change_reason=str(payload.get("change_reason", "")),
             now=_now(), created_by=actor)
         if _find(KIND_SCOPE_SNAPSHOT, rec["id"]):
             raise HTTPException(status_code=409, detail="이미 존재하는 scope snapshot 입니다(불변).")

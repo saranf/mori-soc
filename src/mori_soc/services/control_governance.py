@@ -212,15 +212,36 @@ def build_organization_control(*, code: str, title: str, owner_team: str = "", f
 
 
 # ── ScopeSnapshot — 운영주기별 인증범위 고정 ──────────────────────────────────────
+# ScopeSnapshot 자산 동결 필드(리뷰 #10) — 참조가 아니라 **당시 값**을 얼린다.
+_FROZEN_ASSET_FIELDS = ("asset_id", "hostname", "ip", "owner", "criticality",
+                        "service", "inclusion_reason", "source")
+
+
+def _freeze_asset(a: Any) -> dict[str, Any]:
+    """자산 항목을 동결 스냅샷으로 — 문자열(id) 또는 dict 모두 허용. 당시 hostname·IP·owner·중요도."""
+    if isinstance(a, dict):
+        return {k: a.get(k, "") for k in _FROZEN_ASSET_FIELDS}
+    d = {k: "" for k in _FROZEN_ASSET_FIELDS}
+    d["asset_id"] = str(a)
+    return d
+
+
 def build_scope_snapshot(*, snapshot_id: str, services: list[str] | None = None,
-                         assets: list[str] | None = None, organizations: list[str] | None = None,
+                         assets: list[Any] | None = None, organizations: list[str] | None = None,
                          locations: list[str] | None = None, data_processes: list[str] | None = None,
+                         approved_by: str = "", source_query: str = "", change_reason: str = "",
                          now: str = "", created_by: str = "") -> dict[str, Any]:
+    """운영주기 인증범위를 고정한다(#10). 자산은 참조가 아니라 **denormalized frozen** —
+    당시 hostname·IP·owner·criticality 를 얼려, 나중에 자산이 바뀌어도 과거 범위가 재현된다.
+    생성자·승인자·source_query·content_hash·변경사유를 함께 기록한다.
+    """
     sid = _slug(snapshot_id)
     rec = {
         "id": sid, "scope_snapshot_id": sid, "services": list(services or []),
-        "assets": list(assets or []), "organizations": list(organizations or []),
+        "assets": [_freeze_asset(a) for a in (assets or [])],
+        "organizations": list(organizations or []),
         "locations": list(locations or []), "data_processes": list(data_processes or []),
+        "approved_by": approved_by, "source_query": source_query, "change_reason": change_reason,
         "created_at": now, "created_by": created_by,
     }
     _stamp_hash(rec)

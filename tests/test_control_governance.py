@@ -213,6 +213,23 @@ class ControlGovernanceServiceTests(unittest.TestCase):
         self.assertEqual(other["coverage_role"], "unspecified")   # 문자열 → 기본
         self.assertIn("sufficiency_note", cw)
 
+    def test_scope_snapshot_freezes_asset_attributes(self) -> None:
+        # 리뷰 #10: 자산은 참조가 아니라 당시 hostname·IP·owner·중요도를 얼린다.
+        from mori_soc.services.control_governance import build_scope_snapshot
+        snap = build_scope_snapshot(
+            snapshot_id="scope-2026-01",
+            assets=[{"asset_id": "h1", "hostname": "web-01", "ip": "10.0.0.1",
+                     "owner": "김보안", "criticality": "상", "inclusion_reason": "쇼핑몰 웹"},
+                    "legacy-only-id"],
+            approved_by="CISO", source_query="tag=in-scope", now="2026-01-01", created_by="u")
+        a0 = snap["assets"][0]
+        self.assertEqual(a0["hostname"], "web-01")
+        self.assertEqual(a0["criticality"], "상")       # 당시 중요도 동결
+        self.assertEqual(a0["owner"], "김보안")
+        self.assertEqual(snap["assets"][1]["asset_id"], "legacy-only-id")  # 문자열도 허용
+        self.assertEqual(snap["approved_by"], "CISO")
+        self.assertTrue(snap["content_hash"].startswith("sha256:"))
+
     def test_apply_overlay_conflict_flag(self) -> None:
         cdef = build_control_definition(framework_version_id="isms-p:2023", display_code="2.9.4",
                                         title="로그", requirement_text="원문")
