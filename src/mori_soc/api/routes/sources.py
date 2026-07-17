@@ -597,6 +597,51 @@ def register_sources(ctx: RouteContext) -> None:
                 "script_content": script_content,
                 "audience": aud, "public_url": _os.getenv("MORI_PUBLIC_URL", "").strip()}
 
+    @app.get("/controls/code-review/scan-diff", tags=["Compliance"])
+    def code_review_scan_diff(request: Request, repo: str, base: str | None = None,
+                              head: str | None = None) -> dict[str, Any]:
+        """두 스캔 비교(#3) — 신규/제거 findings + 변경 원인(코드/룰셋/AI). admin·security 전용.
+
+        base/head(commit) 미지정 시 최근 2개 스캔을 비교. 입력이 같은데 결과가 다르면 비결정성 경고.
+        """
+        if ctx.auth_enabled and _session_role(request) not in ("admin", "security"):
+            raise HTTPException(status_code=403, detail="scan diff requires admin or security role")
+        if state_repo is None:
+            raise HTTPException(status_code=503, detail="state store unavailable")
+        events = [e for e in state_repo.load_evidence_events(limit=1000)
+                  if e.get("delta_type") == "code_review_scan"
+                  and str((e.get("envelope") or {}).get("repo") or "") == repo]
+        events.sort(key=lambda e: str(e.get("received_at") or ""), reverse=True)
+        if len(events) < 2:
+            return {"ok": False, "reason": "need at least 2 scans of this repo", "count": len(events)}
+
+        def _pick(commit: str | None):
+            return next((e for e in events if str((e.get("envelope") or {}).get("commit") or "") == commit), None) if commit else None
+
+        cur_ev = _pick(head) or events[0]
+        prev_ev = _pick(base) or next((e for e in events if e is not cur_ev), None)
+        cur_env = cur_ev.get("envelope") or {}
+        prev_env = (prev_ev or {}).get("envelope") or {}
+
+        def _findings_for(commit: str) -> list[dict[str, Any]]:
+            out: list[dict[str, Any]] = []
+            for a in get_query_service().store.alerts:
+                if a.source != "code_review":
+                    continue
+                rp = a.raw_payload or {}
+                prov = rp.get("_provenance") or {}
+                if str(prov.get("repo") or "") == repo and str(prov.get("commit") or "") == str(commit or ""):
+                    out.append(rp)
+            return out
+
+        from mori_soc.services.scan_diff import summarize_diff
+        result = summarize_diff(prev_env, cur_env,
+                                _findings_for(str(prev_env.get("commit") or "")),
+                                _findings_for(str(cur_env.get("commit") or "")))
+        # envelope 기준 findings 수 델타(개별 finding 이 보존 안 돼도 항상 제공).
+        result["count_delta"] = int(cur_ev.get("findings_count") or 0) - int(prev_ev.get("findings_count") or 0) if prev_ev else 0
+        return {"ok": True, "repo": repo, **result}
+
     @app.get("/code-review/fullscan.py", tags=["Sources"])
     def code_review_fullscan_py():
         """(유료) fullscan 스캐너를 MORI가 직접 서빙 — 워크플로가 fetch 하므로 재복사 불필요."""

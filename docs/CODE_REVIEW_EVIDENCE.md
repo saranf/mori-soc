@@ -87,6 +87,16 @@ GRC 가 못 하는 차별점). 스캔 증적 envelope 에 재현성 입력을 �
   스캔 이력 UI 에 `(scanner … · model … · sig …)` 로 표시. 이 signature 가 다음 단계 **스캔 간 diff**(#3)
   의 기준이 된다.
 
+### 스캔 간 diff와 변경 사유(#3)
+
+두 스캔을 비교해 **무엇이 왜 바뀌었는지**를 귀속한다(GRC 가 잘 못하는 영역). `GET
+/controls/code-review/scan-diff?repo=…`(admin·security, base/head commit 선택 가능, 미지정 시 최근 2개):
+
+- **신규/제거 findings**(안정 식별자 file|line|rule 로 매칭) + envelope 기준 findings 수 델타.
+- **변경 원인 귀속**: commit 차이=`코드 변경` · ruleset 차이=`룰셋 변경` · model/tool 차이=`AI·도구 변경`.
+- **비결정성 경고**: 재현성 입력이 완전히 같은데(같은 input_signature) 결과가 다르면 스캐너 비결정성으로
+  표시 — 감사 신뢰상 중요한 신호. 스캔 이력 UI 의 **"변경 비교"** 로 확인. 구현: `services/scan_diff.py`.
+
 ### 처리 보장(트랜잭션 경계)
 
 인제스트/증적 파이프라인은 **부분 성공을 정직하게 보고**한다(조용히 성공으로 위장하지 않음).

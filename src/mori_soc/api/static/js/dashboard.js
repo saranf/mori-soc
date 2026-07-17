@@ -3657,13 +3657,14 @@
           const q = new URLSearchParams(); if (env.repo) q.set('repo', env.repo); if (env.commit) q.set('commit', env.commit);
           const csvUrl = '/controls/code-review/findings.csv' + (q.toString() ? ('?'+q.toString()) : '');
           const dl = ` · <a href="#" onclick="event.preventDefault();openCsvPreview({title:tt('dash.ctl.scan_csv_title','코드 리뷰 findings CSV 미리보기'),filename:'mori-code-review-findings.csv',url:'${csvUrl}'})" style="color:#2563eb;text-decoration:none">${tt('dash.ctl.scan_csv_dl','결과 CSV')}</a>`;
+          const diffLink = env.repo ? ` · <a href="#" onclick="event.preventDefault();showScanDiff('${escapeHtml(env.repo)}')" style="color:#2563eb;text-decoration:none">${tt('dash.ctl.diff_btn','변경 비교')}</a>` : '';
           const del = e.id ? ` <a href="#" title="${tt('dash.ctl.scan_del','이력 삭제')}" onclick="event.preventDefault();deleteCodeReviewScan('${escapeHtml(e.id)}')" style="color:#dc2626;text-decoration:none;font-weight:700">×</a>` : '';
           const prov = provenanceBadges(e.provenance);
           // 재현성 입력(#2): scanner·model·signature — 같은 입력 식별/추적용.
           const repro = [env.scanner && ('scanner ' + env.scanner), env.model && ('model ' + env.model),
                          env.input_signature && ('sig ' + env.input_signature)].filter(Boolean).join(' · ');
           const reproEl = repro ? ` <span style="color:#111827;font-size:10px" title="${tt('dash.ctl.scan_repro','재현성 입력 — 같은 commit·scanner·ruleset·model 이면 같은 결과여야 함')}">(${escapeHtml(repro)})</span>` : '';
-          return `<div style="padding:5px 0;border-bottom:1px solid #f3f4f6">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style="color:#111827">${escapeHtml(when)}</span> ${verified}${toolBadge}${prov}${reproEl}${link}${dl}${del}</div>`;
+          return `<div style="padding:5px 0;border-bottom:1px solid #f3f4f6">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style="color:#111827">${escapeHtml(when)}</span> ${verified}${toolBadge}${prov}${reproEl}${link}${dl}${diffLink}${del}</div>`;
         }).join('');
       } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.ctl.scan_hist_err','이력을 불러오지 못했어요')}</span>`; }
     }
@@ -4071,6 +4072,10 @@
     async function openCsvImport(opts) {
       opts = opts || {};
       const modal = _ensureCsvImportModal();
+      // showScanDiff 등이 필드를 숨겼을 수 있으니 import 필드를 복원.
+      ['#csv_import_file', '#csv_import_text', '#csv_import_go', '#csv_import_tpl'].forEach(sel => {
+        const el = modal.querySelector(sel); if (el) el.style.display = '';
+      });
       modal.querySelector('#csv_import_title').textContent = opts.title || tt('dash.csvimport.title', 'CSV 가져오기');
       modal.querySelector('#csv_import_text').value = '';
       modal.querySelector('#csv_import_result').textContent = '';
@@ -4124,6 +4129,34 @@
       }).join(' ');
     }
     window.provenanceBadges = provenanceBadges;
+
+    /* 스캔 간 변경 비교(#3) — 신규/제거 findings + 변경 원인(코드/룰셋/AI) + 비결정성 경고. */
+    async function showScanDiff(repo) {
+      const modal = _ensureCsvImportModal();   // 경량 모달 재사용
+      modal.querySelector('#csv_import_title').textContent = tt('dash.ctl.diff_title', '스캔 변경 비교') + ' — ' + repo;
+      modal.querySelector('#csv_import_file').style.display = 'none';
+      modal.querySelector('#csv_import_text').style.display = 'none';
+      modal.querySelector('#csv_import_go').style.display = 'none';
+      modal.querySelector('#csv_import_tpl').style.display = 'none';
+      const out = modal.querySelector('#csv_import_result');
+      out.style.color = '#111827';
+      out.textContent = tt('dash.dyn.loading_fetch', '불러오는 중…');
+      modal.style.display = 'flex';
+      try {
+        const r = await fetch('/controls/code-review/scan-diff?repo=' + encodeURIComponent(repo));
+        const d = await r.json();
+        if (!r.ok) throw new Error((d && d.detail) || r.status);
+        if (!d.ok) { out.textContent = tt('dash.ctl.diff_need2', '비교하려면 이 레포의 스캔이 2개 이상 필요해요.'); return; }
+        const causeMap = { code: tt('dash.ctl.diff_cause_code', '코드 변경'), ruleset: tt('dash.ctl.diff_cause_ruleset', '룰셋 변경'), ai: tt('dash.ctl.diff_cause_ai', 'AI·도구 변경') };
+        const causes = (d.causes || []).map(c => causeMap[c] || c).join(', ') || tt('dash.ctl.diff_same_input', '동일 입력');
+        const nd = d.nondeterministic ? `<div style="color:#dc2626;font-weight:700;margin-top:6px">${tt('dash.ctl.diff_nondet', '입력이 같은데 결과가 달라요 — 비결정성(스캐너 확인 필요)')}</div>` : '';
+        out.innerHTML = `
+          <div>${tt('dash.ctl.diff_prev', '이전')}: ${escapeHtml(d.prev.commit||'?').slice(0,8)} (${escapeHtml(d.prev.tool||'')}) → ${tt('dash.ctl.diff_cur', '현재')}: ${escapeHtml(d.cur.commit||'?').slice(0,8)} (${escapeHtml(d.cur.tool||'')})</div>
+          <div style="margin-top:6px">${tt('dash.ctl.diff_new', '신규')}: <strong style="color:#dc2626">${d.diff.new_count}</strong> · ${tt('dash.ctl.diff_removed', '제거')}: <strong style="color:#16a34a">${d.diff.removed_count}</strong> · ${tt('dash.ctl.diff_unchanged', '유지')}: ${d.diff.unchanged_count} · Δ ${d.count_delta}</div>
+          <div style="margin-top:6px">${tt('dash.ctl.diff_cause', '변경 원인')}: <strong>${escapeHtml(causes)}</strong></div>${nd}`;
+      } catch (e) { out.style.color = '#dc2626'; out.textContent = String(e.message || e); }
+    }
+    window.showScanDiff = showScanDiff;
     async function loadEvidenceGaps() {
       const box = document.getElementById('evidence_gap_box');
       if (!box) return;
