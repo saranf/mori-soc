@@ -21,6 +21,23 @@ from mori_soc.services.control_governance import (
 
 
 class ControlGovernanceServiceTests(unittest.TestCase):
+    def test_plan_catalog_import_maps_layers(self) -> None:
+        from mori_soc.services.control_governance import plan_catalog_import
+        controls = [
+            {"id": "2.9.4", "framework": "isms-p", "version": "2023", "title_ko": "로그 관리",
+             "intent_ko": "로그를 관리한다", "evidence_hint_ko": "로그 검토 회의록"},
+            {"id": "A.8.15", "framework": "iso27001", "version": "2022", "title_en": "Logging"},
+        ]
+        plan = plan_catalog_import(controls, now="2026-01-01", created_by="u")
+        self.assertEqual(len(plan["frameworks"]), 2)
+        self.assertEqual(len(plan["control_definitions"]), 2)
+        isms = next(c for c in plan["control_definitions"] if c["framework_version_id"] == "isms-p:2023")
+        self.assertEqual(isms["control_uid"], "2.9.4")
+        # intent 는 mori_summary, evidence_hint 는 operation_guide, official 은 비움(원문 미포함)
+        self.assertEqual(isms["interpretations"]["mori_summary"], "로그를 관리한다")
+        self.assertEqual(isms["interpretations"]["operation_guide"], "로그 검토 회의록")
+        self.assertEqual(isms["interpretations"]["official"], "")
+
     def test_content_hash_ignores_volatile(self) -> None:
         a = {"name": "x", "created_at": "2026-01-01", "created_by": "u1"}
         b = {"name": "x", "created_at": "2027-09-09", "created_by": "u2"}
@@ -369,6 +386,21 @@ class ControlGovernanceRouteTests(unittest.TestCase):
                     json={"owner_team": "보안운영팀"}).json()
         self.assertEqual(ov["overlay"]["owner_team"], "보안운영팀")
 
+
+    def test_import_catalog_endpoint_idempotent(self) -> None:
+        c = self._client()
+        r1 = c.post("/governance/import-catalog", params={"framework": "isms-p"}).json()
+        self.assertGreater(r1["imported"]["control_definitions"], 50)   # 기존 카탈로그 흡수
+        self.assertGreaterEqual(r1["imported"]["frameworks"], 1)
+        # 재실행 → 이미 있는 건 건너뜀(idempotent)
+        r2 = c.post("/governance/import-catalog", params={"framework": "isms-p"}).json()
+        self.assertEqual(r2["imported"]["control_definitions"], 0)
+        # governance 목록에서 조회됨
+        vs = c.get("/governance/frameworks/isms-p/versions").json()["versions"]
+        self.assertTrue(vs)
+        fv_id = vs[0]["id"]
+        controls = c.get(f"/governance/framework-versions/{fv_id}/controls").json()["controls"]
+        self.assertGreater(len(controls), 50)
 
     def test_append_only_event_chain(self) -> None:
         from mori_soc.services.control_governance import verify_governance_chain

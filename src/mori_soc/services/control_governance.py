@@ -231,6 +231,44 @@ def is_mutable_version(record: dict[str, Any]) -> bool:
     return str(record.get("status") or "draft") == "draft"
 
 
+# ── 이중 모델 브리지(C6) — 기존 194 카탈로그를 governance 모델로 흡수 ────────────────────
+def plan_catalog_import(
+    controls: list[dict[str, Any]], *, now: str = "", created_by: str = "",
+) -> dict[str, Any]:
+    """기존 통제 카탈로그(controls/status/evidence)를 governance FrameworkVersion+ControlDefinition
+    으로 변환할 계획을 만든다(C6). 정본을 둘로 두지 않기 위한 **일방 흡수 경로**.
+
+    - 프레임워크·버전별로 묶어 Framework + FrameworkVersion(draft) 생성.
+    - 각 카탈로그 통제 → ControlDefinition. 카탈로그의 intent/evidence_hint 는 MORI 해석이므로
+      `mori_summary`·`operation_guide` 층에 넣고, **공식 원문(official)은 비워 둔다**(원문은 사용자
+      import — 라이선스·정직). control_uid = 카탈로그 id(그 프레임워크 내 안정 식별자).
+    반환: {frameworks, framework_versions, control_definitions} (저장은 호출자가 _save 로).
+    """
+    frameworks: dict[str, dict[str, Any]] = {}
+    versions: dict[str, dict[str, Any]] = {}
+    defs: list[dict[str, Any]] = []
+    for c in controls:
+        fw = _slug(str(c.get("framework") or ""))
+        ver = str(c.get("version") or "").strip() or "current"
+        cid = str(c.get("id") or "").strip()
+        if not fw or not cid:
+            continue
+        if fw not in frameworks:
+            frameworks[fw] = build_framework(framework_id=fw, name=str(c.get("framework") or fw),
+                                             now=now, created_by=created_by)
+        fv = build_framework_version(framework_id=fw, version=ver, now=now, created_by=created_by)
+        versions[fv["id"]] = fv
+        title = str(c.get("title_ko") or c.get("title_en") or cid)
+        interp = {"mori_summary": str(c.get("intent_ko") or c.get("intent_en") or ""),
+                  "operation_guide": str(c.get("evidence_hint_ko") or c.get("evidence_hint_en") or "")}
+        defs.append(build_control_definition(
+            framework_version_id=fv["id"], display_code=cid, title=title, control_uid=cid,
+            requirement_text="", interpretations=interp, now=now, created_by=created_by))
+    return {"frameworks": list(frameworks.values()),
+            "framework_versions": list(versions.values()),
+            "control_definitions": defs}
+
+
 # ── append-only 이벤트 hash chain(S3) — 감사로그와 동일 방식으로 변조 검증 ─────────────
 _EVENT_HASH_FIELDS = ("event_id", "kind", "entity_id", "revision", "event_type",
                       "actor", "occurred_at", "payload")
@@ -655,5 +693,5 @@ __all__ = [
     "build_cycle_audit_snapshot", "build_crosswalk", "apply_overlay",
     "VERSION_TRANSITIONS", "can_version_transition", "apply_version_lifecycle", "periods_overlap",
     "plan_cycle_migration", "governance_event_hash", "build_governance_event",
-    "verify_governance_chain",
+    "verify_governance_chain", "plan_catalog_import",
 ]

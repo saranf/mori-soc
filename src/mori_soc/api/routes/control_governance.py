@@ -54,6 +54,7 @@ from mori_soc.services.control_governance import (
     initialize_cycle_from_previous,
     is_mutable_version,
     periods_overlap,
+    plan_catalog_import,
     plan_cycle_migration,
     verify_governance_chain,
 )
@@ -125,6 +126,40 @@ def register_control_governance(ctx: RouteContext) -> None:
         if ctx.log_action:
             ctx.log_action(actor, action, rec["id"])
         return rec
+
+    # ── 이중 모델 브리지(C6) — 기존 194 카탈로그를 governance 로 흡수(일방 import) ──────────
+    @app.post("/governance/import-catalog", tags=["Governance"])
+    def import_catalog(request: Request, framework: str | None = None) -> dict[str, Any]:
+        """기존 통제 카탈로그를 governance FrameworkVersion+ControlDefinition 으로 가져온다(C6).
+
+        정본을 둘로 두지 않기 위한 일방 흡수 경로. 이미 있는 레코드는 건너뛴다(idempotent).
+        framework 쿼리로 특정 프레임워크만 가져올 수 있다. 공식 원문은 비우고 intent 는 mori_summary.
+        """
+        actor = _require(request)
+        from mori_soc.services.control_catalog import load_catalog, merge_edits
+        catalog = merge_edits(load_catalog(), ctx.catalog_edits or {})
+        controls = catalog.get("controls", [])
+        if framework:
+            fw = _slug(framework)
+            controls = [c for c in controls if _slug(str(c.get("framework") or "")) == fw]
+        plan = plan_catalog_import(controls, now=_now(), created_by=actor)
+        created = {"frameworks": 0, "framework_versions": 0, "control_definitions": 0}
+        for fwrec in plan["frameworks"]:
+            if _find(KIND_FRAMEWORK, fwrec["id"]) is None:
+                _save(KIND_FRAMEWORK, fwrec, actor, "GOV_FRAMEWORK_CREATE")
+                created["frameworks"] += 1
+        for fv in plan["framework_versions"]:
+            if _find(KIND_FRAMEWORK_VERSION, fv["id"]) is None:
+                _save(KIND_FRAMEWORK_VERSION, fv, actor, "GOV_VERSION_CREATE")
+                created["framework_versions"] += 1
+        for cdef in plan["control_definitions"]:
+            if _find(KIND_CONTROL_DEF, cdef["id"]) is None:
+                _save(KIND_CONTROL_DEF, cdef, actor, "GOV_CONTROL_CREATE")
+                created["control_definitions"] += 1
+        return {"imported": created,
+                "totals": {"frameworks": len(plan["frameworks"]),
+                           "framework_versions": len(plan["framework_versions"]),
+                           "control_definitions": len(plan["control_definitions"])}}
 
     # ── Framework ──────────────────────────────────────────────────────────────
     @app.get("/governance/frameworks", tags=["Governance"])

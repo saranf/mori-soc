@@ -91,6 +91,18 @@ POST /assurance-cycles/{id}/initialize-from/{prev} · /controls/{id}/overlay-vie
 - **실 Postgres E2E(S4)**: 2019 등록→2025 운영→2023 버전변경→2026 이관→**재시작**→객체·이벤트·
   history 보존·chain 무결·as-of 재현까지 실 DB 로 검증.
 
+## 6-2. 이중 모델 브리지 (C6)
+
+기존 통제 카탈로그(`controls`/`control_status`/`control_evidence`, 194개)와 새 governance 모델
+(017/018)이 공존하면 **정본이 둘**이 된다. C6 은 정본을 하나로 모으기 위한 **일방 흡수 경로**:
+
+- `plan_catalog_import(controls)` — 카탈로그를 프레임워크·버전별 FrameworkVersion + ControlDefinition
+  으로 변환. 카탈로그의 intent/evidence_hint 는 MORI 해석이므로 `mori_summary`·`operation_guide`
+  층에 넣고, **공식 원문(official)은 비워 둔다**(원문은 사용자 import — 라이선스·정직).
+- `POST /governance/import-catalog?framework=` — 흡수 실행(idempotent, 이미 있는 건 건너뜀).
+- 방향: 기존 카탈로그는 당분간 운영 화면으로 유지하되, governance 가 **버전·계보를 갖는 상위 모델**
+  로서 이를 흡수한다. 양쪽 동시 개발이 아니라 한쪽(governance)으로 수렴.
+
 ## 7. 검증 상태
 
 - 유닛/라우트: `tests/test_control_governance.py` — content_hash 불변성·해석층 분리·버전 diff·
