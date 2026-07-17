@@ -249,6 +249,34 @@ class MigrationE2ETests(unittest.TestCase):
         self.assertEqual(jul["evidence_status"], "approved")          # 승인 후
         self.assertEqual(jul["assessment_status"], "effective")
 
+    def test_migration_immutability_gate(self) -> None:
+        """C3: 이미 성공 적용된 마이그레이션의 체크섬이 바뀌면 운영모드 부팅 거부(이력 덮기 금지)."""
+        import os
+        from unittest.mock import patch
+
+        from mori_soc.repositories.state_postgres import (
+            PostgresStateRepository,
+            _schema_dir,
+        )
+        repo = PostgresStateRepository(self._url)
+        repo.apply_schema()
+        # 이미 적용된 한 마이그레이션의 기록 체크섬을 인위적으로 변조(=파일이 바뀐 상황을 모사).
+        with self._psycopg.connect(self._url) as conn, conn.cursor() as cur:
+            cur.execute("SELECT version FROM schema_migrations WHERE success = true ORDER BY version LIMIT 1")
+            ver = cur.fetchone()[0]
+            cur.execute("UPDATE schema_migrations SET checksum = %s WHERE version = %s",
+                        ("0" * 64, ver))
+            conn.commit()
+        drift = repo._detect_migration_drift(_schema_dir())
+        self.assertTrue(any(v == ver for v, _, _ in drift))
+        # 운영 모드(fail-fast) → 부팅 거부
+        with patch.dict(os.environ, {"MORI_SCHEMA_FAIL_FAST": "true"}, clear=False):
+            with self.assertRaises(RuntimeError):
+                repo.apply_schema()
+        # 완화 모드 → 경고만, 통과
+        with patch.dict(os.environ, {"MORI_SCHEMA_FAIL_FAST": "false"}, clear=False):
+            repo.apply_schema()   # 예외 없이 완료(드리프트 기록은 재적용으로 정정됨)
+
     def test_worker_leader_lock_single_holder(self) -> None:
         # 리더 선출(#26): 한 번에 한 연결만 advisory lock 을 쥔다.
         import os

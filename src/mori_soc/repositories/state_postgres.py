@@ -93,6 +93,19 @@ class PostgresStateRepository(StateRepository):
             _log.warning("[schema] no schema dir found; skipping auto-apply")
             return
         self._ensure_migrations_table()   # 기록 테이블 먼저(파일 적용 전에 존재해야 기록 가능)
+        # 마이그레이션 불변 게이트(C3): 이미 성공 적용된 파일의 체크섬이 바뀌면(=이력을 덮어쓰려는
+        # 시도) 운영 모드에서 부팅을 중단한다. 감사 제품은 자기 적용 이력을 덮지 않는다 — 변경이
+        # 필요하면 기존 파일을 고치지 말고 **새 migration 파일**을 추가해야 한다.
+        drift = self._detect_migration_drift(schema_dir)
+        if drift:
+            detail = ", ".join(f"{v}({old[:8]}→{new[:8]})" for v, old, new in drift)
+            if _schema_fail_fast():
+                raise RuntimeError(
+                    "[schema] 이미 적용된 마이그레이션의 내용이 변경됨(체크섬 드리프트) — 부팅 중단(C3). "
+                    f"변경된 파일: {detail}. 기존 파일을 수정하지 말고 새 migration 을 추가하세요. "
+                    "데모라면 MORI_SCHEMA_FAIL_FAST=false 로 완화 가능."
+                )
+            _log.warning("[schema] 마이그레이션 드리프트 감지(데모라 계속): %s", detail)
         failed: list[str] = []
         for f in sorted(schema_dir.glob("*.sql")):
             sql = f.read_text(encoding="utf-8")
@@ -116,6 +129,28 @@ class PostgresStateRepository(StateRepository):
                     f"[schema] 스키마 적용 실패로 부팅 중단(fail-fast): {', '.join(failed)}. "
                     "불완전한 DB 로 서비스하지 않는다. 데모라면 MORI_SCHEMA_FAIL_FAST=false 로 완화 가능."
                 )
+
+    def _detect_migration_drift(self, schema_dir: Any) -> list[tuple[str, str, str]]:
+        """이미 **성공 적용된** 마이그레이션 중 파일 내용(체크섬)이 바뀐 것을 찾는다(C3).
+
+        반환: (version, 기록된_checksum, 현재_checksum) 목록. 성공 이력이 없거나 동일하면 제외.
+        """
+        try:
+            with self._connect() as conn, conn.cursor() as cur:
+                cur.execute("SELECT version, checksum FROM schema_migrations WHERE success = true")
+                recorded = {r[0]: r[1] for r in cur.fetchall()}
+        except Exception:  # noqa: BLE001 - 기록 조회 실패는 드리프트 판정 불가(빈 목록)
+            return []
+        drift: list[tuple[str, str, str]] = []
+        for f in sorted(schema_dir.glob("*.sql")):
+            sql = f.read_text(encoding="utf-8")
+            if not sql.strip():
+                continue
+            current = hashlib.sha256(sql.encode("utf-8")).hexdigest()
+            old = recorded.get(f.name)
+            if old is not None and old != current:
+                drift.append((f.name, old, current))
+        return drift
 
     def _ensure_migrations_table(self) -> None:
         try:
