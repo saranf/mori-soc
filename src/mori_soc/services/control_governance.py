@@ -23,9 +23,20 @@ KIND_RELATIONSHIP = "control_relationship"
 KIND_ORG_CONTROL = "organization_control"
 KIND_ASSURANCE_CYCLE = "assurance_cycle"
 KIND_SCOPE_SNAPSHOT = "scope_snapshot"
+KIND_CYCLE_CONTROL = "cycle_control"          # 운영주기 안의 통제 인스턴스(P2)
+KIND_EVIDENCE_CONTRACT = "evidence_contract"  # 통제별 필요 증적 정의(버전관리, P2)
+KIND_EVIDENCE_MAPPING = "evidence_mapping"    # 통제 ↔ 기술 소스 매핑(시간축, P2)
 
 KINDS = (KIND_FRAMEWORK, KIND_FRAMEWORK_VERSION, KIND_CONTROL_DEF, KIND_RELATIONSHIP,
-         KIND_ORG_CONTROL, KIND_ASSURANCE_CYCLE, KIND_SCOPE_SNAPSHOT)
+         KIND_ORG_CONTROL, KIND_ASSURANCE_CYCLE, KIND_SCOPE_SNAPSHOT,
+         KIND_CYCLE_CONTROL, KIND_EVIDENCE_CONTRACT, KIND_EVIDENCE_MAPPING)
+
+# 증적 상태 vs 통제 평가 상태 — 절대 같은 컬럼으로 쓰지 않는다.
+EVIDENCE_STATUSES = ("missing", "available", "stale", "partial", "reviewed", "approved", "superseded")
+ASSESSMENT_STATUSES = ("not_assessed", "design_deficient", "implemented", "operating",
+                       "ineffective", "effective", "exception_approved", "remediation_required")
+APPLICABILITY_STATUSES = ("applicable", "not_applicable", "partially_applicable",
+                          "inherited", "shared_responsibility", "pending_assessment")
 
 # 통제 관계 유형(계보 그래프). coverage_percent 는 자동 법적 판정이 아니라 담당자 판단값.
 RELATIONSHIP_TYPES = (
@@ -172,11 +183,105 @@ def is_mutable_version(record: dict[str, Any]) -> bool:
     return str(record.get("status") or "draft") == "draft"
 
 
+# ── EvidenceContract — 통제별 '어떤 증적이 있어야 하는가'(버전관리) ─────────────────
+def build_evidence_contract(*, organization_control_id: str, version: int = 1,
+                            frequency: str = "", required_fields: list[str] | None = None,
+                            minimum_coverage: float = 0.0, maximum_age_days: int = 0,
+                            allowed_sources: list[str] | None = None,
+                            required_reviewer: str = "", now: str = "",
+                            created_by: str = "") -> dict[str, Any]:
+    """증적 계약. 증적은 이 계약 '버전'으로 생성됐는지 각인한다(과거 증적 재사용 판정용)."""
+    cid = f"{_slug(organization_control_id)}:v{version}"
+    rec = {
+        "id": cid, "evidence_contract_id": cid,
+        "organization_control_id": organization_control_id, "version": version,
+        "frequency": frequency, "required_fields": list(required_fields or []),
+        "minimum_coverage": minimum_coverage, "maximum_age_days": maximum_age_days,
+        "allowed_sources": list(allowed_sources or []), "required_reviewer": required_reviewer,
+        "created_at": now, "created_by": created_by,
+    }
+    rec["content_hash"] = content_hash(rec)
+    return rec
+
+
+# ── EvidenceMapping — 통제 ↔ 기술 소스(유효기간·버전) ─────────────────────────────
+def build_evidence_mapping(*, organization_control_id: str, source_type: str,
+                           collection_rule_id: str = "", valid_from: str = "",
+                           valid_to: str | None = None, mapping_version: int = 1,
+                           rationale: str = "", approved_by: str = "", now: str = "") -> dict[str, Any]:
+    mid = f"{_slug(organization_control_id)}:{_slug(source_type)}:v{mapping_version}"
+    return {
+        "id": mid, "mapping_id": mid, "organization_control_id": organization_control_id,
+        "source_type": source_type, "collection_rule_id": collection_rule_id,
+        "valid_from": valid_from, "valid_to": valid_to, "mapping_version": mapping_version,
+        "rationale": rationale, "approved_by": approved_by, "created_at": now,
+    }
+
+
+# ── CycleControl — 운영주기 안의 통제 인스턴스(증적/평가 분리, append-only history) ──
+def build_cycle_control(*, cycle_id: str, control_ref: str, assignee: str = "",
+                        applicability: str = "pending_assessment", now: str = "",
+                        created_by: str = "") -> dict[str, Any]:
+    """운영주기별 통제 인스턴스. evidence_status 와 assessment_status 를 분리 보관한다."""
+    cc_id = f"{_slug(cycle_id)}:{_slug(control_ref)}"
+    return {
+        "id": cc_id, "cycle_control_id": cc_id, "cycle_id": cycle_id, "control_ref": control_ref,
+        "assignee": assignee, "applicability": applicability,
+        "evidence_status": "missing", "assessment_status": "not_assessed",
+        "evidence_contract_ref": "", "created_at": now, "created_by": created_by,
+        "updated_at": now,
+        "history": [{"ts": now, "actor": created_by, "action": "created"}],
+    }
+
+
+def apply_cycle_control_update(cc: dict[str, Any], *, actor: str, now: str,
+                               evidence_status: str = "", assessment_status: str = "",
+                               applicability: str = "", assignee: str = "",
+                               note: str = "") -> dict[str, Any]:
+    """운영주기 통제 상태 갱신(제자리 + append-only history). 증적·평가 상태는 서로 독립.
+
+    유효성(상태값 소속)은 호출자가 확인한다. history 로 특정 시점 재현이 가능하다(event-sourcing 근사).
+    """
+    changed: dict[str, Any] = {}
+    if evidence_status:
+        changed["evidence_status"] = evidence_status
+        cc["evidence_status"] = evidence_status
+    if assessment_status:
+        changed["assessment_status"] = assessment_status
+        cc["assessment_status"] = assessment_status
+    if applicability:
+        changed["applicability"] = applicability
+        cc["applicability"] = applicability
+    if assignee:
+        changed["assignee"] = assignee
+        cc["assignee"] = assignee
+    cc["updated_at"] = now
+    cc.setdefault("history", []).append(
+        {"ts": now, "actor": actor, "action": "update", "changed": changed, "note": note})
+    return cc
+
+
+def cycle_control_as_of(cc: dict[str, Any], as_of_ts: str) -> dict[str, Any]:
+    """history 를 재생해 특정 시점(as_of_ts)의 통제 상태를 재현한다(감사 시점 조회)."""
+    state = {"evidence_status": "missing", "assessment_status": "not_assessed",
+             "applicability": "pending_assessment", "assignee": ""}
+    for h in cc.get("history") or []:
+        if str(h.get("ts") or "") > as_of_ts:
+            break
+        for k, v in (h.get("changed") or {}).items():
+            state[k] = v
+    state["as_of"] = as_of_ts
+    return state
+
+
 __all__ = [
     "KINDS", "KIND_FRAMEWORK", "KIND_FRAMEWORK_VERSION", "KIND_CONTROL_DEF", "KIND_RELATIONSHIP",
-    "KIND_ORG_CONTROL", "KIND_ASSURANCE_CYCLE", "KIND_SCOPE_SNAPSHOT", "RELATIONSHIP_TYPES",
-    "INTERPRETATION_TYPES", "VERSION_STATUSES", "content_hash", "build_framework",
-    "build_framework_version", "build_control_definition", "build_relationship",
-    "build_organization_control", "build_scope_snapshot", "build_assurance_cycle",
-    "is_mutable_version",
+    "KIND_ORG_CONTROL", "KIND_ASSURANCE_CYCLE", "KIND_SCOPE_SNAPSHOT", "KIND_CYCLE_CONTROL",
+    "KIND_EVIDENCE_CONTRACT", "KIND_EVIDENCE_MAPPING", "RELATIONSHIP_TYPES",
+    "INTERPRETATION_TYPES", "VERSION_STATUSES", "EVIDENCE_STATUSES", "ASSESSMENT_STATUSES",
+    "APPLICABILITY_STATUSES", "content_hash", "build_framework", "build_framework_version",
+    "build_control_definition", "build_relationship", "build_organization_control",
+    "build_scope_snapshot", "build_assurance_cycle", "is_mutable_version",
+    "build_evidence_contract", "build_evidence_mapping", "build_cycle_control",
+    "apply_cycle_control_update", "cycle_control_as_of",
 ]

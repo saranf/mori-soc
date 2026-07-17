@@ -14,21 +14,32 @@ from fastapi import HTTPException, Request
 
 from mori_soc.api.routes.context import RouteContext
 from mori_soc.services.control_governance import (
+    APPLICABILITY_STATUSES,
+    ASSESSMENT_STATUSES,
+    EVIDENCE_STATUSES,
     KIND_ASSURANCE_CYCLE,
     KIND_CONTROL_DEF,
+    KIND_CYCLE_CONTROL,
+    KIND_EVIDENCE_CONTRACT,
+    KIND_EVIDENCE_MAPPING,
     KIND_FRAMEWORK,
     KIND_FRAMEWORK_VERSION,
     KIND_ORG_CONTROL,
     KIND_RELATIONSHIP,
     KIND_SCOPE_SNAPSHOT,
     RELATIONSHIP_TYPES,
+    apply_cycle_control_update,
     build_assurance_cycle,
     build_control_definition,
+    build_cycle_control,
+    build_evidence_contract,
+    build_evidence_mapping,
     build_framework,
     build_framework_version,
     build_organization_control,
     build_relationship,
     build_scope_snapshot,
+    cycle_control_as_of,
     is_mutable_version,
 )
 
@@ -265,3 +276,111 @@ def register_control_governance(ctx: RouteContext) -> None:
         if _find(KIND_ASSURANCE_CYCLE, rec["id"]):
             raise HTTPException(status_code=409, detail="이미 존재하는 운영주기입니다.")
         return _save(KIND_ASSURANCE_CYCLE, rec, actor, "GOV_CYCLE_CREATE")
+
+    # ── EvidenceContract (통제별 필요 증적 정의, 버전관리) ──────────────────────────
+    @app.get("/governance/evidence-contracts", tags=["Governance"])
+    def list_evidence_contracts(request: Request, organization_control_id: str | None = None) -> dict[str, Any]:
+        _require(request)
+        rows = _load(KIND_EVIDENCE_CONTRACT)
+        if organization_control_id:
+            rows = [r for r in rows if r.get("organization_control_id") == organization_control_id]
+        return {"evidence_contracts": rows}
+
+    @app.post("/governance/evidence-contracts", tags=["Governance"])
+    def create_evidence_contract(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        actor = _require(request)
+        oc = str(payload.get("organization_control_id", "")).strip()
+        if not oc:
+            raise HTTPException(status_code=400, detail="organization_control_id 는 필수입니다.")
+        rec = build_evidence_contract(
+            organization_control_id=oc, version=int(payload.get("version", 1) or 1),
+            frequency=str(payload.get("frequency", "")),
+            required_fields=[str(x) for x in (payload.get("required_fields") or [])],
+            minimum_coverage=float(payload.get("minimum_coverage", 0) or 0),
+            maximum_age_days=int(payload.get("maximum_age_days", 0) or 0),
+            allowed_sources=[str(x) for x in (payload.get("allowed_sources") or [])],
+            required_reviewer=str(payload.get("required_reviewer", "")), now=_now(), created_by=actor)
+        if _find(KIND_EVIDENCE_CONTRACT, rec["id"]):
+            raise HTTPException(status_code=409, detail="이미 존재하는 계약 버전입니다(새 version 으로).")
+        return _save(KIND_EVIDENCE_CONTRACT, rec, actor, "GOV_CONTRACT_CREATE")
+
+    # ── EvidenceMapping (통제 ↔ 기술 소스, 유효기간) ────────────────────────────────
+    @app.get("/governance/evidence-mappings", tags=["Governance"])
+    def list_evidence_mappings(request: Request, organization_control_id: str | None = None) -> dict[str, Any]:
+        _require(request)
+        rows = _load(KIND_EVIDENCE_MAPPING)
+        if organization_control_id:
+            rows = [r for r in rows if r.get("organization_control_id") == organization_control_id]
+        return {"evidence_mappings": rows}
+
+    @app.post("/governance/evidence-mappings", tags=["Governance"])
+    def create_evidence_mapping(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        actor = _require(request)
+        oc = str(payload.get("organization_control_id", "")).strip()
+        src = str(payload.get("source_type", "")).strip()
+        if not oc or not src:
+            raise HTTPException(status_code=400, detail="organization_control_id·source_type 필수입니다.")
+        rec = build_evidence_mapping(
+            organization_control_id=oc, source_type=src,
+            collection_rule_id=str(payload.get("collection_rule_id", "")),
+            valid_from=str(payload.get("valid_from", "")), valid_to=payload.get("valid_to"),
+            mapping_version=int(payload.get("mapping_version", 1) or 1),
+            rationale=str(payload.get("rationale", "")), approved_by=actor, now=_now())
+        return _save(KIND_EVIDENCE_MAPPING, rec, actor, "GOV_MAPPING_CREATE")
+
+    # ── CycleControl (운영주기 통제 인스턴스 — 증적/평가 분리, append-only) ────────────
+    @app.get("/governance/assurance-cycles/{cycle_id}/controls", tags=["Governance"])
+    def list_cycle_controls(cycle_id: str, request: Request) -> dict[str, Any]:
+        _require(request)
+        rows = [r for r in _load(KIND_CYCLE_CONTROL) if r.get("cycle_id") == cycle_id]
+        return {"cycle_id": cycle_id, "cycle_controls": rows,
+                "evidence_statuses": list(EVIDENCE_STATUSES),
+                "assessment_statuses": list(ASSESSMENT_STATUSES),
+                "applicability_statuses": list(APPLICABILITY_STATUSES)}
+
+    @app.post("/governance/cycle-controls", tags=["Governance"])
+    def create_cycle_control(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        actor = _require(request)
+        cyc = str(payload.get("cycle_id", "")).strip()
+        ref = str(payload.get("control_ref", "")).strip()
+        if not cyc or not ref:
+            raise HTTPException(status_code=400, detail="cycle_id·control_ref 필수입니다.")
+        rec = build_cycle_control(cycle_id=cyc, control_ref=ref,
+                                  assignee=str(payload.get("assignee", "")),
+                                  applicability=str(payload.get("applicability", "pending_assessment")),
+                                  now=_now(), created_by=actor)
+        if _find(KIND_CYCLE_CONTROL, rec["id"]):
+            raise HTTPException(status_code=409, detail="이미 존재하는 주기 통제입니다.")
+        return _save(KIND_CYCLE_CONTROL, rec, actor, "GOV_CYCLECTL_CREATE")
+
+    @app.post("/governance/cycle-controls/{cc_id}/update", tags=["Governance"])
+    def update_cycle_control(cc_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """증적 상태·평가 상태·적용성·담당자 갱신. 증적≠평가(분리), history append-only."""
+        actor = _require(request)
+        cc = _find(KIND_CYCLE_CONTROL, cc_id)
+        if cc is None:
+            raise HTTPException(status_code=404, detail="주기 통제를 찾을 수 없습니다.")
+        ev = str(payload.get("evidence_status", "")).strip()
+        asv = str(payload.get("assessment_status", "")).strip()
+        appl = str(payload.get("applicability", "")).strip()
+        if ev and ev not in EVIDENCE_STATUSES:
+            raise HTTPException(status_code=400, detail=f"evidence_status 는 {', '.join(EVIDENCE_STATUSES)} 중 하나.")
+        if asv and asv not in ASSESSMENT_STATUSES:
+            raise HTTPException(status_code=400, detail=f"assessment_status 는 {', '.join(ASSESSMENT_STATUSES)} 중 하나.")
+        if appl and appl not in APPLICABILITY_STATUSES:
+            raise HTTPException(status_code=400, detail=f"applicability 는 {', '.join(APPLICABILITY_STATUSES)} 중 하나.")
+        apply_cycle_control_update(cc, actor=actor, now=_now(), evidence_status=ev,
+                                   assessment_status=asv, applicability=appl,
+                                   assignee=str(payload.get("assignee", "")),
+                                   note=str(payload.get("note", "")))
+        return _save(KIND_CYCLE_CONTROL, cc, actor, "GOV_CYCLECTL_UPDATE")
+
+    @app.get("/governance/cycle-controls/{cc_id}/as-of", tags=["Governance"])
+    def cycle_control_as_of_route(cc_id: str, request: Request, date: str | None = None) -> dict[str, Any]:
+        """특정 시점(date, ISO)의 통제 상태를 history 재생으로 재현(감사 시점 조회)."""
+        _require(request)
+        cc = _find(KIND_CYCLE_CONTROL, cc_id)
+        if cc is None:
+            raise HTTPException(status_code=404, detail="주기 통제를 찾을 수 없습니다.")
+        as_of = date or _now()
+        return {"cycle_control_id": cc_id, **cycle_control_as_of(cc, as_of)}
