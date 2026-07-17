@@ -141,6 +141,20 @@ class StateRepository(ABC):
     def delete_governance(self, kind: str, entity_id: str) -> None:
         return None
 
+    # ── control_governance_events: append-only hash chain(S3). 기본 no-op ──────────
+    def append_governance_event(self, entry: dict[str, Any]) -> None:
+        """거버넌스 변경 이벤트 1건 append(UPDATE/DELETE 없음). 기본 no-op."""
+        return None
+
+    def load_governance_events(self, kind: str | None = None, entity_id: str | None = None,
+                               limit: int = 2000) -> list[dict[str, Any]]:
+        """이벤트를 seq 오름차순으로(체인 검증·revision 계산용). 기본 빈 목록."""
+        return []
+
+    def latest_governance_event(self) -> dict[str, Any] | None:
+        """가장 최신 이벤트(재시작 후 체인 head 시딩용). 기본 None."""
+        return None
+
     @abstractmethod
     def delete_evidence_event(self, event_id: str) -> None:
         """Remove one evidence event."""

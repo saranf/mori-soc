@@ -33,6 +33,7 @@ class InMemoryStateRepository(StateRepository):
         self._control_evidence: dict[str, dict[str, Any]] = {}
         self._personal_data_flow: dict[str, dict[str, Any]] = {}
         self._governance: dict[str, dict[str, dict[str, Any]]] = {}  # kind -> id -> record
+        self._governance_events: list[dict[str, Any]] = []           # append-only 이벤트 원장
 
     # ── user_profiles ──────────────────────────────────────────────────────────
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:
@@ -171,6 +172,22 @@ class InMemoryStateRepository(StateRepository):
 
     def delete_governance(self, kind: str, entity_id: str) -> None:
         self._governance.get(kind, {}).pop(entity_id, None)
+
+    # ── control_governance_events (append-only hash chain) ────────────────────────
+    def append_governance_event(self, entry: dict[str, Any]) -> None:
+        self._governance_events.append(copy.deepcopy(entry))
+
+    def load_governance_events(self, kind: str | None = None, entity_id: str | None = None,
+                               limit: int = 2000) -> list[dict[str, Any]]:
+        evs = self._governance_events
+        if kind is not None:
+            evs = [e for e in evs if e.get("kind") == kind]
+        if entity_id is not None:
+            evs = [e for e in evs if e.get("entity_id") == entity_id]
+        return [copy.deepcopy(e) for e in evs[-limit:]]
+
+    def latest_governance_event(self) -> dict[str, Any] | None:
+        return copy.deepcopy(self._governance_events[-1]) if self._governance_events else None
 
 
 __all__ = ["InMemoryStateRepository"]

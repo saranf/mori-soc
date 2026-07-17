@@ -370,6 +370,29 @@ class ControlGovernanceRouteTests(unittest.TestCase):
         self.assertEqual(ov["overlay"]["owner_team"], "보안운영팀")
 
 
+    def test_append_only_event_chain(self) -> None:
+        from mori_soc.services.control_governance import verify_governance_chain
+        c = self._client()
+        c.post("/governance/frameworks", json={"framework_id": "ISMS-P", "name": "ISMS-P"})
+        c.post("/governance/framework-versions", json={"framework_id": "ISMS-P", "version": "2023"})
+        c.post("/governance/framework-versions/isms-p:2023/activate")
+        evs = c.get("/governance/events").json()
+        # framework create + version create + version lifecycle = 3 이벤트
+        self.assertGreaterEqual(evs["count"], 3)
+        types = [e["event_type"] for e in evs["events"]]
+        self.assertIn("create", types)
+        self.assertIn("lifecycle", types)
+        # 엔터티 필터 + revision 증가
+        vevs = c.get("/governance/events", params={"kind": "framework_version",
+                                                   "entity_id": "isms-p:2023"}).json()["events"]
+        self.assertEqual([e["revision"] for e in vevs], [1, 2])  # create, activate
+        # hash chain 무결성 OK
+        self.assertTrue(c.get("/governance/events/verify").json()["ok"])
+        # 변조 감지: 이벤트 payload 를 바꾸면 체인이 깨진다(서비스 함수 직접 검증)
+        raw = c.get("/governance/events").json()["events"]
+        raw[1]["payload"] = {"tampered": True}
+        self.assertFalse(verify_governance_chain(raw)["ok"])
+
     def test_version_lifecycle_route_enforcement(self) -> None:
         c = self._client()
         c.post("/governance/frameworks", json={"framework_id": "ISMS-P", "name": "ISMS-P"})

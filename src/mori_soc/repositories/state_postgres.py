@@ -798,5 +798,60 @@ class PostgresStateRepository(StateRepository):
                 "DELETE FROM ui_control_governance WHERE kind = %s AND entity_id = %s",
                 (kind, entity_id))
 
+    # ── control_governance_events (append-only hash chain) ────────────────────────
+    _GOV_EVENT_COLS = ("seq", "event_id", "kind", "entity_id", "revision", "event_type",
+                       "actor", "occurred_at", "payload", "prev_hash", "hash")
+
+    def append_governance_event(self, entry: dict[str, Any]) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO ui_control_governance_events
+                    (event_id, kind, entity_id, revision, event_type, actor, occurred_at,
+                     payload, prev_hash, hash)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (entry.get("event_id"), entry.get("kind"), entry.get("entity_id"),
+                 int(entry.get("revision") or 0), entry.get("event_type"), entry.get("actor"),
+                 entry.get("occurred_at"),
+                 Jsonb(entry.get("payload") or {}) if Jsonb is not None else (entry.get("payload") or {}),
+                 entry.get("prev_hash"), entry.get("hash")))
+
+    def load_governance_events(self, kind: str | None = None, entity_id: str | None = None,
+                               limit: int = 2000) -> list[dict[str, Any]]:
+        clauses, params = [], []
+        if kind is not None:
+            clauses.append("kind = %s")
+            params.append(kind)
+        if entity_id is not None:
+            clauses.append("entity_id = %s")
+            params.append(entity_id)
+        where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT seq, event_id, kind, entity_id, revision, event_type, actor, occurred_at, "
+                f"payload, prev_hash, hash FROM ui_control_governance_events{where} "
+                "ORDER BY seq ASC LIMIT %s", (*params, limit))
+            out = []
+            for r in cur.fetchall():
+                d = dict(zip(self._GOV_EVENT_COLS, r, strict=False))
+                if d.get("occurred_at") is not None and hasattr(d["occurred_at"], "isoformat"):
+                    d["occurred_at"] = d["occurred_at"].isoformat()
+                out.append(d)
+            return out
+
+    def latest_governance_event(self) -> dict[str, Any] | None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT seq, event_id, kind, entity_id, revision, event_type, actor, occurred_at, "
+                "payload, prev_hash, hash FROM ui_control_governance_events ORDER BY seq DESC LIMIT 1")
+            r = cur.fetchone()
+            if r is None:
+                return None
+            d = dict(zip(self._GOV_EVENT_COLS, r, strict=False))
+            if d.get("occurred_at") is not None and hasattr(d["occurred_at"], "isoformat"):
+                d["occurred_at"] = d["occurred_at"].isoformat()
+            return d
+
 
 __all__ = ["PostgresStateRepository", "PSYCOPG_AVAILABLE"]

@@ -231,6 +231,48 @@ def is_mutable_version(record: dict[str, Any]) -> bool:
     return str(record.get("status") or "draft") == "draft"
 
 
+# ── append-only 이벤트 hash chain(S3) — 감사로그와 동일 방식으로 변조 검증 ─────────────
+_EVENT_HASH_FIELDS = ("event_id", "kind", "entity_id", "revision", "event_type",
+                      "actor", "occurred_at", "payload")
+
+
+def governance_event_hash(prev_hash: str, entry: dict[str, Any]) -> str:
+    """이벤트 해시 = sha256(prev_hash | canonical(핵심 필드)). 앞 이벤트에 연결된 체인."""
+    core = {k: entry.get(k) for k in _EVENT_HASH_FIELDS}
+    payload = json.dumps(core, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(f"{prev_hash}|{payload}".encode()).hexdigest()
+
+
+def build_governance_event(prev_hash: str, *, kind: str, entity_id: str, revision: int,
+                           event_type: str, actor: str, occurred_at: str,
+                           payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    """append-only 이벤트 1건(hash 포함). event_id 는 kind:entity:revision 로 결정적."""
+    entry = {
+        "event_id": f"{kind}:{entity_id}:r{revision}",
+        "kind": kind, "entity_id": entity_id, "revision": revision, "event_type": event_type,
+        "actor": actor, "occurred_at": occurred_at, "payload": payload or {},
+        "prev_hash": prev_hash,
+    }
+    entry["hash"] = governance_event_hash(prev_hash, entry)
+    return entry
+
+
+def verify_governance_chain(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """이벤트 원장의 hash chain 무결성 검증(변조·삭제·재배열 감지).
+
+    반환: {ok, count, broken_at(첫 불일치 event_id 또는 None)}.
+    """
+    prev_link: str | None = None
+    for e in events:
+        recomputed = governance_event_hash(str(e.get("prev_hash", "")), e)
+        if recomputed != e.get("hash"):
+            return {"ok": False, "count": len(events), "broken_at": e.get("event_id")}
+        if prev_link is not None and e.get("prev_hash") != prev_link:
+            return {"ok": False, "count": len(events), "broken_at": e.get("event_id")}
+        prev_link = e.get("hash")
+    return {"ok": True, "count": len(events), "broken_at": None}
+
+
 # ── 감사 실사용(P4) — as-of 스냅샷 · 승인 · 재현 패키지 ─────────────────────────────
 def build_cycle_audit_snapshot(
     cycle: dict[str, Any], cycle_controls: list[dict[str, Any]], as_of: str,
@@ -612,5 +654,6 @@ __all__ = [
     "diff_control_definitions", "initialize_cycle_from_previous",
     "build_cycle_audit_snapshot", "build_crosswalk", "apply_overlay",
     "VERSION_TRANSITIONS", "can_version_transition", "apply_version_lifecycle", "periods_overlap",
-    "plan_cycle_migration",
+    "plan_cycle_migration", "governance_event_hash", "build_governance_event",
+    "verify_governance_chain",
 ]

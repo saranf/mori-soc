@@ -7,10 +7,13 @@ OrganizationControl / ScopeSnapshot / AssuranceCycle 의 CRUD + 버전 불변.
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException, Request
+
+_log = logging.getLogger("mori_soc.governance")
 
 from mori_soc.api.routes.context import RouteContext
 from mori_soc.services.control_governance import (
@@ -41,6 +44,7 @@ from mori_soc.services.control_governance import (
     build_evidence_mapping,
     build_framework,
     build_framework_version,
+    build_governance_event,
     build_organization_control,
     build_relationship,
     build_scope_snapshot,
@@ -51,6 +55,7 @@ from mori_soc.services.control_governance import (
     is_mutable_version,
     periods_overlap,
     plan_cycle_migration,
+    verify_governance_chain,
 )
 
 
@@ -92,10 +97,31 @@ def register_control_governance(ctx: RouteContext) -> None:
             raise HTTPException(status_code=404,
                                 detail=f"control_ref({entity_id})가 통제 정의·내부통제 어디에도 없습니다.")
 
+    def _event_type(action: str) -> str:
+        if "ACTIVATE" in action or "RETIRE" in action:
+            return "lifecycle"
+        if "MIGRATE" in action:
+            return "migrate"
+        if "UPDATE" in action:
+            return "update"
+        return "create"
+
     def _save(kind: str, rec: dict[str, Any], actor: str, action: str) -> dict[str, Any]:
         repo = _repo()
         if repo is not None:
             repo.save_governance(kind, rec["id"], rec)
+            # append-only 이벤트 원장에 기록(hash chain) — projection 저장과 짝. 실패는 드러낸다.
+            try:
+                prev = repo.latest_governance_event()
+                prev_hash = prev["hash"] if prev else "GENESIS"
+                revision = len(repo.load_governance_events(kind, rec["id"])) + 1
+                ev = build_governance_event(
+                    prev_hash, kind=kind, entity_id=rec["id"], revision=revision,
+                    event_type=_event_type(action), actor=actor, occurred_at=_now(),
+                    payload=dict(rec))
+                repo.append_governance_event(ev)
+            except Exception:  # pragma: no cover - 이벤트 기록 실패가 projection 저장을 막지 않음
+                _log.warning("[governance] event append failed for %s:%s", kind, rec.get("id"))
         if ctx.log_action:
             ctx.log_action(actor, action, rec["id"])
         return rec
@@ -522,3 +548,21 @@ def register_control_governance(ctx: RouteContext) -> None:
         if cdef is None:
             raise HTTPException(status_code=404, detail="통제 정의를 찾을 수 없습니다.")
         return apply_overlay(cdef, payload if isinstance(payload, dict) else {})
+
+    # ── append-only 이벤트 원장(S3) — 변경 이력 + hash chain 무결성 검증 ──────────────
+    @app.get("/governance/events", tags=["Governance"])
+    def governance_events(request: Request, kind: str | None = None,
+                          entity_id: str | None = None) -> dict[str, Any]:
+        """거버넌스 변경 이벤트(append-only). kind·entity_id 로 필터. seq 오름차순."""
+        _require(request)
+        repo = _repo()
+        events = repo.load_governance_events(kind, entity_id) if repo is not None else []
+        return {"events": events, "count": len(events)}
+
+    @app.get("/governance/events/verify", tags=["Governance"])
+    def governance_events_verify(request: Request) -> dict[str, Any]:
+        """전체 이벤트 원장의 hash chain 무결성 검증(변조·삭제·재배열 감지)."""
+        _require(request)
+        repo = _repo()
+        events = repo.load_governance_events() if repo is not None else []
+        return verify_governance_chain(events)
