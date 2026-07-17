@@ -420,32 +420,42 @@ def register_privacy(ctx: RouteContext) -> None:
 
         from mori_soc.services.csv_export import render_csv
         from mori_soc.services.data_flow import render_data_flow_pdf
+        from mori_soc.services.evidence_bundle import (
+            signing_config_from_env,
+            write_bundle_with_manifest,
+        )
         _require_privacy_role(request)
         rows = _sorted_rows()
         now = datetime.now(tz=timezone.utc).isoformat()
         manifest = build_isms3x_manifest(rows, _declared_policy(), generated_at=now)
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
-            zf.writestr("data-flow.csv", render_csv(rows, {
+        # 번들 파일들을 먼저 바이트로 모은 뒤, 서명 매니페스트(C4)와 함께 ZIP 에 쓴다.
+        files: dict[str, bytes] = {
+            "manifest.json": json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8"),
+            "data-flow.csv": render_csv(rows, {
                 k: k for k in ("item", "subject", "collection_source", "storage_location",
-                               "purpose", "retention", "destruction", "third_party", "overseas")}))
-            zf.writestr("processing-tasks.csv", render_csv(build_processing_tasks(rows), {
+                               "purpose", "retention", "destruction", "third_party", "overseas")}).encode("utf-8"),
+            "processing-tasks.csv": render_csv(build_processing_tasks(rows), {
                 "task": "처리업무", "subjects": "정보주체", "items": "개인정보 항목",
                 "system": "시스템/저장", "collect_code": "수집 근거", "dispose_code": "파기 근거",
-                "purpose": "이용 목적", "controls": "관련 통제", "confirm_status": "확인 상태"}))
-            zf.writestr("external-recipients.csv", render_csv(classify_external_recipients(rows), {
+                "purpose": "이용 목적", "controls": "관련 통제", "confirm_status": "확인 상태"}).encode("utf-8"),
+            "external-recipients.csv": render_csv(classify_external_recipients(rows), {
                 "recipient": "외부 수신자", "candidate_types": "후보 구분", "items": "개인정보 항목",
-                "purpose": "목적", "overseas": "국외", "confirm": "확인"}))
-            zf.writestr("file-overview.csv", render_csv(build_file_overview(rows), {
+                "purpose": "목적", "overseas": "국외", "confirm": "확인"}).encode("utf-8"),
+            "file-overview.csv": render_csv(build_file_overview(rows), {
                 "file_name": "파일명", "subject_count": "정보주체 수", "required_items": "필수 항목",
-                "optional_items": "선택 항목", "third_party": "제3자", "purpose": "목적"}))
-            try:
-                pdf = render_data_flow_pdf(rows, generated_at=now)
-                if pdf:
-                    zf.writestr("data-flow.pdf", pdf)
-            except Exception:
-                pass  # reportlab 미설치 등 — CSV·매니페스트만으로도 유효한 패키지.
+                "optional_items": "선택 항목", "third_party": "제3자", "purpose": "목적"}).encode("utf-8"),
+        }
+        try:
+            pdf = render_data_flow_pdf(rows, generated_at=now)
+            if pdf:
+                files["data-flow.pdf"] = pdf
+        except Exception:
+            pass  # reportlab 미설치 등 — CSV·매니페스트만으로도 유효한 패키지.
+        secret, key_id = signing_config_from_env()
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            write_bundle_with_manifest(zf, files, generated_at=now, secret=secret, key_id=key_id,
+                                       extra={"bundle": "isms-3x-evidence-package"})
         headers = {"Content-Disposition": 'attachment; filename="mori-isms-3x-evidence-package.zip"'}
         return Response(content=buf.getvalue(), media_type="application/zip", headers=headers)
 

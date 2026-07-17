@@ -405,16 +405,26 @@ def register_compliance(ctx: RouteContext) -> None:
         )
         res["control_id"] = str(payload.get("control_id", "") or "")
         res["period"] = str(payload.get("period", "") or "")
+        from mori_soc.services.evidence_bundle import (
+            signing_config_from_env,
+            write_bundle_with_manifest,
+        )
         sample = res.pop("sample", [])
         cols: list[str] = []
         for item in sample:
             for kk in item:
                 if kk not in cols:
                     cols.append(kk)
+        files = {
+            "manifest.json": _json.dumps(res, ensure_ascii=False, indent=2).encode("utf-8"),
+            "sample.csv": render_csv(sample, {c: c for c in cols}).encode("utf-8"),
+        }
+        secret, key_id = signing_config_from_env()
+        now2 = datetime.now(tz=timezone.utc).isoformat()
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr("manifest.json", _json.dumps(res, ensure_ascii=False, indent=2))
-            zf.writestr("sample.csv", render_csv(sample, {c: c for c in cols}))
+            write_bundle_with_manifest(zf, files, generated_at=now2, secret=secret, key_id=key_id,
+                                       extra={"bundle": "audit-sample", "control_id": res["control_id"]})
         fname = "mori-audit-sample" + (f"-{res['control_id']}" if res["control_id"] else "") + ".zip"
         return _Response(content=buf.getvalue(), media_type="application/zip",
                          headers={"Content-Disposition": f'attachment; filename="{fname}"'})
@@ -943,6 +953,10 @@ def register_compliance(ctx: RouteContext) -> None:
             evidence_document_csv,
             evidence_document_pdf,
         )
+        from mori_soc.services.evidence_bundle import (
+            signing_config_from_env,
+            write_bundle_with_manifest,
+        )
         user = ctx.get_session_username(request) if ctx.get_session_username else ""
         catalog = _merged_catalog()
         host_lists = _evidence_host_lists()
@@ -951,34 +965,39 @@ def register_compliance(ctx: RouteContext) -> None:
         for r in (ctx.control_evidence or {}).values():
             ev_by_control[r.get("control_id", "")] = ev_by_control.get(r.get("control_id", ""), 0) + 1
         want_all = str(scope).strip() == "all"
-        buf = io_mod.BytesIO()
         index_rows = [["control_id", "title_ko", "framework", "assets", "records"]]
         n = 0
+        files: dict[str, bytes] = {}   # 파일 수집 후 서명 매니페스트와 함께 ZIP 작성(C4)
+        for c in catalog.get("controls", []):
+            cid = c.get("id")
+            if not cid:
+                continue
+            has_ev = bool(c.get("evidence_sources"))
+            has_rec = ev_by_control.get(cid, 0) > 0
+            if not want_all and not (has_ev or has_rec):
+                continue
+            doc = _evidence_document(cid, user or "", host_lists=host_lists,
+                                     metrics=metrics, catalog=catalog)
+            if doc is None:
+                continue
+            folder = f"{_safe_name(_fw_label(c.get('framework')), 20)}/{_safe_name(cid, 24)}_{_safe_name(c.get('title_ko') or c.get('title_en'), 40)}"
+            try:
+                files[f"{folder}/evidence.pdf"] = evidence_document_pdf(doc)
+            except RuntimeError:
+                pass  # reportlab 미설치 시 PDF 생략(CSV는 유지)
+            files[f"{folder}/evidence.csv"] = ("﻿" + evidence_document_csv(doc)).encode("utf-8")
+            index_rows.append([cid, c.get("title_ko", ""), _fw_label(c.get("framework")),
+                               len(doc["inventory"]), len(doc["records"])])
+            n += 1
+        sio = io_mod.StringIO()
+        csv_mod.writer(sio).writerows(index_rows)
+        files["INDEX.csv"] = ("﻿" + sio.getvalue()).encode("utf-8")
+        secret, key_id = signing_config_from_env()
+        now_iso = datetime.now(tz=timezone.utc).isoformat()
+        buf = io_mod.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-            for c in catalog.get("controls", []):
-                cid = c.get("id")
-                if not cid:
-                    continue
-                has_ev = bool(c.get("evidence_sources"))
-                has_rec = ev_by_control.get(cid, 0) > 0
-                if not want_all and not (has_ev or has_rec):
-                    continue
-                doc = _evidence_document(cid, user or "", host_lists=host_lists,
-                                         metrics=metrics, catalog=catalog)
-                if doc is None:
-                    continue
-                folder = f"{_safe_name(_fw_label(c.get('framework')), 20)}/{_safe_name(cid, 24)}_{_safe_name(c.get('title_ko') or c.get('title_en'), 40)}"
-                try:
-                    z.writestr(f"{folder}/evidence.pdf", evidence_document_pdf(doc))
-                except RuntimeError:
-                    pass  # reportlab 미설치 시 PDF 생략(CSV는 유지)
-                z.writestr(f"{folder}/evidence.csv", "﻿" + evidence_document_csv(doc))
-                index_rows.append([cid, c.get("title_ko", ""), _fw_label(c.get("framework")),
-                                   len(doc["inventory"]), len(doc["records"])])
-                n += 1
-            sio = io_mod.StringIO()
-            csv_mod.writer(sio).writerows(index_rows)
-            z.writestr("INDEX.csv", "﻿" + sio.getvalue())
+            write_bundle_with_manifest(z, files, generated_at=now_iso, secret=secret, key_id=key_id,
+                                       extra={"bundle": "evidence-bundle", "scope": str(scope), "controls": n})
         if ctx.log_action:
             ctx.log_action(user or "system", "EVIDENCE_BUNDLE_ZIP", f"{scope}: {n}건")
         ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d")

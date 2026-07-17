@@ -174,6 +174,15 @@ MORI 는 자동 수집 증적이 많으므로, '초록 Compliant' 하나로 뭉�
 - `GET /controls/change-report?month=YYYY-MM`(미지정 시 이번 달). UI: 통제 카탈로그 `월별 변경`
   패널(월 선택 → 새 증적·승인·Gap·전이 요약).
 
+### Signed Evidence Bundle (C4)
+
+증적 ZIP(증적 팩·ISMS-P 3.x 패키지·감사 표본)에 무결성 매니페스트 `MANIFEST.json` 을 포함한다.
+`services/evidence_bundle.py` — 각 파일 sha256 + 번들 해시(canonicalization=`mori-jcs-v1`, algo=sha256).
+`MORI_EVIDENCE_SIGNING_KEY` 가 있으면 HMAC-SHA256 서명(**tamper-evident**: 내보낸 뒤 수정하면
+검증 실패), 없으면 정직하게 `signed:false`(해시만). `verify_signed_manifest(manifest, files, secret)`
+로 검증. 모리다움 — 과대표현 금지: tamper-evident 이지 WORM/storage-immutable 은 아니다.
+모든 ZIP 엔드포인트가 공통 `write_bundle_with_manifest` 를 쓴다(공통화).
+
 ### 처리 보장(트랜잭션 경계)
 
 인제스트/증적 파이프라인은 **부분 성공을 정직하게 보고**한다(조용히 성공으로 위장하지 않음).

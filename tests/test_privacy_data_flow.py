@@ -405,9 +405,21 @@ class PrivacyRouteTests(unittest.TestCase):
         self.assertEqual(z.headers["content-type"], "application/zip")
         import io
         import zipfile
-        names = set(zipfile.ZipFile(io.BytesIO(z.content)).namelist())
+        zf = zipfile.ZipFile(io.BytesIO(z.content))
+        names = set(zf.namelist())
         self.assertIn("manifest.json", names)
         self.assertIn("processing-tasks.csv", names)
+        # C4: Signed Evidence Bundle — MANIFEST.json 이 있고, 파일 해시로 재검증된다.
+        import json as _json
+
+        from mori_soc.services.evidence_bundle import (
+            MANIFEST_NAME,
+            verify_signed_manifest,
+        )
+        self.assertIn(MANIFEST_NAME, names)
+        manifest = _json.loads(zf.read(MANIFEST_NAME))
+        extracted = {n: zf.read(n) for n in names if n != MANIFEST_NAME}
+        self.assertTrue(verify_signed_manifest(manifest, extracted)["files_ok"])
         # 삭제
         self.assertTrue(c.delete(f"/privacy/data-flow/{fid}").json()["ok"])
         self.assertEqual(len(c.get("/privacy/data-flow").json()["rows"]), 0)
