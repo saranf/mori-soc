@@ -5,20 +5,22 @@ dashboard_tabs.py 에서 화면 단위로 분리. 순수 문자열 상수 하나
 
 _TAB_COMPLIANCE_HTML = """    <!-- ── Tab: 심사 준비 (Compliance PDCA) ──────────────────────────── -->
     <div class=\"tab-panel\" id=\"tab_compliance\">
-      <section class=\"card\">
-        <div style=\"display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap\">
+      <!-- 심사 준비 히어로: 준비율 링 + 동적 헤드라인 + Pass/Warning/Fail 카운트 (renderPdca 가 실데이터로 채움) -->
+      <section class=\"card\" id=\"pdca_hero\">
+        <div style=\"display:flex;align-items:center;gap:24px;flex-wrap:wrap\">
+          <div class=\"mori-ring\" id=\"pdca_readiness_ring\" style=\"display:none\" title=\"통제 점검 Pass / 전체 비율\">
+            <div class=\"inner\"><b id=\"pdca_readiness_pct\">–</b><span data-i18n=\"dash.pdca.ready_label\">준비됨</span></div>
+          </div>
           <div style=\"flex:1;min-width:240px\">
-            <h2 data-i18n=\"dash.card.compliance\">심사 준비</h2>
-            <div class=\"subtext\" data-i18n=\"dash.compliance.sub_short\">ISMS-P·ISO 27001 통제 점검 현황이에요. 미조치·기한초과부터 처리하면 돼요.</div>
-            <details style=\"margin-top:8px\">
+            <h2 style=\"margin:0\" data-i18n=\"dash.card.compliance\">심사 준비</h2>
+            <div class=\"subtext\" id=\"pdca_hero_headline\" style=\"margin:4px 0 0;font-weight:600;color:#111827\"></div>
+            <div class=\"subtext\" data-i18n=\"dash.compliance.sub_short\" style=\"margin:4px 0 0\">ISMS-P·ISO 27001 통제 점검 현황이에요. 미조치·기한초과부터 처리하면 돼요.</div>
+            <details style=\"margin-top:6px\">
               <summary style=\"cursor:pointer;color:#2563eb;font-size:12px\" data-i18n=\"dash.pdca.criteria\">집계 기준 자세히</summary>
               <div class=\"subtext\" style=\"margin-top:6px\" data-i18n-html=\"dash.compliance.sub\">※ 상단 카드의 <strong>전체 점검 / Pass / Fail / Warning / Pass Rate</strong>는 <strong>통제 점검(control_checks)</strong> 결과만 집계합니다. <strong>미조치 합계</strong>와 <strong>기한초과</strong>는 통제 점검 + Trivy 취약점(critical/high) + Alert(critical/high, 7일) 미조치 항목을 통합 집계합니다.</div>
             </details>
           </div>
-          <!-- 준비율 링: 통제 pass/total 기반 실데이터 (renderPdca 가 채움) -->
-          <div class=\"mori-ring\" id=\"pdca_readiness_ring\" style=\"display:none\" title=\"통제 점검 Pass / 전체 비율\">
-            <div class=\"inner\"><b id=\"pdca_readiness_pct\">–</b><span data-i18n=\"dash.pdca.ready_label\">준비됨</span></div>
-          </div>
+          <div class=\"mori-strip\" id=\"pdca_hero_counts\" style=\"display:none\"></div>
         </div>
       </section>
 

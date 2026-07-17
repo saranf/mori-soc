@@ -2578,18 +2578,32 @@
         // Cache pending list so PDCA Do modal / CSV button can reuse the same dataset
         window.__pdcaPending = data.pending_remediations || [];
         window.__pdcaPendingSources = ps;
-        // 준비율 링(심사 준비 탭 상단): 통제 점검 Pass / 전체 — 실데이터
+        // 심사 준비 히어로: 준비율 링 + 동적 헤드라인 + Pass/Warning/Fail 카운트 — 실데이터
         try {
           const _tc = data.total_checks || 0, _sc = data.status_counts || {};
           const ringEl = document.getElementById('pdca_readiness_ring');
-          if (ringEl) {
-            if (_tc > 0) {
-              const rp = Math.round((_sc.pass || 0) / _tc * 100);
+          const headEl = document.getElementById('pdca_hero_headline');
+          const cntEl = document.getElementById('pdca_hero_counts');
+          if (_tc > 0) {
+            const rp = Math.round((_sc.pass || 0) / _tc * 100);
+            if (ringEl) {
               ringEl.style.setProperty('--p', rp);
               const pe = document.getElementById('pdca_readiness_pct');
               if (pe) pe.textContent = rp + '%';
               ringEl.style.display = '';
-            } else { ringEl.style.display = 'none'; }
+            }
+            if (headEl) headEl.textContent = tt('dash.pdca.hero_headline', '통제 {t}개 중 {p}개 Pass · 준비율 {r}%').replace('{t}', _tc).replace('{p}', _sc.pass || 0).replace('{r}', rp);
+            if (cntEl) {
+              cntEl.innerHTML =
+                `<div class="ms-metric"><span class="ms-k">${escapeHtml(tt('dash.pdca.cnt_pass', 'Pass'))}</span><span class="ms-v green">${_sc.pass || 0}</span></div>`
+                + `<div class="ms-div"></div><div class="ms-metric"><span class="ms-k">${escapeHtml(tt('dash.pdca.cnt_warn', 'Warning'))}</span><span class="ms-v amber">${_sc.warning || 0}</span></div>`
+                + `<div class="ms-div"></div><div class="ms-metric"><span class="ms-k">${escapeHtml(tt('dash.pdca.cnt_fail', 'Fail'))}</span><span class="ms-v red">${_sc.fail || 0}</span></div>`;
+              cntEl.style.display = 'flex';
+            }
+          } else {
+            if (ringEl) ringEl.style.display = 'none';
+            if (headEl) headEl.textContent = '';
+            if (cntEl) cntEl.style.display = 'none';
           }
         } catch (e) {}
         // Summary cards 상단은 control_checks만, 하단 2장은 통합(통제+Trivy+Alert)

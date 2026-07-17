@@ -205,6 +205,7 @@
     .mori-strip .ms-v.red { color: var(--c-red); }
     .mori-strip .ms-v.green { color: var(--c-green); }
     .mori-strip .ms-v.blue { color: var(--c-blue); }
+    .mori-strip .ms-v.amber { color: var(--c-amber); }
     .mori-strip .ms-div { width: 1px; align-self: stretch; min-height: 32px; background: var(--c-line); }
     .mori-strip .ms-cta { margin-left: auto; }
 
