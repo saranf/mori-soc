@@ -445,6 +445,20 @@
     }
     window.renderSecurityHero = renderSecurityHero;
 
+    /* 첫 방문 안내: 연결된 데이터 소스가 하나도 없을 때만 "무엇부터 하면 되는지" 안내.
+       실데이터(sources_reporting·total_hosts·ingested_records) 로 판정 — 가짜 상태 아님.
+       비어 있지 않으면 안내를 숨기고 평소 대시보드를 그대로 보여준다. */
+    function renderFirstRunGuide() {
+      const box = document.getElementById('mori_first_run');
+      if (!box) return;
+      const o = _lastOverviewData || {};
+      const empty = (o.sources_reporting ?? 0) === 0
+        && (o.total_hosts ?? 0) === 0
+        && (o.ingested_records ?? 0) === 0;
+      box.classList.toggle('hidden', !empty);
+    }
+    window.renderFirstRunGuide = renderFirstRunGuide;
+
     /* 인프라 현황 위젯 24h/12h 전환 + Zabbix/Wazuh 딥링크 (대시보드=인프라 뷰) */
     let _infraWindow = '24h';
     function setInfraWindow(w) {
@@ -480,6 +494,7 @@
       if (!overview || typeof overview !== 'object') overview = {};
       _lastOverviewData = overview;
       renderSecurityHero();
+      try { renderFirstRunGuide(); } catch (e) {}
       renderInfraStatus();
       const o = {
         total_hosts: overview.total_hosts ?? 0, online_hosts: overview.online_hosts ?? 0,

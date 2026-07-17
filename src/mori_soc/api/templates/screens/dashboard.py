@@ -18,6 +18,16 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
         <div style=\"font-size:12px;color:#111827\" data-i18n=\"dash.panel.group.sections\">패널</div>
         <div id=\"panel_edit_sections\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin-top:6px\"></div>
       </div>
+      <!-- 첫 방문 안내: 데이터 소스 미연결 시에만 표시 (dashboard.js renderFirstRunGuide). 실데이터 판정, 가짜 상태 아님. -->
+      <section class=\"card hidden\" id=\"mori_first_run\" style=\"border:1px dashed #e5e7eb\">
+        <div style=\"font-size:11px;font-weight:800;letter-spacing:.06em;color:#2563eb;margin-bottom:6px\" data-i18n=\"dash.firstrun.step\">지금 할 일 · 1단계</div>
+        <h2 style=\"margin:0 0 4px\" data-i18n=\"dash.firstrun.title\">아직 연결된 데이터 소스가 없어요</h2>
+        <div class=\"subtext\" data-i18n=\"dash.firstrun.body\">MORI는 Zabbix·Fleet 같은 도구가 모은 정보로 증적을 만듭니다. 가이드를 따라 하나만 연결해도 이 화면이 채워지기 시작해요.</div>
+        <div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-top:10px\">
+          <button onclick=\"switchTab('guides')\" style=\"width:auto\" data-i18n=\"dash.firstrun.zabbix\">Zabbix 연결 가이드 →</button>
+          <button class=\"secondary\" onclick=\"switchTab('guides')\" style=\"width:auto\" data-i18n=\"dash.firstrun.fleet\">Fleet 연결 가이드 →</button>
+        </div>
+      </section>
       <!-- 보안 요약 히어로 (Toss형: 보안 KPI + 위험 TOP 랭킹) 보안 우선, 인프라는 아래 -->
       <section class=\"card\" id=\"security_hero_section\" style=\"background:linear-gradient(135deg,#ffffff,#f9fafb);border:1px solid #e5e7eb\">
         <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
