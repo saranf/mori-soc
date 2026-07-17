@@ -183,6 +183,83 @@ def is_mutable_version(record: dict[str, Any]) -> bool:
     return str(record.get("status") or "draft") == "draft"
 
 
+# ── 감사 실사용(P4) — as-of 스냅샷 · 승인 · 재현 패키지 ─────────────────────────────
+def build_cycle_audit_snapshot(
+    cycle: dict[str, Any], cycle_controls: list[dict[str, Any]], as_of: str,
+    *, scope_snapshot: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """감사 기준일(as_of)의 운영주기 상태를 재현한다(P4).
+
+    각 통제를 history 재생으로 그 시점 상태로 복원 + 당시 범위 스냅샷을 함께 고정한다.
+    '지금' 값이 바뀌어도 심사 당시 상태를 그대로 재현할 수 있다(모리다움 — 과거본 불변 재현).
+    """
+    controls = []
+    for cc in cycle_controls:
+        st = cycle_control_as_of(cc, as_of)
+        controls.append({"cycle_control_id": cc.get("id"), "control_ref": cc.get("control_ref"), **st})
+    ev = {}
+    asmt = {}
+    for c in controls:
+        ev[c["evidence_status"]] = ev.get(c["evidence_status"], 0) + 1
+        asmt[c["assessment_status"]] = asmt.get(c["assessment_status"], 0) + 1
+    return {
+        "cycle_id": cycle.get("id"), "cycle_name": cycle.get("name"),
+        "framework_version_id": cycle.get("framework_version_id"),
+        "as_of": as_of, "control_count": len(controls),
+        "evidence_status_counts": ev, "assessment_status_counts": asmt,
+        "scope_snapshot_id": (scope_snapshot or {}).get("id") or cycle.get("scope_snapshot_id"),
+        "controls": controls,
+    }
+
+
+# ── 다중기준 crosswalk(P5) — 내부통제 하나가 여러 외부기준을 충족 ──────────────────
+def build_crosswalk(org_controls: list[dict[str, Any]]) -> dict[str, Any]:
+    """내부통제의 mapped_controls 를 외부기준(framework)별로 묶어 crosswalk 를 만든다.
+
+    통제 id 는 'framework:version:code' 관례 — 첫 세그먼트를 framework 로 본다.
+    같은 기술 증적을 여러 인증에서 재사용할 수 있음을 보여준다.
+    """
+    rows = []
+    fw_set: set[str] = set()
+    for oc in org_controls:
+        by_fw: dict[str, list[str]] = {}
+        for cid in oc.get("mapped_controls") or []:
+            fw = str(cid).split(":", 1)[0]
+            fw_set.add(fw)
+            by_fw.setdefault(fw, []).append(cid)
+        rows.append({
+            "organization_control_id": oc.get("id"), "code": oc.get("code"),
+            "title": oc.get("title"), "frameworks": sorted(by_fw),
+            "framework_count": len(by_fw), "mappings": by_fw,
+        })
+    return {"organization_controls": rows, "frameworks": sorted(fw_set),
+            "reusable_note": "하나의 운영통제·기술증적을 여러 기준에 재사용(중복 증적 방지)."}
+
+
+# ── Base + Organization Overlay(P5) — 기준 업데이트와 조직 커스터마이즈 분리 ───────────
+_OVERLAY_FIELDS = ("owner_team", "frequency", "scope", "evidence_sources", "approver")
+
+
+def apply_overlay(control_def: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    """기준 통제(base)에 조직 오버레이를 얹은 '뷰'를 만든다(base 불변).
+
+    기준 업데이트가 들어와도 overlay 를 유지하며, base 요구 내용이 바뀌면 conflict 로 표시한다.
+    """
+    view = {
+        "control_id": control_def.get("id"),
+        "display_code": control_def.get("display_code"),
+        "title": control_def.get("title"),
+        "base_requirement": (control_def.get("interpretations") or {}).get("official")
+        or control_def.get("requirement_text", ""),
+        "base_content_hash": control_def.get("content_hash"),
+        "overlay": {k: overlay.get(k, "") for k in _OVERLAY_FIELDS},
+    }
+    # base 내용이 overlay 가 마지막으로 검토한 해시와 다르면 재검토 필요.
+    reviewed_hash = overlay.get("reviewed_base_hash")
+    view["conflict"] = bool(reviewed_hash) and reviewed_hash != control_def.get("content_hash")
+    return view
+
+
 # ── EvidenceContract — 통제별 '어떤 증적이 있어야 하는가'(버전관리) ─────────────────
 def build_evidence_contract(*, organization_control_id: str, version: int = 1,
                             frequency: str = "", required_fields: list[str] | None = None,
@@ -377,4 +454,5 @@ __all__ = [
     "build_evidence_contract", "build_evidence_mapping", "build_cycle_control",
     "apply_cycle_control_update", "cycle_control_as_of",
     "diff_control_definitions", "initialize_cycle_from_previous",
+    "build_cycle_audit_snapshot", "build_crosswalk", "apply_overlay",
 ]

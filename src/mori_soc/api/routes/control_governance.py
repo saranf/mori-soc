@@ -29,8 +29,11 @@ from mori_soc.services.control_governance import (
     KIND_SCOPE_SNAPSHOT,
     RELATIONSHIP_TYPES,
     apply_cycle_control_update,
+    apply_overlay,
     build_assurance_cycle,
     build_control_definition,
+    build_crosswalk,
+    build_cycle_audit_snapshot,
     build_cycle_control,
     build_evidence_contract,
     build_evidence_mapping,
@@ -420,3 +423,32 @@ def register_control_governance(ctx: RouteContext) -> None:
         res["created"] = created
         res.pop("cycle_controls", None)  # 요약만 반환(전체는 목록 API 로)
         return res
+
+    # ── 감사 실사용(P4) — 기준일 as-of 스냅샷(과거 재현) ───────────────────────────
+    @app.get("/governance/assurance-cycles/{cycle_id}/audit-snapshot", tags=["Governance"])
+    def cycle_audit_snapshot(cycle_id: str, request: Request, date: str | None = None) -> dict[str, Any]:
+        """감사 기준일(date, ISO)의 운영주기 전체 상태를 재현(통제별 as-of + 범위 스냅샷)."""
+        _require(request)
+        cyc = _find(KIND_ASSURANCE_CYCLE, cycle_id)
+        if cyc is None:
+            raise HTTPException(status_code=404, detail="운영주기를 찾을 수 없습니다.")
+        ccs = [r for r in _load(KIND_CYCLE_CONTROL) if r.get("cycle_id") == cycle_id]
+        scope = _find(KIND_SCOPE_SNAPSHOT, str(cyc.get("scope_snapshot_id") or ""))
+        return build_cycle_audit_snapshot(cyc, ccs, date or _now(), scope_snapshot=scope)
+
+    # ── 다중기준 crosswalk(P5) — 내부통제 하나가 여러 기준 충족 ─────────────────────
+    @app.get("/governance/crosswalk", tags=["Governance"])
+    def crosswalk(request: Request) -> dict[str, Any]:
+        """내부통제의 mapped_controls 를 외부기준별로 묶은 crosswalk(증적 재사용 뷰)."""
+        _require(request)
+        return build_crosswalk(_load(KIND_ORG_CONTROL))
+
+    # ── Base + Overlay(P5) — 기준 통제 + 조직 오버레이 뷰 ──────────────────────────
+    @app.post("/governance/controls/{control_id}/overlay-view", tags=["Governance"])
+    def overlay_view(control_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """기준 통제(base)에 조직 오버레이(payload)를 얹은 뷰. base 불변, 내용 변경 시 conflict 표시."""
+        _require(request)
+        cdef = _find(KIND_CONTROL_DEF, control_id)
+        if cdef is None:
+            raise HTTPException(status_code=404, detail="통제 정의를 찾을 수 없습니다.")
+        return apply_overlay(cdef, payload if isinstance(payload, dict) else {})

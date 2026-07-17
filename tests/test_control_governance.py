@@ -7,7 +7,9 @@ from unittest.mock import patch
 
 from mori_soc.services.control_governance import (
     apply_cycle_control_update,
+    apply_overlay,
     build_control_definition,
+    build_crosswalk,
     build_cycle_control,
     build_framework_version,
     content_hash,
@@ -123,6 +125,28 @@ class ControlGovernanceServiceTests(unittest.TestCase):
         self.assertEqual(nc["applicability"], "applicable")  # 적용성 승계
         self.assertEqual(nc["evidence_status"], "missing")   # 증적 초기화
         self.assertEqual(nc["assessment_status"], "not_assessed")  # 평가 초기화(자동 승계 금지)
+
+
+    def test_crosswalk_groups_by_framework(self) -> None:
+        org = [{"id": "corp-log-002:v1", "code": "CORP-LOG-002", "title": "월간 검토",
+                "mapped_controls": ["isms-p:2023:2.9.4", "iso27001:2022:A.8.15", "isms-p:2023:2.9.5"]}]
+        cw = build_crosswalk(org)
+        row = cw["organization_controls"][0]
+        self.assertEqual(row["framework_count"], 2)
+        self.assertEqual(set(row["frameworks"]), {"isms-p", "iso27001"})
+        self.assertEqual(len(row["mappings"]["isms-p"]), 2)
+
+    def test_apply_overlay_conflict_flag(self) -> None:
+        cdef = build_control_definition(framework_version_id="isms-p:2023", display_code="2.9.4",
+                                        title="로그", requirement_text="원문")
+        # 오버레이가 검토한 base 해시가 현재와 같으면 conflict 없음
+        v1 = apply_overlay(cdef, {"owner_team": "보안운영팀", "frequency": "monthly",
+                                  "reviewed_base_hash": cdef["content_hash"]})
+        self.assertFalse(v1["conflict"])
+        self.assertEqual(v1["overlay"]["owner_team"], "보안운영팀")
+        # base 가 바뀐 척(다른 해시) → conflict True(재검토 필요)
+        v2 = apply_overlay(cdef, {"reviewed_base_hash": "sha256:old"})
+        self.assertTrue(v2["conflict"])
 
 
 class ControlGovernanceRouteTests(unittest.TestCase):
@@ -242,6 +266,19 @@ class ControlGovernanceRouteTests(unittest.TestCase):
         new_cc = c.get("/governance/assurance-cycles/c2026/controls").json()["cycle_controls"]
         self.assertEqual(new_cc[0]["assignee"], "김보안")               # 승계
         self.assertEqual(new_cc[0]["assessment_status"], "not_assessed")  # 초기화
+        # P4: as-of 감사 스냅샷(운영주기 전체)
+        snap = c.get("/governance/assurance-cycles/c2026/audit-snapshot").json()
+        self.assertEqual(snap["control_count"], 1)
+        self.assertIn("not_assessed", snap["assessment_status_counts"])
+        # P5: crosswalk + overlay-view
+        c.post("/governance/organization-controls",
+               json={"code": "CORP-LOG-002", "title": "월간 검토",
+                     "mapped_controls": ["isms-p:2023:2.10.2", "iso27001:2022:A.8.15"]})
+        cw = c.get("/governance/crosswalk").json()
+        self.assertTrue(any(r["framework_count"] == 2 for r in cw["organization_controls"]))
+        ov = c.post("/governance/controls/isms-p:2023:2.10.2/overlay-view",
+                    json={"owner_team": "보안운영팀"}).json()
+        self.assertEqual(ov["overlay"]["owner_team"], "보안운영팀")
 
 
 if __name__ == "__main__":
