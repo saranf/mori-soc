@@ -17,6 +17,7 @@ from fastapi.responses import StreamingResponse
 
 from mori_soc.api.payloads import build_crosscheck_payload, build_pdca_payload
 from mori_soc.api.routes.context import RouteContext
+from mori_soc.util import now_iso as _now_iso, to_utf8_bom
 from mori_soc.services.reports import (
     REPORT_TYPES,
     build_risk_register_report,
@@ -982,7 +983,7 @@ def register_compliance(ctx: RouteContext) -> None:
         index_rows = [["control_id", "title_ko", "framework", "assets", "records"]]
         n = 0
         secret, key_id = signing_config_from_env()
-        now_iso = datetime.now(tz=timezone.utc).isoformat()
+        now_ts = _now_iso()
         buf = io_mod.BytesIO()
         # 스트리밍(M2): 통제별 PDF/CSV 를 생성 즉시 ZIP 에 쓰고 바이트는 버린다(files dict 미보관 → 메모리 절약).
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
@@ -1004,14 +1005,14 @@ def register_compliance(ctx: RouteContext) -> None:
                     writer.add(f"{folder}/evidence.pdf", evidence_document_pdf(doc))
                 except RuntimeError:
                     pass  # reportlab 미설치 시 PDF 생략(CSV는 유지)
-                writer.add(f"{folder}/evidence.csv", ("﻿" + evidence_document_csv(doc)).encode("utf-8"))
+                writer.add(f"{folder}/evidence.csv", to_utf8_bom(evidence_document_csv(doc)))
                 index_rows.append([cid, c.get("title_ko", ""), _fw_label(c.get("framework")),
                                    len(doc["inventory"]), len(doc["records"])])
                 n += 1
             sio = io_mod.StringIO()
             csv_mod.writer(sio).writerows(index_rows)
-            writer.add("INDEX.csv", ("﻿" + sio.getvalue()).encode("utf-8"))
-            writer.finalize(generated_at=now_iso,
+            writer.add("INDEX.csv", to_utf8_bom(sio.getvalue()))
+            writer.finalize(generated_at=now_ts,
                             extra={"bundle": "evidence-bundle", "scope": str(scope), "controls": n})
         if ctx.log_action:
             ctx.log_action(user or "system", "EVIDENCE_BUNDLE_ZIP", f"{scope}: {n}건")
