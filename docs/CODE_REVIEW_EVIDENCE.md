@@ -122,6 +122,18 @@ MORI 가 발견한 기술 결함 **후보**를 사람이 판단·조치·재검�
 - 데모 시나리오: "개인정보 파기 근거 미발견(candidate) → 개발팀 확인(confirmed) → 코드 수정
   (remediation) → 재스캔에서 파기 경로 확인(resolved)". 구현: `services/gap_workflow.py`, `schema/016`.
 
+### 통제별 증적 신선도·데이터 품질(#11)
+
+MORI 는 자동 수집 증적이 많으므로, '초록 Compliant' 하나로 뭉뚱그리지 않고 각 통제 증적의
+**신뢰 품질**을 계산한다(모리다움 — 자동 증적의 신뢰 품질 관리).
+
+- `services/evidence_freshness.py`의 `compute_freshness(recs, now, approval, approval_status)`는
+  순수 함수로 last_collected·age_days·stale(>90일)·applied/missing·소스·검토 신선도를 산출.
+- 상태: `no_evidence / evidence_stale / review_required / evidence_available / human_verified`.
+  승인(사람 검토)이 최근이면 human_verified, 증적이 오래되면 evidence_stale.
+- `GET /controls/evidence-freshness` — 통제별 신선도(검토·갱신 필요 순 정렬). admin·security.
+- UI: 통제 카탈로그 헤더 `증적 신선도` 버튼 → 상태 배지 표(빨=오래됨·노=검토필요·파=검토전·초=검증).
+
 ### 처리 보장(트랜잭션 경계)
 
 인제스트/증적 파이프라인은 **부분 성공을 정직하게 보고**한다(조용히 성공으로 위장하지 않음).

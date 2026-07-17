@@ -324,6 +324,40 @@ def register_compliance(ctx: RouteContext) -> None:
         return {"control_id": control_id, "current_status": status,
                 "current": current, "approvals": approvals}
 
+    @app.get("/controls/evidence-freshness", tags=["Compliance"])
+    def evidence_freshness_all(request: Request) -> dict[str, Any]:
+        """통제별 증적 신선도·데이터 품질(#11) — 자동 증적의 신뢰 품질 상태.
+
+        증적이 있는 통제마다 최신 수집 시각·경과일·stale 여부·담당자 검토(승인) 신선도를 계산해
+        '초록 Compliant' 대신 no_evidence/evidence_stale/review_required/human_verified 로 구분한다.
+        """
+        from datetime import datetime as _dt
+        from datetime import timezone as _tz
+
+        from mori_soc.services.evidence_freshness import compute_freshness
+        _require_ev(request)
+        now_iso = _dt.now(tz=_tz.utc).isoformat()
+        repo = ctx.state_repo
+        by_control: dict[str, list[dict[str, Any]]] = {}
+        for rec in (ctx.control_evidence or {}).values():
+            cid = str(rec.get("control_id") or "")
+            if cid:
+                by_control.setdefault(cid, []).append(rec)
+
+        out: list[dict[str, Any]] = []
+        for cid, recs in sorted(by_control.items()):
+            approvals = repo.load_evidence_approvals(cid) if repo is not None else []
+            _, cur_hash = _control_evidence_state(cid)
+            status, current = _current_approval_status(approvals, cur_hash)
+            fr = compute_freshness(recs, now_iso, approval=current, approval_status=status)
+            fr["control_id"] = cid
+            out.append(fr)
+        # 신뢰 품질이 낮은(=검토·갱신 필요한) 것부터 노출.
+        order = {"evidence_stale": 0, "review_required": 1, "evidence_available": 2,
+                 "human_verified": 3, "no_evidence": 4}
+        out.sort(key=lambda r: (order.get(r["status"], 9), -(r["age_days"] or 0)))
+        return {"generated_at": now_iso, "controls": out}
+
     @app.post("/controls/evidence/{control_id}/transition", tags=["Compliance"])
     def evidence_transition(control_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
         """증적 승인 상태 전이(#4): draft→reviewed→approved→superseded / revoked.

@@ -2890,6 +2890,40 @@
       return `<span style="background:${c}22;color:${c};border:1px solid ${c};padding:0 6px;border-radius:5px;font-size:10px;margin-left:5px;font-weight:700">${escapeHtml(_locImpl(s))}</span>`;
     }
     let _ctlCanEdit = false;
+    // ── 통제별 증적 신선도·품질(#11) — 자동 증적의 신뢰 품질 상태 ─────────────────────────
+    const _FRESH_META = {
+      evidence_stale:    ['#dc2626', 'dash.fresh.stale',   '증적 오래됨'],
+      review_required:   ['#ca8a04', 'dash.fresh.review',  '검토 필요'],
+      evidence_available:['#2563eb', 'dash.fresh.avail',   '증적 있음(검토 전)'],
+      human_verified:    ['#16a34a', 'dash.fresh.verified','담당자 검증'],
+      no_evidence:       ['#6b7280', 'dash.fresh.none',    '증적 없음'],
+    };
+    async function loadEvidenceFreshness() {
+      const box = document.getElementById('evidence_freshness_box');
+      if (!box) return;
+      box.style.display = 'block';
+      box.innerHTML = `<span class="empty">${tt('dash.dyn.loading','로딩 중…')}</span>`;
+      try {
+        const res = await fetch('/controls/evidence-freshness');
+        if (!res.ok) { box.innerHTML = `<span class="empty">${tt('dash.ctl.err','불러오지 못했습니다.')}</span>`; return; }
+        const d = await res.json();
+        const rows = d.controls || [];
+        if (!rows.length) { box.innerHTML = `<span class="empty">${tt('dash.fresh.empty','증적이 연결된 통제가 없어요.')}</span>`; return; }
+        const trs = rows.map(r => {
+          const m = _FRESH_META[r.status] || ['#111827','','', ];
+          const badge = `<span style="color:${m[0]};border:1px solid ${m[0]};border-radius:5px;padding:0 5px;font-size:10px">${tt(m[1], m[2])}</span>`;
+          const age = r.age_days==null ? '-' : `${r.age_days}${tt('dash.fresh.days','일 전')}`;
+          const rev = r.review_age_days==null ? '-' : `${r.review_age_days}${tt('dash.fresh.days','일 전')}`;
+          const miss = r.missing ? ` <span style="color:#dc2626">${tt('dash.fresh.missing','미수집')} ${r.missing}</span>` : '';
+          return `<tr><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px"><b>${escapeHtml(r.control_id)}</b></td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6">${badge}</td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px">${escapeHtml(age)}</td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px">${escapeHtml(rev)}</td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px">${r.count}${miss}</td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px">${escapeHtml((r.sources||[]).join(', '))}</td></tr>`;
+        }).join('');
+        box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px"><div style="font-weight:600;color:#111827;font-size:12px">${tt('dash.fresh.btn','증적 신선도')}</div><button class="secondary" style="width:auto;padding:2px 9px;font-size:11px" onclick="document.getElementById('evidence_freshness_box').style.display='none'">${tt('dash.dyn.cancel','닫기')}</button></div>
+          <div style="font-size:11px;color:#111827;margin:4px 0 6px;line-height:1.6">${tt('dash.fresh.help','읽는 법: 자동 수집 증적의 신뢰 품질이에요. <span style="color:#dc2626">증적 오래됨</span>=수집 후 90일 초과, <span style="color:#ca8a04">검토 필요</span>=담당자 검토(승인) 없음/오래됨, <span style="color:#2563eb">증적 있음</span>=최신이나 검토 전, <span style="color:#16a34a">담당자 검증</span>=승인·최신. ‘초록 Compliant’ 하나로 뭉뚱그리지 않아요. 검토·갱신 필요한 순으로 정렬돼요.')}</div>
+          <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.fresh.h_ctl','통제')}</th><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.fresh.h_status','상태')}</th><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.fresh.h_collected','최근 수집')}</th><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.fresh.h_reviewed','최근 검토')}</th><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.fresh.h_count','증적 수')}</th><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.fresh.h_src','소스')}</th></tr></thead><tbody>${trs}</tbody></table></div>`;
+      } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.ctl.err','불러오지 못했습니다.')}</span>`; }
+    }
+    window.loadEvidenceFreshness = loadEvidenceFreshness;
+
     async function loadControlTree() {
       const box = document.getElementById('control_tree_box');
       if (!box) return;
