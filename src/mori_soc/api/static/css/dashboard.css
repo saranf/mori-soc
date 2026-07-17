@@ -238,3 +238,10 @@
       .mori-strip .ms-div { display: none; }
       .mori-strip .ms-cta { margin-left: 0; flex-basis: 100%; }
     }
+
+    /* 준비율 도넛 링 (심사 준비 탭) — --p(0~100) 로 채움. conic-gradient. */
+    .mori-ring { --p: 0; width: 96px; height: 96px; border-radius: 999px; flex: 0 0 auto;
+      background: conic-gradient(var(--c-blue) calc(var(--p) * 1%), var(--c-surface-2) 0); display: grid; place-items: center; }
+    .mori-ring .inner { width: 70px; height: 70px; border-radius: 999px; background: var(--c-paper); display: grid; place-items: center; text-align: center; }
+    .mori-ring .inner b { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .mori-ring .inner span { display: block; font-size: 10px; color: #111827; font-weight: 600; margin-top: 1px; }

@@ -2543,6 +2543,20 @@
         // Cache pending list so PDCA Do modal / CSV button can reuse the same dataset
         window.__pdcaPending = data.pending_remediations || [];
         window.__pdcaPendingSources = ps;
+        // 준비율 링(심사 준비 탭 상단): 통제 점검 Pass / 전체 — 실데이터
+        try {
+          const _tc = data.total_checks || 0, _sc = data.status_counts || {};
+          const ringEl = document.getElementById('pdca_readiness_ring');
+          if (ringEl) {
+            if (_tc > 0) {
+              const rp = Math.round((_sc.pass || 0) / _tc * 100);
+              ringEl.style.setProperty('--p', rp);
+              const pe = document.getElementById('pdca_readiness_pct');
+              if (pe) pe.textContent = rp + '%';
+              ringEl.style.display = '';
+            } else { ringEl.style.display = 'none'; }
+          }
+        } catch (e) {}
         // Summary cards 상단은 control_checks만, 하단 2장은 통합(통제+Trivy+Alert)
         if (cardsEl) {
           // 바쁜 보안 담당자용: 행동 항목(미조치·기한초과) 우선 + 취약률 한 장(숫자 크게).
