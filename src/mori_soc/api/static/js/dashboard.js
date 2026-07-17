@@ -577,9 +577,12 @@
         ['ingested_records', o.ingested_records, 'alerts + vulns + queries + observations'],
       ].filter(([key]) => (userPreferences.cards || {})[key] !== false);
       if (!cards.length) {
-        overviewCardsEl.innerHTML = `<div class="empty">${tt('dash.dyn.empty.cards', '운영자가 공개한 요약 카드가 없습니다.')}</div>`;
+        // 기본적으로 카드가 모두 off면 요약 카드 줄 자체를 숨긴다(빈 메시지로 자리 차지 안 함).
+        overviewCardsEl.style.display = 'none';
+        overviewCardsEl.innerHTML = '';
         return;
       }
+      overviewCardsEl.style.display = '';
       overviewCardsEl.innerHTML = cards.map(([key, value, sub]) => `
         <section class="card metric-card" role="button" tabindex="0" data-overview-key="${escapeHtml(key)}">
           <div class="metric-label">${escapeHtml(cardLabels[key] || key)}</div>

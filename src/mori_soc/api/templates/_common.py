@@ -54,22 +54,24 @@ USER_DASHBOARD_GUIDE_LABELS = {
     "risk_methodology": "위험성 평가 기준",
 }
 DEFAULT_USER_DASHBOARD_PREFERENCES = {
+    # 기본 화면은 시안 중심(상태 헤더·셋업 레일·보안 히어로·증적 공백)만 노출.
+    # 요약 카드·인프라 패널은 기본 off — 사용자가 '패널 편집'에서 언제든 다시 켤 수 있음(정보 손실 아님).
     "cards": {
-        "total_hosts": True,
-        "offline_hosts": True,
-        "alerts_24h": True,
-        "critical_vulns": True,
+        "total_hosts": False,
+        "offline_hosts": False,
+        "alerts_24h": False,
+        "critical_vulns": False,
         "sources_reporting": False,
         "sources_healthy": False,
         "ingested_records": False,
     },
     "sections": {
         "security_hero": True,
-        "infra_status": True,
-        "fleet_status": True,
+        "infra_status": False,
+        "fleet_status": False,
         "source_coverage": False,
         "latest_status": False,
-        "risk_summary": True,
+        "risk_summary": False,
         "recent_activity": False,
     },
     "asset_columns": {
