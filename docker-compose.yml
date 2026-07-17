@@ -1,3 +1,11 @@
+# MORI compose 프로필(C7) — 코어는 가볍게, 나머지는 opt-in.
+#   docker compose up -d                     # 코어만: soc-postgres · mori-api · mori-worker
+#   docker compose --profile demo up -d      # 데모 풀스택(+grafana·loki·fluent-bit·openldap·portal)
+#   docker compose --profile observability up -d   # +grafana·loki·fluent-bit
+#   docker compose --profile identity up -d        # +openldap·phpldapadmin
+#   docker compose --profile pollers up -d         # +zabbix/trivy/ldap 폴러
+#   docker compose --profile bundled up -d         # +번들 zabbix/fleet/wazuh (실검증용, 무거움)
+# '기존 도구 위에 얹는 증적 레이어'라는 제품 메시지에 맞춰 기본 설치는 코어 3개만 뜬다.
 services:
   soc-postgres:
     image: postgres:16-alpine
@@ -28,6 +36,7 @@ services:
 
   openldap:
     image: osixia/openldap:1.5.0
+    profiles: ["identity", "demo", "full"]
     restart: unless-stopped
     environment:
       LDAP_ORGANISATION: ${LDAP_ORG:-MORI SOC}
@@ -41,6 +50,7 @@ services:
 
   phpldapadmin:
     image: osixia/phpldapadmin:0.9.0
+    profiles: ["identity", "demo", "full"]
     restart: unless-stopped
     depends_on:
       - openldap
@@ -56,11 +66,10 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    # 코어는 postgres 에만 의존한다(C7). LDAP 은 opt-in(identity 프로필) — 하드 의존 금지.
     depends_on:
       soc-postgres:
         condition: service_healthy
-      openldap:
-        condition: service_started
     environment:
       MORI_QUERY_BACKEND: postgres
       MORI_DATABASE_URL: postgresql://${MORI_DB_USER:-mori}:${MORI_DB_PASSWORD:-mori}@soc-postgres:5432/${MORI_DB_NAME:-mori_soc}
@@ -212,6 +221,7 @@ services:
 
   portal:
     image: nginx:alpine
+    profiles: ["demo", "full"]
     restart: unless-stopped
     ports:
       - "${PUBLIC_PORT:-37854}:80"
@@ -221,6 +231,7 @@ services:
 
   grafana:
     image: grafana/grafana-oss:11.5.2
+    profiles: ["observability", "demo", "full"]
     restart: unless-stopped
     depends_on:
       - loki
@@ -244,6 +255,7 @@ services:
 
   loki:
     image: grafana/loki:3.4.2
+    profiles: ["observability", "demo", "full"]
     restart: unless-stopped
     command: ["-config.file=/etc/loki/config.yml"]
     volumes:
@@ -253,6 +265,7 @@ services:
 
   fluent-bit:
     image: cr.fluentbit.io/fluent/fluent-bit:3.2.5
+    profiles: ["observability", "demo", "full"]
     restart: unless-stopped
     depends_on:
       - loki

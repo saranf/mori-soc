@@ -127,7 +127,9 @@ docker compose up -d                  # MORI 코어만 (api + worker + postgres)
 docker compose up -d mori-worker      # 재적용
 ```
 
-> 번들 데모 스택까지: `docker compose --profile bundled up -d` (개별: `--profile zabbix`/`fleet`/`wazuh`)
+> **코어 = 3개 서비스**(postgres · api · worker). 나머지는 opt-in 프로필: `--profile observability`
+> (grafana·loki·fluent-bit) · `--profile identity`(openldap·phpldapadmin) · `--profile demo`(데모 풀스택) ·
+> `--profile bundled`(자체 Zabbix/Wazuh/Fleet — 무거움, 실API 검증용; 개별 `--profile zabbix`/`fleet`/`wazuh`)
 > Wazuh TLS 인증서는 `generate-indexer-certs` 서비스가 자동 생성합니다(수동 작업 없음). **인증서를 파일 단위로 bind-mount 하지 마세요 — 파일이 없으면 Docker가 같은 이름의 빈 디렉터리를 만들고, 서비스는 `is a directory` 로 죽습니다.** 디렉터리 단위로 마운트하세요. → [Wazuh 인증서](docs/WAZUH_CERTS.md)
 > 자세한 절차는 [브라운필드 연결 가이드](docs/BROWNFIELD_CONNECT.md).
 

@@ -108,15 +108,15 @@ flowchart LR
 
 **Brownfield (on top of existing Zabbix/Wazuh/Fleet)**
 ```bash
-docker compose up -d                  # MORI core + LDAP + observability (no bundled Zabbix/Wazuh/Fleet)
+docker compose up -d                  # MORI core only: soc-postgres · mori-api · mori-worker
 # Wire existing infra in .env:
 #   MORI_ZABBIX_API_URL=https://zabbix.your-corp.com/api_jsonrpc.php
 #   MORI_ZABBIX_API_TOKEN=<token>
 docker compose up -d mori-worker      # re-apply
 ```
 
-> Default `up -d` starts: soc-postgres · mori-api · mori-worker · openldap · phpldapadmin · portal · grafana · loki · fluent-bit.
-> Bundled demo stack (own Zabbix/Wazuh/Fleet): `docker compose --profile bundled up -d` (individual: `--profile zabbix`/`fleet`/`wazuh`). HTTPS proxy: `--profile https up -d mori-caddy` (after issuing certs — see [HTTPS setup](docs/HTTPS_SETUP.md)).
+> **Core = 3 services** (postgres · api · worker) — matching the "evidence layer on top of your existing tools" message. Everything else is opt-in:
+> `--profile observability` (grafana·loki·fluent-bit) · `--profile identity` (openldap·phpldapadmin) · `--profile demo` (full demo stack) · `--profile bundled` (own Zabbix/Wazuh/Fleet — heavy, for real-API verification; individual `--profile zabbix`/`fleet`/`wazuh`) · `--profile https up -d mori-caddy` (after issuing certs — see [HTTPS setup](docs/HTTPS_SETUP.md)).
 > Wazuh TLS certificates are generated automatically by the `generate-indexer-certs` service — nothing to do by hand. **Never bind-mount certificates file by file: if the file does not exist yet, Docker creates an empty directory with that name and the service dies with `is a directory`.** Mount the directory. See [Wazuh certificates](docs/WAZUH_CERTS.en.md).
 > Full steps in the [Brownfield connect guide](docs/BROWNFIELD_CONNECT.en.md).
 
