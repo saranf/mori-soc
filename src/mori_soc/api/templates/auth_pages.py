@@ -15,10 +15,10 @@ def render_login_html(error: str = "", next_url: str = "/ui") -> str:
   <title data-i18n-doctitle="login.doctitle">MORI SOC 로그인</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ background: #ffffff; color: #111827; font-family: 'Segoe UI', system-ui, sans-serif;
+    body {{ background: #f7f8fb; color: #111827; font-family: 'Segoe UI', system-ui, sans-serif;
            display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
-    .login-card {{ background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 16px; padding: 40px 36px;
-                   width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }}
+    .login-card {{ background: #ffffff; border: 1px solid #e5e7eb; border-radius: 18px; padding: 40px 36px;
+                   width: 100%; max-width: 400px; box-shadow: 0 1px 2px rgba(17,24,39,.06), 0 12px 32px rgba(17,24,39,.06); }}
     .login-logo {{ text-align: center; margin-bottom: 28px; }}
     .login-logo h1 {{ font-size: 28px; font-weight: 800; color: #2563eb; letter-spacing: -0.5px; }}
     .login-logo p {{ font-size: 13px; color: #111827; margin-top: 6px; }}
@@ -133,10 +133,10 @@ def render_signup_request_html(success: bool = False) -> str:
   <title data-i18n-doctitle="signup.doctitle">MORI SOC 가입 요청</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ background: #ffffff; color: #111827; font-family: 'Segoe UI', system-ui, sans-serif;
+    body {{ background: #f7f8fb; color: #111827; font-family: 'Segoe UI', system-ui, sans-serif;
            display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
-    .login-card {{ background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 16px; padding: 40px 36px;
-                   width: 100%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }}
+    .login-card {{ background: #ffffff; border: 1px solid #e5e7eb; border-radius: 18px; padding: 40px 36px;
+                   width: 100%; max-width: 440px; box-shadow: 0 1px 2px rgba(17,24,39,.06), 0 12px 32px rgba(17,24,39,.06); }}
     .login-logo {{ text-align: center; margin-bottom: 24px; }}
     .login-logo h1 {{ font-size: 24px; font-weight: 800; color: #2563eb; }}
     label {{ display: block; font-size: 12px; color: #111827; margin-bottom: 5px; font-weight: 600; letter-spacing: .5px; }}
