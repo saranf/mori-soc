@@ -4,7 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mori-soc"
-version = "0.6.0"
+# 버전 단일 출처: src/mori_soc/version.py (__version__). 아래 dynamic 로 참조.
+dynamic = ["version"]
 description = "MORI SOC — self-hosted audit-evidence layer for ISO 27001 / ISMS-P"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
@@ -30,6 +31,9 @@ dev = [
     "pip-audit",
     "mypy",
 ]
+
+[tool.setuptools.dynamic]
+version = { attr = "mori_soc.version.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

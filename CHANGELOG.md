@@ -1,8 +1,27 @@
 # Changelog
 
 All notable changes to this project are documented here.
-Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project so
-versions are `x.y.z-alpha.n`.
+Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha project.
+
+> **Versioning** — the **package/app version** is single-sourced from `src/mori_soc/version.py`
+> (currently `0.6.0`; pyproject reads it dynamically, the FastAPI app and `mori_soc.__version__`
+> import it). The `v0.18.x-alpha.n` headings below are **historical release-log tags** kept for
+> continuity — they are the changelog milestone counter, not the package version. New entries use
+> the package version.
+
+## [0.6.0] — Control-to-Evidence 운영 플랫폼 + 감사 무결성 강화
+
+### Added
+- **통제 운영 플랫폼**(Framework/Version/ControlDefinition/OrganizationControl/AssuranceCycle/
+  CycleControl/EvidenceContract/EvidenceMapping) + 버전 diff·운영주기 마이그레이션·as-of 재현·
+  crosswalk·overlay·**append-only 이벤트 원장(hash chain)**. `docs/CONTROL_GOVERNANCE.md`.
+- 15개 증적 신뢰·감사 실사용 로드맵(provenance·재현성·스캔 diff·증적 승인/불변·Gap 워크플로·
+  개인정보 흐름 완성·신선도·범위 커버리지·위험기반 표본·Gap 기한·월별 변경 리포트).
+
+### Changed / Fixed
+- **버전 단일화**(version.py), FastAPI app version 0.2.0→0.6.0.
+- CSV 수식 인젝션 무력화, starlette 9개 CVE 패치(fastapi 0.139.2).
+- 거버넌스 감사 무결성: content_hash 안정성·버전 상태기계·참조 검증·no-op 방지·진짜 마이그레이션.
 
 ## [v0.18.8-alpha.1] — 2026-07-10 — 서버자산·취약점 요약을 대시보드 패널로 복원
 
