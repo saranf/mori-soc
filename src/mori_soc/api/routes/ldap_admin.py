@@ -32,12 +32,8 @@ def register_ldap_admin(ctx: RouteContext) -> None:
 
     def _require_admin(request: Request) -> str:
         """Enforce admin role; return the acting username."""
-        token = request.cookies.get("mori_session", "")
-        sess = sessions.get(token) if sessions else None
-        role = (sess or {}).get("role") if sess else None
-        if ctx.auth_enabled and role != "admin":
-            raise HTTPException(status_code=403, detail="LDAP 관리는 admin 전용입니다.")
-        return (sess or {}).get("username", "") if sess else ""
+        ctx.require_role(request, {"admin"}, detail="LDAP 관리는 admin 전용입니다.")  # C1 공용 게이트
+        return ctx.session_username(request)
 
     def _cfg():
         cfg = ctx.auth_config

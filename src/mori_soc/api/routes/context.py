@@ -127,5 +127,34 @@ class RouteContext:
     # gated at the route. None-safe.
     zabbix_writeback_suppress: Optional[Callable[..., dict]] = None
 
+    # ── 공용 세션/역할 접근(C1: 8개 라우터의 쿠키→세션→role 추출 복붙 제거) ─────────────
+    def session(self, request: Any) -> "Optional[dict[str, Any]]":
+        """요청 쿠키(mori_session)로 세션 레코드를 찾는다(없으면 None)."""
+        token = request.cookies.get("mori_session", "")
+        return self.sessions.get(token) if self.sessions else None
+
+    def session_role(self, request: Any) -> Optional[str]:
+        """현재 세션의 role(admin/security/…) 또는 None."""
+        sess = self.session(request)
+        return sess.get("role") if sess else None
+
+    def session_username(self, request: Any) -> str:
+        """현재 세션의 username(없으면 '')."""
+        sess = self.session(request)
+        return (sess.get("username", "") if sess else "") or ""
+
+    def require_role(self, request: Any, allowed: "set[str]", *, detail: str) -> Optional[str]:
+        """RBAC 게이트: auth 켜져 있으면 role∈allowed 아니면 403. role 반환(auth off 면 None).
+
+        인가 로직을 한 곳으로 모아 라우터별 발산(‘not in’ vs ‘!=’·가드 누락)을 막는다.
+        """
+        if not self.auth_enabled:
+            return None
+        role = self.session_role(request)
+        if role not in allowed:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=403, detail=detail)
+        return role
+
 
 __all__ = ["RouteContext"]

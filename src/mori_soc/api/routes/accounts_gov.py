@@ -34,23 +34,17 @@ def register_accounts_gov(ctx: RouteContext) -> None:
     account_approvals = ctx.account_approvals
 
     def _gov_role(request: Request) -> str | None:
-        token = request.cookies.get("mori_session", "")
-        sess = sessions.get(token) if sessions else None
-        return sess.get("role") if sess else None
+        return ctx.session_role(request)   # C1 공용 추출
 
     def _require_gov(request: Request) -> str:
+        # 열람 역할은 동적(admin 이 조정) — 고정 set 이 아니라 여기서 직접 검사.
         if ctx.auth_enabled and _gov_role(request) not in parse_account_view_roles(ctx.settings):
             raise HTTPException(status_code=403, detail="계정 거버넌스 열람 권한이 없습니다. (admin이 역할 조정 가능)")
-        token = request.cookies.get("mori_session", "")
-        sess = sessions.get(token) if sessions else None
-        return (sess.get("username", "") if sess else "") or ""
+        return ctx.session_username(request)
 
     def _require_admin(request: Request) -> str:
-        if ctx.auth_enabled and _gov_role(request) != "admin":
-            raise HTTPException(status_code=403, detail="열람 역할 조정은 admin 전용입니다.")
-        token = request.cookies.get("mori_session", "")
-        sess = sessions.get(token) if sessions else None
-        return (sess.get("username", "") if sess else "") or ""
+        ctx.require_role(request, {"admin"}, detail="열람 역할 조정은 admin 전용입니다.")  # C1 공용 게이트
+        return ctx.session_username(request)
 
     def _collection_enabled() -> bool:
         """계정 수집 마스터 스위치(admin). 미설정 시 기본 켬."""

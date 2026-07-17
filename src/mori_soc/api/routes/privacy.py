@@ -46,14 +46,9 @@ def register_privacy(ctx: RouteContext) -> None:
     get_query_service = ctx.get_query_service
 
     def _require_privacy_role(request: Request) -> str:
-        if not ctx.auth_enabled:
-            return "admin"
-        token = request.cookies.get("mori_session", "")
-        sess = sessions.get(token) if sessions else None
-        role = sess.get("role") if sess else None
-        if role not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="개인정보 처리흐름은 admin·security 전용입니다.")
-        return role
+        # 공용 RBAC 게이트(C1). auth off 면 데모로 admin 반환(기존 동작 유지).
+        return ctx.require_role(request, {"admin", "security"},
+                                detail="개인정보 처리흐름은 admin·security 전용입니다.") or "admin"
 
     def _sorted_rows() -> list[dict[str, Any]]:
         rows = list((ctx.personal_data_flow or {}).values())

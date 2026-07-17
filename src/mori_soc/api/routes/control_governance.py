@@ -65,14 +65,11 @@ def register_control_governance(ctx: RouteContext) -> None:
     sessions = ctx.sessions
 
     def _role(request: Request) -> str | None:
-        token = request.cookies.get("mori_session", "")
-        sess = sessions.get(token) if sessions else None
-        return sess.get("role") if sess else None
+        return ctx.session_role(request)   # C1 공용 추출
 
     def _require(request: Request) -> str:
-        if ctx.auth_enabled and _role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="통제 운영은 admin·security 전용입니다.")
-        return (ctx.get_session_username(request) if ctx.get_session_username else "") or "system"
+        ctx.require_role(request, {"admin", "security"}, detail="통제 운영은 admin·security 전용입니다.")
+        return ctx.session_username(request) or "system"
 
     def _sod_enabled() -> bool:
         """직무분리(SoD) — 활성화 시 작성자와 승인자를 같은 사람이 겸하지 못하게 한다(리뷰 #23).
