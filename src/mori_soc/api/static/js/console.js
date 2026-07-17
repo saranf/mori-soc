@@ -435,6 +435,19 @@
         high_vulns: overview.high_vulns ?? 0, sources_reporting: overview.sources_reporting ?? 0,
         sources_healthy: overview.sources_healthy ?? 0, ingested_records: overview.ingested_records ?? 0,
       };
+      // 요약 스트립(시안): 수집 소스/연결 호스트/응답 없음 — 실데이터
+      try {
+        const sb = document.getElementById('admin_state_strip_body');
+        const ss = document.getElementById('admin_state_strip');
+        if (sb && ss) {
+          const srcOk = o.sources_reporting > 0 && o.sources_healthy >= o.sources_reporting;
+          sb.innerHTML =
+            `<div class="ms-metric"><span class="ms-k">${escapeHtml(tt('admin.strip.sources','수집 소스'))}</span><span class="ms-v ${srcOk ? 'green' : 'red'}">${o.sources_healthy}<small>/${o.sources_reporting} ${escapeHtml(tt('admin.strip.ok','정상'))}</small></span></div>`
+            + `<div class="ms-div"></div><div class="ms-metric"><span class="ms-k">${escapeHtml(tt('admin.strip.hosts','연결 호스트'))}</span><span class="ms-v">${o.total_hosts}</span></div>`
+            + `<div class="ms-div"></div><div class="ms-metric"><span class="ms-k">${escapeHtml(tt('admin.strip.offline','응답 없음'))}</span><span class="ms-v ${o.offline_hosts > 0 ? 'red' : 'green'}">${o.offline_hosts}</span></div>`;
+          ss.style.display = '';
+        }
+      } catch (e) {}
       const cards = [
         ['total_hosts', 'Total Hosts', o.total_hosts, `${o.online_hosts} online / ${o.unknown_hosts} unknown`],
         ['offline_hosts', 'Offline Hosts', o.offline_hosts, tt('admin.dyn.sub.offline','즉시 확인 대상')],
