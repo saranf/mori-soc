@@ -1,7 +1,6 @@
 import importlib.util
 import os
 import unittest
-from mori_soc.api.templates import DOCS_PORTAL_URL
 from datetime import datetime, timezone
 from unittest.mock import patch
 
@@ -17,6 +16,7 @@ from mori_soc.api.server import (
     render_query_console_html,
     render_user_dashboard_html,
 )
+from mori_soc.api.templates import DOCS_PORTAL_URL
 from mori_soc.models import (
     Alert,
     ControlCheckResult,

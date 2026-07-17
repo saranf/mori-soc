@@ -491,7 +491,7 @@ class PostgresStateRepository(StateRepository):
             rows = cur.fetchall()
         out = []
         for r in rows:
-            d = dict(zip(self._GAP_COLS, r))
+            d = dict(zip(self._GAP_COLS, r, strict=False))
             for k in ("created_at", "updated_at"):
                 if d.get(k) is not None and hasattr(d[k], "isoformat"):
                     d[k] = d[k].isoformat()
@@ -516,7 +516,7 @@ class PostgresStateRepository(StateRepository):
             rows = cur.fetchall()
         out = []
         for r in rows:
-            d = dict(zip(self._APPROVAL_COLS, r))
+            d = dict(zip(self._APPROVAL_COLS, r, strict=False))
             for k in ("reviewed_at", "approved_at", "created_at"):
                 if d.get(k) is not None and hasattr(d[k], "isoformat"):
                     d[k] = d[k].isoformat()

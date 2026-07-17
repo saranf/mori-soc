@@ -10,7 +10,6 @@ import unittest
 from pathlib import Path
 
 import mori_soc.api
-
 from mori_soc.api.i18n import (
     _ADMIN_I18N,
     _DASHBOARD_I18N,

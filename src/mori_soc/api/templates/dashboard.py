@@ -1,8 +1,13 @@
 """사용자 대시보드 페이지 (render_user_dashboard_html)."""
 from mori_soc.api.templates._common import *  # noqa: F401,F403
-
 from mori_soc.api.templates.dashboard_tabs import (
-    _TAB_GUIDES_HTML, _TAB_DASHBOARD_HTML, _TAB_TRIAGE_HTML, _TAB_INCIDENTS_HTML, _TAB_ASSETS_HTML, _TAB_COMPLIANCE_HTML, _TAB_ACCOUNTS_HTML,
+    _TAB_ACCOUNTS_HTML,
+    _TAB_ASSETS_HTML,
+    _TAB_COMPLIANCE_HTML,
+    _TAB_DASHBOARD_HTML,
+    _TAB_GUIDES_HTML,
+    _TAB_INCIDENTS_HTML,
+    _TAB_TRIAGE_HTML,
 )
 
 
