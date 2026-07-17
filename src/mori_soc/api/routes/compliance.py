@@ -968,8 +968,8 @@ def register_compliance(ctx: RouteContext) -> None:
             evidence_document_pdf,
         )
         from mori_soc.services.evidence_bundle import (
+            BundleWriter,
             signing_config_from_env,
-            write_bundle_with_manifest,
         )
         user = ctx.get_session_username(request) if ctx.get_session_username else ""
         catalog = _merged_catalog()
@@ -981,37 +981,38 @@ def register_compliance(ctx: RouteContext) -> None:
         want_all = str(scope).strip() == "all"
         index_rows = [["control_id", "title_ko", "framework", "assets", "records"]]
         n = 0
-        files: dict[str, bytes] = {}   # 파일 수집 후 서명 매니페스트와 함께 ZIP 작성(C4)
-        for c in catalog.get("controls", []):
-            cid = c.get("id")
-            if not cid:
-                continue
-            has_ev = bool(c.get("evidence_sources"))
-            has_rec = ev_by_control.get(cid, 0) > 0
-            if not want_all and not (has_ev or has_rec):
-                continue
-            doc = _evidence_document(cid, user or "", host_lists=host_lists,
-                                     metrics=metrics, catalog=catalog)
-            if doc is None:
-                continue
-            folder = f"{_safe_name(_fw_label(c.get('framework')), 20)}/{_safe_name(cid, 24)}_{_safe_name(c.get('title_ko') or c.get('title_en'), 40)}"
-            try:
-                files[f"{folder}/evidence.pdf"] = evidence_document_pdf(doc)
-            except RuntimeError:
-                pass  # reportlab 미설치 시 PDF 생략(CSV는 유지)
-            files[f"{folder}/evidence.csv"] = ("﻿" + evidence_document_csv(doc)).encode("utf-8")
-            index_rows.append([cid, c.get("title_ko", ""), _fw_label(c.get("framework")),
-                               len(doc["inventory"]), len(doc["records"])])
-            n += 1
-        sio = io_mod.StringIO()
-        csv_mod.writer(sio).writerows(index_rows)
-        files["INDEX.csv"] = ("﻿" + sio.getvalue()).encode("utf-8")
         secret, key_id = signing_config_from_env()
         now_iso = datetime.now(tz=timezone.utc).isoformat()
         buf = io_mod.BytesIO()
+        # 스트리밍(M2): 통제별 PDF/CSV 를 생성 즉시 ZIP 에 쓰고 바이트는 버린다(files dict 미보관 → 메모리 절약).
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-            write_bundle_with_manifest(z, files, generated_at=now_iso, secret=secret, key_id=key_id,
-                                       extra={"bundle": "evidence-bundle", "scope": str(scope), "controls": n})
+            writer = BundleWriter(z, secret=secret, key_id=key_id)
+            for c in catalog.get("controls", []):
+                cid = c.get("id")
+                if not cid:
+                    continue
+                has_ev = bool(c.get("evidence_sources"))
+                has_rec = ev_by_control.get(cid, 0) > 0
+                if not want_all and not (has_ev or has_rec):
+                    continue
+                doc = _evidence_document(cid, user or "", host_lists=host_lists,
+                                         metrics=metrics, catalog=catalog)
+                if doc is None:
+                    continue
+                folder = f"{_safe_name(_fw_label(c.get('framework')), 20)}/{_safe_name(cid, 24)}_{_safe_name(c.get('title_ko') or c.get('title_en'), 40)}"
+                try:
+                    writer.add(f"{folder}/evidence.pdf", evidence_document_pdf(doc))
+                except RuntimeError:
+                    pass  # reportlab 미설치 시 PDF 생략(CSV는 유지)
+                writer.add(f"{folder}/evidence.csv", ("﻿" + evidence_document_csv(doc)).encode("utf-8"))
+                index_rows.append([cid, c.get("title_ko", ""), _fw_label(c.get("framework")),
+                                   len(doc["inventory"]), len(doc["records"])])
+                n += 1
+            sio = io_mod.StringIO()
+            csv_mod.writer(sio).writerows(index_rows)
+            writer.add("INDEX.csv", ("﻿" + sio.getvalue()).encode("utf-8"))
+            writer.finalize(generated_at=now_iso,
+                            extra={"bundle": "evidence-bundle", "scope": str(scope), "controls": n})
         if ctx.log_action:
             ctx.log_action(user or "system", "EVIDENCE_BUNDLE_ZIP", f"{scope}: {n}건")
         ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d")

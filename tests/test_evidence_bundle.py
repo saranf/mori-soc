@@ -67,3 +67,25 @@ class EvidenceBundleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_bundle_writer_streams_and_verifies():
+    import io, zipfile, json
+    from mori_soc.services.evidence_bundle import BundleWriter, MANIFEST_NAME, verify_signed_manifest
+    buf=io.BytesIO()
+    with zipfile.ZipFile(buf,"w") as z:
+        w=BundleWriter(z, secret="k")
+        w.add("a/x.pdf", b"PDF-A"); w.add("b/y.csv", b"col\n1")
+        m=w.finalize(generated_at="2026-07-17", extra={"bundle":"t"})
+    assert m["signed"] is True and m["files"]["a/x.pdf"]["bytes"]==5
+    # 매니페스트 파일명이 소문자 비충돌(대소문자 충돌 방지)
+    assert MANIFEST_NAME=="integrity-manifest.json"
+    with zipfile.ZipFile(io.BytesIO(buf.getvalue())) as z:
+        names=set(z.namelist()); assert MANIFEST_NAME in names
+        files={n:z.read(n) for n in names if n!=MANIFEST_NAME}
+        man=json.loads(z.read(MANIFEST_NAME))
+    v=verify_signed_manifest(man, files, secret="k")
+    assert v["ok"] and v["files_ok"] and v["signature_ok"] is True
+    # 변조 감지
+    files["a/x.pdf"]=b"TAMPERED"
+    assert verify_signed_manifest(man, files, secret="k")["files_ok"] is False

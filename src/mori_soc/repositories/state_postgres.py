@@ -189,7 +189,15 @@ class PostgresStateRepository(StateRepository):
             with self._connect() as conn, conn.cursor() as cur:
                 cur.execute("SELECT version, checksum FROM schema_migrations WHERE success = true")
                 recorded = {r[0]: r[1] for r in cur.fetchall()}
-        except Exception:  # noqa: BLE001 - 기록 조회 실패는 드리프트 판정 불가(빈 목록)
+        except Exception as exc:  # noqa: BLE001
+            # 조회 실패를 조용히 삼키면 불변 게이트가 무력화된다(모리다움: 무결성은 fail-fast).
+            # fail-fast 모드에선 판정 불가 자체를 부팅 중단 사유로 올린다. 데모는 경고 후 진행.
+            if _schema_fail_fast():
+                raise RuntimeError(
+                    "[schema] 마이그레이션 이력 조회 실패로 불변 게이트를 확인할 수 없어 부팅 중단(C3). "
+                    f"원인: {exc}. 데모라면 MORI_SCHEMA_FAIL_FAST=false 로 완화 가능."
+                ) from exc
+            _log.warning("[schema] 마이그레이션 이력 조회 실패 — 드리프트 판정 생략(데모): %s", exc)
             return []
         drift: list[tuple[str, str, str]] = []
         for f in sorted(schema_dir.glob("*.sql")):

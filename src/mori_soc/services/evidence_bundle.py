@@ -14,7 +14,9 @@ import hmac
 import json
 from typing import Any
 
-MANIFEST_NAME = "MANIFEST.json"
+# 무결성 매니페스트 파일명 — 번들 콘텐츠의 'manifest.json'(내용)과 대소문자만 다르면 macOS/
+# Windows(대소문자 무시)에서 압축 해제 시 충돌·덮어씀. 소문자·비충돌 이름으로 고정(리뷰 #2).
+MANIFEST_NAME = "integrity-manifest.json"
 CANONICALIZATION = "mori-jcs-v1"   # JSON sort_keys + ensure_ascii=False + UTF-8
 HASH_ALGO = "sha256"
 SIG_ALGO = "hmac-sha256"
@@ -29,18 +31,15 @@ def _canonical(obj: Any) -> bytes:
     return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
-def build_signed_manifest(
-    files: dict[str, bytes], *, generated_at: str, key_id: str = "", secret: str = "",
-    extra: dict[str, Any] | None = None,
+def _manifest_from_entries(
+    entries: dict[str, dict[str, Any]], *, generated_at: str, key_id: str = "",
+    secret: str = "", extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """번들 파일들의 무결성 매니페스트를 만든다(서명 키 있으면 HMAC 서명 포함).
+    """이미 계산된 (이름→{sha256,bytes}) 엔트리로 서명 매니페스트를 만든다(원시 바이트 불필요).
 
-    - files: {파일명: 바이트}. MANIFEST 자신은 제외하고 넣는다.
-    - bundle_hash: 파일별 (이름,해시)를 정렬·캐노니컬화한 것의 sha256(번들 전체 지문).
-    - secret 있으면 signature(HMAC-SHA256), 없으면 signed=false.
+    스트리밍 경로(BundleWriter)와 dict 경로(build_signed_manifest)가 공유 — 메모리 절약.
     """
-    entries = {name: {"sha256": _sha256(data), "bytes": len(data)}
-               for name, data in sorted(files.items())}
+    entries = {name: entries[name] for name in sorted(entries)}
     core: dict[str, Any] = {
         "canonicalization": CANONICALIZATION, "hash_algorithm": HASH_ALGO,
         "generated_at": generated_at, "files": entries,
@@ -60,6 +59,42 @@ def build_signed_manifest(
         manifest["signed"] = False
         manifest["note"] = "서명 키 미설정 — 해시만 포함(tamper-evident 아님). MORI_EVIDENCE_SIGNING_KEY 설정 시 서명."
     return manifest
+
+
+def build_signed_manifest(
+    files: dict[str, bytes], *, generated_at: str, key_id: str = "", secret: str = "",
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """dict API(작은 번들용): {파일명:바이트} → 서명 매니페스트. 큰 번들은 BundleWriter(스트리밍)."""
+    entries = {name: {"sha256": _sha256(data), "bytes": len(data)} for name, data in files.items()}
+    return _manifest_from_entries(entries, generated_at=generated_at, key_id=key_id,
+                                  secret=secret, extra=extra)
+
+
+class BundleWriter:
+    """ZIP 에 파일을 **스트리밍**하며 무결성 엔트리만 누적(원시 바이트 미보관 → 메모리 절약, M2).
+
+    194개 통제 PDF 를 files dict 로 전부 들고 있던 것을 add() 즉시 write+해시로 바꾼다.
+    사용: w=BundleWriter(zf, secret=..); for..: w.add(name, pdf_bytes); w.finalize(generated_at=..).
+    """
+
+    def __init__(self, zf: Any, *, secret: str = "", key_id: str = "default") -> None:
+        self._zf = zf
+        self._secret = secret
+        self._key_id = key_id
+        self._entries: dict[str, dict[str, Any]] = {}
+
+    def add(self, name: str, data: bytes) -> None:
+        if name == MANIFEST_NAME:
+            raise ValueError(f"reserved name: {MANIFEST_NAME}")
+        self._zf.writestr(name, data)
+        self._entries[name] = {"sha256": _sha256(data), "bytes": len(data)}  # 바이트는 여기서 버림
+
+    def finalize(self, *, generated_at: str, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+        manifest = _manifest_from_entries(self._entries, generated_at=generated_at,
+                                          key_id=self._key_id, secret=self._secret, extra=extra)
+        self._zf.writestr(MANIFEST_NAME, json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8"))
+        return manifest
 
 
 def verify_signed_manifest(
@@ -114,5 +149,5 @@ def write_bundle_with_manifest(
     return manifest
 
 
-__all__ = ["MANIFEST_NAME", "build_signed_manifest", "verify_signed_manifest",
+__all__ = ["MANIFEST_NAME", "BundleWriter", "build_signed_manifest", "verify_signed_manifest",
            "signing_config_from_env", "write_bundle_with_manifest"]
