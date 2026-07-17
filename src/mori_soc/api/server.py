@@ -141,17 +141,34 @@ def _production_mode() -> bool:
     return os.getenv("MORI_DEMO_MODE", "").strip().lower() in ("false", "0", "no", "off")
 
 
-def _enforce_secure_boot(auth_enabled: bool) -> None:
-    """fail-closed: 운영 모드에서 인증이 꺼져 있으면 부팅을 거부한다(무인증 공개 서비스 방지)."""
-    if not _production_mode() or auth_enabled:
+def _enforce_secure_boot(auth_enabled: bool, insecure_defaults: list[str] | None = None) -> None:
+    """fail-closed: 운영 모드(MORI_DEMO_MODE=false)에서 안전하지 않은 구성이면 부팅을 거부한다.
+
+    '증적 제품'이 demo admin/1234·AUTH off·placeholder 시크릿으로 운영에 뜨면 정체성과 정면충돌
+    한다(리뷰 #26). 운영 모드에서는:
+      - 세션 인증 꺼짐 → 거부
+      - 약한 admin 비밀번호·placeholder 시크릿(change_this_ 등) → 거부
+    데모는 관대(경고만). 의도적 예외는 MORI_ALLOW_INSECURE_AUTH=true 로만 허용(강한 비권장).
+    """
+    if not _production_mode():
         return
-    if os.getenv("MORI_ALLOW_INSECURE_AUTH", "").strip().lower() in ("1", "true", "yes", "on"):
-        logger.warning("[security] 운영 모드인데 인증이 꺼져 있으나 MORI_ALLOW_INSECURE_AUTH 로 강제 허용됨 — 위험")
+    override = os.getenv("MORI_ALLOW_INSECURE_AUTH", "").strip().lower() in ("1", "true", "yes", "on")
+    problems: list[str] = []
+    if not auth_enabled:
+        problems.append("세션 인증 비활성화(MORI_AUTH_ENABLED)")
+    for name in insecure_defaults or []:
+        problems.append(f"안전하지 않은 기본값/시크릿({name})")
+    if not problems:
+        return
+    if override:
+        logger.warning("[security] 운영 모드 안전성 문제(%s)가 MORI_ALLOW_INSECURE_AUTH 로 강제 허용됨 — 위험",
+                       ", ".join(problems))
         return
     raise RuntimeError(
-        "[security] 운영 모드(MORI_DEMO_MODE=false)에서 세션 인증이 비활성화되어 부팅을 중단합니다. "
-        "MORI_AUTH_ENABLED=true(또는 LDAP)를 설정하세요. 데모라면 MORI_DEMO_MODE=true, "
-        "의도적 무인증이면 MORI_ALLOW_INSECURE_AUTH=true 를 설정하세요."
+        "[security] 운영 모드(MORI_DEMO_MODE=false)에서 안전하지 않은 구성으로 부팅을 중단합니다: "
+        + "; ".join(problems)
+        + ". MORI_AUTH_ENABLED=true·강한 MORI_ADMIN_PASSWORD·실제 시크릿을 설정하세요. "
+        "데모라면 MORI_DEMO_MODE=true, 의도적 예외라면 MORI_ALLOW_INSECURE_AUTH=true 를 설정하세요."
     )
 
 
@@ -312,7 +329,7 @@ def create_app(
     # ── Auth configuration (env-driven; see auth.py) ──────────────────────────
     _auth_config = read_auth_config()
     _auth_enabled = _auth_config.auth_enabled
-    _enforce_secure_boot(_auth_enabled)   # 운영 모드 + 인증 꺼짐 → 부팅 거부(fail-closed)
+    _enforce_secure_boot(_auth_enabled, insecure_defaults)  # 운영 모드 안전성 게이트(fail-closed)
     _security_posture = _compute_security_posture(_auth_enabled, insecure_defaults)
 
     # Predefined local accounts: username -> {password, role}

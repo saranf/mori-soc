@@ -34,6 +34,13 @@ class SecureBootUnitTests(unittest.TestCase):
         with patch.dict(os.environ, {"MORI_DEMO_MODE": "false", "MORI_ALLOW_INSECURE_AUTH": "true"}, clear=False):
             _enforce_secure_boot(auth_enabled=False)  # 명시적 탈출구 → 허용
 
+    def test_enforce_raises_on_insecure_defaults_in_production(self) -> None:
+        # 운영 모드 + 인증 켜져도 약한 비밀번호·placeholder 시크릿이 있으면 부팅 거부(#26/C2).
+        with patch.dict(os.environ, {"MORI_DEMO_MODE": "false", "MORI_ALLOW_INSECURE_AUTH": ""}, clear=False):
+            with self.assertRaises(RuntimeError):
+                _enforce_secure_boot(auth_enabled=True, insecure_defaults=["MORI_ADMIN_PASSWORD"])
+            _enforce_secure_boot(auth_enabled=True, insecure_defaults=[])  # 문제 없으면 통과
+
     def test_security_posture(self) -> None:
         self.assertEqual(_compute_security_posture(True, []), "hardened")
         self.assertEqual(_compute_security_posture(False, []), "insecure")   # 인증 꺼짐
