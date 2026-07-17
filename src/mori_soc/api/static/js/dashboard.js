@@ -2971,6 +2971,32 @@
     }
     window.downloadAuditSampleZip = downloadAuditSampleZip;
 
+    // ── Gap 조치 기한·예외 만료(#14) — 초과·만료 표면화(자동연장 금지) ─────────────────────
+    async function loadGapDeadlines() {
+      const box = document.getElementById('gap_deadlines_box');
+      if (!box) return;
+      box.style.display = 'block';
+      box.innerHTML = `<span class="empty">${tt('dash.dyn.loading','로딩 중…')}</span>`;
+      try {
+        const res = await fetch('/gaps/deadlines');
+        if (!res.ok) { box.innerHTML = `<span class="empty">${tt('dash.ctl.err','불러오지 못했습니다.')}</span>`; return; }
+        const d = await res.json();
+        const sec = (title, col, rows, emptyMsg) => {
+          const body = (rows&&rows.length) ? rows.map(r=>{
+            const dl = r.days_left<0 ? `<span style="color:#dc2626">${Math.abs(r.days_left)}${tt('dash.gapdl.over','일 초과')}</span>` : `<span style="color:#ca8a04">${r.days_left}${tt('dash.gapdl.left','일 남음')}</span>`;
+            return `<tr><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px"><b>${escapeHtml(r.control_id||'-')}</b> ${escapeHtml(r.title||'')}</td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px">${escapeHtml(r.assignee||'-')}</td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px">${escapeHtml(r.due_date||'-')}</td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px">${dl}</td></tr>`;
+          }).join('') : `<tr><td colspan="4" style="padding:3px 6px;color:#16a34a;font-size:11px">${emptyMsg}</td></tr>`;
+          return `<div style="font-size:12px;font-weight:600;color:${col};margin:6px 0 2px">${title} ${rows?`(${rows.length})`:''}</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><tbody>${body}</tbody></table></div>`;
+        };
+        box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px"><div style="font-weight:600;color:#111827;font-size:12px">${tt('dash.gapdl.btn','Gap 기한·예외')}</div><button class="secondary" style="width:auto;padding:2px 9px;font-size:11px" onclick="document.getElementById('gap_deadlines_box').style.display='none'">${tt('dash.dyn.cancel','닫기')}</button></div>
+          <div style="font-size:11px;color:#111827;margin:4px 0 4px;line-height:1.6">${tt('dash.gapdl.help','읽는 법: Gap 조치 기한과 예외 만료를 표면화해요. <span style="color:#dc2626">조치 기한 초과</span>=열린 Gap이 기한을 넘김, <span style="color:#dc2626">예외 만료</span>=수용한 예외의 만료일이 지남(자동 연장하지 않고 재검토 필요), <span style="color:#ca8a04">예외 임박</span>=14일 내 만료. MORI는 예외를 영구로 두지 않아요.')}</div>
+          ${sec(tt('dash.gapdl.overdue','조치 기한 초과'), '#dc2626', d.overdue, tt('dash.gapdl.none_over','기한 초과 없음'))}
+          ${sec(tt('dash.gapdl.expired','예외 만료(재검토 필요)'), '#dc2626', d.expired_exception, tt('dash.gapdl.none_exp','만료 예외 없음'))}
+          ${sec(tt('dash.gapdl.soon','예외 만료 임박(14일)'), '#ca8a04', d.expiring_soon, tt('dash.gapdl.none_soon','임박 예외 없음'))}`;
+      } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.ctl.err','불러오지 못했습니다.')}</span>`; }
+    }
+    window.loadGapDeadlines = loadGapDeadlines;
+
     async function loadControlTree() {
       const box = document.getElementById('control_tree_box');
       if (!box) return;

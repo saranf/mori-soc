@@ -482,6 +482,21 @@ def register_compliance(ctx: RouteContext) -> None:
         return {"gaps": gaps, "open": sum(1 for g in gaps if g.get("status") in OPEN_STATUSES),
                 "total": len(gaps)}
 
+    @app.get("/gaps/deadlines", tags=["Compliance"])
+    def gaps_deadlines(request: Request) -> dict[str, Any]:
+        """Gap 조치 기한·예외 만료(#14) — 초과 조치·만료 예외·임박 예외를 표면화(자동연장 금지)."""
+        from datetime import datetime as _dt
+        from datetime import timezone as _tz
+
+        from mori_soc.services.gap_workflow import evaluate_gap_deadlines
+        _require_ev(request)
+        repo = ctx.state_repo
+        gaps = repo.load_gaps() if repo is not None else []
+        now = _dt.now(tz=_tz.utc).isoformat()
+        res = evaluate_gap_deadlines(gaps, now)
+        res["generated_at"] = now
+        return res
+
     @app.post("/gaps", tags=["Compliance"])
     def gap_create(payload: dict[str, Any], request: Request) -> dict[str, Any]:
         """Gap 후보 생성(candidate). 스캔 gap·finding 에서 오거나 수동 입력. 결정적 id 로 중복 방지."""

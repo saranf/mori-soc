@@ -9,6 +9,7 @@ AI 가 확정하지 않는다 — 후보를 만들고 사람이 판단한다(모
 from __future__ import annotations
 
 import hashlib
+from datetime import datetime
 from typing import Any
 
 STATUSES = ("candidate", "confirmed", "policy_review", "false_positive",
@@ -67,3 +68,56 @@ def apply_transition(gap: dict[str, Any], target: str, *, actor: str, now: str,
     gap.setdefault("history", []).append(
         {"ts": now, "actor": actor, "action": "transition", "to": target, "note": note})
     return gap
+
+
+def _as_date(v: str) -> datetime | None:
+    s = str(v or "").strip()
+    if not s:
+        return None
+    for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f"):
+        try:
+            return datetime.strptime(s[:len(fmt) + 6], fmt)
+        except ValueError:
+            continue
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        return None
+
+
+def evaluate_gap_deadlines(
+    gaps: list[dict[str, Any]], now: str, *, soon_days: int = 14,
+) -> dict[str, Any]:
+    """Gap 조치 기한·예외 만료를 평가한다(#14).
+
+    모리다움 — 예외는 영구가 아니다. 자동 연장하지 않고 **만료를 표면화**해 재검토를 강제한다.
+    - overdue: 열린 Gap(candidate/confirmed/policy_review/remediation)이 due_date 를 넘김.
+    - expired_exception: accepted_exception 의 만료일(due_date)이 지남 → 재검토 필요(자동연장 금지).
+    - expiring_soon: 예외 만료가 soon_days 이내로 임박.
+    """
+    nd = _as_date(now)
+    overdue: list[dict[str, Any]] = []
+    expired: list[dict[str, Any]] = []
+    soon: list[dict[str, Any]] = []
+    for g in gaps:
+        status = str(g.get("status") or "")
+        due = _as_date(g.get("due_date"))
+        if nd is None or due is None:
+            continue
+        days_left = (due - nd).days
+        row = {"gap_id": g.get("gap_id"), "title": g.get("title"), "control_id": g.get("control_id"),
+               "assignee": g.get("assignee"), "due_date": g.get("due_date"),
+               "status": status, "days_left": days_left}
+        if status == "accepted_exception":
+            if due < nd:
+                expired.append(row)
+            elif days_left <= soon_days:
+                soon.append(row)
+        elif status in OPEN_STATUSES and due < nd:
+            overdue.append(row)
+    overdue.sort(key=lambda r: r["days_left"])
+    expired.sort(key=lambda r: r["days_left"])
+    soon.sort(key=lambda r: r["days_left"])
+    return {"overdue": overdue, "expired_exception": expired, "expiring_soon": soon,
+            "counts": {"overdue": len(overdue), "expired_exception": len(expired),
+                       "expiring_soon": len(soon)}}

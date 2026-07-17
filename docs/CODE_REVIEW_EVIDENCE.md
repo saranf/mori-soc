@@ -110,6 +110,15 @@ MORI 가 만든 기술 증적을 **감사 가능한 기록으로 고정**한다(
   → "2026-07 v1 승인 / 2026-08 v2 검토중 → 승인, v1 superseded". `GET …/approvals` 로 버전 이력 조회.
 - 구현: `services/evidence_approval.py`(상태기계·스냅샷), state repo `save/load_evidence_approval`.
 
+### 기술 Gap 조치 기한·예외 만료(#14)
+
+#5 Gap 워크플로 확장. 모리다움 — **예외는 영구가 아니다**. 자동 연장하지 않고 만료를 표면화해
+재검토를 강제한다. `services/gap_workflow.py`의 `evaluate_gap_deadlines(gaps, now, soon_days=14)`:
+- `overdue`: 열린 Gap(candidate/confirmed/policy_review/remediation)이 due_date 초과.
+- `expired_exception`: accepted_exception 의 만료일(due_date)이 지남 → 재검토 필요.
+- `expiring_soon`: 예외 만료가 14일 이내로 임박.
+- `GET /gaps/deadlines` — 위 3분류 + counts. UI: 통제 카탈로그 `Gap 기한·예외` 패널(빨=초과·만료, 노=임박).
+
 ### 기술 Gap 워크플로(#5)
 
 MORI 가 발견한 기술 결함 **후보**를 사람이 판단·조치·재검증하는 최소 흐름(풀 GRC 시정조치 모듈이
