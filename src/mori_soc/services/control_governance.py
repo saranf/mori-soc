@@ -457,6 +457,10 @@ def apply_cycle_control_update(cc: dict[str, Any], *, actor: str, now: str,
         if val and cc.get(field) != val:
             changed[field] = val
             cc[field] = val
+    # 담당자가 적용성을 명시 설정하면 '재확인 필요'(#9) 해제 — 사람이 확정한 것.
+    if applicability and cc.get("applicability_pending_review"):
+        cc["applicability_pending_review"] = False
+        changed["applicability_pending_review"] = False
     if not changed and not note:
         cc["_changed"] = False   # no-op — history 오염 없음
         return cc
@@ -560,9 +564,10 @@ def initialize_cycle_from_previous(
         cc["evidence_contract_ref"] = prev.get("evidence_contract_ref", "")
         cc["evidence_status"] = _RESET_EVIDENCE      # 초기화
         cc["assessment_status"] = _RESET_ASSESSMENT  # 초기화
+        cc["applicability_pending_review"] = True    # 적용성 재확인 필요(#9)
         cc["carried_from"] = prev.get("id")
         cc["history"].append({"ts": now, "actor": created_by, "action": "carried_from_previous",
-                              "note": f"승계: 담당자·적용성 / 초기화: 증적·평가"})
+                              "note": "승계: 담당자·적용성(재확인 필요) / 초기화: 증적·평가"})
         new_controls.append(cc)
     return {
         "new_cycle_id": new_cycle_id,
@@ -583,6 +588,9 @@ def _carry_cycle_control(prev: dict[str, Any], new_ref: str, reason: str, review
     cc["evidence_contract_ref"] = prev.get("evidence_contract_ref", "")
     cc["evidence_status"] = _RESET_EVIDENCE
     cc["assessment_status"] = _RESET_ASSESSMENT
+    # 적용성은 값을 복사하되 **재확인 필요**로 표시(리뷰 #9) — 범위 변경으로 달라질 수 있으므로
+    # 작년 판단을 확정 승계하지 않는다(자동 연장 금지 원칙과 동일).
+    cc["applicability_pending_review"] = True
     cc["carried_from_control_ref"] = prev.get("control_ref")
     cc["carried_from"] = prev.get("id")
     cc["migration_reason"] = reason

@@ -170,9 +170,14 @@ class ControlGovernanceServiceTests(unittest.TestCase):
         self.assertEqual(res["carried"], 1)
         nc = res["cycle_controls"][0]
         self.assertEqual(nc["assignee"], "김보안")          # 담당자 승계
-        self.assertEqual(nc["applicability"], "applicable")  # 적용성 승계
+        self.assertEqual(nc["applicability"], "applicable")  # 적용성 값은 승계
+        self.assertTrue(nc["applicability_pending_review"])  # 단 재확인 필요(#9, 무조건 승계 금지)
         self.assertEqual(nc["evidence_status"], "missing")   # 증적 초기화
         self.assertEqual(nc["assessment_status"], "not_assessed")  # 평가 초기화(자동 승계 금지)
+        # 담당자가 적용성을 재확인(명시 설정)하면 pending 해제
+        apply_cycle_control_update(nc, actor="홍길동", now="2026-02-01T00:00:00+00:00",
+                                   applicability="applicable")
+        self.assertFalse(nc["applicability_pending_review"])
 
 
     def test_crosswalk_groups_by_framework(self) -> None:
