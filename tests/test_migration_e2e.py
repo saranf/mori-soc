@@ -172,6 +172,7 @@ class MigrationE2ETests(unittest.TestCase):
         from mori_soc.services.control_governance import (
             apply_cycle_control_update,
             build_cycle_control,
+            build_framework,
             build_framework_version,
             build_governance_event,
             cycle_control_as_of,
@@ -181,6 +182,9 @@ class MigrationE2ETests(unittest.TestCase):
         repo = PostgresStateRepository(self._url)
         repo.apply_schema()
 
+        # 0) Framework 먼저(정규화 FK: version 은 framework 를 참조)
+        fw = build_framework(framework_id="ISMS-P", name="ISMS-P", now="2019-01-01")
+        repo.save_governance("framework", fw["id"], fw)
         # 1) ISMS-P 2019 등록 + 통제 정의(구버전)
         v19 = build_framework_version(framework_id="ISMS-P", version="2019", now="2019-01-01")
         repo.save_governance("framework_version", v19["id"], v19)
@@ -248,6 +252,67 @@ class MigrationE2ETests(unittest.TestCase):
         jul = cycle_control_as_of(cc25_loaded, "2025-07-01T00:00:00+00:00")
         self.assertEqual(jul["evidence_status"], "approved")          # 승인 후
         self.assertEqual(jul["assessment_status"], "effective")
+
+    def test_governance_normalized_constraints(self) -> None:
+        """저장 정규화(#4): 정규 테이블이 FK·unique·active-1개를 DB 레벨로 강제 + round-trip."""
+        from mori_soc.repositories.state_postgres import PostgresStateRepository
+        from mori_soc.services.control_governance import (
+            build_control_definition,
+            build_framework,
+            build_framework_version,
+        )
+        repo = PostgresStateRepository(self._url)
+        repo.apply_schema()
+
+        fw = build_framework(framework_id="ISMS-P", name="ISMS-P", now="2026-01-01")
+        repo.save_governance("framework", fw["id"], fw)
+        v1 = build_framework_version(framework_id="ISMS-P", version="2023", now="2026-01-01")
+        repo.save_governance("framework_version", v1["id"], v1)
+
+        # round-trip: metadata 로 원본 레코드가 그대로 복원되는가(content_hash 포함)
+        loaded = {r["id"]: r for r in repo.load_governance("framework_version")}
+        self.assertEqual(loaded["isms-p:2023"]["content_hash"], v1["content_hash"])
+
+        # FK: 존재하지 않는 framework_version 을 참조하는 control 저장 → DB 가 거부
+        bad = build_control_definition(framework_version_id="ghost:9999", display_code="1.1",
+                                       title="x", now="2026-01-01")
+        with self.assertRaises(Exception):
+            repo.save_governance("control_definition", bad["id"], bad)
+
+        # unique: 같은 framework 에 같은 version 번호 재삽입은 UPSERT(같은 PK)라 OK지만,
+        # 다른 PK 로 같은 (framework_id, version) 을 넣으면 UNIQUE 위반
+        dup = dict(v1, id="isms-p:dup", framework_version_id="isms-p:dup")
+        with self.assertRaises(Exception):
+            repo.save_governance("framework_version", "isms-p:dup", dup)
+
+        # active 1개: 두 버전을 active 로 만들면 부분 유니크 인덱스가 두 번째를 거부
+        v2 = build_framework_version(framework_id="ISMS-P", version="2019", now="2026-01-01")
+        repo.save_governance("framework_version", v2["id"], v2)
+        a1 = dict(v1, status="active")
+        repo.save_governance("framework_version", a1["id"], a1)
+        a2 = dict(v2, status="active")
+        with self.assertRaises(Exception):
+            repo.save_governance("framework_version", a2["id"], a2)
+
+    def test_governance_normalized_backfill(self) -> None:
+        """구 범용 스토어(ui_control_governance)의 데이터가 정규 테이블로 이관되는가(idempotent)."""
+        from mori_soc.repositories.state_postgres import PostgresStateRepository
+        repo = PostgresStateRepository(self._url)
+        repo.apply_schema()
+        # 범용 스토어에 직접 넣은 뒤(구버전 상황 모사), 정규 테이블로 강제 삽입 우회
+        with self._psycopg.connect(self._url) as conn, conn.cursor() as cur:
+            cur.execute("INSERT INTO ui_control_governance (kind, entity_id, record) VALUES "
+                        "(%s,%s,%s) ON CONFLICT DO NOTHING",
+                        ("framework", "legacy-fw",
+                         self._psycopg.types.json.Json({"id": "legacy-fw", "name": "Legacy"})))
+            conn.commit()
+        repo._backfill_governance_normalized()
+        fws = {r["id"]: r for r in repo.load_governance("framework")}
+        self.assertIn("legacy-fw", fws)
+        # 범용 스토어에서는 이관 후 제거됨
+        with self._psycopg.connect(self._url) as conn, conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM ui_control_governance WHERE kind='framework' AND entity_id='legacy-fw'")
+            self.assertEqual(cur.fetchone()[0], 0)
 
     def test_migration_immutability_gate(self) -> None:
         """C3: 이미 성공 적용된 마이그레이션의 체크섬이 바뀌면 운영모드 부팅 거부(이력 덮기 금지)."""

@@ -103,6 +103,21 @@ POST /assurance-cycles/{id}/initialize-from/{prev} · /controls/{id}/overlay-vie
 - 방향: 기존 카탈로그는 당분간 운영 화면으로 유지하되, governance 가 **버전·계보를 갖는 상위 모델**
   로서 이를 흡수한다. 양쪽 동시 개발이 아니라 한쪽(governance)으로 수렴.
 
+## 6-3. 저장 정규화 (2차 리뷰 #4, 진행 중)
+
+범용 `ui_control_governance` (kind,entity_id) 스토어는 FK·unique·기간겹침을 DB 로 못 막는다.
+핵심 계보를 정규 테이블(schema 019)로 빼서 **DB 가 무결성을 강제**한다.
+
+- **1차(완료)**: `gov_frameworks` · `gov_framework_versions` · `gov_control_definitions`.
+  - FK: version→framework, control→version (`ON DELETE RESTRICT` — 하위 있는데 상위 삭제 금지).
+  - UNIQUE: (framework_id, version), (framework_version_id, display_code).
+  - CHECK: status ∈ draft/active/retired. **부분 유니크 인덱스**로 framework 당 active 1개 보장.
+  - 관계·무결성은 관계형 컬럼, **전체 레코드 원본은 metadata JSONB** → 앱은 정확히 같은 dict 를
+    돌려받는다(round-trip). Postgres repo 의 save/load_governance 가 kind 로 dispatch.
+  - 구 범용 스토어 → 정규 테이블 **일회성 backfill**(FK 순서, 성공분만 삭제, 실패는 원본 보존+로그).
+- **잔여**: organization_controls·assurance_cycles·cycle_controls·evidence_contracts·mappings·
+  scope_snapshots·relationships 정규화(전이 중엔 범용 스토어 유지). in-memory 는 dict 유지(단일 테넌트).
+
 ## 7. 검증 상태
 
 - 유닛/라우트: `tests/test_control_governance.py` — content_hash 불변성·해석층 분리·버전 diff·

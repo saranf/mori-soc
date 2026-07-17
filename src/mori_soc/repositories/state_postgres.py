@@ -129,6 +129,47 @@ class PostgresStateRepository(StateRepository):
                     f"[schema] 스키마 적용 실패로 부팅 중단(fail-fast): {', '.join(failed)}. "
                     "불완전한 DB 로 서비스하지 않는다. 데모라면 MORI_SCHEMA_FAIL_FAST=false 로 완화 가능."
                 )
+        self._backfill_governance_normalized()
+
+    def _backfill_governance_normalized(self) -> None:
+        """범용 ui_control_governance → 정규 테이블(#4) 일회성 이관(idempotent).
+
+        FK 순서(framework → version → control)로 옮기고, 성공한 항목만 범용 스토어에서 삭제한다.
+        FK 위반 등 실패 행은 **삭제하지 않고 크게 로그**(은폐 금지, 모리다움). 019 미적용 시 조용히 skip.
+        """
+        try:
+            with self._connect() as conn, conn.cursor() as cur:
+                cur.execute("SELECT to_regclass('public.gov_frameworks')")
+                if cur.fetchone()[0] is None:
+                    return  # 019 아직 미적용
+        except Exception:  # noqa: BLE001
+            return
+        for kind in ("framework", "framework_version", "control_definition"):
+            try:
+                with self._connect() as conn, conn.cursor() as cur:
+                    cur.execute("SELECT entity_id, record FROM ui_control_governance WHERE kind = %s",
+                                (kind,))
+                    rows = cur.fetchall()
+            except Exception:  # noqa: BLE001 - 범용 테이블 없으면 이관할 것도 없음
+                return
+            migrated, failedn = 0, 0
+            for entity_id, rec in rows:
+                if not isinstance(rec, dict):
+                    continue
+                try:
+                    self.save_governance(kind, entity_id, rec)   # 정규 경로로 저장
+                    with self._connect() as conn, conn.cursor() as cur:
+                        cur.execute(
+                            "DELETE FROM ui_control_governance WHERE kind = %s AND entity_id = %s",
+                            (kind, entity_id))
+                    migrated += 1
+                except Exception:  # noqa: BLE001 - FK 위반 등 → 원본 보존 + 로그
+                    failedn += 1
+                    _log.warning("[schema] governance 정규화 이관 실패(원본 보존) kind=%s id=%s",
+                                 kind, entity_id)
+            if migrated or failedn:
+                _log.info("[schema] governance 정규화 이관 %s: %d건 이관, %d건 보류",
+                          kind, migrated, failedn)
 
     def _detect_migration_drift(self, schema_dir: Any) -> list[tuple[str, str, str]]:
         """이미 **성공 적용된** 마이그레이션 중 파일 내용(체크섬)이 바뀐 것을 찾는다(C3).
@@ -805,11 +846,34 @@ class PostgresStateRepository(StateRepository):
             cur.execute("DELETE FROM personal_data_flow WHERE id = %s", (flow_id,))
 
     # ── control_governance (통제 운영 플랫폼 객체) ────────────────────────────────
+    # 정규화(#4): 핵심 계보는 정규 테이블(FK·unique·CHECK·active 1개)로 DB 가 무결성을 강제하고,
+    # 전체 레코드 원본은 metadata JSONB 에 담아 round-trip 을 보장한다. 나머지 kind 는 범용 스토어.
+    # 각 항목: (table, pk_col, typed_columns[]) — typed 는 record 에서 뽑아 컬럼으로 저장.
+    _NORMALIZED_GOV: dict[str, tuple[str, str, tuple[str, ...]]] = {
+        "framework": ("gov_frameworks", "framework_id", ("name", "type", "publisher")),
+        "framework_version": ("gov_framework_versions", "framework_version_id",
+                              ("framework_id", "version", "status", "effective_from",
+                               "effective_to", "content_hash", "supersedes")),
+        "control_definition": ("gov_control_definitions", "control_id",
+                              ("framework_version_id", "control_uid", "display_code", "title",
+                               "content_hash", "parent_control_id")),
+    }
+
     def load_governance(self, kind: str) -> list[dict[str, Any]]:
+        spec = self._NORMALIZED_GOV.get(kind)
         with self._connect() as conn, conn.cursor() as cur:
+            if spec is not None:
+                table, pk, _ = spec
+                cur.execute(f"SELECT {pk}, metadata FROM {table}")  # noqa: S608 - table from fixed map
+                out: list[dict[str, Any]] = []
+                for r in cur.fetchall():
+                    rec = r[1] if isinstance(r[1], dict) else {}
+                    rec.setdefault("id", r[0])
+                    out.append(rec)
+                return out
             cur.execute(
                 "SELECT entity_id, record FROM ui_control_governance WHERE kind = %s", (kind,))
-            out: list[dict[str, Any]] = []
+            out = []
             for r in cur.fetchall():
                 rec = r[1] if isinstance(r[1], dict) else {}
                 rec.setdefault("id", r[0])
@@ -817,18 +881,36 @@ class PostgresStateRepository(StateRepository):
             return out
 
     def save_governance(self, kind: str, entity_id: str, record: dict[str, Any]) -> None:
+        spec = self._NORMALIZED_GOV.get(kind)
+        meta = Jsonb(record) if Jsonb is not None else record
         with self._connect() as conn, conn.cursor() as cur:
+            if spec is not None:
+                table, pk, cols = spec
+                allcols = (pk, *cols, "metadata")
+                vals = [entity_id, *[record.get(c) for c in cols], meta]
+                placeholders = ", ".join(["%s"] * len(allcols))
+                updates = ", ".join(f"{c}=EXCLUDED.{c}" for c in (*cols, "metadata"))
+                cur.execute(
+                    f"INSERT INTO {table} ({', '.join(allcols)}) VALUES ({placeholders}) "  # noqa: S608
+                    f"ON CONFLICT ({pk}) DO UPDATE SET {updates}, updated_at=now()",
+                    vals)
+                return
             cur.execute(
                 """
                 INSERT INTO ui_control_governance (kind, entity_id, record, updated_at)
                 VALUES (%s, %s, %s, now())
                 ON CONFLICT (kind, entity_id) DO UPDATE SET record=EXCLUDED.record, updated_at=now()
                 """,
-                (kind, entity_id, Jsonb(record) if Jsonb is not None else record),
+                (kind, entity_id, meta),
             )
 
     def delete_governance(self, kind: str, entity_id: str) -> None:
+        spec = self._NORMALIZED_GOV.get(kind)
         with self._connect() as conn, conn.cursor() as cur:
+            if spec is not None:
+                table, pk, _ = spec
+                cur.execute(f"DELETE FROM {table} WHERE {pk} = %s", (entity_id,))  # noqa: S608
+                return
             cur.execute(
                 "DELETE FROM ui_control_governance WHERE kind = %s AND entity_id = %s",
                 (kind, entity_id))
