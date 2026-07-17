@@ -56,6 +56,28 @@ class AssetImportEndpointTests(unittest.TestCase):
         owners = c.get("/assets/owners").json()["owners"]
         self.assertTrue(any(o["hostname"] == "web-01" and o["owner"] == "홍길동" for o in owners))
 
+    def test_unknown_host_surfaced_honestly(self) -> None:
+        # 모리다움(정직): 현재 자산 목록에 없는 호스트는 배정하되 경고로 표면화(은폐 금지).
+        from datetime import datetime, timezone
+
+        from fastapi.testclient import TestClient
+
+        from mori_soc.api.server import create_app
+        from mori_soc.models import Host
+        from mori_soc.services.query_service import InMemoryQueryStore, QueryService
+        with patch.dict(os.environ, {"MORI_DEMO_SEED": "0", "MORI_AUTH_ENABLED": "1"}, clear=False):
+            store = InMemoryQueryStore()
+            store.hosts = [Host(host_id="h1", hostname="web-01", status="online",
+                                last_seen_at=datetime.now(timezone.utc))]
+            c = TestClient(create_app(QueryService(store)))
+            c.post("/auth/login", json={"username": "admin", "password": "1234"})
+            r = c.post("/assets/owners/import",
+                       json={"csv": "호스트명,담당자\nweb-01,홍길동\nghost-99,김철수"})
+        d = r.json()
+        self.assertEqual(d["imported"], 2)                 # 둘 다 저장(배정은 유지)
+        self.assertEqual(d["unknown_hosts"], ["ghost-99"])  # 미존재 호스트만 표면화
+        self.assertTrue(d["warnings"])                      # 정직 경고 제공
+
     def test_non_privileged_forbidden(self) -> None:
         c = self._client()
         c.post("/auth/login", json={"username": "monitor", "password": "1234"})

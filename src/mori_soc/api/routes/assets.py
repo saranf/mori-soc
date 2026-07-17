@@ -111,14 +111,30 @@ def register_assets(ctx: RouteContext) -> None:
         from mori_soc.services.csv_import import parse_csv
         rows, errors = parse_csv(str(payload.get("csv", "")), _OWNER_ALIASES, required=["hostname"])
         changed_by = _get_session_username(request) or "unknown"
+        # 모리다움(정직): 현재 자산 목록에 없는 호스트를 표면화한다(배정은 저장하되 은폐하지 않음).
+        try:
+            known = {str(h.hostname).strip().lower() for h in get_query_service().store.hosts if h.hostname}
+        except Exception:
+            known = set()
         imported = 0
+        unknown_hosts: list[str] = []
         for row in rows:
             try:
                 _upsert_owner(row, changed_by)
                 imported += 1
+                hn = str(row.get("hostname", "")).strip()
+                if known and hn.lower() not in known:
+                    unknown_hosts.append(hn)
             except HTTPException as exc:
                 errors.append(f"{row.get('hostname', '?')}: {exc.detail}")
-        return {"imported": imported, "rows": len(rows), "errors": errors}
+        warnings: list[str] = []
+        if unknown_hosts:
+            shown = ", ".join(unknown_hosts[:10]) + (" …" if len(unknown_hosts) > 10 else "")
+            warnings.append(
+                f"현재 자산 목록에 없는 호스트 {len(unknown_hosts)}건({shown}) — 담당자 배정은 저장됐고, "
+                "해당 호스트가 수집되면 자동 연결됩니다.")
+        return {"imported": imported, "rows": len(rows), "errors": errors,
+                "warnings": warnings, "unknown_hosts": unknown_hosts}
 
     @app.delete("/assets/owners/{hostname}")
     def owners_delete(hostname: str) -> Any:

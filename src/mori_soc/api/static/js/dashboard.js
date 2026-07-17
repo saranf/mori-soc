@@ -4084,9 +4084,11 @@
           const d = await r.json();
           if (!r.ok) throw new Error((d && d.detail) || r.status);
           const errs = (d.errors || []);
+          const warns = (d.warnings || []);
           resEl.style.color = errs.length ? '#ca8a04' : '#16a34a';
           resEl.innerHTML = tt('dash.csvimport.done', '{n}건 가져옴').replace('{n}', '<strong>' + (d.imported || 0) + '</strong>')
-            + (errs.length ? '<br>' + errs.map(e => escapeHtml(e)).join('<br>') : '');
+            + (errs.length ? '<br>' + errs.map(e => escapeHtml(e)).join('<br>') : '')
+            + (warns.length ? '<br><span style="color:#ca8a04">' + warns.map(w => escapeHtml(w)).join('<br>') + '</span>' : '');
           if (opts.onDone) { try { opts.onDone(d); } catch (e) {} }
         } catch (e) {
           resEl.style.color = '#dc2626'; resEl.textContent = tt('dash.csvimport.fail', '가져오기 실패: ') + String(e.message || e);
