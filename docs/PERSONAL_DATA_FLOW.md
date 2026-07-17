@@ -50,6 +50,8 @@ UI: Compliance → 통제 카탈로그 관리자 바(admin·security 전용) →
 | GET | `/privacy/external-recipients` | **외부 수신자 구분(#7)** — 위탁·제3자 제공·국외이전 후보(법적 확정 아님, 담당자 확인 필요) |
 | GET | `/privacy/external-recipients.csv` | 외부 수신자 구분 CSV |
 | GET·PUT | `/privacy/policy-compare` | **처리방침 vs 코드 불일치(#8)** — 방침 주장(수집항목·보유기간)을 저장·대조. 불일치 후보 반환 |
+| GET | `/privacy/isms-3x-package` | **ISMS-P 3.x 증적 패키지(#10)** — 통제별 근거·산출물·검토/대조 요약 매니페스트 |
+| GET | `/privacy/isms-3x-package.zip` | 3.x 증적 ZIP(manifest.json + 흐름표·처리업무·외부수신자·파일개요 CSV + 흐름표 PDF) |
 | GET | `/privacy/data-flow.pdf` | 흐름표 PDF(감사관 제출용, reportlab·팔레트 6색) |
 | POST | `/privacy/data-flow/reset` | 흐름표 전체 리셋(재스캔으로 재생성) |
 | GET | `/privacy/pii-rules.yml` | 스캔용 Semgrep 룰(리터럴+필드명 기본셋+어드민 커스텀). 워크플로가 스캔 때 fetch |
@@ -120,6 +122,21 @@ UI: `처리방침 대조` 버튼 → 항목·보유기간 입력 → 저장·대
   reviewed_by, reviewed_at 기록) / `action=reopen`(pending 복귀). 모두 감사 로그에 남는다.
 - 확정된 행이 있는 처리업무는 #6 `confirm_status`가 **담당자 승인**으로 승격된다.
 - UI: 흐름 상세표의 `담당자·확인` 열 — 담당자 입력 + 확인/재검토 버튼(확정 시 검토자·일자 표시).
+
+## 3-5. ISMS-P 3.x 증적 패키지 (#10)
+
+`build_isms3x_manifest(rows, policy, generated_at)`는 이미 수집·확정된 개인정보 증적을
+**3.x 통제 단위 감사 패키지**로 조립한다. 새 증적을 만드는 게 아니라 기존 증적을 제출 형태로 묶는다.
+
+- **controls**: 3.1.1·3.2.1·3.3.1·3.3.4·3.4.1 각각에 근거 행 수·근거 유무(●/○).
+  근거 필드 매핑 = `ISMS3X_CONTROLS`(수집=collection_source·이용=purpose·제3자=third_party·
+  국외=overseas·파기=destruction).
+- **artifacts**: 흐름표·처리업무·외부수신자·파일개요 CSV 목록과 건수.
+- **review_summary**: 담당자 확인 total/confirmed/pending(#9 연동).
+- **policy_summary**: 처리방침 불일치 후보 요약(#8 연동).
+- **ZIP**: `manifest.json` + 위 CSV들 + 흐름표 PDF(reportlab 있으면). stdlib `zipfile`.
+
+UI: `3.x 증적 패키지` 버튼 → 통제별 근거 표 + `증적 패키지 ZIP 내려받기`.
 
 ## 4. 데이터 모델
 

@@ -219,6 +219,22 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertEqual(clean["only_in_policy"], [])
         self.assertEqual(clean["retention_mismatch"], [])
 
+    def test_build_isms3x_manifest(self) -> None:
+        from mori_soc.services.data_flow import build_isms3x_manifest
+        rows = [
+            {"item": "이메일", "collection_source": "signup", "purpose": "로그인",
+             "destruction": "withdrawUser", "review_status": "confirmed"},
+            {"item": "주민등록번호", "third_party": "국민건강보험공단", "overseas": "AWS us-east-1"},
+        ]
+        m = build_isms3x_manifest(rows, {"items": ["이메일"], "retention": "탈퇴 즉시"}, generated_at="2026-07-17")
+        ctl = {c["control_id"]: c for c in m["controls"]}
+        self.assertTrue(ctl["3.1.1"]["has_evidence"])   # collection_source
+        self.assertTrue(ctl["3.3.1"]["has_evidence"])   # third_party
+        self.assertTrue(ctl["3.3.4"]["has_evidence"])   # overseas
+        self.assertEqual(m["review_summary"], {"total": 2, "confirmed": 1, "pending": 1})
+        self.assertEqual(m["policy_summary"]["declared_items"], 1)
+        self.assertTrue(any(a["file"] == "processing-tasks.csv" for a in m["artifacts"]))
+
     def test_encryption_marker_and_concerns(self) -> None:
         from mori_soc.services.data_flow import (
             derive_concerns,
@@ -381,6 +397,17 @@ class PrivacyRouteTests(unittest.TestCase):
         self.assertTrue(any(t["confirm_status"] == "담당자 승인" for t in tasks))
         ro = c.post(f"/privacy/data-flow/{fid}/review", json={"action": "reopen"}).json()
         self.assertEqual(ro["review_status"], "pending")
+        # ISMS-P 3.x 증적 패키지(#10): 매니페스트 + ZIP
+        mani = c.get("/privacy/isms-3x-package").json()
+        self.assertIn("controls", mani)
+        z = c.get("/privacy/isms-3x-package.zip")
+        self.assertEqual(z.status_code, 200)
+        self.assertEqual(z.headers["content-type"], "application/zip")
+        import io
+        import zipfile
+        names = set(zipfile.ZipFile(io.BytesIO(z.content)).namelist())
+        self.assertIn("manifest.json", names)
+        self.assertIn("processing-tasks.csv", names)
         # 삭제
         self.assertTrue(c.delete(f"/privacy/data-flow/{fid}").json()["ok"])
         self.assertEqual(len(c.get("/privacy/data-flow").json()["rows"]), 0)

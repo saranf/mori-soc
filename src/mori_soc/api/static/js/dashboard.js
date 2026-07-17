@@ -3448,6 +3448,7 @@
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadProcessingTasks()">${tt('dash.pf.tasks','처리업무 그룹')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadExternalRecipients()">${tt('dash.pf.ext','외부 수신자 구분')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadPolicyCompare()">${tt('dash.pf.policy','처리방침 대조')}</button>
+          <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadIsms3xPackage()">${tt('dash.pf.pkg','3.x 증적 패키지')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="promotePrivacyFlow()">${tt('dash.pf.promote','3.x 통제 증적 승격')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="togglePiiCriteria()">${tt('dash.pf.criteria','PII 기준 편집')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadPrivacyFlow()">${tt('dash.pf.reload','새로고침')}</button>
@@ -3627,6 +3628,32 @@
       document.getElementById('pol_diff').innerHTML = renderPolicyDiff(d.policy||{}, d.diff||{});
     }
     window.savePolicyCompare = savePolicyCompare;
+
+    // ── ISMS-P 3.x 증적 패키지(#10) — 통제별 근거·산출물·요약을 묶어 제출 ──────────────────
+    async function loadIsms3xPackage() {
+      const box = document.getElementById('pf_rows');
+      if (!box) return;
+      try {
+        const res = await fetch('/privacy/isms-3x-package');
+        if (!res.ok) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; return; }
+        const m = await res.json();
+        const ctlRows = (m.controls||[]).map(c=>{
+          const dot = c.has_evidence ? `<span style="color:#16a34a">●</span>` : `<span style="color:#dc2626">○</span>`;
+          return `<tr><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px">${dot} <b>${escapeHtml(c.control_id)}</b> ${escapeHtml(c.name)}</td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px;text-align:right">${c.evidence_rows}</td></tr>`;
+        }).join('');
+        const arts = (m.artifacts||[]).map(a=>`<li>${escapeHtml(a.name)} — ${a.rows}${tt('dash.pf.k_rows','건')} <span style="color:#6b7280">(${escapeHtml(a.file)})</span></li>`).join('');
+        const rv = m.review_summary||{}; const ps = m.policy_summary||{};
+        box.innerHTML = `<div style="font-size:11px;color:#111827;margin-bottom:6px;line-height:1.6">${tt('dash.pf.pkg_help','읽는 법: 이미 수집·확정된 개인정보 증적(흐름표·처리업무·외부수신자·파일개요·처리방침 대조·담당자 확인)을 ISMS-P 3.x 통제 단위로 묶은 <b>감사 패키지</b>예요. ●=근거 있음, ○=근거 없음. ZIP에는 manifest.json + CSV들 + 흐름표 PDF가 들어가요. 새 증적을 만드는 게 아니라 기존 증적을 제출 형태로 조립해요.')}</div>
+          <div style="margin-bottom:6px"><a href="/privacy/isms-3x-package.zip" target="_blank" class="secondary" style="width:auto;padding:3px 10px;font-size:12px;text-decoration:none;color:#2563eb;border:1px solid #e5e7eb;border-radius:6px">${tt('dash.pf.pkg_zip','증적 패키지 ZIP 내려받기')}</a></div>
+          <div style="font-size:12px;font-weight:600;color:#111827;margin:6px 0 2px">${escapeHtml(m.domain||'')}</div>
+          <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.pf.k_control','통제')}</th><th style="text-align:right;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.pf.k_evrows','근거 행')}</th></tr></thead><tbody>${ctlRows}</tbody></table></div>
+          <div style="font-size:11px;font-weight:600;color:#111827;margin:8px 0 2px">${tt('dash.pf.k_artifacts','포함 산출물')}</div>
+          <ul style="margin:0;padding-left:16px;font-size:11px;line-height:1.6">${arts}</ul>
+          <div style="font-size:11px;color:#111827;margin-top:6px">${tt('dash.pf.k_review','담당자 확인')}: <b>${rv.confirmed||0}</b>/${rv.total||0} · ${tt('dash.pf.k_policy','처리방침 불일치')}: ${tt('dash.pf.p_only_code','코드에만')} ${ps.only_in_code||0}, ${tt('dash.pf.p_only_policy','방침에만')} ${ps.only_in_policy||0}, ${tt('dash.pf.p_retention','보유기간')} ${ps.retention_mismatch||0}</div>
+          <div style="font-size:10px;color:#6b7280;margin-top:4px">${escapeHtml(m.note||'')}</div>`;
+      } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
+    }
+    window.loadIsms3xPackage = loadIsms3xPackage;
 
     async function seedPrivacyFlow() {
       const res = await fetch('/privacy/data-flow/seed-from-scan', {method:'POST'});

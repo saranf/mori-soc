@@ -23,6 +23,7 @@ from mori_soc.services.data_flow import (
     FLOW_FIELDS,
     STAGES,
     build_file_overview,
+    build_isms3x_manifest,
     build_pii_semgrep_rules,
     build_processing_tasks,
     classify_external_recipients,
@@ -402,6 +403,51 @@ def register_privacy(ctx: RouteContext) -> None:
             ctx.log_action(_user(request), "PRIVACY_POLICY_DECLARE", f"{len(items)} items")
         diff = compare_policy_to_flow(items, retention, _sorted_rows())
         return {"policy": pol, "diff": diff}
+
+    # ── ISMS-P 3.x 증적 패키지(#10) — 개인정보 증적을 하나의 감사 패키지로 조립 ────────────
+    @app.get("/privacy/isms-3x-package", tags=["Privacy"])
+    def isms3x_package_manifest(request: Request) -> dict[str, Any]:
+        """3.x 개인정보 증적 매니페스트(통제별 근거 유무·산출물 목록·검토/대조 요약)."""
+        _require_privacy_role(request)
+        now = datetime.now(tz=timezone.utc).isoformat()
+        return build_isms3x_manifest(_sorted_rows(), _declared_policy(), generated_at=now)
+
+    @app.get("/privacy/isms-3x-package.zip", tags=["Privacy"])
+    def isms3x_package_zip(request: Request) -> Response:
+        """3.x 증적을 ZIP(manifest.json + 흐름표·처리업무·외부수신자·파일개요 CSV + 흐름표 PDF)로."""
+        import io
+        import zipfile
+
+        from mori_soc.services.csv_export import render_csv
+        from mori_soc.services.data_flow import render_data_flow_pdf
+        _require_privacy_role(request)
+        rows = _sorted_rows()
+        now = datetime.now(tz=timezone.utc).isoformat()
+        manifest = build_isms3x_manifest(rows, _declared_policy(), generated_at=now)
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
+            zf.writestr("data-flow.csv", render_csv(rows, {
+                k: k for k in ("item", "subject", "collection_source", "storage_location",
+                               "purpose", "retention", "destruction", "third_party", "overseas")}))
+            zf.writestr("processing-tasks.csv", render_csv(build_processing_tasks(rows), {
+                "task": "처리업무", "subjects": "정보주체", "items": "개인정보 항목",
+                "system": "시스템/저장", "collect_code": "수집 근거", "dispose_code": "파기 근거",
+                "purpose": "이용 목적", "controls": "관련 통제", "confirm_status": "확인 상태"}))
+            zf.writestr("external-recipients.csv", render_csv(classify_external_recipients(rows), {
+                "recipient": "외부 수신자", "candidate_types": "후보 구분", "items": "개인정보 항목",
+                "purpose": "목적", "overseas": "국외", "confirm": "확인"}))
+            zf.writestr("file-overview.csv", render_csv(build_file_overview(rows), {
+                "file_name": "파일명", "subject_count": "정보주체 수", "required_items": "필수 항목",
+                "optional_items": "선택 항목", "third_party": "제3자", "purpose": "목적"}))
+            try:
+                pdf = render_data_flow_pdf(rows, generated_at=now)
+                if pdf:
+                    zf.writestr("data-flow.pdf", pdf)
+            except Exception:
+                pass  # reportlab 미설치 등 — CSV·매니페스트만으로도 유효한 패키지.
+        headers = {"Content-Disposition": 'attachment; filename="mori-isms-3x-evidence-package.zip"'}
+        return Response(content=buf.getvalue(), media_type="application/zip", headers=headers)
 
     # ── DB 컬럼 ↔ 개인정보 항목 매칭 CSV(어느 컬럼에 어떤 정보) ─────────────────────────
     @app.get("/privacy/data-tables.csv", tags=["Privacy"])

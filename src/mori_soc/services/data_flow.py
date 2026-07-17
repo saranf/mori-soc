@@ -482,6 +482,66 @@ def compare_policy_to_flow(
     }
 
 
+# ISMS-P 3.x(개인정보 처리단계별 요구사항) 통제와 흐름표 근거 필드 매핑.
+ISMS3X_CONTROLS = (
+    ("3.1.1", "개인정보 수집·이용", "collection_source"),
+    ("3.2.1", "개인정보 이용·제공", "purpose"),
+    ("3.3.1", "개인정보 제3자 제공", "third_party"),
+    ("3.3.4", "개인정보 국외이전", "overseas"),
+    ("3.4.1", "개인정보 파기", "destruction"),
+)
+
+
+def build_isms3x_manifest(
+    rows: list[dict[str, Any]], policy: dict[str, Any] | None, generated_at: str = "",
+) -> dict[str, Any]:
+    """ISMS-P 3.x 개인정보 증적을 **하나의 감사 패키지 매니페스트**로 조립한다(#10).
+
+    모리다움 — 새 증적을 만드는 게 아니라, 이미 수집·확정된 기술 증적(흐름표·처리업무·외부
+    수신자·파일 개요·처리방침 대조·담당자 확인)을 3.x 통제 단위 패키지로 **묶어** 제출 가능하게 한다.
+    """
+    def _c(v: Any) -> str:
+        return str(v or "").strip()
+
+    def _real(v: str) -> bool:
+        return bool(v) and v not in ("없음", "-", "n/a", "N/A")
+
+    controls: list[dict[str, Any]] = []
+    for cid, name, field in ISMS3X_CONTROLS:
+        n = sum(1 for r in rows if _real(_c(r.get(field))))
+        controls.append({"control_id": cid, "name": name, "evidence_rows": n, "has_evidence": n > 0})
+
+    confirmed = sum(1 for r in rows if _c(r.get("review_status")) == "confirmed")
+    review = {"total": len(rows), "confirmed": confirmed, "pending": len(rows) - confirmed}
+
+    pol = policy or {}
+    diff = compare_policy_to_flow(list(pol.get("items") or []), _c(pol.get("retention")), rows)
+    policy_summary = {
+        "declared_items": len(pol.get("items") or []),
+        "only_in_code": len(diff["only_in_code"]),
+        "only_in_policy": len(diff["only_in_policy"]),
+        "retention_mismatch": len(diff["retention_mismatch"]),
+    }
+
+    artifacts = [
+        {"name": "개인정보 처리흐름표", "file": "data-flow.csv", "rows": len(rows)},
+        {"name": "처리업무 그룹", "file": "processing-tasks.csv", "rows": len(build_processing_tasks(rows))},
+        {"name": "외부 수신자 구분", "file": "external-recipients.csv",
+         "rows": len(classify_external_recipients(rows))},
+        {"name": "개인정보 파일 개요", "file": "file-overview.csv", "rows": len(build_file_overview(rows))},
+    ]
+
+    return {
+        "domain": "3. 개인정보 처리단계별 요구사항 (ISMS-P)",
+        "generated_at": generated_at,
+        "controls": controls,
+        "artifacts": artifacts,
+        "review_summary": review,
+        "policy_summary": policy_summary,
+        "note": "기술 증적 후보 패키지 — 담당자 검토·확정을 거쳐 제출한다(법적 확정 아님).",
+    }
+
+
 def infer_encryption(finding: dict[str, Any]) -> str:
     """스니펫에서 저장 암호화 알고리즘/적용 여부를 추정. 근거 없으면 빈 문자열(단정 안 함)."""
     hay = _code_hay(finding)
