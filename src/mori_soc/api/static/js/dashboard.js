@@ -3445,6 +3445,7 @@
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="seedPrivacyFlow()">${tt('dash.pf.seed','PII 스캔으로 시드')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="openCsvPreview({title:tt('dash.pf.title','개인정보 처리흐름도 (ISMS-P 3.x)'),filename:'mori-personal-data-flow.csv',url:'/privacy/data-flow.csv'})">${tt('dash.pf.csv','CSV')}</button>
           <a href="/privacy/data-flow.pdf" target="_blank" class="secondary" style="width:auto;padding:4px 10px;font-size:12px;text-decoration:none;color:#2563eb;border:1px solid #e5e7eb;border-radius:6px">${tt('dash.pf.pdf','PDF')}</a>
+          <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadProcessingTasks()">${tt('dash.pf.tasks','처리업무 그룹')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="promotePrivacyFlow()">${tt('dash.pf.promote','3.x 통제 증적 승격')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="togglePiiCriteria()">${tt('dash.pf.criteria','PII 기준 편집')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadPrivacyFlow()">${tt('dash.pf.reload','새로고침')}</button>
@@ -3512,6 +3513,32 @@
       } catch(e) { rowsBox.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
     }
     window.loadPrivacyFlow = loadPrivacyFlow;
+
+    // ── 처리업무 자동 그룹화(#6) — 스캔 흐름을 처리업무 단위 초안으로 ──────────────────
+    async function loadProcessingTasks() {
+      const box = document.getElementById('pf_rows');
+      if (!box) return;
+      try {
+        const res = await fetch('/privacy/processing-tasks');
+        if (!res.ok) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; return; }
+        const d = await res.json();
+        const tasks = d.tasks || [];
+        if (!tasks.length) { box.innerHTML = `<span class="empty">${tt('dash.pf.tasks_empty','처리업무 초안이 없어요. 먼저 PII 스캔으로 시드하세요.')}</span>`; return; }
+        const cols = [['task',tt('dash.pf.t_task','처리업무')],['subjects',tt('dash.pf.t_subj','정보주체')],['items',tt('dash.pf.t_items','개인정보 항목')],['system',tt('dash.pf.t_sys','시스템/저장')],['collect_code',tt('dash.pf.t_collect','수집 근거')],['dispose_code',tt('dash.pf.t_dispose','파기 근거')],['controls',tt('dash.pf.t_ctl','관련 통제')],['confirm_status',tt('dash.pf.t_status','확인 상태')]];
+        const th = cols.map(c=>`<th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#111827">${c[1]}</th>`).join('');
+        const trs = tasks.map(t=>{
+          const badge = t.confirm_status==='담당자 승인'
+            ? `<span style="color:#16a34a;border:1px solid #16a34a;border-radius:5px;padding:0 5px;font-size:10px">${escapeHtml(t.confirm_status)}</span>`
+            : `<span style="color:#ca8a04;border:1px solid #ca8a04;border-radius:5px;padding:0 5px;font-size:10px">${escapeHtml(t.confirm_status)}</span>`;
+          const c=(v)=>`<td style="padding:4px 6px;border-bottom:1px solid #f3f4f6;font-size:11px;vertical-align:top">${escapeHtml(v||'-')}</td>`;
+          return `<tr><td style="padding:4px 6px;border-bottom:1px solid #f3f4f6;font-size:11px;vertical-align:top"><b>${escapeHtml(t.task)}</b></td>${c(t.subjects)}${c(t.items)}${c(t.system)}${c(t.collect_code)}${c(t.dispose_code)}${c(t.controls)}<td style="padding:4px 6px;border-bottom:1px solid #f3f4f6;vertical-align:top">${badge}</td></tr>`;
+        }).join('');
+        box.innerHTML = `<div style="font-size:11px;color:#111827;margin-bottom:6px;line-height:1.6">${tt('dash.pf.tasks_help','읽는 법: 코드·DB에서 찾은 개인정보 항목을 처리업무 단위로 자동으로 묶은 <b>초안</b>이에요. ‘수집·파기 근거’는 발견된 코드 함수, ‘관련 통제’는 3.1.1(수집)·3.2.1(이용)·3.4.1(파기)로 자동 매핑돼요. <span style="color:#ca8a04">자동 후보</span>는 담당자 확인이 필요하고, 흐름 행을 담당자가 편집하면 <span style="color:#16a34a">담당자 승인</span>으로 바뀌어요. MORI는 확정하지 않고 초안만 제공해요.')}</div>
+          <div style="margin-bottom:6px"><button class="secondary" style="width:auto;padding:3px 9px;font-size:11px" onclick="openCsvPreview({title:tt('dash.pf.tasks','처리업무 그룹'),filename:'mori-personal-data-processing-tasks.csv',url:'/privacy/processing-tasks.csv'})">${tt('dash.pf.csv','CSV')}</button></div>
+          <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table></div>`;
+      } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
+    }
+    window.loadProcessingTasks = loadProcessingTasks;
 
     async function seedPrivacyFlow() {
       const res = await fetch('/privacy/data-flow/seed-from-scan', {method:'POST'});

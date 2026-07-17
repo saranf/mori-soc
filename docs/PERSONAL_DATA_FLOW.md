@@ -44,6 +44,8 @@ UI: Compliance → 통제 카탈로그 관리자 바(admin·security 전용) →
 | POST | `/privacy/data-flow/seed-from-scan?repo=` | PII code_review finding → 후보 행 시드 |
 | GET | `/privacy/data-flow.svg` | 처리흐름도(SVG, 무의존성 문자열 렌더) |
 | GET | `/privacy/data-flow.csv` | 흐름표 CSV |
+| GET | `/privacy/processing-tasks` | **처리업무 자동 그룹화(#6)** — 흐름 행을 처리업무 단위 초안으로(정보주체·항목·시스템·수집/파기 근거·관련 통제·확인 상태) |
+| GET | `/privacy/processing-tasks.csv` | 처리업무 그룹 CSV |
 | GET | `/privacy/data-flow.pdf` | 흐름표 PDF(감사관 제출용, reportlab·팔레트 6색) |
 | POST | `/privacy/data-flow/reset` | 흐름표 전체 리셋(재스캔으로 재생성) |
 | GET | `/privacy/pii-rules.yml` | 스캔용 Semgrep 룰(리터럴+필드명 기본셋+어드민 커스텀). 워크플로가 스캔 때 fetch |
@@ -64,6 +66,20 @@ UI: Compliance → 통제 카탈로그 관리자 바(admin·security 전용) →
 
 **탐지 범위**: 리터럴 값(주민번호·전화·카드)만이 아니라 **PII 필드명**(email·phone·gender·birthDate·cardNumber·account·address·name·주민등록번호…)까지 잡아, 실제 앱의 개인정보 항목을 폭넓게 발견한다. 어드민이 `/privacy/pii-criteria`에 **커스텀 기준(정규식=항목)**을 추가하면 다음 스캔부터 **기본셋 + 커스텀**이 함께 적용된다(워크플로가 `pii-rules.yml`을 fetch). 파일 경로로 단계(수집/저장/이용/파기)를 추정해 해당 칸에 배치한다.
 | POST | `/privacy/data-flow/promote-evidence` | 3.1.1·3.2.1·3.4.1 통제 증적 승격(idempotent) |
+
+## 3-1. 처리업무 자동 그룹화 (#6)
+
+`build_processing_tasks(rows)`는 흐름 행을 **개인정보 처리업무 단위**로 자동으로 묶어 **초안**을
+만든다(모리다움 — 후보 제공, 담당자 확정). 수기 관리대장을 새로 쓰는 도구가 아니라, 이미 스캔된
+기술 결과를 처리업무로 재구성한다.
+
+- **그룹 키**: `business` > `table` > `storage_table` > `(미분류)`.
+- **집계 열**: 정보주체·개인정보 항목·시스템/저장·수집 근거(코드)·파기 근거(코드)·이용 목적.
+- **관련 통제 자동 매핑**: 수집 근거 있으면 3.1.1, 이용 목적 있으면 3.2.1, 파기 근거 있으면 3.4.1.
+- **확인 상태**: 그룹에 `manual`(담당자 편집) 행이 하나라도 있으면 **담당자 승인**, 아니면
+  **자동 후보(검토 필요)**. MORI는 확정하지 않고 초안만 낸다.
+
+UI: 개인정보 처리흐름 화면 → `처리업무 그룹` 버튼(`pf_rows`에 렌더 + CSV 내보내기).
 
 ## 4. 데이터 모델
 

@@ -263,6 +263,65 @@ def build_file_overview(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+def build_processing_tasks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """흐름표 행을 **개인정보 처리업무 단위**로 자동 묶어 초안을 만든다(#6).
+
+    수기 관리대장을 새로 쓰는 도구가 아니라, 코드·DB 에서 찾은 항목을 처리업무로 묶어 **초안**을
+    제공한다(모리다움 — 후보 제공, 담당자 확정). 각 처리업무: 정보주체·항목·시스템/저장·수집 코드·
+    파기 코드·이용 목적·관련 통제(3.1 수집·3.2 이용·3.4 파기)·확인 상태.
+    그룹 키: business > table > '(미분류)'. 확인 상태는 행 source 로 자동/승인 구분.
+    """
+    def _c(v: Any) -> str:
+        return str(v or "").strip()
+
+    def _add(lst: list[str], v: str) -> None:
+        if v and v not in lst:
+            lst.append(v)
+
+    groups: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    for r in rows:
+        key = _c(r.get("business")) or _c(r.get("table")) or _c(r.get("storage_table")) or "(미분류)"
+        g = groups.get(key)
+        if g is None:
+            g = {"task": key, "subjects": [], "items": [], "systems": [], "collect": [],
+                 "dispose": [], "purposes": [], "sources": set()}
+            groups[key] = g
+            order.append(key)
+        _add(g["subjects"], _c(r.get("subject")))
+        _add(g["items"], _c(r.get("item")))
+        _add(g["systems"], _c(r.get("table")) or _c(r.get("storage_location")))
+        _add(g["collect"], _c(r.get("collection_source")))
+        _add(g["dispose"], _c(r.get("destruction")))
+        _add(g["purposes"], _c(r.get("purpose")))
+        g["sources"].add(_c(r.get("source")))
+
+    out: list[dict[str, Any]] = []
+    for key in order:
+        g = groups[key]
+        controls: list[str] = []
+        if g["collect"]:
+            controls.append("3.1.1")
+        if g["purposes"]:
+            controls.append("3.2.1")
+        if g["dispose"]:
+            controls.append("3.4.1")
+        # 확인 상태: manual 이 하나라도 있으면 담당자 승인, 아니면 자동 후보(검토 필요).
+        confirm = "담당자 승인" if "manual" in g["sources"] else "자동 후보(검토 필요)"
+        out.append({
+            "task": g["task"],
+            "subjects": ", ".join(g["subjects"]),
+            "items": ", ".join(g["items"]),
+            "system": ", ".join(g["systems"]),
+            "collect_code": ", ".join(g["collect"]),
+            "dispose_code": ", ".join(g["dispose"]),
+            "purpose": ", ".join(g["purposes"]),
+            "controls": " · ".join(controls),
+            "confirm_status": confirm,
+        })
+    return out
+
+
 def infer_encryption(finding: dict[str, Any]) -> str:
     """스니펫에서 저장 암호화 알고리즘/적용 여부를 추정. 근거 없으면 빈 문자열(단정 안 함)."""
     hay = _code_hay(finding)

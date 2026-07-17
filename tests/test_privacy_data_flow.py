@@ -149,6 +149,30 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertEqual(by["Patient"]["required_items"], "주민등록번호")
         self.assertEqual(by["Patient"]["third_party"], "국민건강보험공단")
 
+    def test_build_processing_tasks_groups_and_confirm_status(self) -> None:
+        from mori_soc.services.data_flow import build_processing_tasks
+        rows = [
+            {"business": "회원관리", "subject": "회원", "item": "이메일", "table": "User",
+             "collection_source": "signup", "destruction": "withdrawUser", "purpose": "로그인",
+             "source": "ai_flow"},
+            {"business": "회원관리", "subject": "회원", "item": "전화번호", "table": "User",
+             "purpose": "본인확인", "source": "manual"},
+            {"table": "Patient", "item": "주민등록번호", "purpose": "진료", "source": "ai_flow"},
+        ]
+        tasks = build_processing_tasks(rows)
+        by = {t["task"]: t for t in tasks}
+        self.assertEqual(set(by), {"회원관리", "Patient"})
+        # 항목·목적 집계, 수집/파기 코드 → 관련 통제 3.1.1·3.2.1·3.4.1
+        self.assertEqual(by["회원관리"]["items"], "이메일, 전화번호")
+        self.assertEqual(by["회원관리"]["collect_code"], "signup")
+        self.assertEqual(by["회원관리"]["dispose_code"], "withdrawUser")
+        self.assertEqual(by["회원관리"]["controls"], "3.1.1 · 3.2.1 · 3.4.1")
+        # manual 행이 섞이면 담당자 승인, 아니면 자동 후보
+        self.assertEqual(by["회원관리"]["confirm_status"], "담당자 승인")
+        self.assertEqual(by["Patient"]["confirm_status"], "자동 후보(검토 필요)")
+        # 수집/파기 근거 없으면 이용 통제만
+        self.assertEqual(by["Patient"]["controls"], "3.2.1")
+
     def test_encryption_marker_and_concerns(self) -> None:
         from mori_soc.services.data_flow import (
             derive_concerns,

@@ -24,8 +24,9 @@ from mori_soc.services.data_flow import (
     STAGES,
     build_file_overview,
     build_pii_semgrep_rules,
-    render_data_flow_pdf,
+    build_processing_tasks,
     render_data_flow_overview_svg,
+    render_data_flow_pdf,
     render_data_flow_svg,
     render_data_flow_swimlane_svg,
     seed_rows_from_findings,
@@ -293,6 +294,25 @@ def register_privacy(ctx: RouteContext) -> None:
         }
         return csv_streaming_response(build_file_overview(_sorted_rows()), header_map,
                                       "mori-personal-data-file-overview")
+
+    # ── 개인정보 처리업무 자동 그룹화(#6) — 스캔 결과를 처리업무 단위 초안으로 ────────────
+    @app.get("/privacy/processing-tasks", tags=["Privacy"])
+    def list_processing_tasks(request: Request) -> dict[str, Any]:
+        """흐름 행을 처리업무 단위로 자동 묶은 초안(모리다움 — 후보 제공, 담당자 확정)."""
+        _require_privacy_role(request)
+        return {"tasks": build_processing_tasks(_sorted_rows())}
+
+    @app.get("/privacy/processing-tasks.csv", tags=["Privacy"])
+    def processing_tasks_csv(request: Request) -> StreamingResponse:
+        _require_privacy_role(request)
+        header_map = {
+            "task": "처리업무", "subjects": "정보주체", "items": "개인정보 항목",
+            "system": "시스템/저장", "collect_code": "수집 근거(코드)",
+            "dispose_code": "파기 근거(코드)", "purpose": "이용 목적",
+            "controls": "관련 통제", "confirm_status": "확인 상태",
+        }
+        return csv_streaming_response(build_processing_tasks(_sorted_rows()), header_map,
+                                      "mori-personal-data-processing-tasks")
 
     # ── DB 컬럼 ↔ 개인정보 항목 매칭 CSV(어느 컬럼에 어떤 정보) ─────────────────────────
     @app.get("/privacy/data-tables.csv", tags=["Privacy"])
