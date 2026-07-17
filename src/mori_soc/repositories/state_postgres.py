@@ -769,5 +769,34 @@ class PostgresStateRepository(StateRepository):
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM personal_data_flow WHERE id = %s", (flow_id,))
 
+    # ── control_governance (통제 운영 플랫폼 객체) ────────────────────────────────
+    def load_governance(self, kind: str) -> list[dict[str, Any]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT entity_id, record FROM ui_control_governance WHERE kind = %s", (kind,))
+            out: list[dict[str, Any]] = []
+            for r in cur.fetchall():
+                rec = r[1] if isinstance(r[1], dict) else {}
+                rec.setdefault("id", r[0])
+                out.append(rec)
+            return out
+
+    def save_governance(self, kind: str, entity_id: str, record: dict[str, Any]) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO ui_control_governance (kind, entity_id, record, updated_at)
+                VALUES (%s, %s, %s, now())
+                ON CONFLICT (kind, entity_id) DO UPDATE SET record=EXCLUDED.record, updated_at=now()
+                """,
+                (kind, entity_id, Jsonb(record) if Jsonb is not None else record),
+            )
+
+    def delete_governance(self, kind: str, entity_id: str) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM ui_control_governance WHERE kind = %s AND entity_id = %s",
+                (kind, entity_id))
+
 
 __all__ = ["PostgresStateRepository", "PSYCOPG_AVAILABLE"]

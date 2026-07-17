@@ -32,6 +32,7 @@ class InMemoryStateRepository(StateRepository):
         self._catalog_edits: dict[str, dict[str, Any]] = {}
         self._control_evidence: dict[str, dict[str, Any]] = {}
         self._personal_data_flow: dict[str, dict[str, Any]] = {}
+        self._governance: dict[str, dict[str, dict[str, Any]]] = {}  # kind -> id -> record
 
     # ── user_profiles ──────────────────────────────────────────────────────────
     def load_user_profiles(self) -> dict[str, dict[str, Any]]:
@@ -160,6 +161,16 @@ class InMemoryStateRepository(StateRepository):
 
     def delete_personal_data_flow(self, flow_id: str) -> None:
         self._personal_data_flow.pop(flow_id, None)
+
+    # ── control_governance (통제 운영 플랫폼 객체) ────────────────────────────────
+    def load_governance(self, kind: str) -> list[dict[str, Any]]:
+        return [copy.deepcopy(r) for r in self._governance.get(kind, {}).values()]
+
+    def save_governance(self, kind: str, entity_id: str, record: dict[str, Any]) -> None:
+        self._governance.setdefault(kind, {})[entity_id] = copy.deepcopy(record)
+
+    def delete_governance(self, kind: str, entity_id: str) -> None:
+        self._governance.get(kind, {}).pop(entity_id, None)
 
 
 __all__ = ["InMemoryStateRepository"]

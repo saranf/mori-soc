@@ -129,6 +129,18 @@ class StateRepository(ABC):
     def load_gaps(self, status: str | None = None) -> list[dict[str, Any]]:
         return []
 
+    # ── control_governance: 통제 운영 플랫폼 객체(통제 신규 에픽). 기본 no-op ──────────
+    def load_governance(self, kind: str) -> list[dict[str, Any]]:
+        """kind(framework|framework_version|…) 의 모든 레코드. 기본 빈 목록."""
+        return []
+
+    def save_governance(self, kind: str, entity_id: str, record: dict[str, Any]) -> None:
+        """(kind, entity_id) upsert. 버전 불변은 서비스층에서 새 entity_id 로 보장."""
+        return None
+
+    def delete_governance(self, kind: str, entity_id: str) -> None:
+        return None
+
     @abstractmethod
     def delete_evidence_event(self, event_id: str) -> None:
         """Remove one evidence event."""

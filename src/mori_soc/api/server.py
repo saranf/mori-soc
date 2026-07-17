@@ -1970,6 +1970,10 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
     from mori_soc.api.routes.compliance import register_compliance
     register_compliance(ctx)
 
+    # ── Control governance (통제 운영 플랫폼 — 통제 신규 에픽) ──────────────────────
+    from mori_soc.api.routes.control_governance import register_control_governance
+    register_control_governance(ctx)
+
     def _get_session_username(request: Request) -> str | None:
         """현재 세션의 사용자명을 반환 (미인증 시 None)."""
         token = request.cookies.get("mori_session", "")
