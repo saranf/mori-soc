@@ -122,6 +122,13 @@ class StateRepository(ABC):
     def load_evidence_approvals(self, control_id: str | None = None) -> list[dict[str, Any]]:
         return []
 
+    # ── gaps: 기술 Gap 워크플로(#5). 기본 no-op ────────────────────────────────
+    def save_gap(self, gap_id: str, record: dict[str, Any]) -> None:
+        return None
+
+    def load_gaps(self, status: str | None = None) -> list[dict[str, Any]]:
+        return []
+
     @abstractmethod
     def delete_evidence_event(self, event_id: str) -> None:
         """Remove one evidence event."""

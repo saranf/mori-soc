@@ -110,6 +110,18 @@ MORI 가 만든 기술 증적을 **감사 가능한 기록으로 고정**한다(
   → "2026-07 v1 승인 / 2026-08 v2 검토중 → 승인, v1 superseded". `GET …/approvals` 로 버전 이력 조회.
 - 구현: `services/evidence_approval.py`(상태기계·스냅샷), state repo `save/load_evidence_approval`.
 
+### 기술 Gap 워크플로(#5)
+
+MORI 가 발견한 기술 결함 **후보**를 사람이 판단·조치·재검증하는 최소 흐름(풀 GRC 시정조치 모듈이
+아님). AI 가 확정하지 않고 후보를 만들며, 상태는:
+`candidate → confirmed / false_positive / policy_review → remediation / accepted_exception → resolved`.
+
+- `POST /gaps {source, control_id, key, title, detail}` — 후보 생성(결정적 id 로 중복 방지).
+- `POST /gaps/{gap_id}/transition {target, assignee?, due_date?, note?}` — 전이(잘못된 전이 400).
+  담당자·기한 지정, history append. `GET /gaps?status=` — 목록(open/closed 요약).
+- 데모 시나리오: "개인정보 파기 근거 미발견(candidate) → 개발팀 확인(confirmed) → 코드 수정
+  (remediation) → 재스캔에서 파기 경로 확인(resolved)". 구현: `services/gap_workflow.py`, `schema/016`.
+
 ### 처리 보장(트랜잭션 경계)
 
 인제스트/증적 파이프라인은 **부분 성공을 정직하게 보고**한다(조용히 성공으로 위장하지 않음).

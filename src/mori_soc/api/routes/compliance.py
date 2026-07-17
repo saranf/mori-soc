@@ -376,6 +376,73 @@ def register_compliance(ctx: RouteContext) -> None:
             ctx.log_action(actor, "EVIDENCE_TRANSITION", f"{control_id} {current_status}→{target}")
         return {"ok": True, **approval}
 
+    # ── 기술 Gap 워크플로(#5): 후보→담당자 판단→조치→재검증 ──────────────────────
+    @app.get("/gaps", tags=["Compliance"])
+    def gaps_list(request: Request, status: str | None = None) -> dict[str, Any]:
+        """기술 Gap 목록(#5). admin·security."""
+        _require_ev(request)
+        from mori_soc.services.gap_workflow import OPEN_STATUSES
+        repo = ctx.state_repo
+        gaps = repo.load_gaps(status) if repo is not None else []
+        return {"gaps": gaps, "open": sum(1 for g in gaps if g.get("status") in OPEN_STATUSES),
+                "total": len(gaps)}
+
+    @app.post("/gaps", tags=["Compliance"])
+    def gap_create(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """Gap 후보 생성(candidate). 스캔 gap·finding 에서 오거나 수동 입력. 결정적 id 로 중복 방지."""
+        from datetime import datetime as _dt
+        from datetime import timezone as _tz
+
+        from mori_soc.services.gap_workflow import build_gap
+        _require_ev(request)
+        now = _dt.now(tz=_tz.utc).isoformat()
+        actor = (ctx.get_session_username(request) if ctx.get_session_username else "") or "unknown"
+        gap = build_gap(source=str(payload.get("source", "manual")),
+                        control_id=str(payload.get("control_id", "")),
+                        key=str(payload.get("key", "") or payload.get("title", "")),
+                        title=str(payload.get("title", "")), detail=str(payload.get("detail", "")),
+                        now=now, created_by=actor)
+        repo = ctx.state_repo
+        if repo is not None:
+            repo.save_gap(gap["gap_id"], gap)
+        if ctx.log_action:
+            ctx.log_action(actor, "GAP_CREATE", f"{gap['control_id']} {gap['title']}")
+        return gap
+
+    @app.post("/gaps/{gap_id}/transition", tags=["Compliance"])
+    def gap_transition(gap_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """Gap 상태 전이(#5): candidate→confirmed/false_positive/policy_review→remediation→resolved 등."""
+        from datetime import datetime as _dt
+        from datetime import timezone as _tz
+
+        from mori_soc.services.gap_workflow import (
+            STATUSES,
+            apply_transition,
+            can_transition,
+        )
+        _require_ev(request)
+        repo = ctx.state_repo
+        gaps = repo.load_gaps() if repo is not None else []
+        gap = next((g for g in gaps if g.get("gap_id") == gap_id), None)
+        if gap is None:
+            raise HTTPException(status_code=404, detail="gap not found")
+        target = str(payload.get("target", "")).strip()
+        if target not in STATUSES:
+            raise HTTPException(status_code=400, detail=f"target must be one of {', '.join(STATUSES)}")
+        if not can_transition(str(gap.get("status")), target):
+            raise HTTPException(status_code=400, detail=f"{gap.get('status')} → {target} 전이는 허용되지 않습니다.")
+        now = _dt.now(tz=_tz.utc).isoformat()
+        actor = (ctx.get_session_username(request) if ctx.get_session_username else "") or "unknown"
+        apply_transition(gap, target, actor=actor, now=now,
+                         assignee=str(payload.get("assignee", "")),
+                         due_date=str(payload.get("due_date", "")),
+                         note=str(payload.get("note", "")))
+        if repo is not None:
+            repo.save_gap(gap_id, gap)
+        if ctx.log_action:
+            ctx.log_action(actor, "GAP_TRANSITION", f"{gap_id} →{target}")
+        return gap
+
     @app.get("/controls/maturity", tags=["Compliance"])
     def controls_maturity(request: Request) -> dict[str, Any]:
         """통제 성숙도 요약(#46) — 레벨별(draft/reviewed/mapped/auto_evidence) 통제 수.

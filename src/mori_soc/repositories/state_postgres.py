@@ -460,6 +460,45 @@ class PostgresStateRepository(StateRepository):
                  _ts(record.get("approved_at")), record.get("pdf_sha256"),
                  record.get("prev_approval_id"), record.get("supersede_reason"), record.get("actor")))
 
+    # ── gaps: 기술 Gap 워크플로(#5) ───────────────────────────────────────────
+    _GAP_COLS = ("gap_id", "source", "control_id", "key", "title", "detail", "status",
+                 "assignee", "due_date", "resolution", "evidence_ref", "created_by",
+                 "created_at", "updated_at", "history")
+
+    def save_gap(self, gap_id: str, record: dict[str, Any]) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO ui_gaps (gap_id, source, control_id, key, title, detail, status, "
+                "assignee, due_date, resolution, evidence_ref, created_by, updated_at, history) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, now(), %s) "
+                "ON CONFLICT (gap_id) DO UPDATE SET status = EXCLUDED.status, assignee = EXCLUDED.assignee, "
+                "due_date = EXCLUDED.due_date, resolution = EXCLUDED.resolution, "
+                "evidence_ref = EXCLUDED.evidence_ref, updated_at = now(), history = EXCLUDED.history",
+                (gap_id, record.get("source"), record.get("control_id"), record.get("key"),
+                 record.get("title"), record.get("detail"), record.get("status", "candidate"),
+                 record.get("assignee"), record.get("due_date"), record.get("resolution"),
+                 record.get("evidence_ref"), record.get("created_by"), _jsonb(record.get("history", []))))
+
+    def load_gaps(self, status: str | None = None) -> list[dict[str, Any]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            base = ("SELECT gap_id, source, control_id, key, title, detail, status, assignee, "
+                    "due_date, resolution, evidence_ref, created_by, created_at, updated_at, history "
+                    "FROM ui_gaps ")
+            if status:
+                cur.execute(base + "WHERE status = %s ORDER BY updated_at DESC", (status,))
+            else:
+                cur.execute(base + "ORDER BY updated_at DESC LIMIT 1000")
+            rows = cur.fetchall()
+        out = []
+        for r in rows:
+            d = dict(zip(self._GAP_COLS, r))
+            for k in ("created_at", "updated_at"):
+                if d.get(k) is not None and hasattr(d[k], "isoformat"):
+                    d[k] = d[k].isoformat()
+            d["history"] = d.get("history") or []
+            out.append(d)
+        return out
+
     def load_evidence_approvals(self, control_id: str | None = None) -> list[dict[str, Any]]:
         with self._connect() as conn, conn.cursor() as cur:
             if control_id:
