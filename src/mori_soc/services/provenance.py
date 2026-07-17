@@ -66,18 +66,69 @@ def scan_input_signature(repo: str | None, commit: str | None, tool: str | None,
     return hashlib.sha1(seed.encode("utf-8")).hexdigest()[:16]
 
 
+def build_provenance_detail(rec: dict[str, Any], tags: list[str]) -> dict[str, Any]:
+    """provenance 를 **배지가 아니라 근거 객체**로(리뷰 #16).
+
+    태그별로 신뢰 근거를 구조화한다 — AI: provider·model·prompt_version·input_hash / CODE·RULE:
+    repo·commit·path·line·scanner·rule / API: integration·endpoint·collected_at·raw_payload_hash /
+    POLICY: document·version·section·approved_at. + review_status(사람 검토 여부).
+    없는 필드는 빈 값(단정 안 함). rec.envelope._provenance 를 우선 참조한다.
+    """
+    env = rec.get("envelope") if isinstance(rec.get("envelope"), dict) else {}
+    prov = env.get("_provenance") if isinstance(env.get("_provenance"), dict) else {}
+    human = "HUMAN" in tags or str(rec.get("review_status") or "") == "confirmed"
+    detail: dict[str, Any] = {
+        "tags": tags, "primary": tags[0] if tags else "",
+        "review_status": "reviewed" if human else "unreviewed",
+    }
+    if "CODE" in tags or "RULE" in tags:
+        detail["code"] = {
+            "repo": prov.get("repo") or rec.get("repo") or "",
+            "commit": prov.get("commit") or rec.get("commit") or "",
+            "path": rec.get("file") or rec.get("path") or "",
+            "line": rec.get("line"),
+            "scanner": env.get("scanner") or rec.get("scanner") or "",
+            "rule": rec.get("rule_id") or rec.get("rule") or "",
+        }
+    if "AI" in tags:
+        detail["ai"] = {
+            "provider": env.get("provider") or "Anthropic",
+            "model": env.get("model") or rec.get("model") or "",
+            "prompt_version": env.get("prompt_version") or env.get("ruleset") or "",
+            "input_hash": env.get("input_signature") or rec.get("input_signature") or "",
+        }
+    if "API" in tags:
+        detail["api"] = {
+            "integration": rec.get("source") or "",
+            "endpoint": env.get("endpoint") or "",
+            "collected_at": rec.get("collected_at") or rec.get("generated_at") or "",
+            "raw_payload_hash": prov.get("raw_payload_hash") or "",
+        }
+    if "POLICY" in tags:
+        detail["policy"] = {
+            "document": rec.get("policy_document") or "",
+            "version": rec.get("policy_version") or "",
+            "section": rec.get("policy_section") or "",
+            "approved_at": rec.get("policy_approved_at") or "",
+        }
+    return detail
+
+
 def attach_provenance(rec: dict[str, Any]) -> dict[str, Any]:
-    """레코드에 provenance 태그를 붙인다(이미 유효하게 있으면 존중, 제자리 수정).
+    """레코드에 provenance 태그 + 근거 객체(provenance_detail)를 붙인다(제자리 수정).
 
     envelope.tool 이 있으면(스캔 도구) 그것으로 code_review 를 정밀 분류한다.
     """
     existing = rec.get("provenance")
     if isinstance(existing, list) and existing and all(t in _VALID for t in existing):
-        return rec
-    tool = None
-    env = rec.get("envelope")
-    if isinstance(env, dict):
-        prov = env.get("_provenance") if isinstance(env.get("_provenance"), dict) else {}
-        tool = env.get("tool") or (prov or {}).get("tool")
-    rec["provenance"] = tags_for_source(rec.get("source"), tool=tool, created_by=rec.get("created_by"))
+        tags = existing
+    else:
+        tool = None
+        env = rec.get("envelope")
+        if isinstance(env, dict):
+            prov = env.get("_provenance") if isinstance(env.get("_provenance"), dict) else {}
+            tool = env.get("tool") or (prov or {}).get("tool")
+        tags = tags_for_source(rec.get("source"), tool=tool, created_by=rec.get("created_by"))
+        rec["provenance"] = tags
+    rec["provenance_detail"] = build_provenance_detail(rec, tags)
     return rec
