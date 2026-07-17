@@ -370,39 +370,67 @@ def register_privacy(ctx: RouteContext) -> None:
     # ── 처리방침 vs 코드 불일치 탐지(#8) — 문서 주장과 기술 현실 비교 ─────────────────────
     _POLICY_SETTING = "privacy_declared_policy"
 
+    # 처리방침 대조는 **법적 판정이 아니라 검토 대상**이다(리뷰 #21) — 어투를 확정으로 쓰지 않는다.
+    _POLICY_LEGAL_NOTE = ("법적 판정이 아니라 검토 대상입니다. '위반/불법'이 아니라 '처리방침에 없는 "
+                          "코드 발견 항목' / '고지했으나 코드 미발견' / '보유기간 구현 근거 상이'로 읽으세요. "
+                          "확정은 개인정보 담당자 검토가 필요합니다.")
+
     def _declared_policy() -> dict[str, Any]:
         raw = (ctx.settings or {}).get(_POLICY_SETTING, "")
         try:
             d = json.loads(raw) if raw else {}
         except Exception:
             d = {}
-        return {"items": list(d.get("items") or []), "retention": str(d.get("retention") or "")}
+        return {"items": list(d.get("items") or []), "retention": str(d.get("retention") or ""),
+                "policy_version": str(d.get("policy_version") or ""),
+                "effective_from": str(d.get("effective_from") or ""),
+                "effective_to": str(d.get("effective_to") or ""),
+                "source_hash": str(d.get("source_hash") or "")}
+
+    def _policy_compare_response(pol: dict[str, Any]) -> dict[str, Any]:
+        """비교 결과 + 정책 버전·유효기간 메타 + 비교 기준 + 법적 비판정 주석(#21)."""
+        diff = compare_policy_to_flow(pol["items"], pol["retention"], _sorted_rows())
+        # 비교 기준: 코드 근거의 최신 스캔 시각(있으면). 정책이 코드보다 오래되면 결과 신뢰 저하.
+        rows = _sorted_rows()
+        scan_dates = [str(r.get("created_at") or "") for r in rows if r.get("created_at")]
+        return {"policy": pol, "diff": diff,
+                "comparison_basis": {"policy_version": pol.get("policy_version"),
+                                     "policy_effective_from": pol.get("effective_from"),
+                                     "policy_effective_to": pol.get("effective_to"),
+                                     "code_scan_latest": max(scan_dates) if scan_dates else ""},
+                "legal_note": _POLICY_LEGAL_NOTE}
 
     @app.get("/privacy/policy-compare", tags=["Privacy"])
     def get_policy_compare(request: Request) -> dict[str, Any]:
-        """저장된 처리방침 주장과 현재 흐름표(코드·DB) 비교 결과."""
+        """저장된 처리방침 주장과 현재 흐름표(코드·DB) 비교 결과(법적 판정 아님)."""
         _require_privacy_role(request)
-        pol = _declared_policy()
-        diff = compare_policy_to_flow(pol["items"], pol["retention"], _sorted_rows())
-        return {"policy": pol, "diff": diff}
+        return _policy_compare_response(_declared_policy())
 
     @app.put("/privacy/policy-compare", tags=["Privacy"])
     def put_policy_compare(payload: dict[str, Any], request: Request) -> dict[str, Any]:
-        """처리방침 주장(수집항목·보유기간)을 저장하고 즉시 비교. MORI는 문서를 관리하지 않는다."""
+        """처리방침 주장(수집항목·보유기간·버전·유효기간)을 저장하고 즉시 비교. MORI는 문서를 관리하지 않는다."""
         _require_privacy_role(request)
         raw_items = payload.get("items") or []
         if isinstance(raw_items, str):
             raw_items = [s.strip() for s in re.split(r"[,\n·]", raw_items)]
         items = [str(i).strip() for i in raw_items if str(i).strip()][:500]
         retention = str(payload.get("retention", "") or "").strip()[:200]
-        pol = {"items": items, "retention": retention}
+        # 처리방침도 버전·유효기간이 있어야 의미(오래된 방침 vs 최신 코드 비교는 무의미할 수 있음, #21).
+        source_hash = "sha256:" + hashlib.sha256(
+            json.dumps({"items": sorted(items), "retention": retention},
+                       ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+        pol = {"items": items, "retention": retention,
+               "policy_version": str(payload.get("policy_version", "") or "").strip()[:60],
+               "effective_from": str(payload.get("effective_from", "") or "").strip()[:32],
+               "effective_to": str(payload.get("effective_to", "") or "").strip()[:32],
+               "source_hash": source_hash}
         ctx.settings[_POLICY_SETTING] = json.dumps(pol, ensure_ascii=False)
         if ctx.persist_setting:
             ctx.persist_setting(_POLICY_SETTING, _user(request))
         if ctx.log_action:
-            ctx.log_action(_user(request), "PRIVACY_POLICY_DECLARE", f"{len(items)} items")
-        diff = compare_policy_to_flow(items, retention, _sorted_rows())
-        return {"policy": pol, "diff": diff}
+            ctx.log_action(_user(request), "PRIVACY_POLICY_DECLARE",
+                           f"{len(items)} items v{pol['policy_version']}")
+        return _policy_compare_response(pol)
 
     # ── ISMS-P 3.x 증적 패키지(#10) — 개인정보 증적을 하나의 감사 패키지로 조립 ────────────
     @app.get("/privacy/isms-3x-package", tags=["Privacy"])

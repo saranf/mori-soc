@@ -3744,9 +3744,14 @@
           <div style="font-weight:600;color:#111827;margin-bottom:4px">${tt('dash.pf.policy','처리방침 대조')}</div>
           <div style="font-size:11px;color:#111827;margin-bottom:4px">${tt('dash.pf.p_input','처리방침에 고지한 수집항목(쉼표·줄바꿈 구분)과 보유기간을 입력하면 코드·DB와 대조해요.')}</div>
           <textarea id="pol_items" class="inp-sm" style="width:100%;height:52px;font-size:12px;margin-bottom:4px" placeholder="${tt('dash.pf.p_ph_items','예: 이메일, 이름, 전화번호')}">${escapeHtml((pol.items||[]).join(', '))}</textarea>
-          <input id="pol_ret" class="inp-sm" style="width:100%;font-size:12px;margin-bottom:6px" placeholder="${tt('dash.pf.p_ph_ret','예: 회원 탈퇴 즉시 파기')}" value="${escapeHtml(pol.retention||'')}">
+          <input id="pol_ret" class="inp-sm" style="width:100%;font-size:12px;margin-bottom:4px" placeholder="${tt('dash.pf.p_ph_ret','예: 회원 탈퇴 즉시 파기')}" value="${escapeHtml(pol.retention||'')}">
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <input id="pol_ver" class="inp-sm" style="flex:1;font-size:12px" placeholder="${tt('dash.pf.p_ver','처리방침 버전(예: 2026.1)')}" value="${escapeHtml(pol.policy_version||'')}">
+            <input id="pol_eff" class="inp-sm" style="flex:1;font-size:12px" placeholder="${tt('dash.pf.p_eff','시행일(예: 2026-01-01)')}" value="${escapeHtml(pol.effective_from||'')}">
+          </div>
           <button class="secondary" style="width:auto;padding:3px 10px;font-size:12px" onclick="savePolicyCompare()">${tt('dash.pf.p_compare','저장·대조')}</button>
           <span id="pol_msg" style="font-size:11px;color:#16a34a;margin-left:6px"></span>
+          <div style="font-size:10px;color:#6b7280;margin-top:4px">${escapeHtml(d.legal_note||tt('dash.pf.p_legal','법적 판정이 아니라 검토 대상입니다 — 확정은 개인정보 담당자 검토 필요.'))}</div>
           <div id="pol_diff">${renderPolicyDiff(pol, d.diff||{})}</div>
         </div>`;
       } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
@@ -3755,7 +3760,9 @@
     async function savePolicyCompare() {
       const items = (document.getElementById('pol_items').value||'').split(/[,\n·]/).map(s=>s.trim()).filter(Boolean);
       const retention = (document.getElementById('pol_ret').value||'').trim();
-      const res = await fetch('/privacy/policy-compare', {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({items, retention})});
+      const policy_version = (document.getElementById('pol_ver').value||'').trim();
+      const effective_from = (document.getElementById('pol_eff').value||'').trim();
+      const res = await fetch('/privacy/policy-compare', {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({items, retention, policy_version, effective_from})});
       const msg = document.getElementById('pol_msg');
       if (!res.ok) { if(msg){msg.style.color='#dc2626';msg.textContent=tt('dash.pf.denied','권한이 없어요 (admin·security)');} return; }
       const d = await res.json();

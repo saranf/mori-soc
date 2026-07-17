@@ -424,6 +424,23 @@ class PrivacyRouteTests(unittest.TestCase):
         self.assertTrue(c.delete(f"/privacy/data-flow/{fid}").json()["ok"])
         self.assertEqual(len(c.get("/privacy/data-flow").json()["rows"]), 0)
 
+    def test_policy_compare_records_version_and_legal_note(self) -> None:
+        c = self._client()
+        c.post("/privacy/data-flow", json={"item": "생년월일", "retention": "365일"})
+        r = c.put("/privacy/policy-compare",
+                  json={"items": "이메일, 이름", "retention": "탈퇴 즉시 파기",
+                        "policy_version": "2026.1", "effective_from": "2026-01-01"}).json()
+        # #21: 정책 버전·유효기간 메타 + 비교 기준 + 법적 비판정 주석
+        self.assertEqual(r["policy"]["policy_version"], "2026.1")
+        self.assertTrue(r["policy"]["source_hash"].startswith("sha256:"))
+        self.assertEqual(r["comparison_basis"]["policy_effective_from"], "2026-01-01")
+        self.assertIn("법적 판정이 아니라", r["legal_note"])
+        # 후보 프레이밍 유지(위반/불법 어투 아님)
+        self.assertIn("생년월일", r["diff"]["only_in_code"])
+        # GET 으로도 저장된 메타가 유지됨
+        g = c.get("/privacy/policy-compare").json()
+        self.assertEqual(g["policy"]["policy_version"], "2026.1")
+
     @unittest.skipUnless(importlib.util.find_spec("reportlab"), "requires reportlab")
     def test_data_flow_pdf_export(self) -> None:
         c = self._client()
