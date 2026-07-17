@@ -170,6 +170,12 @@ class DataFlowServiceTests(unittest.TestCase):
         # manual 행이 섞이면 담당자 승인, 아니면 자동 후보
         self.assertEqual(by["회원관리"]["confirm_status"], "담당자 승인")
         self.assertEqual(by["Patient"]["confirm_status"], "자동 후보(검토 필요)")
+        # review_status=confirmed 이면(#9) 담당자 승인으로 승격
+        confirmed = build_processing_tasks([
+            {"table": "Patient", "item": "주민등록번호", "source": "ai_flow",
+             "review_status": "confirmed", "assignee": "홍길동"}])
+        self.assertEqual(confirmed[0]["confirm_status"], "담당자 승인")
+        self.assertEqual(confirmed[0]["assignee"], "홍길동")
         # 수집/파기 근거 없으면 이용 통제만
         self.assertEqual(by["Patient"]["controls"], "3.2.1")
 
@@ -365,6 +371,16 @@ class PrivacyRouteTests(unittest.TestCase):
         recs = [x for x in c.get("/controls/detail/3.2.1").json().get("evidence_records", [])
                 if x.get("source") == "privacy_flow"]
         self.assertEqual(len(recs), 1)
+        # 담당자 확인(#9): 지정 → 확정 → 처리업무 confirm_status 승격 → 재검토
+        c.post(f"/privacy/data-flow/{fid}/review", json={"assignee": "김보안"})
+        cf = c.post(f"/privacy/data-flow/{fid}/review", json={"action": "confirm"}).json()
+        self.assertEqual(cf["review_status"], "confirmed")
+        self.assertEqual(cf["assignee"], "김보안")
+        self.assertTrue(cf["reviewed_at"])
+        tasks = c.get("/privacy/processing-tasks").json()["tasks"]
+        self.assertTrue(any(t["confirm_status"] == "담당자 승인" for t in tasks))
+        ro = c.post(f"/privacy/data-flow/{fid}/review", json={"action": "reopen"}).json()
+        self.assertEqual(ro["review_status"], "pending")
         # 삭제
         self.assertTrue(c.delete(f"/privacy/data-flow/{fid}").json()["ok"])
         self.assertEqual(len(c.get("/privacy/data-flow").json()["rows"]), 0)

@@ -42,6 +42,7 @@ UI: Compliance → 통제 카탈로그 관리자 바(admin·security 전용) →
 | PUT | `/privacy/data-flow/{id}` | 행 수정 |
 | DELETE | `/privacy/data-flow/{id}` | 행 삭제 |
 | POST | `/privacy/data-flow/seed-from-scan?repo=` | PII code_review finding → 후보 행 시드 |
+| POST | `/privacy/data-flow/{id}/review` | **흐름별 담당자 확인(#9)** — assignee 지정 + action=confirm/reopen(사람 확정을 증적으로 고정) |
 | GET | `/privacy/data-flow.svg` | 처리흐름도(SVG, 무의존성 문자열 렌더) |
 | GET | `/privacy/data-flow.csv` | 흐름표 CSV |
 | GET | `/privacy/processing-tasks` | **처리업무 자동 그룹화(#6)** — 흐름 행을 처리업무 단위 초안으로(정보주체·항목·시스템·수집/파기 근거·관련 통제·확인 상태) |
@@ -109,6 +110,16 @@ UI: `외부 수신자 구분` 버튼 → `pf_rows`에 후보 배지(위탁=파·
 
 방침 주장은 `privacy_declared_policy` 세팅에 JSON(items·retention)으로 저장(문서 원문 저장 아님).
 UI: `처리방침 대조` 버튼 → 항목·보유기간 입력 → 저장·대조(코드에만=빨·방침에만=노).
+
+## 3-4. 흐름별 담당자 확인 (#9)
+
+각 흐름 행에 담당자(`assignee`)를 지정하고, 담당자의 **확정**을 감사 증적으로 고정한다.
+모리다움의 핵심 — 기술 신호(자동 시드)를 사람이 판단해 증적으로 굳히는 지점.
+
+- `POST /privacy/data-flow/{id}/review` — `assignee` 지정 / `action=confirm`(review_status=confirmed,
+  reviewed_by, reviewed_at 기록) / `action=reopen`(pending 복귀). 모두 감사 로그에 남는다.
+- 확정된 행이 있는 처리업무는 #6 `confirm_status`가 **담당자 승인**으로 승격된다.
+- UI: 흐름 상세표의 `담당자·확인` 열 — 담당자 입력 + 확인/재검토 버튼(확정 시 검토자·일자 표시).
 
 ## 4. 데이터 모델
 

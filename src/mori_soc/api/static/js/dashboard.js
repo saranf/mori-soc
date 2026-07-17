@@ -3501,20 +3501,40 @@
         // 단계별 표(항목 × 수집·저장·이용·파기)
         const catColor = {'일반':'#2563eb','고유식별':'#dc2626','비밀':'#111827','금융':'#ca8a04'};
         const cols = [['collection_source', tt('dash.pf.st_collect','수집')],['store', tt('dash.pf.st_store','저장')],['purpose', tt('dash.pf.st_use','이용')],['destruction', tt('dash.pf.st_dispose','파기')]];
-        const th = `<th style="padding:4px 6px;text-align:left;color:#111827;font-size:10px;border-bottom:1px solid #e5e7eb">${tt('dash.pf.f_item','개인정보 항목')}</th>` + cols.map(c => `<th style="padding:4px 6px;text-align:left;color:#111827;font-size:10px;border-bottom:1px solid #e5e7eb">${c[1]}</th>`).join('') + `<th style="padding:4px 6px;text-align:left;color:#111827;font-size:10px;border-bottom:1px solid #e5e7eb">${tt('dash.pf.f_third_party','제3자·국외')}</th>`;
+        const th = `<th style="padding:4px 6px;text-align:left;color:#111827;font-size:10px;border-bottom:1px solid #e5e7eb">${tt('dash.pf.f_item','개인정보 항목')}</th>` + cols.map(c => `<th style="padding:4px 6px;text-align:left;color:#111827;font-size:10px;border-bottom:1px solid #e5e7eb">${c[1]}</th>`).join('') + `<th style="padding:4px 6px;text-align:left;color:#111827;font-size:10px;border-bottom:1px solid #e5e7eb">${tt('dash.pf.f_third_party','제3자·국외')}</th><th style="padding:4px 6px;text-align:left;color:#111827;font-size:10px;border-bottom:1px solid #e5e7eb">${tt('dash.pf.f_review','담당자·확인')}</th>`;
         const cell = v => `<td style="padding:5px 6px;border-bottom:1px solid #f3f4f6;vertical-align:top;white-space:pre-line;font-size:11px">${escapeHtml(v||'—')}</td>`;
         const trs = rows.map(r => {
           const cat = r.category ? ` <span style="color:${catColor[r.category]||'#111827'};border:1px solid ${catColor[r.category]||'#111827'};border-radius:5px;padding:0 5px;font-size:10px">${escapeHtml(r.category)}</span>` : '';
           const seed = r.source==='pii_scan' ? ` <span style="color:#2563eb;border:1px solid #2563eb;border-radius:5px;padding:0 5px;font-size:10px">PII 시드</span>` : '';
           const store = [r.storage_location? (r.storage_location) : '', r.storage_table||''].filter(Boolean).join('\n');
           const third = [r.third_party?('제3자: '+r.third_party):'', r.overseas?('국외: '+r.overseas):''].filter(Boolean).join('\n');
-          return `<tr><td style="padding:5px 6px;border-bottom:1px solid #f3f4f6;vertical-align:top"><b>${escapeHtml(r.item||'(미기재)')}</b>${cat}${seed}</td>${cell(r.collection_source)}${cell(store)}${cell(r.purpose)}${cell(r.destruction)}${cell(third)}</tr>`;
+          const confirmed = r.review_status==='confirmed';
+          const badge = confirmed
+            ? `<div style="color:#16a34a;font-size:10px">${tt('dash.pf.r_ok','확인')}: ${escapeHtml(r.reviewed_by||'')} ${escapeHtml((r.reviewed_at||'').slice(0,10))}</div>`
+            : `<div style="color:#ca8a04;font-size:10px">${tt('dash.pf.r_pending','확인 전')}</div>`;
+          const btn = confirmed
+            ? `<button class="secondary" style="width:auto;padding:2px 7px;font-size:10px;color:#ca8a04" onclick="reviewFlow('${r.id}','reopen')">${tt('dash.pf.r_reopen','재검토')}</button>`
+            : `<button class="secondary" style="width:auto;padding:2px 7px;font-size:10px;color:#16a34a" onclick="reviewFlow('${r.id}','confirm')">${tt('dash.pf.r_confirm','확인')}</button>`;
+          const review = `<td style="padding:5px 6px;border-bottom:1px solid #f3f4f6;vertical-align:top"><input value="${escapeHtml(r.assignee||'')}" onchange="reviewFlow('${r.id}','',this.value)" placeholder="${tt('dash.pf.r_assignee','담당자')}" class="inp-sm" style="width:76px;font-size:10px;padding:2px 4px;margin-bottom:2px">${badge}${btn}</td>`;
+          return `<tr><td style="padding:5px 6px;border-bottom:1px solid #f3f4f6;vertical-align:top"><b>${escapeHtml(r.item||'(미기재)')}</b>${cat}${seed}</td>${cell(r.collection_source)}${cell(store)}${cell(r.purpose)}${cell(r.destruction)}${cell(third)}${review}</tr>`;
         }).join('');
         const gapsHtml = gaps.length ? `<div style="margin-top:10px"><div style="font-size:12px;font-weight:600;color:#dc2626;margin-bottom:4px">${tt('dash.pf.gaps_title','파기 흐름 개선 필요 지점')}</div><ul style="margin:0;padding-left:16px;font-size:11px;color:#111827;line-height:1.6">${gaps.map(g=>`<li>${escapeHtml(String(g))}</li>`).join('')}</ul></div>` : '';
         rowsBox.innerHTML = cards + `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table></div>` + gapsHtml;
       } catch(e) { rowsBox.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
     }
     window.loadPrivacyFlow = loadPrivacyFlow;
+
+    // ── 흐름별 담당자 확인(#9) — 담당자 지정 + 사람 확정을 증적으로 고정 ─────────────────
+    async function reviewFlow(id, action, assignee) {
+      const body = {};
+      if (action) body.action = action;
+      if (assignee !== undefined) body.assignee = assignee;
+      const res = await fetch(`/privacy/data-flow/${id}/review`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      const msg = document.getElementById('pf_msg');
+      if (!res.ok) { if(msg){msg.style.color='#dc2626';msg.textContent=tt('dash.pf.denied','권한이 없어요 (admin·security)');} return; }
+      if (action) { if(msg){msg.style.color='#16a34a';msg.textContent = action==='confirm'?tt('dash.pf.r_done','담당자 확인 기록됨'):tt('dash.pf.r_reopened','재검토로 전환');} loadPrivacyFlow(); }
+    }
+    window.reviewFlow = reviewFlow;
 
     // ── 처리업무 자동 그룹화(#6) — 스캔 흐름을 처리업무 단위 초안으로 ──────────────────
     async function loadProcessingTasks() {

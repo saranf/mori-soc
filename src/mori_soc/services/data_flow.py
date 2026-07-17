@@ -285,7 +285,8 @@ def build_processing_tasks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         g = groups.get(key)
         if g is None:
             g = {"task": key, "subjects": [], "items": [], "systems": [], "collect": [],
-                 "dispose": [], "purposes": [], "sources": set()}
+                 "dispose": [], "purposes": [], "sources": set(), "confirmed": False,
+                 "assignees": []}
             groups[key] = g
             order.append(key)
         _add(g["subjects"], _c(r.get("subject")))
@@ -295,6 +296,9 @@ def build_processing_tasks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         _add(g["dispose"], _c(r.get("destruction")))
         _add(g["purposes"], _c(r.get("purpose")))
         g["sources"].add(_c(r.get("source")))
+        _add(g["assignees"], _c(r.get("assignee")))
+        if _c(r.get("review_status")) == "confirmed":
+            g["confirmed"] = True
 
     out: list[dict[str, Any]] = []
     for key in order:
@@ -306,8 +310,9 @@ def build_processing_tasks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             controls.append("3.2.1")
         if g["dispose"]:
             controls.append("3.4.1")
-        # 확인 상태: manual 이 하나라도 있으면 담당자 승인, 아니면 자동 후보(검토 필요).
-        confirm = "담당자 승인" if "manual" in g["sources"] else "자동 후보(검토 필요)"
+        # 확인 상태: 담당자가 확정(review_status=confirmed)했거나 manual 행이면 담당자 승인.
+        confirmed = g["confirmed"] or "manual" in g["sources"]
+        confirm = "담당자 승인" if confirmed else "자동 후보(검토 필요)"
         out.append({
             "task": g["task"],
             "subjects": ", ".join(g["subjects"]),
@@ -317,6 +322,7 @@ def build_processing_tasks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "dispose_code": ", ".join(g["dispose"]),
             "purpose": ", ".join(g["purposes"]),
             "controls": " · ".join(controls),
+            "assignee": ", ".join(g["assignees"]),
             "confirm_status": confirm,
         })
     return out

@@ -203,6 +203,39 @@ def register_privacy(ctx: RouteContext) -> None:
             ctx.persist_personal_data_flow(flow_id)
         return rec
 
+    # ── 담당자 확인(#9) — 흐름별 담당자 지정 + 사람 확정을 감사 증적으로 고정 ────────────────
+    @app.post("/privacy/data-flow/{flow_id}/review", tags=["Privacy"])
+    def review_data_flow(flow_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """흐름 행에 담당자를 지정하고 확정/재검토한다.
+
+        action=confirm → review_status=confirmed·reviewed_by·reviewed_at 기록(사람 판단 증적).
+        action=reopen  → 다시 pending(자동 후보)로. assignee만 바꾸려면 action 생략.
+        """
+        _require_privacy_role(request)
+        rec = ctx.personal_data_flow.get(flow_id)
+        if not rec:
+            raise HTTPException(status_code=404, detail="흐름 행을 찾을 수 없습니다.")
+        if "assignee" in payload:
+            rec["assignee"] = str(payload.get("assignee", "") or "").strip()[:120]
+        action = str(payload.get("action", "") or "").strip()
+        now = datetime.now(tz=timezone.utc).isoformat()
+        if action == "confirm":
+            rec["review_status"] = "confirmed"
+            rec["reviewed_by"] = _user(request)
+            rec["reviewed_at"] = now
+        elif action == "reopen":
+            rec["review_status"] = "pending"
+            rec["reviewed_by"] = ""
+            rec["reviewed_at"] = ""
+        rec["updated_at"] = now
+        ctx.personal_data_flow[flow_id] = rec
+        if ctx.persist_personal_data_flow:
+            ctx.persist_personal_data_flow(flow_id)
+        if ctx.log_action and action:
+            ctx.log_action(_user(request), f"PRIVACY_FLOW_{action.upper()}",
+                           f"{rec.get('item','')} → {rec.get('assignee','')}")
+        return rec
+
     # ── 삭제 ─────────────────────────────────────────────────────────────────
     @app.delete("/privacy/data-flow/{flow_id}", tags=["Privacy"])
     def delete_data_flow(flow_id: str, request: Request) -> dict[str, Any]:
