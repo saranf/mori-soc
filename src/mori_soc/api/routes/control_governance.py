@@ -74,6 +74,22 @@ def register_control_governance(ctx: RouteContext) -> None:
             raise HTTPException(status_code=403, detail="통제 운영은 admin·security 전용입니다.")
         return (ctx.get_session_username(request) if ctx.get_session_username else "") or "system"
 
+    def _sod_enabled() -> bool:
+        """직무분리(SoD) — 활성화 시 작성자와 승인자를 같은 사람이 겸하지 못하게 한다(리뷰 #23).
+
+        org 설정(governance_sod) 또는 환경변수(MORI_GOVERNANCE_SOD) 로 켠다. 기본 off(알파 관대).
+        """
+        import os
+        val = str((ctx.settings or {}).get("governance_sod", "")
+                  or os.getenv("MORI_GOVERNANCE_SOD", "")).strip().lower()
+        return val in ("1", "true", "yes", "on")
+
+    def _require_not_self_approval(created_by: str, actor: str, what: str) -> None:
+        """SoD 게이트 — 작성자 == 승인/활성화자면 거부(자기승인 금지). 비활성 시 통과."""
+        if _sod_enabled() and created_by and created_by == actor:
+            raise HTTPException(status_code=409,
+                                detail=f"직무분리(SoD): {what} 은(는) 작성자({created_by})와 다른 사람이 수행해야 합니다.")
+
     def _repo() -> Any:
         return ctx.state_repo
 
@@ -222,6 +238,8 @@ def register_control_governance(ctx: RouteContext) -> None:
         if not can_version_transition(str(rec.get("status")), "active"):
             raise HTTPException(status_code=409,
                                 detail=f"{rec.get('status')} → active 전이는 허용되지 않습니다(draft 만 활성화).")
+        # SoD(#23): 작성자와 활성화자를 겸할 수 없음(옵트인). 활성화 = 승인성 행위.
+        _require_not_self_approval(str(rec.get("created_by") or ""), actor, "버전 활성화")
         # 같은 framework 에 이미 active 버전이 있으면 거부(운영자가 먼저 retire).
         others = [v for v in _load(KIND_FRAMEWORK_VERSION)
                   if v.get("framework_id") == rec.get("framework_id") and v.get("id") != fv_id]

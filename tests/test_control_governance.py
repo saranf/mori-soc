@@ -496,6 +496,22 @@ class ControlGovernanceRouteTests(unittest.TestCase):
         raw[1]["payload"] = {"tampered": True}
         self.assertFalse(verify_governance_chain(raw)["ok"])
 
+    def test_sod_blocks_self_approval(self) -> None:
+        # 리뷰 #23: SoD 활성화 시 작성자가 자기 버전을 활성화(승인성 행위)할 수 없다.
+        with patch.dict(os.environ, {"MORI_GOVERNANCE_SOD": "1"}, clear=False):
+            c = self._client()  # 인증 off → actor="system"
+            c.post("/governance/frameworks", json={"framework_id": "ISMS-P", "name": "ISMS-P"})
+            c.post("/governance/framework-versions", json={"framework_id": "ISMS-P", "version": "2023"})
+            # 작성자(system)가 활성화 시도 → SoD 거부(409)
+            r = c.post("/governance/framework-versions/isms-p:2023/activate")
+            self.assertEqual(r.status_code, 409)
+            self.assertIn("직무분리", r.json()["detail"])
+        # SoD off(기본) → 통과
+        c2 = self._client()
+        c2.post("/governance/frameworks", json={"framework_id": "ISMS-P", "name": "ISMS-P"})
+        c2.post("/governance/framework-versions", json={"framework_id": "ISMS-P", "version": "2023"})
+        self.assertEqual(c2.post("/governance/framework-versions/isms-p:2023/activate").status_code, 200)
+
     def test_version_lifecycle_route_enforcement(self) -> None:
         c = self._client()
         c.post("/governance/frameworks", json={"framework_id": "ISMS-P", "name": "ISMS-P"})
