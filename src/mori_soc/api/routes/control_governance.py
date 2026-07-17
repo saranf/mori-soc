@@ -28,8 +28,10 @@ from mori_soc.services.control_governance import (
     KIND_RELATIONSHIP,
     KIND_SCOPE_SNAPSHOT,
     RELATIONSHIP_TYPES,
+    _slug,
     apply_cycle_control_update,
     apply_overlay,
+    apply_version_lifecycle,
     build_assurance_cycle,
     build_control_definition,
     build_crosswalk,
@@ -42,10 +44,13 @@ from mori_soc.services.control_governance import (
     build_organization_control,
     build_relationship,
     build_scope_snapshot,
+    can_version_transition,
     cycle_control_as_of,
     diff_control_definitions,
     initialize_cycle_from_previous,
     is_mutable_version,
+    periods_overlap,
+    plan_cycle_migration,
 )
 
 
@@ -75,6 +80,17 @@ def register_control_governance(ctx: RouteContext) -> None:
 
     def _find(kind: str, entity_id: str) -> dict[str, Any] | None:
         return next((r for r in _load(kind) if r.get("id") == entity_id), None)
+
+    def _require_ref(kind: str, entity_id: str, label: str) -> None:
+        """참조 대상이 실재하는지 검증(S1d) — 없으면 404. 감사 무결성상 dangling 참조 금지."""
+        if entity_id and _find(kind, entity_id) is None:
+            raise HTTPException(status_code=404, detail=f"{label}({entity_id})이(가) 존재하지 않습니다.")
+
+    def _require_control_ref(entity_id: str) -> None:
+        """control_ref 는 기준 통제(control_definition) 또는 내부통제(organization_control) 여야 한다."""
+        if _find(KIND_CONTROL_DEF, entity_id) is None and _find(KIND_ORG_CONTROL, entity_id) is None:
+            raise HTTPException(status_code=404,
+                                detail=f"control_ref({entity_id})가 통제 정의·내부통제 어디에도 없습니다.")
 
     def _save(kind: str, rec: dict[str, Any], actor: str, action: str) -> dict[str, Any]:
         repo = _repo()
@@ -108,9 +124,10 @@ def register_control_governance(ctx: RouteContext) -> None:
     @app.get("/governance/frameworks/{framework_id}/versions", tags=["Governance"])
     def list_versions(framework_id: str, request: Request) -> dict[str, Any]:
         _require(request)
-        vs = [v for v in _load(KIND_FRAMEWORK_VERSION) if v.get("framework_id") == framework_id]
+        fid = _slug(framework_id)  # 'ISMS-P' 든 'isms-p' 든 동일 조회(대소문자 무관)
+        vs = [v for v in _load(KIND_FRAMEWORK_VERSION) if v.get("framework_id") == fid]
         vs.sort(key=lambda v: str(v.get("version")))
-        return {"framework_id": framework_id, "versions": vs}
+        return {"framework_id": fid, "versions": vs}
 
     @app.post("/governance/framework-versions", tags=["Governance"])
     def create_version(payload: dict[str, Any], request: Request) -> dict[str, Any]:
@@ -136,23 +153,39 @@ def register_control_governance(ctx: RouteContext) -> None:
 
     @app.post("/governance/framework-versions/{fv_id}/activate", tags=["Governance"])
     def activate_version(fv_id: str, request: Request) -> dict[str, Any]:
+        """draft → active. 상태기계·framework 당 active 1개·시행기간 겹침을 강제한다(S1c)."""
         actor = _require(request)
         rec = _find(KIND_FRAMEWORK_VERSION, fv_id)
         if rec is None:
             raise HTTPException(status_code=404, detail="버전을 찾을 수 없습니다.")
-        rec["status"] = "active"
-        rec["activated_at"] = _now()
-        rec["activated_by"] = actor
+        if not can_version_transition(str(rec.get("status")), "active"):
+            raise HTTPException(status_code=409,
+                                detail=f"{rec.get('status')} → active 전이는 허용되지 않습니다(draft 만 활성화).")
+        # 같은 framework 에 이미 active 버전이 있으면 거부(운영자가 먼저 retire).
+        others = [v for v in _load(KIND_FRAMEWORK_VERSION)
+                  if v.get("framework_id") == rec.get("framework_id") and v.get("id") != fv_id]
+        for o in others:
+            if o.get("status") == "active":
+                raise HTTPException(status_code=409,
+                                    detail=f"이미 active 버전({o['id']})이 있습니다. 먼저 retire 하세요.")
+            if o.get("status") in ("active",) and periods_overlap(
+                    rec.get("effective_from", ""), rec.get("effective_to"),
+                    o.get("effective_from", ""), o.get("effective_to")):
+                raise HTTPException(status_code=409, detail=f"시행기간이 {o['id']} 와 겹칩니다.")
+        apply_version_lifecycle(rec, "active", actor=actor, now=_now())
         return _save(KIND_FRAMEWORK_VERSION, rec, actor, "GOV_VERSION_ACTIVATE")
 
     @app.post("/governance/framework-versions/{fv_id}/retire", tags=["Governance"])
     def retire_version(fv_id: str, request: Request) -> dict[str, Any]:
+        """active → retired. retired 재활성은 상태기계가 막는다(S1c)."""
         actor = _require(request)
         rec = _find(KIND_FRAMEWORK_VERSION, fv_id)
         if rec is None:
             raise HTTPException(status_code=404, detail="버전을 찾을 수 없습니다.")
-        rec["status"] = "retired"
-        rec["effective_to"] = rec.get("effective_to") or _now()
+        if not can_version_transition(str(rec.get("status")), "retired"):
+            raise HTTPException(status_code=409,
+                                detail=f"{rec.get('status')} → retired 전이는 허용되지 않습니다(active 만 폐기).")
+        apply_version_lifecycle(rec, "retired", actor=actor, now=_now())
         return _save(KIND_FRAMEWORK_VERSION, rec, actor, "GOV_VERSION_RETIRE")
 
     # ── ControlDefinition ──────────────────────────────────────────────────────
@@ -203,12 +236,27 @@ def register_control_governance(ctx: RouteContext) -> None:
         if not src or not tgt or rtype not in RELATIONSHIP_TYPES:
             raise HTTPException(status_code=400,
                                 detail=f"source·target 필수, relationship_type 은 {', '.join(RELATIONSHIP_TYPES)} 중 하나.")
-        cov = payload.get("coverage_percent")
+        if src == tgt:
+            raise HTTPException(status_code=400, detail="source 와 target 은 서로 달라야 합니다(자기참조 금지).")
+        _require_control_ref(src)
+        _require_control_ref(tgt)
+        # coverage_percent 검증(S1e): 있으면 0~100 정수만(비숫자 → 500 아니라 400).
+        cov_raw = payload.get("coverage_percent")
+        cov: int | None = None
+        if cov_raw not in (None, ""):
+            try:
+                cov = int(cov_raw)
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail="coverage_percent 는 0~100 정수여야 합니다.") from None
+            if not (0 <= cov <= 100):
+                raise HTTPException(status_code=400, detail="coverage_percent 는 0~100 범위여야 합니다.")
         rec = build_relationship(
             source_control_id=src, target_control_id=tgt, relationship_type=rtype,
-            coverage_percent=int(cov) if cov not in (None, "") else None,
-            rationale=str(payload.get("rationale", "")),
+            coverage_percent=cov, rationale=str(payload.get("rationale", "")),
             provenance=str(payload.get("provenance", "HUMAN")), reviewed_by=actor, now=_now())
+        # 같은 (source,target,type) 중복 생성 거부(결정적 id 로 덮어쓰기 방지).
+        if _find(KIND_RELATIONSHIP, rec["id"]):
+            raise HTTPException(status_code=409, detail="이미 존재하는 관계입니다.")
         return _save(KIND_RELATIONSHIP, rec, actor, "GOV_REL_CREATE")
 
     # ── OrganizationControl ────────────────────────────────────────────────────
@@ -272,6 +320,8 @@ def register_control_governance(ctx: RouteContext) -> None:
         fv_id = str(payload.get("framework_version_id", "")).strip()
         if not cid or not name or not fv_id:
             raise HTTPException(status_code=400, detail="cycle_id·name·framework_version_id 필수입니다.")
+        _require_ref(KIND_FRAMEWORK_VERSION, fv_id, "framework_version")
+        _require_ref(KIND_SCOPE_SNAPSHOT, str(payload.get("scope_snapshot_id", "")), "scope_snapshot")
         rec = build_assurance_cycle(
             cycle_id=cid, name=name, framework_version_id=fv_id,
             period_start=str(payload.get("period_start", "")),
@@ -297,6 +347,7 @@ def register_control_governance(ctx: RouteContext) -> None:
         oc = str(payload.get("organization_control_id", "")).strip()
         if not oc:
             raise HTTPException(status_code=400, detail="organization_control_id 는 필수입니다.")
+        _require_ref(KIND_ORG_CONTROL, oc, "organization_control")
         rec = build_evidence_contract(
             organization_control_id=oc, version=int(payload.get("version", 1) or 1),
             frequency=str(payload.get("frequency", "")),
@@ -325,12 +376,15 @@ def register_control_governance(ctx: RouteContext) -> None:
         src = str(payload.get("source_type", "")).strip()
         if not oc or not src:
             raise HTTPException(status_code=400, detail="organization_control_id·source_type 필수입니다.")
+        _require_ref(KIND_ORG_CONTROL, oc, "organization_control")
         rec = build_evidence_mapping(
             organization_control_id=oc, source_type=src,
             collection_rule_id=str(payload.get("collection_rule_id", "")),
             valid_from=str(payload.get("valid_from", "")), valid_to=payload.get("valid_to"),
             mapping_version=int(payload.get("mapping_version", 1) or 1),
             rationale=str(payload.get("rationale", "")), approved_by=actor, now=_now())
+        if _find(KIND_EVIDENCE_MAPPING, rec["id"]):
+            raise HTTPException(status_code=409, detail="이미 존재하는 매핑 버전입니다(새 mapping_version 으로).")
         return _save(KIND_EVIDENCE_MAPPING, rec, actor, "GOV_MAPPING_CREATE")
 
     # ── CycleControl (운영주기 통제 인스턴스 — 증적/평가 분리, append-only) ────────────
@@ -350,10 +404,14 @@ def register_control_governance(ctx: RouteContext) -> None:
         ref = str(payload.get("control_ref", "")).strip()
         if not cyc or not ref:
             raise HTTPException(status_code=400, detail="cycle_id·control_ref 필수입니다.")
+        _require_ref(KIND_ASSURANCE_CYCLE, cyc, "assurance_cycle")
+        _require_control_ref(ref)
+        appl = str(payload.get("applicability", "pending_assessment"))
+        if appl not in APPLICABILITY_STATUSES:
+            raise HTTPException(status_code=400, detail=f"applicability 는 {', '.join(APPLICABILITY_STATUSES)} 중 하나.")
         rec = build_cycle_control(cycle_id=cyc, control_ref=ref,
                                   assignee=str(payload.get("assignee", "")),
-                                  applicability=str(payload.get("applicability", "pending_assessment")),
-                                  now=_now(), created_by=actor)
+                                  applicability=appl, now=_now(), created_by=actor)
         if _find(KIND_CYCLE_CONTROL, rec["id"]):
             raise HTTPException(status_code=409, detail="이미 존재하는 주기 통제입니다.")
         return _save(KIND_CYCLE_CONTROL, rec, actor, "GOV_CYCLECTL_CREATE")
@@ -378,7 +436,10 @@ def register_control_governance(ctx: RouteContext) -> None:
                                    assessment_status=asv, applicability=appl,
                                    assignee=str(payload.get("assignee", "")),
                                    note=str(payload.get("note", "")))
-        return _save(KIND_CYCLE_CONTROL, cc, actor, "GOV_CYCLECTL_UPDATE")
+        changed = bool(cc.pop("_changed", True))  # 영속 전 transient 플래그 제거(S1f)
+        if changed:
+            _save(KIND_CYCLE_CONTROL, cc, actor, "GOV_CYCLECTL_UPDATE")
+        return {**cc, "_no_op": not changed}
 
     @app.get("/governance/cycle-controls/{cc_id}/as-of", tags=["Governance"])
     def cycle_control_as_of_route(cc_id: str, request: Request, date: str | None = None) -> dict[str, Any]:
@@ -401,20 +462,29 @@ def register_control_governance(ctx: RouteContext) -> None:
         new = [c for c in _load(KIND_CONTROL_DEF) if c.get("framework_version_id") == to]
         return {"from": fv_id, "to": to, **diff_control_definitions(old, new)}
 
-    # ── 운영주기 마이그레이션(P3) — 지난 주기에서 새 주기 통제 승계 ─────────────────────
+    # ── 운영주기 마이그레이션(S2) — 지난 주기 + 버전 diff 를 하나로 묶은 진짜 이관 ──────────
     @app.post("/governance/assurance-cycles/{cycle_id}/initialize-from/{previous_id}", tags=["Governance"])
     def initialize_cycle(cycle_id: str, previous_id: str, request: Request) -> dict[str, Any]:
-        """지난 주기(previous_id)에서 새 주기(cycle_id) 통제 생성.
+        """지난 주기(previous_id) → 새 주기(cycle_id) **진짜 버전 마이그레이션**.
 
-        승계: 담당자·적용성·증적계약. 초기화: 증적·평가 상태(작년 판정 자동 승계 금지).
+        두 주기의 framework_version 통제 diff(control_uid 계보)를 사용해 번호변경은 새 참조로 이관,
+        내용변경은 재설계 검토 표시, 삭제는 removed 목록, 신규는 새 통제 생성. 운영설정 승계 /
+        증적·평가 초기화. 두 주기 모두 통제 정의가 있으면 계보 기반, 없으면 단순 참조 승계로 폴백.
         """
         actor = _require(request)
-        if _find(KIND_ASSURANCE_CYCLE, cycle_id) is None:
+        new_cycle = _find(KIND_ASSURANCE_CYCLE, cycle_id)
+        prev_cycle = _find(KIND_ASSURANCE_CYCLE, previous_id)
+        if new_cycle is None:
             raise HTTPException(status_code=404, detail="대상 운영주기를 먼저 생성하세요.")
         prev = [r for r in _load(KIND_CYCLE_CONTROL) if r.get("cycle_id") == previous_id]
         if not prev:
             raise HTTPException(status_code=404, detail="이전 주기의 통제가 없습니다.")
-        res = initialize_cycle_from_previous(prev, cycle_id, now=_now(), created_by=actor)
+        old_fv = (prev_cycle or {}).get("framework_version_id", "")
+        new_fv = new_cycle.get("framework_version_id", "")
+        old_controls = [c for c in _load(KIND_CONTROL_DEF) if c.get("framework_version_id") == old_fv]
+        new_controls = [c for c in _load(KIND_CONTROL_DEF) if c.get("framework_version_id") == new_fv]
+        res = plan_cycle_migration(prev, old_controls, new_controls, cycle_id,
+                                   now=_now(), created_by=actor)
         created = 0
         for cc in res["cycle_controls"]:
             if _find(KIND_CYCLE_CONTROL, cc["id"]) is None:

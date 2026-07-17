@@ -37,6 +37,37 @@ class ControlGovernanceServiceTests(unittest.TestCase):
         self.assertFalse(is_mutable_version(v))
         self.assertTrue(v["content_hash"].startswith("sha256:"))
 
+    def test_content_hash_stable_across_lifecycle(self) -> None:
+        # S1a: activate/retire 는 내용이 아니므로 content_hash 를 흔들면 안 된다.
+        from mori_soc.services.control_governance import apply_version_lifecycle
+        v = build_framework_version(framework_id="ISMS-P", version="2023", now="2026-01-01")
+        h0 = v["content_hash"]
+        apply_version_lifecycle(v, "active", actor="u", now="2026-01-02")
+        self.assertEqual(v["status"], "active")
+        self.assertEqual(content_hash(v), h0)  # 상태 전환 후에도 동일 지문
+        apply_version_lifecycle(v, "retired", actor="u", now="2026-06-01")
+        self.assertEqual(content_hash(v), h0)
+        # lifecycle 이벤트가 append 됨
+        self.assertEqual([e["to"] for e in v["lifecycle"]], ["draft", "active", "retired"])
+
+    def test_version_state_machine(self) -> None:
+        from mori_soc.services.control_governance import can_version_transition
+        self.assertTrue(can_version_transition("draft", "active"))
+        self.assertTrue(can_version_transition("active", "retired"))
+        self.assertFalse(can_version_transition("retired", "active"))   # 재활성 금지
+        self.assertFalse(can_version_transition("active", "active"))    # 재활성화 재호출 금지
+        self.assertFalse(can_version_transition("draft", "retired"))    # draft 직접 폐기 금지
+
+    def test_cycle_control_as_of_restores_initial_state(self) -> None:
+        # S1b: 생성 시 담당자·적용성이 최초 history 에 박혀 as-of 가 정확히 복원한다.
+        cc = build_cycle_control(cycle_id="c1", control_ref="x", assignee="김보안",
+                                 applicability="applicable", now="2026-01-01T00:00:00+00:00",
+                                 created_by="u")
+        # 아무 변경 없는 1월 10일 시점 → 생성 시점 값 그대로
+        st = cycle_control_as_of(cc, "2026-01-10T00:00:00+00:00")
+        self.assertEqual(st["assignee"], "김보안")
+        self.assertEqual(st["applicability"], "applicable")
+
     def test_control_definition_separates_interpretation_layers(self) -> None:
         c = build_control_definition(
             framework_version_id="isms-p:2023", display_code="2.9.4",
@@ -188,42 +219,77 @@ class ControlGovernanceRouteTests(unittest.TestCase):
         controls = c.get(f"/governance/framework-versions/{fv_id}/controls").json()["controls"]
         self.assertEqual(len(controls), 1)
 
+    def _seed_control(self, c, framework: str, version: str, code: str, title: str = "t",
+                      uid: str = "", req: str = "req") -> str:
+        """framework → version → control 을 만들고 control_definition id 반환(테스트 헬퍼)."""
+        c.post("/governance/frameworks", json={"framework_id": framework, "name": framework})
+        c.post("/governance/framework-versions", json={"framework_id": framework, "version": version})
+        fv = f"{framework.lower()}:{version}"
+        r = c.post("/governance/control-definitions",
+                   json={"framework_version_id": fv, "display_code": code, "title": title,
+                         "control_uid": uid, "requirement_text": req})
+        return r.json()["id"]
+
     def test_relationship_and_org_control(self) -> None:
         c = self._client()
+        src = self._seed_control(c, "ISMS-P", "2019", "2.9.4", uid="log")
+        tgt = self._seed_control(c, "ISMS-P", "2023", "2.10.2", uid="log")
         rel = c.post("/governance/relationships",
-                     json={"source_control_id": "isms-p:2019:2.9.4",
-                           "target_control_id": "isms-p:2023:2.10.2",
+                     json={"source_control_id": src, "target_control_id": tgt,
                            "relationship_type": "replaced_by", "coverage_percent": 80})
         self.assertEqual(rel.status_code, 200, rel.text)
         self.assertEqual(rel.json()["coverage_percent"], 80)
-        # 잘못된 관계 유형 거부
+        # 잘못된 관계 유형 거부(400) / 존재하지 않는 통제 참조 거부(404) / 자기참조 거부(400)
         self.assertEqual(c.post("/governance/relationships",
-                                json={"source_control_id": "a", "target_control_id": "b",
+                                json={"source_control_id": src, "target_control_id": tgt,
                                       "relationship_type": "bogus"}).status_code, 400)
+        self.assertEqual(c.post("/governance/relationships",
+                                json={"source_control_id": src, "target_control_id": "ghost",
+                                      "relationship_type": "related_to"}).status_code, 404)
+        self.assertEqual(c.post("/governance/relationships",
+                                json={"source_control_id": src, "target_control_id": src,
+                                      "relationship_type": "related_to"}).status_code, 400)
+        # coverage 범위·비숫자 거부(400, 500 아님)
+        self.assertEqual(c.post("/governance/relationships",
+                                json={"source_control_id": src, "target_control_id": tgt,
+                                      "relationship_type": "same_as", "coverage_percent": 150}).status_code, 400)
+        self.assertEqual(c.post("/governance/relationships",
+                                json={"source_control_id": src, "target_control_id": tgt,
+                                      "relationship_type": "same_as", "coverage_percent": "abc"}).status_code, 400)
+        # 중복 관계(같은 source·target·type) 거부(409)
+        self.assertEqual(c.post("/governance/relationships",
+                                json={"source_control_id": src, "target_control_id": tgt,
+                                      "relationship_type": "replaced_by"}).status_code, 409)
         oc = c.post("/governance/organization-controls",
                     json={"code": "CORP-LOG-002", "title": "관리자 접속기록 월간 검토",
                           "owner_team": "보안운영팀", "frequency": "monthly",
-                          "mapped_controls": ["isms-p:2023:2.9.4", "iso27001:2022:A.8.15"]})
+                          "mapped_controls": [tgt, "iso27001:2022:A.8.15"]})
         self.assertEqual(oc.status_code, 200, oc.text)
         self.assertEqual(oc.json()["id"], "corp-log-002:v1")
 
     def test_cycle_control_and_evidence_contract_endpoints(self) -> None:
         c = self._client()
-        # evidence contract 버전관리
+        # 참조 검증(S1d): 존재하지 않는 내부통제로 계약 생성 → 404
+        self.assertEqual(c.post("/governance/evidence-contracts",
+                                json={"organization_control_id": "ghost"}).status_code, 404)
+        # 내부통제 생성 후 계약 버전관리
+        c.post("/governance/organization-controls", json={"code": "CORP-ACC-004", "title": "계정검토"})
         ec = c.post("/governance/evidence-contracts",
-                    json={"organization_control_id": "corp-acc-004", "version": 3,
+                    json={"organization_control_id": "corp-acc-004:v1", "version": 3,
                           "frequency": "monthly", "required_fields": ["account_id", "reviewer"],
                           "minimum_coverage": 0.95, "maximum_age_days": 35,
                           "allowed_sources": ["LDAP", "Fleet"]})
         self.assertEqual(ec.status_code, 200, ec.text)
-        self.assertEqual(ec.json()["id"], "corp-acc-004:v3")
-        # cycle control 생성 + 증적/평가 분리 갱신
+        self.assertEqual(ec.json()["id"], "corp-acc-004-v1:v3")  # ref 는 slug 화됨
+        # assurance cycle 은 실재하는 framework_version 을 요구(S1d)
+        self._seed_control(c, "ISMS-P", "2023", "2.9.4", uid="log")
         cyc = c.post("/governance/assurance-cycles",
                      json={"cycle_id": "isms-p-2026", "name": "2026 ISMS-P",
                            "framework_version_id": "isms-p:2023"})
         self.assertEqual(cyc.status_code, 200, cyc.text)
+        # cycle control — control_ref 는 실재하는 통제(내부통제)여야 함
         cc = c.post("/governance/cycle-controls",
-                    json={"cycle_id": "isms-p-2026", "control_ref": "corp-acc-004"})
+                    json={"cycle_id": "isms-p-2026", "control_ref": "corp-acc-004:v1"})
         self.assertEqual(cc.status_code, 200, cc.text)
         cc_id = cc.json()["id"]
         # 잘못된 상태값 거부
@@ -234,6 +300,15 @@ class ControlGovernanceRouteTests(unittest.TestCase):
                     json={"evidence_status": "approved"}).json()
         self.assertEqual(up["evidence_status"], "approved")
         self.assertEqual(up["assessment_status"], "not_assessed")
+        # no-op 갱신(같은 값) → history 안 늘어남(S1f)
+        before = len(c.get(f"/governance/assurance-cycles/isms-p-2026/controls"
+                           ).json()["cycle_controls"][0]["history"])
+        noop = c.post(f"/governance/cycle-controls/{cc_id}/update",
+                      json={"evidence_status": "approved"}).json()
+        self.assertTrue(noop["_no_op"])
+        after = len(c.get(f"/governance/assurance-cycles/isms-p-2026/controls"
+                          ).json()["cycle_controls"][0]["history"])
+        self.assertEqual(before, after)
         # as-of 재현
         aof = c.get(f"/governance/cycle-controls/{cc_id}/as-of").json()
         self.assertEqual(aof["evidence_status"], "approved")
@@ -249,26 +324,40 @@ class ControlGovernanceRouteTests(unittest.TestCase):
         c.post("/governance/control-definitions",
                json={"framework_version_id": "isms-p:2023", "display_code": "2.10.2",
                      "title": "로그", "control_uid": "log", "requirement_text": "월간"})
+        # 신버전에 신규 통제 하나 추가(마이그레이션에서 new_controls 로 잡혀야 함)
+        c.post("/governance/control-definitions",
+               json={"framework_version_id": "isms-p:2023", "display_code": "3.1.1",
+                     "title": "신규", "control_uid": "brand-new", "requirement_text": "new"})
         cmp = c.get("/governance/framework-versions/isms-p:2019/compare",
                     params={"to": "isms-p:2023"}).json()
         self.assertEqual(cmp["counts"]["text_changed"], 1)  # 요구 내용 변경
-        # cycle migration: 2025 주기 → 2026 주기 승계
+        # cycle migration: 2025 주기 → 2026 주기 (버전 diff 계보 기반)
         c.post("/governance/assurance-cycles",
                json={"cycle_id": "c2025", "name": "2025", "framework_version_id": "isms-p:2019"})
         c.post("/governance/assurance-cycles",
                json={"cycle_id": "c2026", "name": "2026", "framework_version_id": "isms-p:2023"})
+        # 이전 주기 통제는 구버전 통제 정의(isms-p:2019:2.9.4)를 참조
         cc = c.post("/governance/cycle-controls",
-                    json={"cycle_id": "c2025", "control_ref": "corp-log-002", "assignee": "김보안"}).json()
+                    json={"cycle_id": "c2025", "control_ref": "isms-p:2019:2.9.4",
+                          "assignee": "김보안"}).json()
         c.post(f"/governance/cycle-controls/{cc['id']}/update",
                json={"assessment_status": "effective"})
         mig = c.post("/governance/assurance-cycles/c2026/initialize-from/c2025").json()
-        self.assertEqual(mig["created"], 1)
-        new_cc = c.get("/governance/assurance-cycles/c2026/controls").json()["cycle_controls"]
-        self.assertEqual(new_cc[0]["assignee"], "김보안")               # 승계
-        self.assertEqual(new_cc[0]["assessment_status"], "not_assessed")  # 초기화
-        # P4: as-of 감사 스냅샷(운영주기 전체)
+        # log 통제는 내용변경 이관(text_changed) + brand-new 는 신규 통제
+        self.assertEqual(mig["counts"]["carried"], 1)
+        self.assertEqual(mig["counts"]["text_changed"], 1)
+        self.assertEqual(mig["counts"]["new_controls"], 1)
+        new_cc = {x["control_ref"]: x for x in
+                  c.get("/governance/assurance-cycles/c2026/controls").json()["cycle_controls"]}
+        carried = new_cc["isms-p:2023:2.10.2"]           # 새 번호로 이관됨
+        self.assertEqual(carried["assignee"], "김보안")               # 승계
+        self.assertEqual(carried["assessment_status"], "not_assessed")  # 초기화
+        self.assertEqual(carried["carried_from_control_ref"], "isms-p:2019:2.9.4")
+        self.assertTrue(carried["requires_design_review"])            # 내용 변경 → 재설계 검토
+        self.assertTrue(new_cc["isms-p:2023:3.1.1"]["requires_design_review"])  # 신규
+        # P4: as-of 감사 스냅샷(운영주기 전체) — 이관 1 + 신규 1 = 2
         snap = c.get("/governance/assurance-cycles/c2026/audit-snapshot").json()
-        self.assertEqual(snap["control_count"], 1)
+        self.assertEqual(snap["control_count"], 2)
         self.assertIn("not_assessed", snap["assessment_status_counts"])
         # P5: crosswalk + overlay-view
         c.post("/governance/organization-controls",
@@ -279,6 +368,25 @@ class ControlGovernanceRouteTests(unittest.TestCase):
         ov = c.post("/governance/controls/isms-p:2023:2.10.2/overlay-view",
                     json={"owner_team": "보안운영팀"}).json()
         self.assertEqual(ov["overlay"]["owner_team"], "보안운영팀")
+
+
+    def test_version_lifecycle_route_enforcement(self) -> None:
+        c = self._client()
+        c.post("/governance/frameworks", json={"framework_id": "ISMS-P", "name": "ISMS-P"})
+        for ver in ("2019", "2023"):
+            c.post("/governance/framework-versions", json={"framework_id": "ISMS-P", "version": ver})
+        # 2019 활성화 성공
+        self.assertEqual(c.post("/governance/framework-versions/isms-p:2019/activate").status_code, 200)
+        # 같은 framework 에 2023 도 활성화 → 409(active 1개 규칙)
+        self.assertEqual(c.post("/governance/framework-versions/isms-p:2023/activate").status_code, 409)
+        # 2019 retire 후 2023 활성화 성공
+        self.assertEqual(c.post("/governance/framework-versions/isms-p:2019/retire").status_code, 200)
+        self.assertEqual(c.post("/governance/framework-versions/isms-p:2023/activate").status_code, 200)
+        # retired → active 재활성 거부(409)
+        self.assertEqual(c.post("/governance/framework-versions/isms-p:2019/activate").status_code, 409)
+        # content_hash 는 활성화 전후 동일(라우트 경유)
+        vs = {v["id"]: v for v in c.get("/governance/frameworks/ISMS-P/versions").json()["versions"]}
+        self.assertEqual(vs["isms-p:2023"]["status"], "active")
 
 
 if __name__ == "__main__":

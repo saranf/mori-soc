@@ -55,10 +55,23 @@ def _slug(s: str) -> str:
     return "".join(c if c.isalnum() or c in "-._" else "-" for c in str(s or "").strip().lower())[:60]
 
 
+# content_hash 대상에서 제외하는 **lifecycle/감사 메타데이터** — 실질 내용이 아니다.
+# status·activated_*·retired_*·effective_to·lifecycle 는 상태 전환 시 바뀌지만, 그렇다고
+# '기준 원문 내용'이 바뀐 것은 아니므로 해시를 흔들면 안 된다(activate 후 해시 틀어짐 버그 방지).
+_HASH_VOLATILE = frozenset({
+    "content_hash", "created_at", "updated_at", "created_by", "id",
+    "status", "activated_at", "activated_by", "retired_at", "retired_by",
+    "effective_to", "lifecycle", "history",
+})
+
+
 def content_hash(record: dict[str, Any]) -> str:
-    """레코드 내용 해시(sha256:...). 시각·감사 필드 제외한 실질 내용만."""
-    volatile = {"content_hash", "created_at", "updated_at", "created_by", "id"}
-    core = {k: v for k, v in record.items() if k not in volatile}
+    """레코드 **실질 내용** 해시(sha256:...). 시각·감사·lifecycle 메타는 제외한다.
+
+    같은 내용이면 draft/active/retired 어느 상태든 동일 해시 — 버전 무결성·diff·export 에서
+    상태 전환에 흔들리지 않는 안정적 지문이 된다.
+    """
+    core = {k: v for k, v in record.items() if k not in _HASH_VOLATILE}
     blob = json.dumps(core, ensure_ascii=False, sort_keys=True)
     return "sha256:" + hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
@@ -89,7 +102,42 @@ def build_framework_version(*, framework_id: str, version: str, effective_from: 
         "created_at": now, "created_by": created_by,
     }
     rec["content_hash"] = content_hash(rec)
+    rec["lifecycle"] = [{"ts": now, "actor": created_by, "to": status}]
     return rec
+
+
+# FrameworkVersion 상태기계 — draft → active → retired 만 허용(역행·재활성 금지).
+VERSION_TRANSITIONS: dict[str, set[str]] = {"active": {"draft"}, "retired": {"active"}}
+
+
+def can_version_transition(current: str, target: str) -> bool:
+    return target in VERSION_TRANSITIONS and str(current or "draft") in VERSION_TRANSITIONS[target]
+
+
+def apply_version_lifecycle(rec: dict[str, Any], target: str, *, actor: str, now: str) -> dict[str, Any]:
+    """버전 상태 전환(제자리). content_hash 는 재계산하지 않는다(상태는 내용이 아님).
+
+    lifecycle 이벤트를 append 해 전환 이력을 남긴다. 유효성은 호출자가 can_version_transition 으로 확인.
+    """
+    rec["status"] = target
+    if target == "active":
+        rec["activated_at"] = now
+        rec["activated_by"] = actor
+    elif target == "retired":
+        rec["retired_at"] = now
+        rec["retired_by"] = actor
+        rec["effective_to"] = rec.get("effective_to") or now
+    rec.setdefault("lifecycle", []).append({"ts": now, "actor": actor, "to": target})
+    return rec
+
+
+def periods_overlap(a_from: str, a_to: str | None, b_from: str, b_to: str | None) -> bool:
+    """두 시행기간이 겹치는가(빈 값은 열린 구간). 같은 framework 의 active 기간 겹침 검증용."""
+    a_end = a_to or "9999-12-31"
+    b_end = b_to or "9999-12-31"
+    a_start = a_from or "0000-01-01"
+    b_start = b_from or "0000-01-01"
+    return a_start <= b_end and b_start <= a_end
 
 
 # ── ControlDefinition — 그 버전 안의 개별 통제 ─────────────────────────────────────
@@ -301,13 +349,16 @@ def build_cycle_control(*, cycle_id: str, control_ref: str, assignee: str = "",
                         created_by: str = "") -> dict[str, Any]:
     """운영주기별 통제 인스턴스. evidence_status 와 assessment_status 를 분리 보관한다."""
     cc_id = f"{_slug(cycle_id)}:{_slug(control_ref)}"
-    return {
-        "id": cc_id, "cycle_control_id": cc_id, "cycle_id": cycle_id, "control_ref": control_ref,
+    initial = {
         "assignee": assignee, "applicability": applicability,
         "evidence_status": "missing", "assessment_status": "not_assessed",
-        "evidence_contract_ref": "", "created_at": now, "created_by": created_by,
-        "updated_at": now,
-        "history": [{"ts": now, "actor": created_by, "action": "created"}],
+        "evidence_contract_ref": "",
+    }
+    return {
+        "id": cc_id, "cycle_control_id": cc_id, "cycle_id": cycle_id, "control_ref": control_ref,
+        **initial, "created_at": now, "created_by": created_by, "updated_at": now,
+        # 최초 history 에 초기값을 changed 로 박아, as-of 재생이 생성 시점 상태를 정확히 복원한다.
+        "history": [{"ts": now, "actor": created_by, "action": "created", "changed": dict(initial)}],
     }
 
 
@@ -317,28 +368,46 @@ def apply_cycle_control_update(cc: dict[str, Any], *, actor: str, now: str,
                                note: str = "") -> dict[str, Any]:
     """운영주기 통제 상태 갱신(제자리 + append-only history). 증적·평가 상태는 서로 독립.
 
-    유효성(상태값 소속)은 호출자가 확인한다. history 로 특정 시점 재현이 가능하다(event-sourcing 근사).
+    실제로 값이 바뀐 필드만 changed 로 기록한다. 아무 변화가 없으면(단순 재호출·note 없음)
+    history 를 남기지 않는다(no-op 오염 방지). 반환에 `_changed` 로 변경 여부를 알린다.
     """
     changed: dict[str, Any] = {}
-    if evidence_status:
-        changed["evidence_status"] = evidence_status
-        cc["evidence_status"] = evidence_status
-    if assessment_status:
-        changed["assessment_status"] = assessment_status
-        cc["assessment_status"] = assessment_status
-    if applicability:
-        changed["applicability"] = applicability
-        cc["applicability"] = applicability
-    if assignee:
-        changed["assignee"] = assignee
-        cc["assignee"] = assignee
+    for field, val in (("evidence_status", evidence_status), ("assessment_status", assessment_status),
+                       ("applicability", applicability), ("assignee", assignee)):
+        if val and cc.get(field) != val:
+            changed[field] = val
+            cc[field] = val
+    if not changed and not note:
+        cc["_changed"] = False   # no-op — history 오염 없음
+        return cc
     cc["updated_at"] = now
     cc.setdefault("history", []).append(
         {"ts": now, "actor": actor, "action": "update", "changed": changed, "note": note})
+    cc["_changed"] = True
     return cc
 
 
 # ── 버전 영향분석(P3) — Framework diff · 계보 · 운영주기 마이그레이션 ─────────────────
+def _control_uid(c: dict[str, Any]) -> str:
+    return str(c.get("control_uid") or c.get("display_code") or "")
+
+
+def _control_body(c: dict[str, Any]) -> str:
+    """실질 요구 내용만(버전·번호 제외) — 번호변경 vs 내용변경 구분용."""
+    return json.dumps({"title": c.get("title"), "requirement_text": c.get("requirement_text"),
+                       "interpretations": c.get("interpretations")},
+                      ensure_ascii=False, sort_keys=True)
+
+
+def _migration_reason(old_def: dict[str, Any], new_def: dict[str, Any]) -> str:
+    """old→new 통제의 이관 사유: text_changed / renumbered / carried(동일)."""
+    if _control_body(old_def) != _control_body(new_def):
+        return "text_changed"
+    if str(old_def.get("display_code")) != str(new_def.get("display_code")):
+        return "renumbered"
+    return "carried"
+
+
 def diff_control_definitions(
     old_controls: list[dict[str, Any]], new_controls: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -351,14 +420,8 @@ def diff_control_definitions(
     - unchanged: uid·내용 동일.
     AI 확정이 아니라 후보 — 담당자가 계보·영향을 검토한다(모리다움).
     """
-    def _uid(c: dict[str, Any]) -> str:
-        return str(c.get("control_uid") or c.get("display_code") or "")
-
-    def _body(c: dict[str, Any]) -> str:
-        # 실질 요구 내용만(버전·번호 제외) — 번호변경 vs 내용변경 구분용.
-        return json.dumps({"title": c.get("title"), "requirement_text": c.get("requirement_text"),
-                           "interpretations": c.get("interpretations")},
-                          ensure_ascii=False, sort_keys=True)
+    _uid = _control_uid
+    _body = _control_body
 
     old_by = {_uid(c): c for c in old_controls}
     new_by = {_uid(c): c for c in new_controls}
@@ -430,6 +493,99 @@ def initialize_cycle_from_previous(
     }
 
 
+def _carry_cycle_control(prev: dict[str, Any], new_ref: str, reason: str, review: bool,
+                         new_cycle_id: str, now: str, created_by: str) -> dict[str, Any]:
+    """이전 주기 통제를 새 참조로 이관 — 운영설정 승계 + 증적·평가 초기화 + 계보 기록."""
+    cc = build_cycle_control(cycle_id=new_cycle_id, control_ref=new_ref,
+                             assignee=str(prev.get("assignee") or ""),
+                             applicability=str(prev.get("applicability") or "pending_assessment"),
+                             now=now, created_by=created_by)
+    cc["evidence_contract_ref"] = prev.get("evidence_contract_ref", "")
+    cc["evidence_status"] = _RESET_EVIDENCE
+    cc["assessment_status"] = _RESET_ASSESSMENT
+    cc["carried_from_control_ref"] = prev.get("control_ref")
+    cc["carried_from"] = prev.get("id")
+    cc["migration_reason"] = reason
+    cc["requires_design_review"] = review
+    cc["history"].append({"ts": now, "actor": created_by, "action": "migrated",
+                          "note": f"{reason} — 승계: 담당자·적용성 / 초기화: 증적·평가"})
+    return cc
+
+
+def plan_cycle_migration(
+    prev_cycle_controls: list[dict[str, Any]], old_controls: list[dict[str, Any]],
+    new_controls: list[dict[str, Any]], new_cycle_id: str, *, now: str, created_by: str = "",
+) -> dict[str, Any]:
+    """**진짜 버전 마이그레이션**(S2) — version diff 와 운영주기 승계를 하나로 묶는다.
+
+    이전 주기 통제(control_ref = 구버전 통제 id)를 control_uid 계보로 신버전 통제에 연결한다.
+    - 번호 변경(renumbered): 새 참조로 이관.
+    - 내용 변경(text_changed): 새 참조로 이관 + requires_design_review=True.
+    - 삭제(removed): 새 주기에 만들지 않고 removed 목록 + 검토 대상(unresolved).
+    - 신규(added): 신규 통제 생성(requires_design_review=True).
+    운영설정(담당자·적용성)은 승계, 증적·평가는 초기화. 담당자 검토 후보이지 자동 확정이 아니다.
+    """
+    old_by_id = {c["id"]: c for c in old_controls}
+    new_by_uid = {_control_uid(c): c for c in new_controls}
+
+    controls: list[dict[str, Any]] = []
+    removed: list[dict[str, Any]] = []
+    counts = {"carried": 0, "renumbered": 0, "text_changed": 0,
+              "new_controls": 0, "removed_controls": 0, "unresolved_mappings": 0}
+    carried_uids: set[str] = set()
+
+    for prev in prev_cycle_controls:
+        ref = str(prev.get("control_ref") or "")
+        old_def = old_by_id.get(ref)
+        if old_def is None:
+            # 이전 참조가 구버전 통제 정의가 아님(내부통제 등) — 그대로 승계.
+            controls.append(_carry_cycle_control(prev, ref, "carried", False,
+                                                 new_cycle_id, now, created_by))
+            counts["carried"] += 1
+            continue
+        uid = _control_uid(old_def)
+        new_def = new_by_uid.get(uid)
+        if new_def is None:
+            removed.append({"control_uid": uid, "old_ref": ref,
+                            "display_code": old_def.get("display_code"),
+                            "title": old_def.get("title"),
+                            "action_required": "종료 또는 대체 매핑 검토"})
+            counts["removed_controls"] += 1
+            counts["unresolved_mappings"] += 1
+            continue
+        carried_uids.add(uid)
+        reason = _migration_reason(old_def, new_def)
+        review = reason == "text_changed"
+        controls.append(_carry_cycle_control(prev, new_def["id"], reason, review,
+                                             new_cycle_id, now, created_by))
+        counts["carried"] += 1
+        if reason == "renumbered":
+            counts["renumbered"] += 1
+        elif reason == "text_changed":
+            counts["text_changed"] += 1
+
+    # 신규 통제(어느 이전 통제에도 연결 안 됨) — 새로 생성, 재설계 검토 대상.
+    for uid, new_def in new_by_uid.items():
+        if uid in carried_uids:
+            continue
+        cc = build_cycle_control(cycle_id=new_cycle_id, control_ref=new_def["id"],
+                                 now=now, created_by=created_by)
+        cc["migration_reason"] = "new"
+        cc["requires_design_review"] = True
+        cc["history"].append({"ts": now, "actor": created_by, "action": "new_control",
+                              "note": "신규 통제 — 설계·적용성 검토 필요"})
+        controls.append(cc)
+        counts["new_controls"] += 1
+
+    return {
+        "new_cycle_id": new_cycle_id, "counts": counts,
+        "removed_controls": removed,
+        "changed_controls_requiring_review": [c["control_ref"] for c in controls
+                                              if c.get("requires_design_review")],
+        "cycle_controls": controls,
+    }
+
+
 def cycle_control_as_of(cc: dict[str, Any], as_of_ts: str) -> dict[str, Any]:
     """history 를 재생해 특정 시점(as_of_ts)의 통제 상태를 재현한다(감사 시점 조회)."""
     state = {"evidence_status": "missing", "assessment_status": "not_assessed",
@@ -455,4 +611,6 @@ __all__ = [
     "apply_cycle_control_update", "cycle_control_as_of",
     "diff_control_definitions", "initialize_cycle_from_previous",
     "build_cycle_audit_snapshot", "build_crosswalk", "apply_overlay",
+    "VERSION_TRANSITIONS", "can_version_transition", "apply_version_lifecycle", "periods_overlap",
+    "plan_cycle_migration",
 ]
