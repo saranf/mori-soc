@@ -147,6 +147,21 @@ class MigrationE2ETests(unittest.TestCase):
         self.assertTrue(verify_audit_chain(loaded)["ok"])          # 체인 무결
         self.assertEqual(repo.latest_audit_event()["seq"], 3)      # head 시딩용
 
+    def test_evidence_approval_persist(self) -> None:
+        # 증적 승인 스냅샷 영속·조회(#4 불변 기록).
+        from mori_soc.repositories.state_postgres import PostgresStateRepository
+        repo = PostgresStateRepository(self._url)
+        repo.apply_schema()
+        rec = {"approval_id": "appr-x1", "control_id": "3.1.1", "evidence_id": "3.1.1",
+               "content_hash": "h" * 64, "version": "hhhhhhhhhhhh", "status": "approved",
+               "reviewer": "", "approver": "admin", "reviewed_at": "", "approved_at": "2026-07-01T00:00:00+00:00",
+               "pdf_sha256": "p" * 64, "prev_approval_id": "", "supersede_reason": "", "actor": "admin"}
+        repo.save_evidence_approval("appr-x1", rec)
+        rows = repo.load_evidence_approvals("3.1.1")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["status"], "approved")
+        self.assertEqual(rows[0]["pdf_sha256"], "p" * 64)
+
     def test_worker_leader_lock_single_holder(self) -> None:
         # 리더 선출(#26): 한 번에 한 연결만 advisory lock 을 쥔다.
         import os

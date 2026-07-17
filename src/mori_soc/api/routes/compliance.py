@@ -290,6 +290,92 @@ def register_compliance(ctx: RouteContext) -> None:
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"control catalog unavailable: {exc}") from exc
 
+    def _control_evidence_state(control_id: str) -> tuple[bool, str]:
+        """통제 증적 '집합'의 존재 여부 + aggregate content_hash. 증적이 하나라도 바뀌면 해시가 달라진다."""
+        import hashlib as _h
+        recs = [v for v in ctx.control_evidence.values() if str(v.get("control_id")) == control_id]
+        if not recs:
+            return False, ""
+        parts = sorted(str(r.get("content_hash") or r.get("id") or "") for r in recs)
+        return True, _h.sha1("|".join(parts).encode("utf-8")).hexdigest()
+
+    def _current_approval_status(approvals: list[dict[str, Any]],
+                                 current_hash: str = "") -> tuple[str, dict[str, Any] | None]:
+        """현재 상태·현재 레코드. 증적 내용(content_hash)이 최신 승인본과 다르면 새 버전(draft)."""
+        if not approvals:
+            return "draft", None
+        latest = approvals[0]  # created_at DESC
+        # 증적 내용이 바뀌었으면 승인본은 그대로 두고 새 버전 검토 사이클을 시작한다.
+        if current_hash and str(latest.get("content_hash") or "") != current_hash:
+            return "draft", latest
+        st = str(latest.get("status") or "draft")
+        if st == "superseded":
+            return "draft", latest
+        return st, latest
+
+    @app.get("/controls/evidence/{control_id}/approvals", tags=["Compliance"])
+    def evidence_approvals_list(control_id: str, request: Request) -> dict[str, Any]:
+        """통제 증적의 승인 버전 이력(#4). 과거 승인본은 불변으로 보존된다. admin·security."""
+        _require_ev(request)
+        repo = ctx.state_repo
+        approvals = repo.load_evidence_approvals(control_id) if repo is not None else []
+        _, cur_hash = _control_evidence_state(control_id)
+        status, current = _current_approval_status(approvals, cur_hash)
+        return {"control_id": control_id, "current_status": status,
+                "current": current, "approvals": approvals}
+
+    @app.post("/controls/evidence/{control_id}/transition", tags=["Compliance"])
+    def evidence_transition(control_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """증적 승인 상태 전이(#4): draft→reviewed→approved→superseded / revoked.
+
+        승인(approved)하면 그 시점 스냅샷(content_hash·PDF SHA-256·검토자·승인자)을 불변 기록으로
+        고정하고, 이전 승인본은 superseded 로 대체한다(과거본 미삭제).
+        """
+        from datetime import datetime as _dt
+        from datetime import timezone as _tz
+
+        from mori_soc.services.evidence_approval import (
+            ROLE_FOR,
+            STATUSES,
+            build_approval,
+            can_transition,
+        )
+        role = _evidence_role(request)
+        target = str(payload.get("target", "")).strip()
+        if target not in STATUSES:
+            raise HTTPException(status_code=400, detail=f"target must be one of {', '.join(STATUSES)}")
+        has_ev, cur_hash = _control_evidence_state(control_id)
+        if not has_ev:
+            raise HTTPException(status_code=404, detail="no evidence for this control yet")
+        repo = ctx.state_repo
+        approvals = repo.load_evidence_approvals(control_id) if repo is not None else []
+        current_status, current = _current_approval_status(approvals, cur_hash)
+        if ctx.auth_enabled and role not in ROLE_FOR.get(target, ()):
+            raise HTTPException(status_code=403, detail=f"{target} 전이는 {'/'.join(ROLE_FOR.get(target, ()))} 권한이 필요합니다.")
+        if not can_transition(current_status, target):
+            raise HTTPException(status_code=400, detail=f"{current_status} → {target} 전이는 허용되지 않습니다.")
+        now = _dt.now(tz=_tz.utc).isoformat()
+        actor = (ctx.get_session_username(request) if ctx.get_session_username else "") or "unknown"
+        approval = build_approval(
+            control_id=control_id, evidence_id=control_id,
+            content_hash=cur_hash, version=cur_hash[:12],
+            status=target, actor=actor, reason=str(payload.get("reason", "")),
+            pdf_hash=str(payload.get("pdf_sha256", "")),
+            prev_approval_id=str((current or {}).get("approval_id") or ""),
+            now=now)
+        if repo is not None:
+            repo.save_evidence_approval(approval["approval_id"], approval)
+            # 승인 시: 직전 approved 본을 superseded 로 고정(불변 보존, 삭제 아님).
+            if target == "approved":
+                for a in approvals:
+                    if a.get("status") == "approved" and a.get("approval_id") != approval["approval_id"]:
+                        a2 = dict(a); a2["status"] = "superseded"
+                        a2["supersede_reason"] = f"대체: {approval['version']}"
+                        repo.save_evidence_approval(a2["approval_id"], a2)
+        if ctx.log_action:
+            ctx.log_action(actor, "EVIDENCE_TRANSITION", f"{control_id} {current_status}→{target}")
+        return {"ok": True, **approval}
+
     @app.get("/controls/maturity", tags=["Compliance"])
     def controls_maturity(request: Request) -> dict[str, Any]:
         """통제 성숙도 요약(#46) — 레벨별(draft/reviewed/mapped/auto_evidence) 통제 수.

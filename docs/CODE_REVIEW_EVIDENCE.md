@@ -97,6 +97,19 @@ GRC 가 못 하는 차별점). 스캔 증적 envelope 에 재현성 입력을 �
 - **비결정성 경고**: 재현성 입력이 완전히 같은데(같은 input_signature) 결과가 다르면 스캐너 비결정성으로
   표시 — 감사 신뢰상 중요한 신호. 스캔 이력 UI 의 **"변경 비교"** 로 확인. 구현: `services/scan_diff.py`.
 
+### 증적 승인·버전·불변성(#4)
+
+MORI 가 만든 기술 증적을 **감사 가능한 기록으로 고정**한다(문서관리 시스템이 아니라 증적 고정).
+상태기계 `draft → reviewed → approved → superseded / revoked`(권한: review=admin·security, approve=admin).
+
+- `POST /controls/evidence/{control_id}/transition {target, reason?, pdf_sha256?}` — 전이. 승인 시
+  그 시점 스냅샷(통제 증적 **집합의 aggregate content_hash** · PDF SHA-256 · 검토자 · 승인자 · 이전
+  버전)을 **불변 기록**(`ui_evidence_approvals`)으로 고정한다.
+- 새 스캔/증적으로 내용이 바뀌면(aggregate content_hash 변경) **과거 승인본을 덮어쓰지 않고** 새
+  버전 검토 사이클(draft)이 시작된다. 새 버전이 승인되면 이전 승인본은 `superseded`(보존, 삭제 아님).
+  → "2026-07 v1 승인 / 2026-08 v2 검토중 → 승인, v1 superseded". `GET …/approvals` 로 버전 이력 조회.
+- 구현: `services/evidence_approval.py`(상태기계·스냅샷), state repo `save/load_evidence_approval`.
+
 ### 처리 보장(트랜잭션 경계)
 
 인제스트/증적 파이프라인은 **부분 성공을 정직하게 보고**한다(조용히 성공으로 위장하지 않음).

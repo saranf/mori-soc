@@ -438,6 +438,52 @@ class PostgresStateRepository(StateRepository):
             row = cur.fetchone()
         return {"seq": row[0], "hash": row[1]} if row else None
 
+    # ── evidence_approvals: 증적 승인 스냅샷(불변, #4) ─────────────────────────
+    _APPROVAL_COLS = ("approval_id", "control_id", "evidence_id", "content_hash", "version",
+                      "status", "reviewer", "approver", "reviewed_at", "approved_at",
+                      "pdf_sha256", "prev_approval_id", "supersede_reason", "actor", "created_at")
+
+    def save_evidence_approval(self, approval_id: str, record: dict[str, Any]) -> None:
+        def _ts(v: Any) -> Any:
+            return v or None
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO ui_evidence_approvals (approval_id, control_id, evidence_id, content_hash,"
+                " version, status, reviewer, approver, reviewed_at, approved_at, pdf_sha256,"
+                " prev_approval_id, supersede_reason, actor, created_at) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, now()) "
+                "ON CONFLICT (approval_id) DO UPDATE SET status = EXCLUDED.status, "
+                "supersede_reason = EXCLUDED.supersede_reason",
+                (approval_id, record.get("control_id"), record.get("evidence_id"),
+                 record.get("content_hash"), record.get("version"), record.get("status"),
+                 record.get("reviewer"), record.get("approver"), _ts(record.get("reviewed_at")),
+                 _ts(record.get("approved_at")), record.get("pdf_sha256"),
+                 record.get("prev_approval_id"), record.get("supersede_reason"), record.get("actor")))
+
+    def load_evidence_approvals(self, control_id: str | None = None) -> list[dict[str, Any]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            if control_id:
+                cur.execute(
+                    "SELECT approval_id, control_id, evidence_id, content_hash, version, status, "
+                    "reviewer, approver, reviewed_at, approved_at, pdf_sha256, prev_approval_id, "
+                    "supersede_reason, actor, created_at FROM ui_evidence_approvals "
+                    "WHERE control_id = %s ORDER BY created_at DESC", (control_id,))
+            else:
+                cur.execute(
+                    "SELECT approval_id, control_id, evidence_id, content_hash, version, status, "
+                    "reviewer, approver, reviewed_at, approved_at, pdf_sha256, prev_approval_id, "
+                    "supersede_reason, actor, created_at FROM ui_evidence_approvals "
+                    "ORDER BY created_at DESC LIMIT 500")
+            rows = cur.fetchall()
+        out = []
+        for r in rows:
+            d = dict(zip(self._APPROVAL_COLS, r))
+            for k in ("reviewed_at", "approved_at", "created_at"):
+                if d.get(k) is not None and hasattr(d[k], "isoformat"):
+                    d[k] = d[k].isoformat()
+            out.append(d)
+        return out
+
     # ── settings (org-wide key-value) ──────────────────────────────────────────
     def load_settings(self) -> dict[str, str]:
         with self._connect() as conn, conn.cursor() as cur:

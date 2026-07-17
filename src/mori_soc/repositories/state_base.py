@@ -115,6 +115,13 @@ class StateRepository(ABC):
         """가장 최신 감사 항목(재시작 후 체인 head 시딩용). 기본 None."""
         return None
 
+    # ── evidence_approvals: 증적 승인 스냅샷(불변, #4). 기본 no-op ──────────────
+    def save_evidence_approval(self, approval_id: str, record: dict[str, Any]) -> None:
+        return None
+
+    def load_evidence_approvals(self, control_id: str | None = None) -> list[dict[str, Any]]:
+        return []
+
     @abstractmethod
     def delete_evidence_event(self, event_id: str) -> None:
         """Remove one evidence event."""
