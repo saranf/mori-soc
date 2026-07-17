@@ -339,6 +339,23 @@ class ControlGovernanceRouteTests(unittest.TestCase):
                          "control_uid": uid, "requirement_text": req})
         return r.json()["id"]
 
+    def test_event_ledger_preserves_every_change(self) -> None:
+        # 리뷰(concurrency) 우려 완화: projection 이 last-write 라도 모든 변경은 append-only 원장에
+        # 불변으로 남는다(이력 유실 없음). 두 번 갱신 → 이벤트 2건(+생성) 원장 보존·체인 무결.
+        c = self._client()
+        self._seed_control(c, "ISMS-P", "2023", "2.9.4", uid="log")
+        c.post("/governance/assurance-cycles",
+               json={"cycle_id": "cyc", "name": "c", "framework_version_id": "isms-p:2023"})
+        cc = c.post("/governance/cycle-controls",
+                    json={"cycle_id": "cyc", "control_ref": "isms-p:2023:2.9.4"}).json()
+        c.post(f"/governance/cycle-controls/{cc['id']}/update", json={"evidence_status": "available"})
+        c.post(f"/governance/cycle-controls/{cc['id']}/update", json={"evidence_status": "approved"})
+        evs = c.get("/governance/events",
+                    params={"kind": "cycle_control", "entity_id": cc["id"]}).json()["events"]
+        # create + update + update = revision 1,2,3 모두 원장에 보존
+        self.assertEqual([e["revision"] for e in evs], [1, 2, 3])
+        self.assertTrue(c.get("/governance/events/verify").json()["ok"])
+
     def test_relationship_and_org_control(self) -> None:
         c = self._client()
         src = self._seed_control(c, "ISMS-P", "2019", "2.9.4", uid="log")

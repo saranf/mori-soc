@@ -90,6 +90,12 @@ POST /assurance-cycles/{id}/initialize-from/{prev} · /controls/{id}/overlay-vie
   (`GET /governance/events/verify`).
 - **실 Postgres E2E(S4)**: 2019 등록→2025 운영→2023 버전변경→2026 이관→**재시작**→객체·이벤트·
   history 보존·chain 무결·as-of 재현까지 실 DB 로 검증.
+- **동시성/이력 유실 방지**: projection(`ui_control_governance`)은 last-write-wins 최신 뷰지만,
+  모든 변경은 append-only 이벤트 원장에 revision·hash chain 으로 **불변 기록**된다(event sourcing).
+  두 요청이 동시에 갱신해도 각 변경이 원장에 남아 이력이 유실되지 않는다(GET /governance/events/verify).
+- **완전한 1개 E2E(#3)**: framework/version/control→내부통제→증적계약→운영주기/주기통제→증적승인→
+  평가(evidence_set_hash 고정)→Gap(후보→조치→재검증)→재시작→as-of·평가스냅샷·Gap 근거·체인 전부
+  재현. `tests/test_migration_e2e.py::test_full_control_lifecycle_e2e`.
 
 ## 6-2. 이중 모델 브리지 (C6)
 
