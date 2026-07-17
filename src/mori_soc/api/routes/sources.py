@@ -526,6 +526,8 @@ def register_sources(ctx: RouteContext) -> None:
                       "summary": f"코드 보안 리뷰 스캔: {resolved_repo or '?'}@{short} — findings {len(findings)}건{pii_note}",
                       "source": "code_review", "envelope": provenance, "received_at": now_iso,
                       "findings_count": len(findings), "pii_seeded": pii_seeded}
+            from mori_soc.services.provenance import attach_provenance
+            attach_provenance(record)   # 출처 태그(Semgrep=RULE·CODE / Claude=AI) — 모리다움
             try:
                 state_repo.save_evidence_event(ev_id, record)
                 scan_recorded = True

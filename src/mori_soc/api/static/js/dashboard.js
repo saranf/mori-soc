@@ -3658,7 +3658,8 @@
           const csvUrl = '/controls/code-review/findings.csv' + (q.toString() ? ('?'+q.toString()) : '');
           const dl = ` · <a href="#" onclick="event.preventDefault();openCsvPreview({title:tt('dash.ctl.scan_csv_title','코드 리뷰 findings CSV 미리보기'),filename:'mori-code-review-findings.csv',url:'${csvUrl}'})" style="color:#2563eb;text-decoration:none">${tt('dash.ctl.scan_csv_dl','결과 CSV')}</a>`;
           const del = e.id ? ` <a href="#" title="${tt('dash.ctl.scan_del','이력 삭제')}" onclick="event.preventDefault();deleteCodeReviewScan('${escapeHtml(e.id)}')" style="color:#dc2626;text-decoration:none;font-weight:700">×</a>` : '';
-          return `<div style="padding:5px 0;border-bottom:1px solid #f3f4f6">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style="color:#111827">${escapeHtml(when)}</span> ${verified}${toolBadge}${link}${dl}${del}</div>`;
+          const prov = provenanceBadges(e.provenance);
+          return `<div style="padding:5px 0;border-bottom:1px solid #f3f4f6">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style="color:#111827">${escapeHtml(when)}</span> ${verified}${toolBadge}${prov}${link}${dl}${del}</div>`;
         }).join('');
       } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.ctl.scan_hist_err','이력을 불러오지 못했어요')}</span>`; }
     }
@@ -4107,6 +4108,18 @@
       });
     }
     window.importAssetOwnersCsv = importAssetOwnersCsv;
+
+    /* 증적 출처·신뢰수준 배지(모리다움). 팔레트 6색으로 의미 구분:
+       코드·API·정책=파(측정된 사실), 규칙=검, AI=노(후보·주의), 사람확인=초. */
+    function provenanceBadges(tags) {
+      if (!tags || !tags.length) return '';
+      const color = { CODE: '#2563eb', API: '#2563eb', POLICY: '#2563eb', RULE: '#111827', AI: '#ca8a04', HUMAN: '#16a34a' };
+      return ' ' + tags.map(t => {
+        const c = color[t] || '#111827';
+        return `<span title="${escapeHtml(tt('dash.prov.' + t, t))}" style="color:${c};border:1px solid ${c};border-radius:5px;padding:0 5px;font-size:10px">${escapeHtml(t)}</span>`;
+      }).join(' ');
+    }
+    window.provenanceBadges = provenanceBadges;
     async function loadEvidenceGaps() {
       const box = document.getElementById('evidence_gap_box');
       if (!box) return;

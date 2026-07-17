@@ -28,9 +28,11 @@ def content_hash(rec: dict[str, Any]) -> str:
 
 
 def stamp_evidence(rec: dict[str, Any]) -> dict[str, Any]:
-    """레코드에 content_hash·version·generated_at 을 채워 provenance 를 완성한다(제자리 수정)."""
+    """레코드에 content_hash·version·generated_at·provenance 를 채운다(제자리 수정)."""
+    from mori_soc.services.provenance import attach_provenance
     h = content_hash(rec)
     rec["content_hash"] = h
     rec.setdefault("version", h[:12])
     rec.setdefault("generated_at", rec.get("created_at") or rec.get("collected_at"))
+    attach_provenance(rec)   # 출처 태그(CODE/API/RULE/AI/HUMAN/POLICY) — 모리다움
     return rec
