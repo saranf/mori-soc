@@ -71,7 +71,9 @@ flowchart LR
 
 - **대상** — 보안 담당자 1~2명 + IT 헬프데스크로 ISMS-P / ISO 27001을 준비하는 중소형 조직
 - **한 줄 시작** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, 데모 전용)
-- **핵심 가치** — 기존 도구를 **대체하지 않고**, 그 운영 데이터를 감사 증적으로 전환하는 read-only 레이어
+- **핵심 가치** — 기존 도구를 **대체하지 않고**, 그 운영 데이터를 감사 증적으로 전환하는 기본 read-only 레이어
+
+> **기본은 읽기 전용.** MORI는 명시적으로 켜지 않는 한 소스 시스템에 쓰지 않습니다. 유일한 예외는 **옵트인·감사되는 Zabbix write-back**(triage 코멘트/ack/suppress) — `MORI_ZABBIX_WRITEBACK_MODE`를 설정해야만 동작하고, 모든 쓰기는 감사로그에 남습니다. 그 외는 전부 수집/읽기 전용입니다.
 
 ## 핵심 기능
 

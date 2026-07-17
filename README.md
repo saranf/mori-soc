@@ -57,7 +57,9 @@ flowchart LR
 
 - **Who it's for** — small/mid orgs preparing ISMS-P / ISO 27001 with 1–2 security staff + IT help desk
 - **One-line start** — `./scripts/mori-start-demo.sh` → `http://localhost:18000/ui` (`admin / 1234`, demo only)
-- **Core value** — a read-only layer that **does not replace** your tools; it turns their operational data into audit evidence
+- **Core value** — a read-only-by-default layer that **does not replace** your tools; it turns their operational data into audit evidence
+
+> **Read-only by default.** MORI never writes to your source systems unless you explicitly enable it. The one exception is **optional, opt-in, audited Zabbix write-back** (triage comment / ack / suppress) — off unless `MORI_ZABBIX_WRITEBACK_MODE` is set, and every write is recorded in the audit log. Everything else is ingest/read only.
 
 ## Key features
 

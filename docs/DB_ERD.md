@@ -1,6 +1,8 @@
 # MORI SOC — DB Architecture & ERD
 
-PostgreSQL, applied as ordered migrations in [`schema/`](../schema/) (`001` → `011`). The schema splits into **three layers**:
+PostgreSQL, applied as ordered migrations in [`schema/`](../schema/) (`001` → `018`). The schema splits into **three layers**:
+
+> **Since this ERD's core tables (001–011)**, later migrations added UI operational-state and audit tables: `012` code-review source · `013` personal_data_flow · `014` action audit log (hash chain) · `015` evidence_approvals · `016` gaps · `017` control_governance (framework/version/control/relationship/org-control/cycle/scope/evidence-contract/mapping, one `(kind,entity_id)` table) · `018` control_governance_events (append-only hash-chained event ledger). These follow the same `(id, record JSONB, updated_at)` or append-only pattern and are self-healed at boot by `apply_schema`.
 
 | Layer | Purpose | Written by | Tables |
 |---|---|---|---|

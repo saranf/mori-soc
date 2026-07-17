@@ -94,7 +94,7 @@ def build_framework_version(*, framework_id: str, version: str, effective_from: 
     """기준 버전 레코드. id = framework_id:version(중복 시 서비스층에서 거부)."""
     fid = _slug(framework_id)
     fv_id = f"{fid}:{_slug(version)}"
-    rec = {
+    rec: dict[str, Any] = {
         "id": fv_id, "framework_version_id": fv_id, "framework_id": fid, "version": str(version),
         "effective_from": effective_from, "effective_to": effective_to, "status": status,
         "source_type": source_type, "source_hash": source_hash, "supersedes": supersedes,
@@ -287,8 +287,8 @@ def build_cycle_audit_snapshot(
     for cc in cycle_controls:
         st = cycle_control_as_of(cc, as_of)
         controls.append({"cycle_control_id": cc.get("id"), "control_ref": cc.get("control_ref"), **st})
-    ev = {}
-    asmt = {}
+    ev: dict[str, int] = {}
+    asmt: dict[str, int] = {}
     for c in controls:
         ev[c["evidence_status"]] = ev.get(c["evidence_status"], 0) + 1
         asmt[c["assessment_status"]] = asmt.get(c["assessment_status"], 0) + 1

@@ -66,6 +66,31 @@ GET  /assurance-cycles/{id}/controls · /audit-snapshot · /cycle-controls/{id}/
 POST /assurance-cycles/{id}/initialize-from/{prev} · /controls/{id}/overlay-view
 ```
 
+## 6-1. 감사 무결성 강화 (S1–S4)
+
+리뷰가 지적한 "강한 단어(불변·append-only·시점 재현) vs 실제 구현" 격차를 감사급으로 좁힘.
+
+- **content_hash 안정성(S1a)**: 해시는 lifecycle 메타(status·activated_at·effective_to·lifecycle·
+  history) 를 제외한 **실질 내용**만 대상. activate/retire 후에도 지문 불변. 상태 전환은
+  `lifecycle[]` 이벤트로 append.
+- **as-of 정확성(S1b)**: CycleControl 최초 history 에 초기 assignee/applicability 를 `changed` 로
+  기록 → 생성 시점 상태를 정확히 재현.
+- **버전 상태기계(S1c)**: `draft→active→retired` 만(`can_version_transition`). framework 당 active
+  1개, 재활성 금지, 시행기간 겹침 거부.
+- **참조 무결성(S1d)**: cycle→framework_version/scope, contract·mapping→organization_control,
+  cycle_control→cycle/control, relationship source·target 실재 검증(dangling 금지).
+- **입력 검증(S1e)**: coverage 0~100·비숫자 400(500 아님)·자기참조·중복 관계·중복 매핑 버전 거부.
+- **no-op 방지(S1f)**: 값 변화 없는 갱신은 history 를 남기지 않음(`_no_op`).
+- **진짜 마이그레이션(S2)**: `plan_cycle_migration` 이 version diff 계보로 번호변경=새 참조 이관·
+  내용변경=재설계검토·삭제=removed·신규=생성. 운영설정 승계 / 증적·평가 초기화 +
+  `carried_from_control_ref`·`migration_reason`·`requires_design_review` 계보 기록.
+- **append-only 이벤트 원장(S3)**: `ui_control_governance` 는 projection, `ui_control_governance_events`
+  (schema 018)가 진짜 변경 이력. 모든 저장이 `(revision·event_type·actor·payload·prev_hash·hash)`
+  이벤트를 append — 감사로그와 동일 **hash chain** 으로 변조·삭제·재배열 검증
+  (`GET /governance/events/verify`).
+- **실 Postgres E2E(S4)**: 2019 등록→2025 운영→2023 버전변경→2026 이관→**재시작**→객체·이벤트·
+  history 보존·chain 무결·as-of 재현까지 실 DB 로 검증.
+
 ## 7. 검증 상태
 
 - 유닛/라우트: `tests/test_control_governance.py` — content_hash 불변성·해석층 분리·버전 diff·

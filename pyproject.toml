@@ -64,4 +64,9 @@ files = [
     "src/mori_soc/api/ratelimit.py",
     "src/mori_soc/services/csv_export.py",
     "src/mori_soc/services/evidence.py",
+    "src/mori_soc/services/control_governance.py",
+    "src/mori_soc/services/change_report.py",
+    "src/mori_soc/services/sampling.py",
+    "src/mori_soc/services/scope_coverage.py",
+    "src/mori_soc/services/evidence_freshness.py",
 ]

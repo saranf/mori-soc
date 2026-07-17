@@ -266,7 +266,12 @@ def create_app(
     if state_repo is None:
         state_repo = InMemoryStateRepository()
 
-    app = FastAPI(title="MORI SOC — Audit-Ready Security Operations API", version="0.2.0")
+    try:
+        from importlib.metadata import version as _pkg_version
+        _app_version = _pkg_version("mori-soc")
+    except Exception:  # pragma: no cover - 메타데이터 없으면 pyproject 값으로 폴백
+        _app_version = "0.6.0"
+    app = FastAPI(title="MORI SOC — Audit-Ready Security Operations API", version=_app_version)
 
     # 정적 자산(#34 UI 분리): CSS 등 보간 없는 자산을 별도 파일로 서빙(/static, 무인증).
     try:

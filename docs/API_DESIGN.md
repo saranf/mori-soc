@@ -45,6 +45,12 @@ FastAPI (Python 3.12). `server.py` is a thin orchestrator that assembles a `Rout
 ### Evidence (catalog)
 `GET /controls/detail/{id}/evidence.pdf` · `…/evidence.csv` · `GET /controls/evidence-bundle.zip?scope=mapped|all` · `GET|POST /controls/detail/{id}/evidence-records` · `POST …/evidence-records/auto` (dated live snapshot) · `DELETE …/evidence-records/{evidence_id}` · `GET|POST /controls/evidence-snapshot/config` · `POST /controls/evidence-snapshot/run`
 
+### Evidence trust · audit-usability (roadmap #1–#15)
+`GET /controls/code-review/scan-diff` · `GET|POST /controls/evidence/{id}/approvals` · `POST …/transition` · `GET /controls/evidence-freshness` · `GET|POST /gaps` · `POST /gaps/{id}/transition` · `GET /gaps/deadlines` · `POST /controls/audit-sample(.zip)` · `GET /controls/change-report?month=YYYY-MM` · `GET /assets/scope-coverage` · Privacy 3.x: `GET /privacy/processing-tasks(.csv)` · `/privacy/external-recipients(.csv)` · `GET|PUT /privacy/policy-compare` · `POST /privacy/data-flow/{id}/review` · `GET /privacy/isms-3x-package(.zip)`
+
+### Control governance (operating platform, admin·security)
+`GET|POST /governance/frameworks` · `GET /governance/frameworks/{id}/versions` · `POST /governance/framework-versions` (+`/{id}/activate` `/retire` `/compare?to=`) · `POST /governance/control-definitions` · `GET|POST /governance/relationships` · `GET|POST /governance/organization-controls` · `GET|POST /governance/scope-snapshots` · `GET|POST /governance/assurance-cycles` (+`/{id}/controls` `/audit-snapshot` `/initialize-from/{prev}`) · `GET|POST /governance/evidence-contracts` · `GET|POST /governance/evidence-mappings` · `POST /governance/cycle-controls` (+`/{id}/update` `/as-of`) · `GET /governance/crosswalk` · `POST /governance/controls/{id}/overlay-view` · `GET /governance/events(/verify)` (append-only hash chain). See [Control governance](CONTROL_GOVERNANCE.md).
+
 ### Account governance
 `GET /accounts/overview` · `GET /accounts/overview.csv` · `GET /accounts/host/{host_key}` · `…/privileged` · `GET|POST /accounts/approvals` · `DELETE /accounts/approvals/{id}` · `POST /accounts/approval-requests` · `POST /accounts/approvals/{id}/approve|reject` · `GET|POST /accounts/view-roles`
 
