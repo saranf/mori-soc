@@ -41,6 +41,25 @@ def register_assets(ctx: RouteContext) -> None:
     def owners_list() -> Any:
         return {"owners": list(asset_owners.values())}
 
+    # ── 인증범위 태그·커버리지(#12) — 인증범위 자산 중 기술 신호 커버 비율 ─────────────────
+    @app.get("/assets/scope-coverage", tags=["Assets"])
+    def scope_coverage() -> Any:
+        """자산 범위 태그별 커버리지 + 인증범위 자산의 모니터링 커버 비율.
+
+        풀 범위관리 모듈이 아니라 태그 + 커버리지만(모리다움 — 작게, 증적 중심).
+        """
+        from mori_soc.services.scope_coverage import (
+            DEFAULT_SCOPE_TAGS,
+            compute_scope_coverage,
+        )
+        try:
+            monitored = [str(h.hostname) for h in get_query_service().store.hosts if h.hostname]
+        except Exception:
+            monitored = []
+        cov = compute_scope_coverage(asset_owners.values(), monitored)
+        cov["known_tags"] = list(DEFAULT_SCOPE_TAGS)
+        return cov
+
     def _upsert_owner(payload: dict[str, Any], changed_by: str) -> dict[str, Any]:
         """자산 담당자 1건 upsert(변경 감사 포함). 단건 API·CSV import 공통 사용."""
         hostname = str(payload.get("hostname", "")).strip()
@@ -59,6 +78,12 @@ def register_assets(ctx: RouteContext) -> None:
             "team": str(payload.get("team", old_entry.get("team", ""))).strip(),
             "updated_at": now_str,
         }
+        # 인증범위 태그(#12) — 값이 오면 정규화해 반영, 없으면 기존 유지.
+        from mori_soc.services.scope_coverage import normalize_tags
+        if "scope_tags" in payload:
+            entry["scope_tags"] = normalize_tags(payload.get("scope_tags"))
+        elif old_entry.get("scope_tags"):
+            entry["scope_tags"] = normalize_tags(old_entry.get("scope_tags"))
         for field in ("owner", "category", "importance", "exception_until", "exception_reason"):
             old_val = old_entry.get(field, "")
             if entry[field] != old_val:
@@ -85,6 +110,7 @@ def register_assets(ctx: RouteContext) -> None:
         "email": ["이메일", "메일"],
         "category": ["구분", "분류", "카테고리", "용도"],
         "importance": ["중요도", "등급"],
+        "scope_tags": ["인증범위", "범위태그", "scope", "범위"],
     }
 
     def _session_role(request: Request) -> str | None:

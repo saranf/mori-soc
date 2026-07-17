@@ -898,25 +898,66 @@
         const data = await res.json();
         const list = data.owners || [];
         if (!list.length) { ownersListEl.innerHTML = `<span class="empty">${tt('admin.dyn.none_owners','등록된 담당자 없음')}</span>`; return; }
-        ownersListEl.innerHTML = list.map(o => {
+        const rows = list.map(o => {
           const imp = o.importance || '';
           const impBadge = imp ? `<span style="background:#e5e7eb;color:${impColor[imp]||'#111827'};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px">${escapeHtml(impLabel[imp]||imp)}</span>` : '';
           const catBadge = o.category ? `<span style="color:#2563eb;font-size:11px;margin-left:6px">[${escapeHtml(o.category)}]</span>` : '';
+          const tags = (o.scope_tags||[]).map(t=>`<span style="color:#2563eb;border:1px solid #2563eb;border-radius:5px;padding:0 5px;font-size:10px;margin-left:3px">${escapeHtml(t)}</span>`).join('');
           return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:13px;gap:8px">
             <div style="flex:1;min-width:0">
-              <strong style="color:#111827">${escapeHtml(o.hostname)}</strong>${catBadge}${impBadge}
+              <strong style="color:#111827">${escapeHtml(o.hostname)}</strong>${catBadge}${impBadge}${tags}
               <br><span style="color:#16a34a;font-size:12px">${escapeHtml(o.owner||'-')}</span>
               ${o.team ? `<span style="color:#111827;margin-left:6px;font-size:12px">(${escapeHtml(o.team)})</span>` : ''}
               ${o.email ? `<span style="color:#111827;font-size:11px;margin-left:6px">${escapeHtml(o.email)}</span>` : ''}
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0">
+              <button onclick="editScopeTags('${escapeHtml(o.hostname)}')" style="background:#e5e7eb;border:1px solid #e5e7eb;color:#2563eb;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px">${tt('admin.dyn.scope','범위태그')}</button>
               <button onclick="editOwner('${escapeHtml(o.hostname)}')" style="background:#e5e7eb;border:1px solid #e5e7eb;color:#2563eb;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px">${tt('admin.dyn.edit','수정')}</button>
               <button onclick="deleteOwner('${escapeHtml(o.hostname)}')" style="background:#fee2e2;border:none;color:#dc2626;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px">${tt('admin.dyn.delete','삭제')}</button>
             </div>
           </div>`;
         }).join('');
+        ownersListEl.innerHTML = `<div id="scope_cov_box" style="margin-bottom:8px"></div>` + rows;
+        loadScopeCoverage();
       } catch(e) { ownersListEl.innerHTML = `<span class="empty">${tt('admin.dyn.error_prefix','오류: ')}${escapeHtml(e.message)}</span>`; }
     }
+
+    // ── 인증범위 태그·커버리지(#12) ────────────────────────────────────────────────
+    async function loadScopeCoverage() {
+      const box = document.getElementById('scope_cov_box');
+      if (!box) return;
+      try {
+        const res = await fetch('/assets/scope-coverage');
+        if (!res.ok) return;
+        const d = await res.json();
+        const is = d.in_scope || {};
+        const tagChips = (d.tags||[]).map(t=>{
+          const col = t.coverage_pct>=90?'#16a34a':(t.coverage_pct>=60?'#ca8a04':'#dc2626');
+          return `<span style="border:1px solid ${col};color:${col};border-radius:5px;padding:1px 6px;font-size:11px;margin:2px 4px 2px 0;display:inline-block">${escapeHtml(t.tag)} ${t.monitored}/${t.assets} (${t.coverage_pct}%)</span>`;
+        }).join('');
+        box.innerHTML = `<div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:12px">
+          <div style="font-weight:600;color:#111827">${tt('admin.dyn.scope_cov','인증범위 커버리지')}</div>
+          <div style="font-size:11px;color:#111827;margin:2px 0 6px;line-height:1.5">${tt('admin.dyn.scope_help','읽는 법: 자산에 붙인 범위 태그별로 <b>기술 신호(모니터링)로 커버되는 비율</b>이에요. ‘인증범위 포함’ 태그 자산 중 실제 수집되는 자산 비율이 인증범위 커버리지예요. 초록≥90%·노랑≥60%·빨강 미만. 미커버 자산은 증적 공백 후보예요.')}</div>
+          <div><b>${tt('admin.dyn.scope_inscope','인증범위 포함')}</b>: ${is.monitored||0}/${is.assets||0} (${is.coverage_pct||0}%)${is.unmonitored?` · <span style="color:#dc2626">${tt('admin.dyn.scope_uncov','미커버')} ${is.unmonitored}</span>`:''}</div>
+          <div style="margin-top:4px">${tagChips||`<span style="color:#6b7280;font-size:11px">${tt('admin.dyn.scope_notag','범위 태그가 붙은 자산이 없어요. ‘범위태그’ 버튼으로 지정하세요.')}</span>`}</div>
+        </div>`;
+      } catch(e) { /* silent */ }
+    }
+    window.loadScopeCoverage = loadScopeCoverage;
+    async function editScopeTags(hostname) {
+      try {
+        const res = await fetch('/assets/owners');
+        const list = (await res.json()).owners || [];
+        const o = list.find(x => x.hostname === hostname) || {};
+        const cur = (o.scope_tags||[]).join(', ');
+        const val = prompt(tt('admin.dyn.scope_prompt','인증범위 태그(쉼표 구분). 예: 인증범위 포함, 개인정보처리시스템, 운영환경'), cur);
+        if (val === null) return;
+        await fetch('/assets/owners', {method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({hostname, scope_tags: val})});
+        await loadOwners();
+      } catch(e) { alert(tt('admin.dyn.error_prefix','오류: ')+e.message); }
+    }
+    window.editScopeTags = editScopeTags;
 
     // ── 자산 정보를 폼에 채워서 수정 모드 진입 ──
     let _ownersCache = [];
