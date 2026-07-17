@@ -314,23 +314,6 @@ class DataFlowServiceTests(unittest.TestCase):
         self.assertIn(("PaymentMethod", "cardExpiryEnc", "카드번호"), got)
         self.assertIn(("User", "rrnEnc", "주민등록번호"), got)        # 폴백(table+storage_column)
 
-    def test_render_swimlane_starts_from_subject(self) -> None:
-        from mori_soc.services.data_flow import render_data_flow_swimlane_svg
-        svg = render_data_flow_swimlane_svg([
-            {"item": "주민등록번호", "table": "Patient", "storage_location": "Patient.rrn",
-             "collection_source": "접수", "purpose": "진료", "third_party": "국민건강보험공단",
-             "destruction": "파기절차"},
-        ])
-        self.assertTrue(svg.startswith("<svg"))
-        self.assertIn("정보주체(고객)", svg)             # 출발점 = 고객
-        for stage in ("수집", "저장", "이용", "파기"):
-            self.assertIn(stage, svg)
-        self.assertIn("Patient.rrn", svg)               # 저장: 테이블.컬럼
-        self.assertIn("국민건강보험공단", svg)            # 연계기관(제3자)
-        self.assertIn("연계기관", svg)
-        # 빈 상태 안내
-        self.assertIn("비어 있습니다", render_data_flow_swimlane_svg([]))
-
     def test_render_svg_has_stages_and_values(self) -> None:
         svg = render_data_flow_svg([{"item": "이메일", "collection_source": "회원가입",
                                      "storage_location": "user-db", "storage_table": "users",

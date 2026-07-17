@@ -850,97 +850,6 @@ def _swimlane_groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [groups[k] for k in order]
 
 
-def render_data_flow_swimlane_svg(rows: list[dict[str, Any]]) -> str:
-    """총괄 개인정보 흐름도(스윔레인, SVG) — **출발점은 정보주체(고객)**.
-
-    레퍼런스(ISMS-P 총괄 흐름도)처럼 왼쪽 정보주체(고객)에서 출발해
-    수집 → 저장(DB 테이블.컬럼) → 이용 → 파기로 흐르고, 제3자 제공은 오른쪽 연계기관으로 분기한다.
-    한 행 = 하나의 개인정보 파일(테이블/업무). 무의존성 SVG 문자열 생성, 팔레트 6색만.
-    """
-    groups = _swimlane_groups(rows)
-    STAGE_COLS = ("수집", "저장", "이용", "파기")
-    stroke = {"정보주체": "#2563eb", "수집": "#2563eb", "저장": "#16a34a",
-              "이용": "#ca8a04", "파기": "#dc2626", "연계기관": "#111827"}
-    subj_w, col_w, link_w, gap, row_h = 120, 150, 120, 30, 78
-    pad_top, pad_left = 54, 20
-    n = max(len(groups), 1)
-    inner_w = len(STAGE_COLS) * col_w + (len(STAGE_COLS) - 1) * gap
-    width = pad_left + subj_w + gap + inner_w + gap + link_w + pad_left
-    height = pad_top + n * (row_h + 16) + 30
-
-    def _cell(x: float, y: float, w: float, color: str, lines: list[str]) -> str:
-        s = [f'<rect x="{x}" y="{y}" width="{w}" height="{row_h}" rx="8" fill="#ffffff" '
-             f'stroke="{color}" stroke-width="1.3"/>']
-        for li, ln in enumerate(lines[:3]):
-            ln = _esc(ln)
-            ln = (ln[:20] + "…") if len(ln) > 21 else ln
-            s.append(f'<text x="{x + w/2}" y="{y + 24 + li*17}" text-anchor="middle" '
-                     f'font-size="11" fill="#111827">{ln}</text>')
-        return "".join(s)
-
-    p: list[str] = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="100%" '
-        f'style="max-width:{width}px;font-family:system-ui,sans-serif">',
-        '<defs><marker id="arw2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">'
-        '<path d="M0,0 L8,4 L0,8 Z" fill="#111827"/></marker></defs>',
-    ]
-    # 헤더(열 라벨)
-    headers = [("정보주체(고객)", pad_left, subj_w)]
-    x = pad_left + subj_w + gap
-    for st in STAGE_COLS:
-        headers.append((st, x, col_w))
-        x += col_w + gap
-    headers.append(("연계기관(제3자)", x, link_w))
-    for label, hx, hw in headers:
-        col = stroke.get(label.split("(")[0], "#111827")
-        p.append(f'<text x="{hx + hw/2}" y="34" text-anchor="middle" font-size="12" '
-                 f'font-weight="700" fill="{col}">{_esc(label)}</text>')
-
-    if not groups or all(not g["items"] for g in groups):
-        p.append(f'<text x="{width/2}" y="{pad_top + 30}" text-anchor="middle" font-size="13" '
-                 f'fill="#111827">흐름표가 비어 있습니다 — PII 스캔으로 시드하거나 행을 추가하세요.</text>')
-        p.append("</svg>")
-        return "".join(p)
-
-    # 정보주체(고객) — 전체 행을 아우르는 원점 박스(왼쪽)
-    subj_h = n * (row_h + 16) - 16
-    p.append(f'<rect x="{pad_left}" y="{pad_top}" width="{subj_w}" height="{subj_h}" rx="10" '
-             f'fill="#ffffff" stroke="{stroke["정보주체"]}" stroke-width="1.6"/>')
-    p.append(f'<text x="{pad_left + subj_w/2}" y="{pad_top + subj_h/2}" text-anchor="middle" '
-             f'font-size="13" font-weight="700" fill="#111827">정보주체(고객)</text>')
-
-    for ri, g in enumerate(groups):
-        y = pad_top + ri * (row_h + 16)
-        # 고객 → 수집 화살표
-        sx = pad_left + subj_w
-        cx = pad_left + subj_w + gap
-        p.append(f'<line x1="{sx}" y1="{y + row_h/2}" x2="{cx - 4}" y2="{y + row_h/2}" '
-                 f'stroke="#111827" stroke-width="1.4" marker-end="url(#arw2)"/>')
-        stage_content = {"수집": g["collect"] or [g["name"]], "저장": g["store"] or ["—"],
-                         "이용": g["use"] or ["—"], "파기": g["dispose"] or ["—"]}
-        x = cx
-        for si, st in enumerate(STAGE_COLS):
-            p.append(_cell(x, y, col_w, stroke[st], stage_content[st]))
-            if si < len(STAGE_COLS) - 1:
-                ax = x + col_w
-                p.append(f'<line x1="{ax}" y1="{y + row_h/2}" x2="{ax + gap - 4}" y2="{y + row_h/2}" '
-                         f'stroke="#111827" stroke-width="1.4" marker-end="url(#arw2)"/>')
-            x += col_w + gap
-        # 이용 → 연계기관(제3자 제공) 분기
-        if g["linked"]:
-            lx = x
-            use_right = cx + 2 * (col_w + gap) + col_w   # 이용 칸 오른쪽
-            p.append(f'<line x1="{use_right}" y1="{y + row_h/2}" x2="{lx - 4}" y2="{y + row_h/2}" '
-                     f'stroke="#dc2626" stroke-width="1.4" marker-end="url(#arw2)"/>')
-            p.append(_cell(lx, y, link_w, stroke["연계기관"], g["linked"]))
-        # 행 라벨(파일/항목) — 정보주체 박스 아래 겹치지 않게 수집칸 위 작은 캡션
-        label = _esc(g["name"]) + (f" · {_esc(', '.join(g['items'][:2]))}" if g["items"] else "")
-        p.append(f'<text x="{cx}" y="{y - 2}" font-size="9" fill="#111827">{label[:40]}</text>')
-
-    p.append("</svg>")
-    return "".join(p)
-
-
 def _table_column_map(rows: list[dict[str, Any]]) -> list[tuple[str, list[str]]]:
     """행들에서 **테이블 → 컬럼 리스트** 집계 — 같은 테이블은 한 줄로 병합(중복 제거).
 
@@ -1459,4 +1368,4 @@ __all__ = ["STAGES", "FLOW_FIELDS", "DEFAULT_PII_FIELDS", "is_pii_finding", "inf
            "infer_table", "infer_columns", "infer_encryption", "storage_display",
            "build_file_overview", "build_column_item_map", "derive_concerns", "CONCERN_CONTROLS",
            "seed_rows_from_findings", "build_pii_semgrep_rules", "render_data_flow_svg",
-           "render_data_flow_swimlane_svg", "render_data_flow_overview_svg", "render_data_flow_pdf"]
+           "render_data_flow_overview_svg", "render_data_flow_pdf"]

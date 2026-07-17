@@ -31,7 +31,6 @@ from mori_soc.services.data_flow import (
     render_data_flow_overview_svg,
     render_data_flow_pdf,
     render_data_flow_svg,
-    render_data_flow_swimlane_svg,
     seed_rows_from_findings,
 )
 
@@ -293,12 +292,6 @@ def register_privacy(ctx: RouteContext) -> None:
         svg = render_data_flow_svg(_sorted_rows())
         return Response(content=svg, media_type="image/svg+xml")
 
-    # ── 상세 흐름도(스윔레인, 출발점=정보주체) ──────────────────────────────────────
-    @app.get("/privacy/data-flow-swimlane.svg", tags=["Privacy"])
-    def data_flow_swimlane_svg(request: Request) -> Response:
-        _require_privacy_role(request)
-        svg = render_data_flow_swimlane_svg(_sorted_rows())
-        return Response(content=svg, media_type="image/svg+xml")
 
     # ── 총괄 흐름도(생명주기×조직: 업무·정보주체·담당자·시스템DB·연계기관) — 레퍼런스 ① ──
     @app.get("/privacy/data-flow-overview.svg", tags=["Privacy"])
