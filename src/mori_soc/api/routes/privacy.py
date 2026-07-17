@@ -26,6 +26,7 @@ from mori_soc.services.data_flow import (
     build_pii_semgrep_rules,
     build_processing_tasks,
     classify_external_recipients,
+    compare_policy_to_flow,
     render_data_flow_overview_svg,
     render_data_flow_pdf,
     render_data_flow_svg,
@@ -331,6 +332,43 @@ def register_privacy(ctx: RouteContext) -> None:
         }
         return csv_streaming_response(classify_external_recipients(_sorted_rows()), header_map,
                                       "mori-personal-data-external-recipients")
+
+    # ── 처리방침 vs 코드 불일치 탐지(#8) — 문서 주장과 기술 현실 비교 ─────────────────────
+    _POLICY_SETTING = "privacy_declared_policy"
+
+    def _declared_policy() -> dict[str, Any]:
+        raw = (ctx.settings or {}).get(_POLICY_SETTING, "")
+        try:
+            d = json.loads(raw) if raw else {}
+        except Exception:
+            d = {}
+        return {"items": list(d.get("items") or []), "retention": str(d.get("retention") or "")}
+
+    @app.get("/privacy/policy-compare", tags=["Privacy"])
+    def get_policy_compare(request: Request) -> dict[str, Any]:
+        """저장된 처리방침 주장과 현재 흐름표(코드·DB) 비교 결과."""
+        _require_privacy_role(request)
+        pol = _declared_policy()
+        diff = compare_policy_to_flow(pol["items"], pol["retention"], _sorted_rows())
+        return {"policy": pol, "diff": diff}
+
+    @app.put("/privacy/policy-compare", tags=["Privacy"])
+    def put_policy_compare(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """처리방침 주장(수집항목·보유기간)을 저장하고 즉시 비교. MORI는 문서를 관리하지 않는다."""
+        _require_privacy_role(request)
+        raw_items = payload.get("items") or []
+        if isinstance(raw_items, str):
+            raw_items = [s.strip() for s in re.split(r"[,\n·]", raw_items)]
+        items = [str(i).strip() for i in raw_items if str(i).strip()][:500]
+        retention = str(payload.get("retention", "") or "").strip()[:200]
+        pol = {"items": items, "retention": retention}
+        ctx.settings[_POLICY_SETTING] = json.dumps(pol, ensure_ascii=False)
+        if ctx.persist_setting:
+            ctx.persist_setting(_POLICY_SETTING, _user(request))
+        if ctx.log_action:
+            ctx.log_action(_user(request), "PRIVACY_POLICY_DECLARE", f"{len(items)} items")
+        diff = compare_policy_to_flow(items, retention, _sorted_rows())
+        return {"policy": pol, "diff": diff}
 
     # ── DB 컬럼 ↔ 개인정보 항목 매칭 CSV(어느 컬럼에 어떤 정보) ─────────────────────────
     @app.get("/privacy/data-tables.csv", tags=["Privacy"])

@@ -414,6 +414,68 @@ def classify_external_recipients(rows: list[dict[str, Any]]) -> list[dict[str, A
     return out
 
 
+# 처리방침 '즉시 파기' 류 표현 — 보유기간 불일치 판단 힌트.
+_IMMEDIATE_HINTS = ("즉시", "지체 없이", "지체없이", "바로", "0일", "즉시 파기", "즉시파기")
+
+
+def _norm_term(s: str) -> str:
+    return str(s or "").strip().lower().replace(" ", "")
+
+
+def compare_policy_to_flow(
+    policy_items: list[str], policy_retention: str, rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """처리방침이 **주장한** 수집항목·보유기간과 **코드·DB 현실**을 비교한다(#8).
+
+    모리다움 — 문서를 관리하는 게 아니라, 문서가 주장한 통제와 기술 현실의 일치 여부를
+    **증거로 확인**한다. 결과는 확정이 아니라 **불일치 후보**(담당자 검토 대상).
+
+    - only_in_code: 코드·DB 에서 발견됐으나 처리방침에 없는 항목(미고지 후보).
+    - only_in_policy: 처리방침엔 있으나 코드에서 못 찾은 항목(과다 고지 또는 미탐 후보).
+    - retention_mismatch: 처리방침 보유기간과 코드상 보유기간이 다른 후보.
+    """
+    code_items: dict[str, str] = {}
+    code_retentions: list[tuple[str, str]] = []
+    for r in rows:
+        it = str(r.get("item") or "").strip()
+        if it:
+            code_items.setdefault(_norm_term(it), it)
+        ret = str(r.get("retention") or "").strip()
+        if ret and ret not in ("없음", "-", "n/a", "N/A"):
+            code_retentions.append((it, ret))
+
+    pol: dict[str, str] = {}
+    for p in policy_items or []:
+        ps = str(p or "").strip()
+        if ps:
+            pol.setdefault(_norm_term(ps), ps)
+
+    only_in_code = [code_items[k] for k in code_items if k not in pol]
+    only_in_policy = [pol[k] for k in pol if k not in code_items]
+
+    retention_mismatch: list[dict[str, str]] = []
+    pr = str(policy_retention or "").strip()
+    if pr:
+        pr_immediate = any(h in pr for h in _IMMEDIATE_HINTS)
+        seen: set[tuple[str, str]] = set()
+        for it, ret in code_retentions:
+            key = (it, ret)
+            if key in seen:
+                continue
+            seen.add(key)
+            npr, nret = _norm_term(pr), _norm_term(ret)
+            if pr_immediate and not any(h in ret for h in _IMMEDIATE_HINTS):
+                retention_mismatch.append({"item": it, "code": ret, "policy": pr})
+            elif not pr_immediate and npr != nret and npr not in nret and nret not in npr:
+                retention_mismatch.append({"item": it, "code": ret, "policy": pr})
+
+    return {
+        "only_in_code": only_in_code,
+        "only_in_policy": only_in_policy,
+        "retention_mismatch": retention_mismatch,
+    }
+
+
 def infer_encryption(finding: dict[str, Any]) -> str:
     """스니펫에서 저장 암호화 알고리즘/적용 여부를 추정. 근거 없으면 빈 문자열(단정 안 함)."""
     hay = _code_hay(finding)

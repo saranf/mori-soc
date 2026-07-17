@@ -3447,6 +3447,7 @@
           <a href="/privacy/data-flow.pdf" target="_blank" class="secondary" style="width:auto;padding:4px 10px;font-size:12px;text-decoration:none;color:#2563eb;border:1px solid #e5e7eb;border-radius:6px">${tt('dash.pf.pdf','PDF')}</a>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadProcessingTasks()">${tt('dash.pf.tasks','처리업무 그룹')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadExternalRecipients()">${tt('dash.pf.ext','외부 수신자 구분')}</button>
+          <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadPolicyCompare()">${tt('dash.pf.policy','처리방침 대조')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="promotePrivacyFlow()">${tt('dash.pf.promote','3.x 통제 증적 승격')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="togglePiiCriteria()">${tt('dash.pf.criteria','PII 기준 편집')}</button>
           <button class="secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="loadPrivacyFlow()">${tt('dash.pf.reload','새로고침')}</button>
@@ -3565,6 +3566,47 @@
       } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
     }
     window.loadExternalRecipients = loadExternalRecipients;
+
+    // ── 처리방침 vs 코드 불일치(#8) — 문서 주장과 기술 현실 비교 ────────────────────────
+    function renderPolicyDiff(pol, diff) {
+      const chips=(arr,col)=> (arr&&arr.length)? arr.map(x=>`<span style="color:${col};border:1px solid ${col};border-radius:5px;padding:0 5px;font-size:10px;margin:2px 3px 2px 0;display:inline-block">${escapeHtml(x)}</span>`).join('') : `<span style="color:#16a34a;font-size:11px">${tt('dash.pf.p_none','불일치 없음')}</span>`;
+      const rm = (diff.retention_mismatch||[]).map(m=>`<tr><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px"><b>${escapeHtml(m.item||'-')}</b></td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#dc2626">${escapeHtml(m.code)}</td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#111827">${escapeHtml(m.policy)}</td></tr>`).join('');
+      return `<div style="font-size:11px;color:#111827;margin:8px 0 4px;line-height:1.6">${tt('dash.pf.policy_help','읽는 법: 처리방침이 <b>주장한</b> 수집항목·보유기간과 코드·DB <b>현실</b>을 비교해요. <span style="color:#dc2626">코드에만 있음</span>=처리방침에 없는데 코드에서 발견(미고지 후보), <span style="color:#ca8a04">방침에만 있음</span>=고지했으나 코드 미발견(과다 고지/미탐 후보). 이건 확정이 아니라 <b>불일치 후보</b>이고, MORI는 문서를 관리하지 않아요.')}</div>
+        <div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:#dc2626;margin-bottom:2px">${tt('dash.pf.p_only_code','코드·DB에만 있음(미고지 후보)')}</div>${chips(diff.only_in_code,'#dc2626')}</div>
+        <div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:#ca8a04;margin-bottom:2px">${tt('dash.pf.p_only_policy','처리방침에만 있음(과다 고지/미탐)')}</div>${chips(diff.only_in_policy,'#ca8a04')}</div>
+        <div style="margin-bottom:4px"><div style="font-size:11px;font-weight:600;color:#111827;margin-bottom:2px">${tt('dash.pf.p_retention','보유기간 불일치 후보')}</div>${rm? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.pf.t_items','개인정보 항목')}</th><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#dc2626">${tt('dash.pf.p_code_ret','코드상 보유')}</th><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.pf.p_policy_ret','처리방침')}</th></tr></thead><tbody>${rm}</tbody></table></div>` : `<span style="color:#16a34a;font-size:11px">${tt('dash.pf.p_none','불일치 없음')}</span>`}</div>`;
+    }
+    async function loadPolicyCompare() {
+      const box = document.getElementById('pf_rows');
+      if (!box) return;
+      try {
+        const res = await fetch('/privacy/policy-compare');
+        if (!res.ok) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; return; }
+        const d = await res.json();
+        const pol = d.policy||{items:[],retention:''};
+        box.innerHTML = `<div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:12px">
+          <div style="font-weight:600;color:#111827;margin-bottom:4px">${tt('dash.pf.policy','처리방침 대조')}</div>
+          <div style="font-size:11px;color:#111827;margin-bottom:4px">${tt('dash.pf.p_input','처리방침에 고지한 수집항목(쉼표·줄바꿈 구분)과 보유기간을 입력하면 코드·DB와 대조해요.')}</div>
+          <textarea id="pol_items" class="inp-sm" style="width:100%;height:52px;font-size:12px;margin-bottom:4px" placeholder="${tt('dash.pf.p_ph_items','예: 이메일, 이름, 전화번호')}">${escapeHtml((pol.items||[]).join(', '))}</textarea>
+          <input id="pol_ret" class="inp-sm" style="width:100%;font-size:12px;margin-bottom:6px" placeholder="${tt('dash.pf.p_ph_ret','예: 회원 탈퇴 즉시 파기')}" value="${escapeHtml(pol.retention||'')}">
+          <button class="secondary" style="width:auto;padding:3px 10px;font-size:12px" onclick="savePolicyCompare()">${tt('dash.pf.p_compare','저장·대조')}</button>
+          <span id="pol_msg" style="font-size:11px;color:#16a34a;margin-left:6px"></span>
+          <div id="pol_diff">${renderPolicyDiff(pol, d.diff||{})}</div>
+        </div>`;
+      } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
+    }
+    window.loadPolicyCompare = loadPolicyCompare;
+    async function savePolicyCompare() {
+      const items = (document.getElementById('pol_items').value||'').split(/[,\n·]/).map(s=>s.trim()).filter(Boolean);
+      const retention = (document.getElementById('pol_ret').value||'').trim();
+      const res = await fetch('/privacy/policy-compare', {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({items, retention})});
+      const msg = document.getElementById('pol_msg');
+      if (!res.ok) { if(msg){msg.style.color='#dc2626';msg.textContent=tt('dash.pf.denied','권한이 없어요 (admin·security)');} return; }
+      const d = await res.json();
+      if(msg){msg.style.color='#16a34a';msg.textContent=tt('dash.pf.p_saved','대조 완료');}
+      document.getElementById('pol_diff').innerHTML = renderPolicyDiff(d.policy||{}, d.diff||{});
+    }
+    window.savePolicyCompare = savePolicyCompare;
 
     async function seedPrivacyFlow() {
       const res = await fetch('/privacy/data-flow/seed-from-scan', {method:'POST'});

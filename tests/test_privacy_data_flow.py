@@ -192,6 +192,27 @@ class DataFlowServiceTests(unittest.TestCase):
         # 법적 확정이 아니라 담당자 확인 필요
         self.assertEqual(by["국민건강보험공단"]["confirm"], "담당자 확인 필요")
 
+    def test_compare_policy_to_flow(self) -> None:
+        from mori_soc.services.data_flow import compare_policy_to_flow
+        rows = [
+            {"item": "이메일", "retention": "탈퇴 후 365일"},
+            {"item": "이름", "retention": ""},
+            {"item": "생년월일", "retention": ""},  # 코드엔 있는데 방침엔 없음
+        ]
+        diff = compare_policy_to_flow(["이메일", "이름", "전화번호"], "탈퇴 즉시 파기", rows)
+        # 코드에만: 생년월일 / 방침에만: 전화번호
+        self.assertIn("생년월일", diff["only_in_code"])
+        self.assertIn("전화번호", diff["only_in_policy"])
+        # 방침은 '즉시 파기'인데 코드는 365일 보관 → 보유기간 불일치
+        rm = {m["item"]: m for m in diff["retention_mismatch"]}
+        self.assertIn("이메일", rm)
+        self.assertEqual(rm["이메일"]["code"], "탈퇴 후 365일")
+        # 방침·코드 항목이 정확히 일치하고 보유기간 문구가 같으면 불일치 없음
+        clean = compare_policy_to_flow(["이메일"], "탈퇴 후 365일", [{"item": "이메일", "retention": "탈퇴 후 365일"}])
+        self.assertEqual(clean["only_in_code"], [])
+        self.assertEqual(clean["only_in_policy"], [])
+        self.assertEqual(clean["retention_mismatch"], [])
+
     def test_encryption_marker_and_concerns(self) -> None:
         from mori_soc.services.data_flow import (
             derive_concerns,

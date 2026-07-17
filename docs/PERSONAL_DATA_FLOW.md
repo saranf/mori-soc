@@ -48,6 +48,7 @@ UI: Compliance → 통제 카탈로그 관리자 바(admin·security 전용) →
 | GET | `/privacy/processing-tasks.csv` | 처리업무 그룹 CSV |
 | GET | `/privacy/external-recipients` | **외부 수신자 구분(#7)** — 위탁·제3자 제공·국외이전 후보(법적 확정 아님, 담당자 확인 필요) |
 | GET | `/privacy/external-recipients.csv` | 외부 수신자 구분 CSV |
+| GET·PUT | `/privacy/policy-compare` | **처리방침 vs 코드 불일치(#8)** — 방침 주장(수집항목·보유기간)을 저장·대조. 불일치 후보 반환 |
 | GET | `/privacy/data-flow.pdf` | 흐름표 PDF(감사관 제출용, reportlab·팔레트 6색) |
 | POST | `/privacy/data-flow/reset` | 흐름표 전체 리셋(재스캔으로 재생성) |
 | GET | `/privacy/pii-rules.yml` | 스캔용 Semgrep 룰(리터럴+필드명 기본셋+어드민 커스텀). 워크플로가 스캔 때 fetch |
@@ -95,6 +96,19 @@ UI: 개인정보 처리흐름 화면 → `처리업무 그룹` 버튼(`pf_rows`�
 - 한 수신자가 **위탁+국외** 처럼 복수 후보가 될 수 있다. 모두 `담당자 확인 필요`로 표시.
 
 UI: `외부 수신자 구분` 버튼 → `pf_rows`에 후보 배지(위탁=파·제3자=노·국외=빨) + CSV.
+
+## 3-3. 처리방침 vs 코드 불일치 (#8)
+
+`compare_policy_to_flow(policy_items, policy_retention, rows)`는 처리방침이 **주장한** 수집항목·
+보유기간과 **코드·DB 현실**(흐름표)을 비교한다. 모리다움 — 문서를 관리하는 게 아니라, 문서가
+주장한 통제와 기술 현실의 일치 여부를 **증거로 확인**한다. 결과는 확정이 아닌 **불일치 후보**.
+
+- **only_in_code**: 코드·DB에서 발견됐으나 처리방침에 없는 항목(미고지 후보).
+- **only_in_policy**: 처리방침엔 있으나 코드에서 못 찾은 항목(과다 고지/미탐 후보).
+- **retention_mismatch**: 방침 보유기간(‘즉시 파기’ 등)과 코드상 보유기간이 다른 후보.
+
+방침 주장은 `privacy_declared_policy` 세팅에 JSON(items·retention)으로 저장(문서 원문 저장 아님).
+UI: `처리방침 대조` 버튼 → 항목·보유기간 입력 → 저장·대조(코드에만=빨·방침에만=노).
 
 ## 4. 데이터 모델
 
