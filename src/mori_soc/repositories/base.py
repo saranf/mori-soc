@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Any
 
 from mori_soc.models import (
     AccountObservation,
@@ -46,3 +47,10 @@ class BaseRepository(ABC):
     @abstractmethod
     def snapshot(self) -> RepositorySnapshot:
         raise NotImplementedError
+
+    def source_syncs(self) -> "list[Any]":
+        """폴 사이클용 경량 접근자(M3) — source_syncs 만 필요할 때 전체 snapshot() 을 피한다.
+
+        기본은 snapshot() 폴백(호환). Postgres 등은 해당 테이블만 조회하도록 오버라이드.
+        """
+        return list(self.snapshot().source_syncs)

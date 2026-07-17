@@ -87,7 +87,7 @@ def run_ingestion_cycle(
     mapper = mapper or EnvelopeEntityMapper()
     service = CollectorIngestionService(mapper, repository)
     cycle_started_at = started_at or datetime.now(tz=timezone.utc)
-    existing_syncs = {item.source: item for item in repository.snapshot().source_syncs}
+    existing_syncs = {item.source: item for item in repository.source_syncs()}
     results: list[PollerCycleResult] = []
 
     for collector in collectors:

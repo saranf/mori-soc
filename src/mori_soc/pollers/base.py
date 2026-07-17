@@ -121,7 +121,7 @@ class BasePollerService(ABC):
 
         service = CollectorIngestionService(mapper, repository)
         cycle_started_at = started_at or datetime.now(tz=timezone.utc)
-        existing_syncs = {s.source: s for s in repository.snapshot().source_syncs}
+        existing_syncs = {s.source: s for s in repository.source_syncs()}
         previous_sync = existing_syncs.get(self.source_name)
 
         last_exc: Exception | None = None

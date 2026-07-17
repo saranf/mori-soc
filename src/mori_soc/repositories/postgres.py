@@ -306,6 +306,21 @@ class PostgresRepository(BaseRepository):
 
             raise TypeError(f"Unsupported entity type: {type(entity)!r}")
 
+    def source_syncs(self) -> list[SourceSync]:
+        """경량 접근자(M3) — source_syncs 테이블만 조회(전체 snapshot 회피)."""
+        with self._connect() as conn, conn.cursor() as cur:
+            _ensure_source_syncs_table(cur)
+            cur.execute(
+                """
+                SELECT source, status, last_sync_at, last_success_at, last_error_at, message,
+                       records_collected, envelopes_normalized, entities_saved
+                FROM source_syncs ORDER BY source
+                """
+            )
+            return [SourceSync(source=r[0], status=r[1], last_sync_at=r[2], last_success_at=r[3],
+                               last_error_at=r[4], message=r[5], records_collected=r[6],
+                               envelopes_normalized=r[7], entities_saved=r[8]) for r in cur.fetchall()]
+
     def snapshot(self) -> RepositorySnapshot:
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
