@@ -115,8 +115,12 @@ POST /assurance-cycles/{id}/initialize-from/{prev} · /controls/{id}/overlay-vie
   - 관계·무결성은 관계형 컬럼, **전체 레코드 원본은 metadata JSONB** → 앱은 정확히 같은 dict 를
     돌려받는다(round-trip). Postgres repo 의 save/load_governance 가 kind 로 dispatch.
   - 구 범용 스토어 → 정규 테이블 **일회성 backfill**(FK 순서, 성공분만 삭제, 실패는 원본 보존+로그).
-- **잔여**: organization_controls·assurance_cycles·cycle_controls·evidence_contracts·mappings·
-  scope_snapshots·relationships 정규화(전이 중엔 범용 스토어 유지). in-memory 는 dict 유지(단일 테넌트).
+- **2차(완료)**: `gov_organization_controls`(UNIQUE code+version) · `gov_evidence_contracts`
+  (FK org_control, UNIQUE org+version) · `gov_evidence_mappings`(FK org_control) ·
+  `gov_scope_snapshots` · `gov_control_relationships`(coverage 0~100 CHECK·자기참조 CHECK·
+  source+target+type UNIQUE). schema 020, 동일 dispatch·backfill(FK 순서) 패턴.
+- **잔여**: assurance_cycles·cycle_controls 정규화(control_ref 이중 대상 때문에 별도 슬라이스).
+  in-memory 는 dict 유지(단일 테넌트).
 
 ## 7. 검증 상태
 

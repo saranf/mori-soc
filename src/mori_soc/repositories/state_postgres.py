@@ -144,7 +144,16 @@ class PostgresStateRepository(StateRepository):
                     return  # 019 아직 미적용
         except Exception:  # noqa: BLE001
             return
-        for kind in ("framework", "framework_version", "control_definition"):
+        for kind in self._BACKFILL_ORDER:
+            # 해당 정규 테이블이 아직 없으면(020 미적용 등) 그 kind 는 건너뛴다.
+            table = self._NORMALIZED_GOV[kind][0]
+            try:
+                with self._connect() as conn, conn.cursor() as cur:
+                    cur.execute("SELECT to_regclass(%s)", (f"public.{table}",))
+                    if cur.fetchone()[0] is None:
+                        continue
+            except Exception:  # noqa: BLE001
+                continue
             try:
                 with self._connect() as conn, conn.cursor() as cur:
                     cur.execute("SELECT entity_id, record FROM ui_control_governance WHERE kind = %s",
@@ -857,7 +866,23 @@ class PostgresStateRepository(StateRepository):
         "control_definition": ("gov_control_definitions", "control_id",
                               ("framework_version_id", "control_uid", "display_code", "title",
                                "content_hash", "parent_control_id")),
+        # 정규화 2차(#4) — 내부통제 계열.
+        "organization_control": ("gov_organization_controls", "organization_control_id",
+                                ("code", "title", "version", "status")),
+        "scope_snapshot": ("gov_scope_snapshots", "scope_snapshot_id", ("content_hash",)),
+        "evidence_contract": ("gov_evidence_contracts", "evidence_contract_id",
+                             ("organization_control_id", "version", "content_hash")),
+        "evidence_mapping": ("gov_evidence_mappings", "mapping_id",
+                            ("organization_control_id", "source_type", "mapping_version",
+                             "valid_from", "valid_to")),
+        "control_relationship": ("gov_control_relationships", "relationship_id",
+                                ("source_control_id", "target_control_id", "relationship_type",
+                                 "coverage_percent")),
     }
+    # backfill FK 순서 — 부모가 먼저 정규 테이블에 있어야 자식 FK 가 통과한다.
+    _BACKFILL_ORDER = ("framework", "framework_version", "control_definition",
+                       "organization_control", "scope_snapshot", "evidence_contract",
+                       "evidence_mapping", "control_relationship")
 
     def load_governance(self, kind: str) -> list[dict[str, Any]]:
         spec = self._NORMALIZED_GOV.get(kind)

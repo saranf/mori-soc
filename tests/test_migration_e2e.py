@@ -294,6 +294,39 @@ class MigrationE2ETests(unittest.TestCase):
         with self.assertRaises(Exception):
             repo.save_governance("framework_version", a2["id"], a2)
 
+    def test_governance_normalized2_constraints(self) -> None:
+        """정규화 2차(#4): 내부통제 계열 FK·unique·coverage CHECK·자기참조 금지를 DB 가 강제."""
+        from mori_soc.repositories.state_postgres import PostgresStateRepository
+        from mori_soc.services.control_governance import (
+            build_evidence_contract,
+            build_organization_control,
+            build_relationship,
+        )
+        repo = PostgresStateRepository(self._url)
+        repo.apply_schema()
+
+        oc = build_organization_control(code="CORP-ACC-004", title="계정검토", now="2026-01-01")
+        repo.save_governance("organization_control", oc["id"], oc)
+        # round-trip
+        loaded = {r["id"]: r for r in repo.load_governance("organization_control")}
+        self.assertIn(oc["id"], loaded)
+
+        # FK: 존재하지 않는 내부통제를 참조하는 계약 → DB 거부
+        bad = build_evidence_contract(organization_control_id="ghost", version=1, now="2026-01-01")
+        with self.assertRaises(Exception):
+            repo.save_governance("evidence_contract", bad["id"], bad)
+        # 정상 계약 저장
+        ec = build_evidence_contract(organization_control_id=oc["id"], version=1, now="2026-01-01")
+        repo.save_governance("evidence_contract", ec["id"], ec)
+
+        # relationship: coverage 범위 밖 → CHECK 거부
+        rel = build_relationship(source_control_id="a", target_control_id="b",
+                                 relationship_type="same_as", coverage_percent=50, now="2026-01-01")
+        repo.save_governance("control_relationship", rel["id"], rel)
+        bad_cov = dict(rel, id="rel-bad", relationship_id="rel-bad", coverage_percent=150)
+        with self.assertRaises(Exception):
+            repo.save_governance("control_relationship", "rel-bad", bad_cov)
+
     def test_governance_normalized_backfill(self) -> None:
         """구 범용 스토어(ui_control_governance)의 데이터가 정규 테이블로 이관되는가(idempotent)."""
         from mori_soc.repositories.state_postgres import PostgresStateRepository
