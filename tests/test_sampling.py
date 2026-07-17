@@ -33,6 +33,20 @@ class SamplingTests(unittest.TestCase):
         self.assertEqual(res["sample_count"], 0)
         self.assertEqual(res["coverage_pct"], 0)
 
+    def test_population_completeness(self) -> None:
+        # 리뷰 #22: 소스가 아는 실제 대상 수보다 모집단이 작으면 표면화한다.
+        res = risk_based_sample(self._pop(100), expected_population=150)
+        self.assertFalse(res["population_complete"])
+        self.assertEqual(res["missing_from_population"], 50)
+        self.assertIn("population_warning", res)
+        # 완전하면 경고 없음
+        ok = risk_based_sample(self._pop(100), expected_population=100)
+        self.assertTrue(ok["population_complete"])
+        self.assertNotIn("population_warning", ok)
+        # expected_population 미지정이면 완전성 판단 안 함(키 없음)
+        none = risk_based_sample(self._pop(10))
+        self.assertNotIn("population_complete", none)
+
     def test_sample_size_for(self) -> None:
         self.assertEqual(sample_size_for(0), 0)
         self.assertEqual(sample_size_for(100, high_cap=20, sample_rate=0.1), 20 + 8)  # 80/10=8

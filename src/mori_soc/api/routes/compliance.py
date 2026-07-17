@@ -376,6 +376,9 @@ def register_compliance(ctx: RouteContext) -> None:
             high_cap=int(payload.get("high_cap", 20)),
             sample_rate=float(payload.get("sample_rate", 0.1)),
             order_field=str(payload.get("order_field", "id")),
+            expected_population=(int(payload["expected_population"])
+                                 if str(payload.get("expected_population", "")).strip() not in ("", "None")
+                                 else None),
         )
         res["control_id"] = str(payload.get("control_id", "") or "")
         res["period"] = str(payload.get("period", "") or "")
@@ -402,6 +405,9 @@ def register_compliance(ctx: RouteContext) -> None:
             high_cap=int(payload.get("high_cap", 20)),
             sample_rate=float(payload.get("sample_rate", 0.1)),
             order_field=str(payload.get("order_field", "id")),
+            expected_population=(int(payload["expected_population"])
+                                 if str(payload.get("expected_population", "")).strip() not in ("", "None")
+                                 else None),
         )
         res["control_id"] = str(payload.get("control_id", "") or "")
         res["period"] = str(payload.get("period", "") or "")

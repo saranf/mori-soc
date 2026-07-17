@@ -24,12 +24,17 @@ def risk_based_sample(
     high_cap: int = 20,
     sample_rate: float = 0.1,
     order_field: str = "id",
+    expected_population: int | None = None,
 ) -> dict[str, Any]:
     """모집단에서 위험 기반 표본을 결정적으로 추출한다.
 
     - 고위험(risk_field 값이 high_values 에 포함): order_field 정렬 후 high_cap 까지 전수.
     - 나머지: order_field 정렬 후 계통추출(1-in-k, k=round(1/sample_rate)) — 결정적.
     반환: population/sample 수·표본 목록·선정 방법 설명(감사관 제출용).
+
+    **모집단 완전성(리뷰 #22)**: expected_population(소스가 아는 실제 대상 수)을 주면, MORI 가 수집한
+    모집단이 그보다 작을 때 `population_complete=False` + 누락 수를 표시한다. 모집단이 불완전하면
+    표본이 무의미하므로 감사 전에 반드시 표면화한다(모리다움 — 정직).
     """
     pop = list(population)
     highs = {str(v).strip().lower() for v in high_values}
@@ -47,7 +52,7 @@ def risk_based_sample(
     sample = high_items + systematic
     method = (f"위험 기반 — 고위험 전수(최대 {high_cap}) + 나머지 계통추출 1-in-{k}"
               if k else f"위험 기반 — 고위험 전수(최대 {high_cap})")
-    return {
+    result: dict[str, Any] = {
         "population": len(pop),
         "high_count": len(high_items),
         "systematic_count": len(systematic),
@@ -58,6 +63,18 @@ def risk_based_sample(
         "params": {"risk_field": risk_field, "high_cap": high_cap,
                    "sample_rate": sample_rate, "interval_k": k, "order_field": order_field},
     }
+    # 모집단 완전성(리뷰 #22) — 소스가 아는 실제 대상 수 대비 수집된 모집단이 온전한가.
+    if expected_population is not None:
+        missing = max(0, int(expected_population) - len(pop))
+        result["expected_population"] = int(expected_population)
+        result["missing_from_population"] = missing
+        result["population_complete"] = missing == 0
+        if missing:
+            result["population_warning"] = (
+                f"모집단 불완전: 소스 기준 {expected_population}건 중 {len(pop)}건만 수집됨"
+                f"({missing}건 누락). 표본 결과 신뢰 전에 소스 수집 상태를 먼저 확인하세요."
+            )
+    return result
 
 
 def sample_size_for(population_n: int, high_cap: int = 20, sample_rate: float = 0.1) -> int:
