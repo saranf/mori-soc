@@ -154,7 +154,14 @@ def _with_scheme(base: str) -> str:
 
 def post_to_mori(base_url: str, findings: list[dict], *, repo: str, commit: str, run_id: str,
                  token: str = "", oidc: str = "") -> int:
-    url = _with_scheme(base_url).rstrip("/") + f"/ingest/code-review?repo={repo}&commit={commit}&run_id={run_id}"
+    # 재현성 입력(#2) — model·scanner 를 함께 보내 MORI 가 input_signature 로 동일 입력을 식별.
+    model = os.getenv("CLAUDE_MODEL", "").strip()
+    scanner = os.getenv("MORI_SCANNER_VERSION", "").strip()
+    from urllib.parse import quote as _q
+    url = (_with_scheme(base_url).rstrip("/")
+           + f"/ingest/code-review?repo={repo}&commit={commit}&run_id={run_id}"
+           + (f"&model={_q(model)}" if model else "")
+           + (f"&scanner={_q(scanner)}" if scanner else ""))
     body = json.dumps({"findings": findings}).encode("utf-8")
     headers = {"content-type": "application/json"}
     if oidc:

@@ -58,6 +58,14 @@ def tags_for_source(source: str | None, *, tool: str | None = None,
     return []
 
 
+def scan_input_signature(repo: str | None, commit: str | None, tool: str | None,
+                         scanner: str | None, ruleset: str | None, model: str | None) -> str:
+    """스캔 재현성 식별자(#2) — 동일 입력이면 동일 signature. commit·scanner·ruleset·model·tool."""
+    import hashlib
+    seed = "|".join(str(x or "") for x in (repo, commit, tool, scanner, ruleset, model))
+    return hashlib.sha1(seed.encode("utf-8")).hexdigest()[:16]
+
+
 def attach_provenance(rec: dict[str, Any]) -> dict[str, Any]:
     """레코드에 provenance 태그를 붙인다(이미 유효하게 있으면 존중, 제자리 수정).
 

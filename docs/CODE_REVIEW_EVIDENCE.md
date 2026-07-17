@@ -76,6 +76,17 @@ signal 의 출처를 명확히 하는 것 — MORI 정체성 그 자체.
   배지로 표시된다(팔레트: 코드·API=파, 규칙=검, AI=노(주의), 사람=초). 구현: `services/provenance.py`,
   `services/evidence.stamp_evidence` 가 자동 부착.
 
+### 스캔 재현성·입력 식별(#2)
+
+MORI 는 코드·운영 데이터 기반이라 **"같은 입력을 다시 돌리면 같은 결과"** 를 보증할 수 있다(일반
+GRC 가 못 하는 차별점). 스캔 증적 envelope 에 재현성 입력을 캡처한다:
+
+- `commit` · `scanner`(스캐너 버전) · `ruleset`(룰셋 버전) · `model`(AI 모델) · `tool`.
+- 이들로 **`input_signature`**(sha1 16자)를 만들어 **동일 입력을 식별**한다 — 같은 signature 면 같은
+  입력. 워크플로가 `?scanner=`·`?model=` 로 보내고(fullscan 은 `CLAUDE_MODEL`·`MORI_SCANNER_VERSION`),
+  스캔 이력 UI 에 `(scanner … · model … · sig …)` 로 표시. 이 signature 가 다음 단계 **스캔 간 diff**(#3)
+  의 기준이 된다.
+
 ### 처리 보장(트랜잭션 경계)
 
 인제스트/증적 파이프라인은 **부분 성공을 정직하게 보고**한다(조용히 성공으로 위장하지 않음).

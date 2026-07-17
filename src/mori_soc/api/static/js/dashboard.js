@@ -3659,7 +3659,11 @@
           const dl = ` · <a href="#" onclick="event.preventDefault();openCsvPreview({title:tt('dash.ctl.scan_csv_title','코드 리뷰 findings CSV 미리보기'),filename:'mori-code-review-findings.csv',url:'${csvUrl}'})" style="color:#2563eb;text-decoration:none">${tt('dash.ctl.scan_csv_dl','결과 CSV')}</a>`;
           const del = e.id ? ` <a href="#" title="${tt('dash.ctl.scan_del','이력 삭제')}" onclick="event.preventDefault();deleteCodeReviewScan('${escapeHtml(e.id)}')" style="color:#dc2626;text-decoration:none;font-weight:700">×</a>` : '';
           const prov = provenanceBadges(e.provenance);
-          return `<div style="padding:5px 0;border-bottom:1px solid #f3f4f6">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style="color:#111827">${escapeHtml(when)}</span> ${verified}${toolBadge}${prov}${link}${dl}${del}</div>`;
+          // 재현성 입력(#2): scanner·model·signature — 같은 입력 식별/추적용.
+          const repro = [env.scanner && ('scanner ' + env.scanner), env.model && ('model ' + env.model),
+                         env.input_signature && ('sig ' + env.input_signature)].filter(Boolean).join(' · ');
+          const reproEl = repro ? ` <span style="color:#111827;font-size:10px" title="${tt('dash.ctl.scan_repro','재현성 입력 — 같은 commit·scanner·ruleset·model 이면 같은 결과여야 함')}">(${escapeHtml(repro)})</span>` : '';
+          return `<div style="padding:5px 0;border-bottom:1px solid #f3f4f6">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style="color:#111827">${escapeHtml(when)}</span> ${verified}${toolBadge}${prov}${reproEl}${link}${dl}${del}</div>`;
         }).join('');
       } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.ctl.scan_hist_err','이력을 불러오지 못했어요')}</span>`; }
     }

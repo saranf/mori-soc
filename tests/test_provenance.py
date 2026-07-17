@@ -37,5 +37,16 @@ class ProvenanceTests(unittest.TestCase):
         self.assertEqual(len(rec["content_hash"]), 64)   # 기존 provenance(#21)와 공존
 
 
+class ScanSignatureTests(unittest.TestCase):
+    def test_same_input_same_signature(self) -> None:
+        from mori_soc.services.provenance import scan_input_signature
+        a = scan_input_signature("o/r", "abc123", "Claude(유료)", "0.6.0", "privacy-2026.07", "claude-x")
+        b = scan_input_signature("o/r", "abc123", "Claude(유료)", "0.6.0", "privacy-2026.07", "claude-x")
+        self.assertEqual(a, b)                       # 동일 입력 → 동일 signature
+        self.assertEqual(len(a), 16)
+        c = scan_input_signature("o/r", "abc123", "Claude(유료)", "0.6.1", "privacy-2026.07", "claude-x")
+        self.assertNotEqual(a, c)                    # scanner 버전 변경 → signature 변경
+
+
 if __name__ == "__main__":
     unittest.main()
