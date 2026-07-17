@@ -55,25 +55,40 @@ def _slug(s: str) -> str:
     return "".join(c if c.isalnum() or c in "-._" else "-" for c in str(s or "").strip().lower())[:60]
 
 
-# content_hash 대상에서 제외하는 **lifecycle/감사 메타데이터** — 실질 내용이 아니다.
-# status·activated_*·retired_*·effective_to·lifecycle 는 상태 전환 시 바뀌지만, 그렇다고
-# '기준 원문 내용'이 바뀐 것은 아니므로 해시를 흔들면 안 된다(activate 후 해시 틀어짐 버그 방지).
+# content_hash 캐노니컬화 규칙(리뷰 #6) — 나중에 방식이 바뀌면 같은 내용도 해시가 달라질 수
+# 있으므로, 어떤 규칙·알고리즘으로 해시했는지 레코드에 함께 기록한다.
+#   canonicalization = mori-jcs-v1: json.dumps(정렬 키 · 비ASCII 보존 · UTF-8, lifecycle/감사 제외)
+CANONICALIZATION = "mori-jcs-v1"
+HASH_ALGORITHM = "sha256"
+
+# content_hash 대상에서 제외하는 **lifecycle/감사/해시메타** — 실질 내용이 아니다.
+# status·activated_*·retired_*·effective_to·lifecycle 는 상태 전환 시 바뀌지만 '기준 원문 내용'이
+# 바뀐 건 아니므로 해시를 흔들면 안 된다. canonicalization·hash_algorithm 은 해시 방식 메타라 제외.
 _HASH_VOLATILE = frozenset({
     "content_hash", "created_at", "updated_at", "created_by", "id",
     "status", "activated_at", "activated_by", "retired_at", "retired_by",
-    "effective_to", "lifecycle", "history",
+    "effective_to", "lifecycle", "history", "canonicalization", "hash_algorithm",
+    "applicability_pending_review",
 })
 
 
 def content_hash(record: dict[str, Any]) -> str:
-    """레코드 **실질 내용** 해시(sha256:...). 시각·감사·lifecycle 메타는 제외한다.
+    """레코드 **실질 내용** 해시(sha256:...). 시각·감사·lifecycle·해시메타는 제외한다.
 
     같은 내용이면 draft/active/retired 어느 상태든 동일 해시 — 버전 무결성·diff·export 에서
-    상태 전환에 흔들리지 않는 안정적 지문이 된다.
+    상태 전환에 흔들리지 않는 안정적 지문이 된다. 캐노니컬화 규칙은 CANONICALIZATION(mori-jcs-v1).
     """
     core = {k: v for k, v in record.items() if k not in _HASH_VOLATILE}
     blob = json.dumps(core, ensure_ascii=False, sort_keys=True)
     return "sha256:" + hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def _stamp_hash(record: dict[str, Any]) -> dict[str, Any]:
+    """레코드에 content_hash + 해시 방식 메타(canonicalization·hash_algorithm)를 함께 기록."""
+    record["content_hash"] = content_hash(record)
+    record["canonicalization"] = CANONICALIZATION
+    record["hash_algorithm"] = HASH_ALGORITHM
+    return record
 
 
 # ── Framework — 외부 기준 그 자체(이름만 가진 상위 개념) ────────────────────────────
@@ -101,7 +116,7 @@ def build_framework_version(*, framework_id: str, version: str, effective_from: 
         "change_reason": change_reason, "importer_version": importer_version,
         "created_at": now, "created_by": created_by,
     }
-    rec["content_hash"] = content_hash(rec)
+    _stamp_hash(rec)
     rec["lifecycle"] = [{"ts": now, "actor": created_by, "to": status}]
     return rec
 
@@ -162,7 +177,7 @@ def build_control_definition(*, framework_version_id: str, display_code: str, ti
         "requirement_text": requirement_text, "interpretations": interp,
         "parent_control_id": parent_control_id, "created_at": now, "created_by": created_by,
     }
-    rec["content_hash"] = content_hash(rec)
+    _stamp_hash(rec)
     return rec
 
 
@@ -192,7 +207,7 @@ def build_organization_control(*, code: str, title: str, owner_team: str = "", f
         "mapped_controls": list(mapped_controls or []), "version": version,
         "supersedes": supersedes, "status": "draft", "created_at": now, "created_by": created_by,
     }
-    rec["content_hash"] = content_hash(rec)
+    _stamp_hash(rec)
     return rec
 
 
@@ -208,7 +223,7 @@ def build_scope_snapshot(*, snapshot_id: str, services: list[str] | None = None,
         "locations": list(locations or []), "data_processes": list(data_processes or []),
         "created_at": now, "created_by": created_by,
     }
-    rec["content_hash"] = content_hash(rec)
+    _stamp_hash(rec)
     return rec
 
 
@@ -405,7 +420,7 @@ def build_evidence_contract(*, organization_control_id: str, version: int = 1,
         "allowed_sources": list(allowed_sources or []), "required_reviewer": required_reviewer,
         "created_at": now, "created_by": created_by,
     }
-    rec["content_hash"] = content_hash(rec)
+    _stamp_hash(rec)
     return rec
 
 

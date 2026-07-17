@@ -54,9 +54,20 @@ def build_gap(*, source: str, control_id: str, key: str, title: str, detail: str
     }
 
 
+# resolved 의 **해결 근거 종류**(리뷰 #19) — '사람이 눌렀다'로 끝내지 않는다.
+# accepted_exception 은 해결이 아니라 위험수용(별도 상태)이므로 여기 포함하지 않는다.
+RESOLUTION_TYPES = ("automatically_reverified", "manually_verified", "policy_confirmed")
+
+
 def apply_transition(gap: dict[str, Any], target: str, *, actor: str, now: str,
-                     assignee: str = "", due_date: str = "", note: str = "") -> dict[str, Any]:
-    """Gap 상태 전이(제자리 갱신). history 에 append. 유효성은 호출자가 can_transition 으로 확인."""
+                     assignee: str = "", due_date: str = "", note: str = "",
+                     resolution_type: str = "", verifying_scan: str = "",
+                     evidence_ref: str = "") -> dict[str, Any]:
+    """Gap 상태 전이(제자리 갱신). history 에 append. 유효성은 호출자가 can_transition 으로 확인.
+
+    target=resolved 이면 **해결 근거**(resolution_type·verifier·verified_at·검증 스캔·증적)를 기록한다
+    — 재검증 없이 '해결'로 닫히지 않게(리뷰 #19). resolution_type 검증은 호출자가 RESOLUTION_TYPES 로.
+    """
     gap["status"] = target
     gap["updated_at"] = now
     if assignee:
@@ -65,8 +76,16 @@ def apply_transition(gap: dict[str, Any], target: str, *, actor: str, now: str,
         gap["due_date"] = due_date
     if note and target in ("resolved", "accepted_exception", "false_positive"):
         gap["resolution"] = note
+    if evidence_ref:
+        gap["evidence_ref"] = evidence_ref
+    if target == "resolved":
+        gap["resolution_type"] = resolution_type or "manually_verified"
+        gap["verifier"] = actor
+        gap["verified_at"] = now
+        gap["verifying_scan"] = verifying_scan
     gap.setdefault("history", []).append(
-        {"ts": now, "actor": actor, "action": "transition", "to": target, "note": note})
+        {"ts": now, "actor": actor, "action": "transition", "to": target, "note": note,
+         "resolution_type": resolution_type if target == "resolved" else ""})
     return gap
 
 

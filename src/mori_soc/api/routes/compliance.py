@@ -565,6 +565,7 @@ def register_compliance(ctx: RouteContext) -> None:
         from datetime import timezone as _tz
 
         from mori_soc.services.gap_workflow import (
+            RESOLUTION_TYPES,
             STATUSES,
             apply_transition,
             can_transition,
@@ -580,12 +581,19 @@ def register_compliance(ctx: RouteContext) -> None:
             raise HTTPException(status_code=400, detail=f"target must be one of {', '.join(STATUSES)}")
         if not can_transition(str(gap.get("status")), target):
             raise HTTPException(status_code=400, detail=f"{gap.get('status')} → {target} 전이는 허용되지 않습니다.")
+        resolution_type = str(payload.get("resolution_type", "")).strip()
+        if target == "resolved" and resolution_type and resolution_type not in RESOLUTION_TYPES:
+            raise HTTPException(status_code=400,
+                                detail=f"resolution_type 은 {', '.join(RESOLUTION_TYPES)} 중 하나여야 합니다.")
         now = _dt.now(tz=_tz.utc).isoformat()
         actor = (ctx.get_session_username(request) if ctx.get_session_username else "") or "unknown"
         apply_transition(gap, target, actor=actor, now=now,
                          assignee=str(payload.get("assignee", "")),
                          due_date=str(payload.get("due_date", "")),
-                         note=str(payload.get("note", "")))
+                         note=str(payload.get("note", "")),
+                         resolution_type=resolution_type,
+                         verifying_scan=str(payload.get("verifying_scan", "")),
+                         evidence_ref=str(payload.get("evidence_ref", "")))
         if repo is not None:
             repo.save_gap(gap_id, gap)
         if ctx.log_action:

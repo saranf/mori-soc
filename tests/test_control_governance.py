@@ -67,6 +67,18 @@ class ControlGovernanceServiceTests(unittest.TestCase):
         # lifecycle 이벤트가 append 됨
         self.assertEqual([e["to"] for e in v["lifecycle"]], ["draft", "active", "retired"])
 
+    def test_content_hash_records_canonicalization(self) -> None:
+        # 리뷰 #6: 어떤 규칙·알고리즘으로 해시했는지 레코드에 함께 기록(향후 규칙 변경 대비).
+        from mori_soc.services.control_governance import (
+            CANONICALIZATION,
+            HASH_ALGORITHM,
+        )
+        v = build_framework_version(framework_id="ISMS-P", version="2023", now="2026-01-01")
+        self.assertEqual(v["canonicalization"], CANONICALIZATION)
+        self.assertEqual(v["hash_algorithm"], HASH_ALGORITHM)
+        # 해시 방식 메타는 content_hash 대상에서 제외(내용 아님)
+        self.assertEqual(content_hash(v), content_hash({**v, "canonicalization": "other"}))
+
     def test_version_state_machine(self) -> None:
         from mori_soc.services.control_governance import can_version_transition
         self.assertTrue(can_version_transition("draft", "active"))

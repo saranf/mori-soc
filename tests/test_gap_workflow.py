@@ -38,9 +38,30 @@ class GapWorkflowTests(unittest.TestCase):
         self.assertEqual(g["assignee"], "개발팀")
         self.assertEqual(len(g["history"]), 2)        # created + transition
         apply_transition(g, "remediation", actor="dev", now="2026-07-03T00:00:00+00:00")
-        apply_transition(g, "resolved", actor="dev", now="2026-07-10T00:00:00+00:00", note="재스캔에서 파기 경로 확인")
+        apply_transition(g, "resolved", actor="dev", now="2026-07-10T00:00:00+00:00",
+                         note="재스캔에서 파기 경로 확인", resolution_type="automatically_reverified",
+                         verifying_scan="scan-2026-07-10", evidence_ref="3.4.1")
         self.assertEqual(g["status"], "resolved")
         self.assertEqual(g["resolution"], "재스캔에서 파기 경로 확인")
+        # 리뷰 #19: 해결 근거가 남는다 — '사람이 눌렀다'로 끝나지 않음
+        self.assertEqual(g["resolution_type"], "automatically_reverified")
+        self.assertEqual(g["verifier"], "dev")
+        self.assertEqual(g["verifying_scan"], "scan-2026-07-10")
+        self.assertTrue(g["verified_at"])
+
+    def test_resolution_type_defaults_and_exception_is_not_resolved(self) -> None:
+        from mori_soc.services.gap_workflow import RESOLUTION_TYPES
+        # resolution_type 미지정 → manually_verified 기본
+        g = build_gap(source="s", control_id="c", key="k", title="t", detail="d", now="2026-01-01T00:00:00+00:00")
+        apply_transition(g, "confirmed", actor="u", now="2026-01-02T00:00:00+00:00")
+        apply_transition(g, "resolved", actor="u", now="2026-01-03T00:00:00+00:00")
+        self.assertEqual(g["resolution_type"], "manually_verified")
+        self.assertIn("manually_verified", RESOLUTION_TYPES)
+        # accepted_exception 은 해결이 아님(resolution_type 없음)
+        g2 = build_gap(source="s", control_id="c", key="k2", title="t2", detail="d", now="2026-01-01T00:00:00+00:00")
+        apply_transition(g2, "confirmed", actor="u", now="2026-01-02T00:00:00+00:00")
+        apply_transition(g2, "accepted_exception", actor="u", now="2026-01-03T00:00:00+00:00", note="보완통제 있음")
+        self.assertNotIn("resolution_type", g2)
 
     def test_evaluate_gap_deadlines(self) -> None:
         gaps = [
