@@ -261,6 +261,98 @@ def apply_cycle_control_update(cc: dict[str, Any], *, actor: str, now: str,
     return cc
 
 
+# ── 버전 영향분석(P3) — Framework diff · 계보 · 운영주기 마이그레이션 ─────────────────
+def diff_control_definitions(
+    old_controls: list[dict[str, Any]], new_controls: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """두 기준 버전의 통제를 control_uid 기준으로 비교한다(P3).
+
+    - added: 신규 통제(구 버전에 uid 없음).
+    - removed: 삭제 통제(신 버전에 uid 없음).
+    - renumbered: uid 같고 display_code 만 바뀜(실질 요구 동일 후보).
+    - text_changed: uid 같고 content_hash(요구 내용) 바뀜(실질 요구 변경 후보).
+    - unchanged: uid·내용 동일.
+    AI 확정이 아니라 후보 — 담당자가 계보·영향을 검토한다(모리다움).
+    """
+    def _uid(c: dict[str, Any]) -> str:
+        return str(c.get("control_uid") or c.get("display_code") or "")
+
+    def _body(c: dict[str, Any]) -> str:
+        # 실질 요구 내용만(버전·번호 제외) — 번호변경 vs 내용변경 구분용.
+        return json.dumps({"title": c.get("title"), "requirement_text": c.get("requirement_text"),
+                           "interpretations": c.get("interpretations")},
+                          ensure_ascii=False, sort_keys=True)
+
+    old_by = {_uid(c): c for c in old_controls}
+    new_by = {_uid(c): c for c in new_controls}
+    added, removed, renumbered, text_changed, unchanged = [], [], [], [], []
+
+    for uid, nc in new_by.items():
+        oc = old_by.get(uid)
+        if oc is None:
+            added.append({"control_uid": uid, "display_code": nc.get("display_code"),
+                          "title": nc.get("title")})
+            continue
+        code_changed = str(oc.get("display_code")) != str(nc.get("display_code"))
+        body_changed = _body(oc) != _body(nc)
+        row = {"control_uid": uid, "old_code": oc.get("display_code"),
+               "new_code": nc.get("display_code"), "title": nc.get("title")}
+        if body_changed:
+            text_changed.append(row)
+        elif code_changed:
+            renumbered.append(row)
+        else:
+            unchanged.append(row)
+    for uid, oc in old_by.items():
+        if uid not in new_by:
+            removed.append({"control_uid": uid, "display_code": oc.get("display_code"),
+                            "title": oc.get("title")})
+
+    return {
+        "added": added, "removed": removed, "renumbered": renumbered,
+        "text_changed": text_changed, "unchanged": unchanged,
+        "counts": {"added": len(added), "removed": len(removed), "renumbered": len(renumbered),
+                   "text_changed": len(text_changed), "unchanged": len(unchanged)},
+    }
+
+
+# 새 운영주기 생성 시 **승계 O / 승계 X** — 작년 Effective 가 올해 Effective 는 아니다.
+_CARRY_FIELDS = ("assignee", "applicability", "evidence_contract_ref")
+_RESET_EVIDENCE = "missing"
+_RESET_ASSESSMENT = "not_assessed"
+
+
+def initialize_cycle_from_previous(
+    prev_cycle_controls: list[dict[str, Any]], new_cycle_id: str, *, now: str, created_by: str = "",
+) -> dict[str, Any]:
+    """지난 운영주기에서 새 주기 통제들을 생성한다(P3).
+
+    승계(carry): 담당자·적용성·증적계약 참조·매핑(운영 설정).
+    초기화(reset): 증적 상태·평가 상태·승인·과거증적·위험수용(작년 판정 자동 승계 금지).
+    """
+    new_controls: list[dict[str, Any]] = []
+    for prev in prev_cycle_controls:
+        ref = str(prev.get("control_ref") or "")
+        cc = build_cycle_control(cycle_id=new_cycle_id, control_ref=ref,
+                                 assignee=str(prev.get("assignee") or ""),
+                                 applicability=str(prev.get("applicability") or "pending_assessment"),
+                                 now=now, created_by=created_by)
+        cc["evidence_contract_ref"] = prev.get("evidence_contract_ref", "")
+        cc["evidence_status"] = _RESET_EVIDENCE      # 초기화
+        cc["assessment_status"] = _RESET_ASSESSMENT  # 초기화
+        cc["carried_from"] = prev.get("id")
+        cc["history"].append({"ts": now, "actor": created_by, "action": "carried_from_previous",
+                              "note": f"승계: 담당자·적용성 / 초기화: 증적·평가"})
+        new_controls.append(cc)
+    return {
+        "new_cycle_id": new_cycle_id,
+        "carried": len(new_controls),
+        "carried_fields": list(_CARRY_FIELDS),
+        "reset_fields": ["evidence_status", "assessment_status", "approvals", "past_evidence"],
+        "cycle_controls": new_controls,
+    }
+
+
 def cycle_control_as_of(cc: dict[str, Any], as_of_ts: str) -> dict[str, Any]:
     """history 를 재생해 특정 시점(as_of_ts)의 통제 상태를 재현한다(감사 시점 조회)."""
     state = {"evidence_status": "missing", "assessment_status": "not_assessed",
@@ -284,4 +376,5 @@ __all__ = [
     "build_scope_snapshot", "build_assurance_cycle", "is_mutable_version",
     "build_evidence_contract", "build_evidence_mapping", "build_cycle_control",
     "apply_cycle_control_update", "cycle_control_as_of",
+    "diff_control_definitions", "initialize_cycle_from_previous",
 ]

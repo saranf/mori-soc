@@ -40,6 +40,8 @@ from mori_soc.services.control_governance import (
     build_relationship,
     build_scope_snapshot,
     cycle_control_as_of,
+    diff_control_definitions,
+    initialize_cycle_from_previous,
     is_mutable_version,
 )
 
@@ -384,3 +386,37 @@ def register_control_governance(ctx: RouteContext) -> None:
             raise HTTPException(status_code=404, detail="주기 통제를 찾을 수 없습니다.")
         as_of = date or _now()
         return {"cycle_control_id": cc_id, **cycle_control_as_of(cc, as_of)}
+
+    # ── 버전 영향분석(P3) — 두 기준 버전 통제 diff ─────────────────────────────────
+    @app.get("/governance/framework-versions/{fv_id}/compare", tags=["Governance"])
+    def compare_versions(fv_id: str, request: Request, to: str) -> dict[str, Any]:
+        """fv_id(구) → to(신) 통제 diff: 신규·삭제·번호변경·실질 변경 후보(담당자 검토용)."""
+        _require(request)
+        if _find(KIND_FRAMEWORK_VERSION, fv_id) is None or _find(KIND_FRAMEWORK_VERSION, to) is None:
+            raise HTTPException(status_code=404, detail="비교할 버전을 찾을 수 없습니다.")
+        old = [c for c in _load(KIND_CONTROL_DEF) if c.get("framework_version_id") == fv_id]
+        new = [c for c in _load(KIND_CONTROL_DEF) if c.get("framework_version_id") == to]
+        return {"from": fv_id, "to": to, **diff_control_definitions(old, new)}
+
+    # ── 운영주기 마이그레이션(P3) — 지난 주기에서 새 주기 통제 승계 ─────────────────────
+    @app.post("/governance/assurance-cycles/{cycle_id}/initialize-from/{previous_id}", tags=["Governance"])
+    def initialize_cycle(cycle_id: str, previous_id: str, request: Request) -> dict[str, Any]:
+        """지난 주기(previous_id)에서 새 주기(cycle_id) 통제 생성.
+
+        승계: 담당자·적용성·증적계약. 초기화: 증적·평가 상태(작년 판정 자동 승계 금지).
+        """
+        actor = _require(request)
+        if _find(KIND_ASSURANCE_CYCLE, cycle_id) is None:
+            raise HTTPException(status_code=404, detail="대상 운영주기를 먼저 생성하세요.")
+        prev = [r for r in _load(KIND_CYCLE_CONTROL) if r.get("cycle_id") == previous_id]
+        if not prev:
+            raise HTTPException(status_code=404, detail="이전 주기의 통제가 없습니다.")
+        res = initialize_cycle_from_previous(prev, cycle_id, now=_now(), created_by=actor)
+        created = 0
+        for cc in res["cycle_controls"]:
+            if _find(KIND_CYCLE_CONTROL, cc["id"]) is None:
+                _save(KIND_CYCLE_CONTROL, cc, actor, "GOV_CYCLE_MIGRATE")
+                created += 1
+        res["created"] = created
+        res.pop("cycle_controls", None)  # 요약만 반환(전체는 목록 API 로)
+        return res

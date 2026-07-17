@@ -12,6 +12,8 @@ from mori_soc.services.control_governance import (
     build_framework_version,
     content_hash,
     cycle_control_as_of,
+    diff_control_definitions,
+    initialize_cycle_from_previous,
     is_mutable_version,
 )
 
@@ -74,6 +76,53 @@ class ControlGovernanceServiceTests(unittest.TestCase):
         may = cycle_control_as_of(cc, "2026-05-01T00:00:00+00:00")
         self.assertEqual(may["evidence_status"], "approved")
         self.assertEqual(may["assessment_status"], "effective")
+
+
+    def test_diff_control_definitions(self) -> None:
+        old = [
+            build_control_definition(framework_version_id="isms-p:2019", display_code="2.9.4",
+                                     title="로그 관리", control_uid="log-review",
+                                     requirement_text="분기별 검토"),
+            build_control_definition(framework_version_id="isms-p:2019", display_code="2.5.1",
+                                     title="사라질 통제", control_uid="gone"),
+        ]
+        new = [
+            # 같은 uid, 번호만 변경 + 내용도 변경 → text_changed 우선
+            build_control_definition(framework_version_id="isms-p:2023", display_code="2.10.2",
+                                     title="로그 관리", control_uid="log-review",
+                                     requirement_text="월 1회 검토"),
+            build_control_definition(framework_version_id="isms-p:2023", display_code="3.1.1",
+                                     title="신규 통제", control_uid="brand-new"),
+        ]
+        d = diff_control_definitions(old, new)
+        self.assertEqual(d["counts"], {"added": 1, "removed": 1, "renumbered": 0,
+                                       "text_changed": 1, "unchanged": 0})
+        self.assertEqual(d["added"][0]["control_uid"], "brand-new")
+        self.assertEqual(d["removed"][0]["control_uid"], "gone")
+        self.assertEqual(d["text_changed"][0]["old_code"], "2.9.4")
+
+    def test_diff_renumber_only(self) -> None:
+        old = [build_control_definition(framework_version_id="a", display_code="1.1",
+                                        title="t", control_uid="u", requirement_text="same")]
+        new = [build_control_definition(framework_version_id="b", display_code="2.2",
+                                        title="t", control_uid="u", requirement_text="same")]
+        d = diff_control_definitions(old, new)
+        self.assertEqual(d["counts"]["renumbered"], 1)
+        self.assertEqual(d["counts"]["text_changed"], 0)
+
+    def test_initialize_cycle_resets_assessment(self) -> None:
+        prev = [build_cycle_control(cycle_id="2025", control_ref="corp-log-002:v1",
+                                    assignee="김보안", applicability="applicable",
+                                    now="2025-01-01T00:00:00+00:00", created_by="u")]
+        prev[0]["evidence_status"] = "approved"
+        prev[0]["assessment_status"] = "effective"  # 작년 Effective
+        res = initialize_cycle_from_previous(prev, "2026", now="2026-01-01T00:00:00+00:00")
+        self.assertEqual(res["carried"], 1)
+        nc = res["cycle_controls"][0]
+        self.assertEqual(nc["assignee"], "김보안")          # 담당자 승계
+        self.assertEqual(nc["applicability"], "applicable")  # 적용성 승계
+        self.assertEqual(nc["evidence_status"], "missing")   # 증적 초기화
+        self.assertEqual(nc["assessment_status"], "not_assessed")  # 평가 초기화(자동 승계 금지)
 
 
 class ControlGovernanceRouteTests(unittest.TestCase):
@@ -164,6 +213,35 @@ class ControlGovernanceRouteTests(unittest.TestCase):
         # as-of 재현
         aof = c.get(f"/governance/cycle-controls/{cc_id}/as-of").json()
         self.assertEqual(aof["evidence_status"], "approved")
+
+    def test_version_compare_and_cycle_migration(self) -> None:
+        c = self._client()
+        c.post("/governance/frameworks", json={"framework_id": "ISMS-P", "name": "ISMS-P"})
+        for ver in ("2019", "2023"):
+            c.post("/governance/framework-versions", json={"framework_id": "ISMS-P", "version": ver})
+        c.post("/governance/control-definitions",
+               json={"framework_version_id": "isms-p:2019", "display_code": "2.9.4",
+                     "title": "로그", "control_uid": "log", "requirement_text": "분기"})
+        c.post("/governance/control-definitions",
+               json={"framework_version_id": "isms-p:2023", "display_code": "2.10.2",
+                     "title": "로그", "control_uid": "log", "requirement_text": "월간"})
+        cmp = c.get("/governance/framework-versions/isms-p:2019/compare",
+                    params={"to": "isms-p:2023"}).json()
+        self.assertEqual(cmp["counts"]["text_changed"], 1)  # 요구 내용 변경
+        # cycle migration: 2025 주기 → 2026 주기 승계
+        c.post("/governance/assurance-cycles",
+               json={"cycle_id": "c2025", "name": "2025", "framework_version_id": "isms-p:2019"})
+        c.post("/governance/assurance-cycles",
+               json={"cycle_id": "c2026", "name": "2026", "framework_version_id": "isms-p:2023"})
+        cc = c.post("/governance/cycle-controls",
+                    json={"cycle_id": "c2025", "control_ref": "corp-log-002", "assignee": "김보안"}).json()
+        c.post(f"/governance/cycle-controls/{cc['id']}/update",
+               json={"assessment_status": "effective"})
+        mig = c.post("/governance/assurance-cycles/c2026/initialize-from/c2025").json()
+        self.assertEqual(mig["created"], 1)
+        new_cc = c.get("/governance/assurance-cycles/c2026/controls").json()["cycle_controls"]
+        self.assertEqual(new_cc[0]["assignee"], "김보안")               # 승계
+        self.assertEqual(new_cc[0]["assessment_status"], "not_assessed")  # 초기화
 
 
 if __name__ == "__main__":
