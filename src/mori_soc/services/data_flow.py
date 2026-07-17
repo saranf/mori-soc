@@ -1171,7 +1171,7 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         raise RuntimeError("reportlab not installed; PDF output unavailable") from exc
     import io
 
-    from mori_soc.services.reports import _get_pdf_font
+    from mori_soc.services.pdf import get_pdf_font as _get_pdf_font
 
     BLACK, WHITE, NEUTRAL = colors.HexColor("#111827"), colors.white, colors.HexColor("#e5e7eb")
     BLUE, GREEN, YELLOW, RED = (colors.HexColor("#2563eb"), colors.HexColor("#16a34a"),

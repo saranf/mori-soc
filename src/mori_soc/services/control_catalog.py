@@ -289,7 +289,7 @@ def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
         )
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("reportlab not installed; PDF output unavailable") from exc
-    from mori_soc.services.reports import _get_pdf_font
+    from mori_soc.services.pdf import get_pdf_font as _get_pdf_font
 
     c = detail["control"]
     font = _get_pdf_font()
@@ -465,7 +465,7 @@ def evidence_document_pdf(doc: dict[str, Any]) -> bytes:
         )
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("reportlab not installed; PDF output unavailable") from exc
-    from mori_soc.services.reports import _get_pdf_font
+    from mori_soc.services.pdf import get_pdf_font as _get_pdf_font
 
     c = doc.get("control", {})
     font = _get_pdf_font()

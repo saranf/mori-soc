@@ -88,7 +88,8 @@ def soa_to_pdf(rows: list[dict[str, Any]], summary: dict[str, int] | None = None
     from reportlab.lib.units import mm
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
-    from mori_soc.services.reports import _get_pdf_font, pdf_table
+    from mori_soc.services.pdf import get_pdf_font as _get_pdf_font
+    from mori_soc.services.pdf import pdf_table
 
     font = _get_pdf_font()
     styles = getSampleStyleSheet()
