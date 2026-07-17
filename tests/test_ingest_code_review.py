@@ -156,6 +156,20 @@ class CodeReviewFindingsCsvTests(unittest.TestCase):
         self.assertIn("org/app", r3.text)            # prefix commit 매칭
         self.assertNotIn("org/other", r3.text)
 
+    def test_alerts_triage_excludes_code_review(self) -> None:
+        # Alert Triage(/alerts)는 운영 경보 중심 — code_review 정적 결함은 제외한다.
+        now = datetime.now(tz=timezone.utc)
+        alerts = [
+            Alert(alert_id="c1", source="code_review", observed_at=now, message="sql injection", severity="high"),
+            Alert(alert_id="w1", source="wazuh", observed_at=now, message="ssh brute", severity="high"),
+        ]
+        client = self._client(alerts)
+        data = client.get("/alerts").json()
+        ids = {a["alert_id"] for a in data["alerts"]}
+        self.assertIn("w1", ids)
+        self.assertNotIn("c1", ids)                  # code_review 제외
+        self.assertEqual(data["total"], 1)
+
 
 class PdcaCodeReviewSplitTests(unittest.TestCase):
     def test_code_review_alerts_counted_separately(self) -> None:

@@ -45,7 +45,10 @@ def register_alerts(ctx: RouteContext) -> None:
     def alerts_list() -> dict[str, Any]:
         store = get_query_service().store
         hostnames = {host.host_id: host.hostname for host in store.hosts}
-        rows = _alert_detail_rows(store.alerts, hostnames)
+        # code_review 는 통제 카탈로그/코드리뷰 증적에서 다루는 정적 코드 결함이라
+        # 운영 경보(Zabbix·Wazuh 등) 중심의 Alert Triage 에는 노출하지 않는다.
+        ops_alerts = [a for a in store.alerts if getattr(a, "source", "") != "code_review"]
+        rows = _alert_detail_rows(ops_alerts, hostnames)
         for row in rows:
             row["triage"] = triage_store.get(row["alert_id"], {"status": "pending"})
         return {"alerts": rows, "total": len(rows)}
