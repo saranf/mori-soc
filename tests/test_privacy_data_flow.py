@@ -198,6 +198,46 @@ class DataFlowServiceTests(unittest.TestCase):
         # 법적 확정이 아니라 담당자 확인 필요
         self.assertEqual(by["국민건강보험공단"]["confirm"], "담당자 확인 필요")
 
+    def test_distinct_pii_items_merges_synonyms_and_combos(self) -> None:
+        from mori_soc.services.data_flow import distinct_pii_items
+        rows = [
+            {"item": "이메일"},
+            {"item": "이메일(email)"},          # 표기만 다른 동의어 → 병합
+            {"item": "배송지 주소/수령인/연락처"},  # 조합 항목 → 분리
+            {"item": "배송지(수령인·연락처·주소)"},  # 같은 조합, 다른 표기 → 동일 집합
+            {"item": ""},                        # 빈 값 무시
+        ]
+        items = distinct_pii_items(rows)
+        # 이메일은 한 번만, 배송지 조합은 주소/수령인/전화번호로 분해·병합
+        self.assertEqual(items.count("이메일"), 1)
+        self.assertEqual(items.count("주소"), 1)
+        self.assertEqual(items.count("전화번호"), 1)
+        self.assertNotIn("연락처", items)  # 전화번호로 정규화됨
+
+    def test_distinct_stores_dedup_case_and_whitespace(self) -> None:
+        from mori_soc.services.data_flow import distinct_stores
+        rows = [
+            {"storage_location": "User"},
+            {"storage_location": "user "},   # 대소문자·공백만 다름 → 병합
+            {"storage_location": "Order  DB"},
+            {"storage_location": "order db"},
+        ]
+        stores = distinct_stores(rows)
+        self.assertEqual(len(stores), 2)
+        self.assertIn("User", stores)
+
+    def test_data_flow_pdf_includes_external_recipient_section(self) -> None:
+        if importlib.util.find_spec("reportlab") is None:
+            self.skipTest("reportlab 미설치")
+        from mori_soc.services.data_flow import render_data_flow_pdf
+        rows = [
+            {"item": "이메일", "storage_location": "User", "purpose": "회원관리",
+             "third_party": "AWS SES", "overseas": "us-east-1"},
+        ]
+        pdf = render_data_flow_pdf(rows, generated_at="2026-07-17")
+        self.assertTrue(pdf.startswith(b"%PDF"))
+        self.assertGreater(len(pdf), 1000)
+
     def test_compare_policy_to_flow(self) -> None:
         from mori_soc.services.data_flow import compare_policy_to_flow
         rows = [

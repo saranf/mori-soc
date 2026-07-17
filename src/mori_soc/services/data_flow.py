@@ -1054,6 +1054,61 @@ def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
     return "".join(p)
 
 
+# 요약용 개인정보 항목 정규화 — 표기·조합이 다른 동의어를 한 항목으로 병합해
+# "이메일, 이메일" 같은 중복 카운트를 막는다(상세표는 원문 유지, 요약 집계만 정규화).
+_ITEM_SYNONYMS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"(?i)e-?mail|이메일|메일"), "이메일"),
+    (re.compile(r"(?i)phone|mobile|tel|휴대폰|전화|연락처"), "전화번호"),
+    (re.compile(r"(?i)address|주소|배송지"), "주소"),
+    (re.compile(r"(?i)birth|dob|생년월일|생일"), "생년월일"),
+    (re.compile(r"(?i)resident|\brrn\b|ssn|jumin|주민등록번호|주민번호"), "주민등록번호"),
+    (re.compile(r"(?i)passport|여권"), "여권번호"),
+    (re.compile(r"(?i)\bcard\b|카드번호"), "카드번호"),
+    (re.compile(r"(?i)account|계좌"), "계좌번호"),
+    (re.compile(r"(?i)gender|성별"), "성별"),
+    (re.compile(r"(?i)\bname\b|성명"), "이름"),
+)
+_ITEM_SPLIT = re.compile(r"[/,·|()\n]+")
+
+
+def _canon_pii_item(frag: str) -> str:
+    """항목 조각 하나를 표준 라벨로 정규화(매칭 없으면 공백 정리만)."""
+    t = re.sub(r"\s+", " ", frag.strip())
+    if not t:
+        return ""
+    for pat, label in _ITEM_SYNONYMS:
+        if pat.search(t):
+            return label
+    return t
+
+
+def distinct_pii_items(rows: list[dict[str, Any]]) -> list[str]:
+    """요약용 개인정보 항목 목록 — 조합 항목을 분리·병합해 중복 없이(등장 순서 유지)."""
+    seen: dict[str, None] = {}
+    for r in rows:
+        raw = str(r.get("item") or "").strip()
+        if not raw:
+            continue
+        for frag in _ITEM_SPLIT.split(raw):
+            c = _canon_pii_item(frag)
+            if c and c not in seen:
+                seen[c] = None
+    return list(seen.keys())
+
+
+def distinct_stores(rows: list[dict[str, Any]]) -> list[str]:
+    """요약용 저장 위치 목록 — 공백·대소문자 정규화 후 중복 제거(등장 순서 유지)."""
+    seen: dict[str, str] = {}
+    for r in rows:
+        raw = re.sub(r"\s+", " ", str(r.get("storage_location") or "").strip())
+        if not raw:
+            continue
+        key = raw.lower()
+        if key not in seen:
+            seen[key] = raw
+    return list(seen.values())
+
+
 def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
                          gaps: list[Any] | None = None, summary: dict[str, Any] | None = None) -> bytes:
     """개인정보 처리흐름표 PDF(감사관 제출용). reportlab 필요. 팔레트 6색만.
@@ -1269,8 +1324,8 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
     ]))
 
     # ── 요약 ───────────────────────────────────────────────────────────────────
-    items = sorted({str(r.get("item") or "").strip() for r in rows if r.get("item")})
-    stores = sorted({str(r.get("storage_location") or "").strip() for r in rows if r.get("storage_location")})
+    items = distinct_pii_items(rows)
+    stores = distinct_stores(rows)
     n_third = sum(1 for r in rows if str(r.get("third_party") or "").strip() not in ("", "없음", "-", "n/a"))
     n_over = sum(1 for r in rows if str(r.get("overseas") or "").strip() not in ("", "없음", "-", "n/a"))
     n_seed = sum(1 for r in rows if r.get("source") == "pii_scan")
@@ -1317,11 +1372,35 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
     enc = str(summary.get("encryption") or "").strip()
     story.append(Paragraph("요약", h2))
     story.append(Paragraph(
-        f"· 개인정보 항목({summary.get('items') or len(items)}종): {esc(', '.join(items)) or '—'}<br/>"
-        f"· 저장 테이블({summary.get('tables') or len(stores)}곳): {esc(', '.join(stores)) or '—'}<br/>"
+        f"· 개인정보 항목({len(items)}종): {esc(', '.join(items)) or '—'}<br/>"
+        f"· 저장 위치({len(stores)}곳): {esc(', '.join(stores)) or '—'}<br/>"
         + (f"· 저장 암호화: {esc(enc)}<br/>" if enc else "")
         + f"· 제3자 제공: {n_third}건 · 국외 이전: {n_over}건"
         + (f" · 파기 흐름 개선 지점: {len(gaps)}건" if gaps else ""), body))
+    # ── 외부 수신자 구분(위탁·제3자 제공·국외이전 후보) — #7 ─────────────────────
+    recipients = classify_external_recipients(rows)
+    if recipients:
+        story.append(Spacer(1, 4))
+        story.append(Paragraph("외부 수신자 구분 (위탁 · 제3자 제공 · 국외이전 후보)", h2))
+        story.append(Paragraph(
+            "코드·설정상 외부로 개인정보가 전송되는 수신자를 후보 유형으로 구분한 표입니다. "
+            "<b>법적 구분(위탁/제3자/국외)은 개인정보 담당자가 확정</b>하며, MORI 는 검토 대상만 제시합니다.", body))
+        rc_head = ["수신자", "후보 유형", "항목", "처리 목적", "국외"]
+        rc_data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in rc_head]]
+        for rc in recipients:
+            rc_data.append([Paragraph(esc(rc["recipient"]) or "—", cell),
+                            Paragraph(esc(rc["candidate_types"]) or "—", cell),
+                            Paragraph(esc(rc["items"]) or "—", cell),
+                            Paragraph(esc(rc["purpose"]) or "—", cell),
+                            Paragraph(esc(rc["overseas"]) or "—", cell)])
+        rc_table = Table(rc_data, colWidths=[44 * mm, 42 * mm, 60 * mm, 60 * mm, 34 * mm], repeatRows=1)
+        rc_table.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("BACKGROUND", (0, 0), (-1, 0), BLACK), ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
+            ("GRID", (0, 0), (-1, -1), 0.4, NEUTRAL), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        story += [rc_table, Spacer(1, 6)]
     # ── 개인정보 파일 개요(파일=테이블/업무 단위) — 레퍼런스 ③ ─────────────────────
     overview = build_file_overview(rows)
     if overview:
