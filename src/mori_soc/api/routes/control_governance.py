@@ -502,7 +502,10 @@ def register_control_governance(ctx: RouteContext) -> None:
         apply_cycle_control_update(cc, actor=actor, now=_now(), evidence_status=ev,
                                    assessment_status=asv, applicability=appl,
                                    assignee=str(payload.get("assignee", "")),
-                                   note=str(payload.get("note", "")))
+                                   note=str(payload.get("note", "")),
+                                   evidence_set_hash=str(payload.get("evidence_set_hash", "")),
+                                   rationale=str(payload.get("rationale", "")),
+                                   scope_snapshot_id=str(payload.get("scope_snapshot_id", "")))
         changed = bool(cc.pop("_changed", True))  # 영속 전 transient 플래그 제거(S1f)
         if changed:
             _save(KIND_CYCLE_CONTROL, cc, actor, "GOV_CYCLECTL_UPDATE")

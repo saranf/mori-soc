@@ -499,14 +499,22 @@ def build_cycle_control(*, cycle_id: str, control_ref: str, assignee: str = "",
     }
 
 
+# 통제 평가가 '판단'에 이른 상태(증적 존재만이 아닌 사람의 결론) — 근거를 고정한다(#12).
+_ASSESSMENT_JUDGMENTS = ("design_deficient", "implemented", "operating", "ineffective",
+                         "effective", "exception_approved", "remediation_required")
+
+
 def apply_cycle_control_update(cc: dict[str, Any], *, actor: str, now: str,
                                evidence_status: str = "", assessment_status: str = "",
-                               applicability: str = "", assignee: str = "",
-                               note: str = "") -> dict[str, Any]:
+                               applicability: str = "", assignee: str = "", note: str = "",
+                               evidence_set_hash: str = "", rationale: str = "",
+                               scope_snapshot_id: str = "") -> dict[str, Any]:
     """운영주기 통제 상태 갱신(제자리 + append-only history). 증적·평가 상태는 서로 독립.
 
-    실제로 값이 바뀐 필드만 changed 로 기록한다. 아무 변화가 없으면(단순 재호출·note 없음)
-    history 를 남기지 않는다(no-op 오염 방지). 반환에 `_changed` 로 변경 여부를 알린다.
+    실제로 값이 바뀐 필드만 changed 로 기록한다. 아무 변화가 없으면 history 를 남기지 않는다.
+    **평가 근거 고정(#12)**: assessment_status 가 판단(effective 등)으로 바뀌면, 그 판단이 근거한
+    evidence_set_hash·평가자·시각·근거·범위를 **불변 assessment 스냅샷**으로 append 한다 — 이후
+    증적이 추가·폐기돼도 과거 판단 근거가 유지된다.
     """
     changed: dict[str, Any] = {}
     for field, val in (("evidence_status", evidence_status), ("assessment_status", assessment_status),
@@ -518,6 +526,16 @@ def apply_cycle_control_update(cc: dict[str, Any], *, actor: str, now: str,
     if applicability and cc.get("applicability_pending_review"):
         cc["applicability_pending_review"] = False
         changed["applicability_pending_review"] = False
+    # 평가가 판단에 이르면 근거 스냅샷을 불변으로 고정.
+    if assessment_status in _ASSESSMENT_JUDGMENTS and "assessment_status" in changed:
+        prior = cc.get("assessments") or []
+        cc.setdefault("assessments", []).append({
+            "assessment_version": len(prior) + 1,
+            "status": assessment_status,
+            "evidence_set_hash": evidence_set_hash,
+            "assessed_by": actor, "assessed_at": now,
+            "rationale": rationale, "scope_snapshot_id": scope_snapshot_id,
+        })
     if not changed and not note:
         cc["_changed"] = False   # no-op — history 오염 없음
         return cc

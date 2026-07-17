@@ -124,6 +124,31 @@ class ControlGovernanceServiceTests(unittest.TestCase):
         self.assertEqual(cc["assessment_status"], "effective")
         self.assertEqual(len(cc["history"]), 3)  # created + 2 updates
 
+    def test_assessment_snapshot_fixes_evidence_basis(self) -> None:
+        # 리뷰 #12: 평가가 판단에 이르면 근거(evidence_set_hash·평가자·시각)를 불변 스냅샷으로 고정.
+        cc = build_cycle_control(cycle_id="c1", control_ref="x", now="2026-01-01T00:00:00+00:00",
+                                 created_by="u")
+        apply_cycle_control_update(cc, actor="심사자", now="2026-03-01T00:00:00+00:00",
+                                   assessment_status="effective", evidence_set_hash="sha256:abc",
+                                   rationale="증적 3건 검토")
+        self.assertEqual(len(cc["assessments"]), 1)
+        a1 = cc["assessments"][0]
+        self.assertEqual(a1["assessment_version"], 1)
+        self.assertEqual(a1["status"], "effective")
+        self.assertEqual(a1["evidence_set_hash"], "sha256:abc")
+        self.assertEqual(a1["assessed_by"], "심사자")
+        # 이후 재평가 → 새 버전, 과거 스냅샷은 그대로 보존(불변)
+        apply_cycle_control_update(cc, actor="심사자", now="2026-09-01T00:00:00+00:00",
+                                   assessment_status="ineffective", evidence_set_hash="sha256:def")
+        self.assertEqual(len(cc["assessments"]), 2)
+        self.assertEqual(cc["assessments"][0]["evidence_set_hash"], "sha256:abc")  # 과거 근거 유지
+        self.assertEqual(cc["assessments"][1]["assessment_version"], 2)
+        # not_assessed 로 되돌려도 스냅샷은 안 생김(판단 아님)
+        n0 = len(cc["assessments"])
+        apply_cycle_control_update(cc, actor="u", now="2026-10-01T00:00:00+00:00",
+                                   assessment_status="not_assessed")
+        self.assertEqual(len(cc["assessments"]), n0)
+
     def test_cycle_control_as_of_replays_history(self) -> None:
         cc = build_cycle_control(cycle_id="c1", control_ref="x", now="2026-01-01T00:00:00+00:00",
                                  created_by="u")
