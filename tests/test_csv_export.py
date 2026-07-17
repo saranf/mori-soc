@@ -31,11 +31,18 @@ class CsvExportTests(unittest.TestCase):
         parsed = list(csv.DictReader(io.StringIO(out)))
         self.assertEqual(parsed[0], {"A": "1"})
 
-    def test_csv_injection_value_is_quoted_not_executed(self) -> None:
-        # 수식 시작 문자를 포함한 값도 표준 CSV 이스케이프로 안전하게 담긴다(필드 1개 유지).
-        out = render_csv([{"a": '=1+2', "b": "ok"}], {"a": "A", "b": "B"})
+    def test_csv_injection_value_is_defused(self) -> None:
+        # 수식 인젝션(Formula injection) 무력화: =,+,-,@ 로 시작하는 셀(숫자 아님) 앞에 ' 를 붙여
+        # Excel/Sheets 가 수식으로 실행하지 못하게 한다. 필드 1개 무결성도 유지된다.
+        out = render_csv(
+            [{"a": "=1+2", "b": "@SUM(A1)", "c": "-5", "d": "+cmd", "e": "normal"}],
+            {"a": "A", "b": "B", "c": "C", "d": "D", "e": "E"})
         parsed = list(csv.reader(io.StringIO(out)))
-        self.assertEqual(parsed[1], ["=1+2", "ok"])
+        self.assertEqual(parsed[1][0], "'=1+2")      # 수식 무력화
+        self.assertEqual(parsed[1][1], "'@SUM(A1)")  # DDE 무력화
+        self.assertEqual(parsed[1][2], "-5")          # 정상 음수는 그대로(숫자)
+        self.assertEqual(parsed[1][3], "'+cmd")       # 위험 문자열 무력화
+        self.assertEqual(parsed[1][4], "normal")      # 일반 값은 그대로
 
 
 class CsvExportCapTests(unittest.TestCase):

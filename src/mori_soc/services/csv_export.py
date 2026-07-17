@@ -1,7 +1,12 @@
 """CSV 다운로드 공통 헬퍼 — 라우트마다 반복되던 StringIO+DictWriter+파일명 로직을 한 곳에.
 
 `csv.DictWriter` 를 쓰므로 콤마·따옴표·개행·유니코드가 자동으로 올바르게 이스케이프된다
-(수기 join 이 아니라 표준 모듈 → CSV 인젝션/필드깨짐 방지). 파일명은 UTC 타임스탬프를 붙인다.
+(수기 join 이 아니라 표준 모듈 → 필드깨짐 방지). 파일명은 UTC 타임스탬프를 붙인다.
+
+추가로 **CSV 수식 인젝션(Formula/DDE injection)** 을 막는다 — DictWriter 는 구분자만 이스케이프하고
+Excel/Sheets 가 `=`,`+`,`-`,`@`,탭/CR 로 시작하는 셀을 수식으로 실행하는 것은 막지 못한다.
+MORI 는 자산 담당자·finding·개인정보 등 **사용자 입력**을 감사관용 CSV 로 내보내므로, 위험 문자로
+시작하는 셀(숫자는 제외) 앞에 `'` 를 붙여 무력화한다(OWASP 권고).
 """
 from __future__ import annotations
 
@@ -35,12 +40,41 @@ def _cap_rows(rows: Iterable[Mapping[str, Any]]) -> tuple[list[Mapping[str, Any]
     return rows, False
 
 
+_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _looks_numeric(s: str) -> bool:
+    """정상 숫자(음수·소수·천단위 콤마 포함)면 True — 무력화 대상에서 제외한다."""
+    t = s.strip().replace(",", "")
+    if not t:
+        return False
+    try:
+        float(t)
+        return True
+    except ValueError:
+        return False
+
+
+def _defuse(value: Any) -> Any:
+    """수식 인젝션 무력화 — 위험 문자로 시작하는 문자열(숫자 아님) 앞에 `'` 를 붙인다."""
+    if not isinstance(value, str) or not value:
+        return value
+    if value[0] in _FORMULA_TRIGGERS and not _looks_numeric(value):
+        return "'" + value
+    return value
+
+
 def render_csv(rows: Iterable[Mapping[str, Any]], header_map: Mapping[str, str]) -> str:
-    """행 목록 → CSV 문자열. header_map = {필드키: 표시헤더}. 표시헤더가 첫 줄."""
+    """행 목록 → CSV 문자열. header_map = {필드키: 표시헤더}. 표시헤더가 첫 줄.
+
+    각 셀은 수식 인젝션 무력화(_defuse)를 거친다(감사관 CSV 안전).
+    """
     buf = io.StringIO()
-    writer = _csv.DictWriter(buf, fieldnames=list(header_map.keys()), extrasaction="ignore")
+    keys = list(header_map.keys())
+    writer = _csv.DictWriter(buf, fieldnames=keys, extrasaction="ignore")
     writer.writerow(dict(header_map))
-    writer.writerows(rows)
+    for row in rows:
+        writer.writerow({k: _defuse(row.get(k)) for k in keys})
     return buf.getvalue()
 
 

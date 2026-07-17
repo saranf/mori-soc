@@ -11,7 +11,10 @@ license = { text = "Apache-2.0" }
 
 # 런타임 의존성 — 단일 출처(#31). Dockerfile·CI 는 이 목록을 설치한다(버전 중복/드리프트 제거).
 dependencies = [
-    "fastapi==0.115.12",
+    # fastapi 0.139.2 + starlette>=1.3.1: starlette 0.46.x 의 9개 CVE(PYSEC-2026-161/248/249/
+    # 1941/1942/2280/2281) 패치본. pip-audit clean. 전체 테스트 그린.
+    "fastapi==0.139.2",
+    "starlette>=1.3.1",
     "uvicorn==0.34.0",
     "psycopg[binary]==3.2.6",
     "ldap3==2.9.1",
