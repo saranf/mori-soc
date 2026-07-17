@@ -405,10 +405,12 @@ _TAB_COMPLIANCE_HTML = """    <!-- ── Tab: Compliance PDCA ─────�
             <div style=\"display:flex;align-items:center;gap:10px;flex-wrap:wrap\">
               <span id=\"control_tree_coverage\" style=\"font-size:12px;color:#111827\"></span>
               <button class=\"secondary\" style=\"width:auto;padding:6px 12px;font-size:12px\" onclick=\"loadEvidenceFreshness()\" data-i18n=\"dash.fresh.btn\">증적 신선도</button>
+              <button class=\"secondary\" style=\"width:auto;padding:6px 12px;font-size:12px\" onclick=\"loadAuditSample()\" data-i18n=\"dash.sample.btn\">감사 표본</button>
               <a href=\"/controls/evidence-bundle.zip\" download style=\"background:#f9fafb;border:1px solid #e5e7eb;color:#2563eb;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none\" data-i18n=\"dash.ctl.zip\">전체 증적 ZIP</a>
             </div>
           </div>
           <div id=\"evidence_freshness_box\" style=\"display:none;margin-top:8px;padding:10px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px\"></div>
+          <div id=\"audit_sample_box\" style=\"display:none;margin-top:8px;padding:10px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px\"></div>
           <div class=\"subtext\" data-i18n=\"dash.ctl.sub_compliance\">인증기준을 누르면 이행 상태·담당자·개선계획·기한을 바로 고칠 수 있어요. 저장한 내용은 계속 유지돼요.</div>
           <div id=\"ctl_admin_bar\" style=\"display:none;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0\">
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openControlEditor()\" data-i18n=\"dash.ctl.add\">통제 추가</button>

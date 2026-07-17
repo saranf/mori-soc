@@ -145,6 +145,17 @@ MORI 는 자동 수집 증적이 많으므로, '초록 Compliant' 하나로 뭉�
 - `GET /assets/scope-coverage` — 태그별·인증범위 커버리지(모니터링 = 호스트 인벤토리에 존재).
 - UI: 자산 담당자 목록 상단 커버리지 요약 + 행별 `범위태그` 버튼(초≥90·노≥60·빨 미만).
 
+### 위험 기반 감사 표본(#13)
+
+전체 내부감사 모듈이 아니라, 모집단에서 **위험 기반 표본을 추출해 감사 패키지**로 만드는 최소 기능.
+감사 재현성을 위해 **결정적**(난수 미사용): 고위험 전수(상한) + 나머지 계통추출(1-in-k).
+
+- `services/sampling.py`의 `risk_based_sample(population, risk_field, high_cap, sample_rate, order_field)`.
+  고위험(값이 상/admin/관리자/퇴사자/critical 등) 전수(최대 high_cap) + 나머지 order_field 정렬 후
+  계통추출. 같은 모집단·파라미터면 항상 같은 표본(재현).
+- `POST /controls/audit-sample` — 표본 메타(population/sample 수·method). `.zip` — manifest.json + sample.csv.
+- UI: 통제 카탈로그 헤더 `감사 표본` — 자산 담당자를 모집단(중요도=위험)으로 표본 추출 + ZIP.
+
 ### 처리 보장(트랜잭션 경계)
 
 인제스트/증적 파이프라인은 **부분 성공을 정직하게 보고**한다(조용히 성공으로 위장하지 않음).

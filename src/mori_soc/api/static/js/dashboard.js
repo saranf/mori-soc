@@ -2924,6 +2924,53 @@
     }
     window.loadEvidenceFreshness = loadEvidenceFreshness;
 
+    // ── 위험 기반 감사 표본(#13) — 자산 모집단에서 결정적 표본 추출 ─────────────────────────
+    async function _samplePopulation() {
+      // 자산 담당자를 모집단으로(중요도=위험). 실기업에선 계정·권한 목록으로 확장 가능.
+      const res = await fetch('/assets/owners');
+      const owners = (res.ok ? (await res.json()).owners : []) || [];
+      return owners.map(o => ({ id: o.hostname, hostname: o.hostname, owner: o.owner||'',
+        team: o.team||'', category: o.category||'', risk: o.importance||'', scope: (o.scope_tags||[]).join('|') }));
+    }
+    async function loadAuditSample() {
+      const box = document.getElementById('audit_sample_box');
+      if (!box) return;
+      box.style.display = 'block';
+      box.innerHTML = `<span class="empty">${tt('dash.dyn.loading','로딩 중…')}</span>`;
+      try {
+        const population = await _samplePopulation();
+        const res = await fetch('/controls/audit-sample', {method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({population, risk_field:'risk', high_cap:20, sample_rate:0.1, order_field:'id', control_id:'assets', period:''})});
+        if (!res.ok) { box.innerHTML = `<span class="empty">${tt('dash.ctl.err','불러오지 못했습니다.')}</span>`; return; }
+        const d = await res.json();
+        const sample = d.sample || [];
+        const trs = sample.map(s=>{
+          const high = String(s.risk||'').match(/상|admin|관리자|critical|high|퇴사/i);
+          const rb = s.risk ? `<span style="color:${high?'#dc2626':'#111827'};font-size:11px">${escapeHtml(s.risk)}</span>` : '-';
+          return `<tr><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px"><b>${escapeHtml(s.hostname||s.id)}</b></td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6">${rb}</td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px">${escapeHtml(s.owner||'-')}</td><td style="padding:3px 6px;border-bottom:1px solid #f3f4f6;font-size:11px">${escapeHtml(s.scope||'-')}</td></tr>`;
+        }).join('');
+        box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px"><div style="font-weight:600;color:#111827;font-size:12px">${tt('dash.sample.btn','감사 표본')}</div><button class="secondary" style="width:auto;padding:2px 9px;font-size:11px" onclick="document.getElementById('audit_sample_box').style.display='none'">${tt('dash.dyn.cancel','닫기')}</button></div>
+          <div style="font-size:11px;color:#111827;margin:4px 0 6px;line-height:1.6">${tt('dash.sample.help','읽는 법: 자산 모집단(담당자 목록·중요도=위험)에서 <b>위험 기반</b>으로 뽑은 감사 표본이에요. 고위험(중요도 상·관리자·퇴사자)은 전수(최대 20), 나머지는 계통추출(1-in-10)로 뽑아요. <b>결정적</b>이라 같은 모집단이면 같은 표본이 나와 감사 재현이 돼요. ZIP에는 manifest.json + sample.csv가 들어가요.')}</div>
+          <div style="font-size:11px;margin-bottom:6px">${tt('dash.sample.method','선정 기준')}: ${escapeHtml(d.method||'')} · ${tt('dash.sample.pop','모집단')} ${d.population} · ${tt('dash.sample.picked','표본')} ${d.sample_count} (${d.coverage_pct}%) · ${tt('dash.sample.high','고위험')} ${d.high_count}</div>
+          <div style="margin-bottom:6px"><button class="secondary" style="width:auto;padding:3px 10px;font-size:11px" onclick="downloadAuditSampleZip()">${tt('dash.sample.zip','표본 패키지 ZIP')}</button></div>
+          <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.sample.h_host','자산')}</th><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.sample.h_risk','위험')}</th><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.sample.h_owner','담당자')}</th><th style="text-align:left;padding:3px 6px;border-bottom:1px solid #e5e7eb;font-size:10px">${tt('dash.sample.h_scope','범위')}</th></tr></thead><tbody>${trs}</tbody></table></div>`;
+      } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.ctl.err','불러오지 못했습니다.')}</span>`; }
+    }
+    window.loadAuditSample = loadAuditSample;
+    async function downloadAuditSampleZip() {
+      try {
+        const population = await _samplePopulation();
+        const res = await fetch('/controls/audit-sample.zip', {method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({population, risk_field:'risk', high_cap:20, sample_rate:0.1, order_field:'id', control_id:'assets'})});
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'mori-audit-sample-assets.zip';
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      } catch(e) { /* silent */ }
+    }
+    window.downloadAuditSampleZip = downloadAuditSampleZip;
+
     async function loadControlTree() {
       const box = document.getElementById('control_tree_box');
       if (!box) return;

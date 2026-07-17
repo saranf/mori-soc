@@ -358,6 +358,67 @@ def register_compliance(ctx: RouteContext) -> None:
         out.sort(key=lambda r: (order.get(r["status"], 9), -(r["age_days"] or 0)))
         return {"generated_at": now_iso, "controls": out}
 
+    @app.post("/controls/audit-sample", tags=["Compliance"])
+    def audit_sample(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """위험 기반 감사 표본 추출(#13) — 모집단에서 결정적 표본 + 감사 패키지 메타.
+
+        body: population(list[dict]) · control_id? · period? · risk_field? · high_cap? · sample_rate?
+        · order_field?. 전체 내부감사 모듈이 아니라 표본 추출만(모리다움). 결정적(재현 가능).
+        """
+        from mori_soc.services.sampling import risk_based_sample
+        _require_ev(request)
+        pop = payload.get("population")
+        if not isinstance(pop, list):
+            raise HTTPException(status_code=400, detail="population(list)이 필요합니다.")
+        res = risk_based_sample(
+            [p for p in pop if isinstance(p, dict)],
+            risk_field=str(payload.get("risk_field", "risk")),
+            high_cap=int(payload.get("high_cap", 20)),
+            sample_rate=float(payload.get("sample_rate", 0.1)),
+            order_field=str(payload.get("order_field", "id")),
+        )
+        res["control_id"] = str(payload.get("control_id", "") or "")
+        res["period"] = str(payload.get("period", "") or "")
+        return res
+
+    @app.post("/controls/audit-sample.zip", tags=["Compliance"])
+    def audit_sample_zip(payload: dict[str, Any], request: Request) -> Any:
+        """감사 표본 패키지 ZIP(manifest.json + sample.csv)."""
+        import io
+        import json as _json
+        import zipfile
+
+        from fastapi.responses import Response as _Response
+
+        from mori_soc.services.csv_export import render_csv
+        from mori_soc.services.sampling import risk_based_sample
+        _require_ev(request)
+        pop = payload.get("population")
+        if not isinstance(pop, list):
+            raise HTTPException(status_code=400, detail="population(list)이 필요합니다.")
+        res = risk_based_sample(
+            [p for p in pop if isinstance(p, dict)],
+            risk_field=str(payload.get("risk_field", "risk")),
+            high_cap=int(payload.get("high_cap", 20)),
+            sample_rate=float(payload.get("sample_rate", 0.1)),
+            order_field=str(payload.get("order_field", "id")),
+        )
+        res["control_id"] = str(payload.get("control_id", "") or "")
+        res["period"] = str(payload.get("period", "") or "")
+        sample = res.pop("sample", [])
+        cols: list[str] = []
+        for item in sample:
+            for kk in item:
+                if kk not in cols:
+                    cols.append(kk)
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("manifest.json", _json.dumps(res, ensure_ascii=False, indent=2))
+            zf.writestr("sample.csv", render_csv(sample, {c: c for c in cols}))
+        fname = "mori-audit-sample" + (f"-{res['control_id']}" if res["control_id"] else "") + ".zip"
+        return _Response(content=buf.getvalue(), media_type="application/zip",
+                         headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
     @app.post("/controls/evidence/{control_id}/transition", tags=["Compliance"])
     def evidence_transition(control_id: str, payload: dict[str, Any], request: Request) -> dict[str, Any]:
         """증적 승인 상태 전이(#4): draft→reviewed→approved→superseded / revoked.
