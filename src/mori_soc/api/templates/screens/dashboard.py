@@ -18,6 +18,19 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
         <div style=\"font-size:12px;color:#111827\" data-i18n=\"dash.panel.group.sections\">패널</div>
         <div id=\"panel_edit_sections\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin-top:6px\"></div>
       </div>
+      <!-- 상태 헤더: 호스트/증적 공백/심사 준비 한 줄 요약 + CTA (dashboard.js renderMoriHeader, 전부 실데이터) -->
+      <section class=\"card\" id=\"mori_state_strip\" style=\"display:none;padding:20px 22px\">
+        <div class=\"mori-strip\" id=\"mori_state_strip_body\"></div>
+      </section>
+      <!-- 셋업 진행 레일: 5단계 완료/현재 상태를 실데이터로 판정 -->
+      <section class=\"card\" id=\"mori_setup_rail\" style=\"display:none;padding:20px 22px\">
+        <div class=\"mori-setup-head\">
+          <h2 style=\"margin:0;font-size:15px\" data-i18n=\"dash.setup.title\">셋업 진행</h2>
+          <span id=\"mori_setup_note\" style=\"font-size:12.5px;color:#111827\"></span>
+          <span class=\"pct\" id=\"mori_setup_pct\"></span>
+        </div>
+        <div class=\"mori-rail\" id=\"mori_setup_rail_body\"></div>
+      </section>
       <!-- 첫 방문 안내: 데이터 소스 미연결 시에만 표시 (dashboard.js renderFirstRunGuide). 실데이터 판정, 가짜 상태 아님. -->
       <section class=\"card hidden\" id=\"mori_first_run\" style=\"border:1px dashed #e5e7eb\">
         <div style=\"font-size:11px;font-weight:800;letter-spacing:.06em;color:#2563eb;margin-bottom:6px\" data-i18n=\"dash.firstrun.step\">지금 할 일 · 1단계</div>

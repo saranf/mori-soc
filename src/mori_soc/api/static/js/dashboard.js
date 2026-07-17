@@ -459,6 +459,69 @@
     }
     window.renderFirstRunGuide = renderFirstRunGuide;
 
+    /* 상태 헤더 + 셋업 진행 레일 (시안 상단) — 전부 실데이터 바인딩, 가짜 숫자 없음.
+       증적 층(증적 공백·통제) 판단은 히어로와 같은 정책으로 admin·security 만.
+       실패해도 대시보드 안 깨지도록 각 fetch/전체를 try/catch 로 감쌈. */
+    async function renderMoriHeader() {
+      const stripSec = document.getElementById('mori_state_strip');
+      const railSec = document.getElementById('mori_setup_rail');
+      if (!stripSec || !railSec) return;
+      const hide = () => { stripSec.style.display = 'none'; railSec.style.display = 'none'; };
+      // 증적층 열람 권한 없으면(인프라/헬프데스크) 표시하지 않음
+      if (typeof _canAssessRisk === 'function' && !_canAssessRisk()) { hide(); return; }
+      const o = _lastOverviewData || {};
+      const hosts = o.total_hosts ?? 0, online = o.online_hosts ?? 0, offline = o.offline_hosts ?? 0;
+      const srcReporting = o.sources_reporting ?? 0;
+      // 데이터가 아예 없으면(첫 방문) 헤더 숨김 — 첫 방문 안내 카드가 대신 뜬다
+      if (hosts === 0 && srcReporting === 0 && (o.ingested_records ?? 0) === 0) { hide(); return; }
+
+      let gaps = {};
+      try { const r = await fetch('/dashboard/evidence-gaps'); if (r.ok) gaps = (await r.json()).gaps || {}; } catch (e) {}
+      const GAP_KEYS = ['vuln_pending','exceptions_expiring','untriaged_alerts','code_review_pending','overdue','unmapped_assets','access_uncovered','control_pending'];
+      const gapTotal = GAP_KEYS.reduce((s, k) => s + Number(gaps[k] || 0), 0);
+      const unmapped = Number(gaps.unmapped_assets || 0);
+
+      let totalChecks = 0, weak = 0, readiness = null;
+      try {
+        const r = await fetch('/compliance/pdca');
+        if (r.ok) { const d = await r.json(); const sc = d.status_counts || {}; totalChecks = d.total_checks || 0; weak = (sc.fail||0)+(sc.warning||0); if (totalChecks > 0) readiness = Math.round((sc.pass||0) / totalChecks * 100); }
+      } catch (e) {}
+
+      // ── 상태 스트립 ──
+      const metric = (k, v, cls, sub) => `<div class="ms-metric"><span class="ms-k">${escapeHtml(k)}</span><span class="ms-v ${cls}">${v}</span>${sub ? `<span class="ms-k">${escapeHtml(sub)}</span>` : ''}</div>`;
+      let strip = metric(tt('dash.stat.hosts','호스트'), hosts, '', tt('dash.stat.host_sub','온라인 {on} · 오프라인 {off}').replace('{on}', online).replace('{off}', offline));
+      strip += '<div class="ms-div"></div>' + metric(tt('dash.stat.gap','증적 공백'), gapTotal + '<small>건</small>', gapTotal > 0 ? 'red' : 'green');
+      if (readiness !== null) strip += '<div class="ms-div"></div>' + metric(tt('dash.stat.ready','심사 준비'), readiness + '<small>%</small>', 'green');
+      strip += gapTotal > 0
+        ? `<button class="ms-cta" onclick="switchTab('compliance')" style="width:auto">${escapeHtml(tt('dash.stat.cta_gap','증적 공백 {n}건 보러 가기 →').replace('{n}', gapTotal))}</button>`
+        : `<button class="ms-cta" onclick="switchTab('compliance')" style="width:auto">${escapeHtml(tt('dash.stat.cta_ready','심사 준비 현황 →'))}</button>`;
+      document.getElementById('mori_state_strip_body').innerHTML = strip;
+      stripSec.style.display = '';
+
+      // ── 셋업 진행 레일 (실데이터 판정) ──
+      const steps = [
+        { t: tt('dash.setup.s1','소스 연결'), done: srcReporting > 0, s: srcReporting > 0 ? tt('dash.setup.s1d','소스 {n}개 연결').replace('{n}', srcReporting) : tt('dash.setup.s1t','수집 소스 연결 필요') },
+        { t: tt('dash.setup.s2','담당자 지정'), done: hosts > 0 && unmapped === 0, s: unmapped > 0 ? tt('dash.setup.s2t','미매핑 {n}건').replace('{n}', unmapped) : tt('dash.setup.s2d','자산 매핑 완료') },
+        { t: tt('dash.setup.s3','통제 확인'), done: totalChecks > 0, s: totalChecks > 0 ? tt('dash.setup.s3d','{n}개 점검').replace('{n}', totalChecks) : tt('dash.setup.s3t','통제 카탈로그 확인') },
+        { t: tt('dash.setup.s4','공백 조치'), done: gapTotal === 0, s: gapTotal > 0 ? tt('dash.setup.s4t','{n}건 남음').replace('{n}', gapTotal) : tt('dash.setup.s4d','증적 공백 없음') },
+        { t: tt('dash.setup.s5','심사 리포트'), done: gapTotal === 0 && weak === 0, s: (gapTotal === 0 && weak === 0) ? tt('dash.setup.s5d','내려받기 가능') : tt('dash.setup.s5t','공백 0건에 열림') },
+      ];
+      let nowSet = false;
+      const doneCount = steps.filter((s) => s.done).length;
+      document.getElementById('mori_setup_rail_body').innerHTML = steps.map((st, i) => {
+        let cls = 'todo';
+        if (st.done) cls = 'done'; else if (!nowSet) { cls = 'now'; nowSet = true; }
+        return `<div class="mori-step ${cls}"><div class="num">${st.done ? '✓' : (i + 1)}</div><div class="t">${escapeHtml(st.t)}</div><div class="s">${escapeHtml(st.s)}</div></div>`;
+      }).join('');
+      document.getElementById('mori_setup_pct').textContent = `${doneCount} / 5 · ${Math.round(doneCount / 5 * 100)}%`;
+      const nowStep = steps.find((s) => !s.done);
+      document.getElementById('mori_setup_note').textContent = nowStep
+        ? tt('dash.setup.note','— 다음: {t}').replace('{t}', nowStep.t)
+        : tt('dash.setup.note_done','— 모든 단계 완료');
+      railSec.style.display = '';
+    }
+    window.renderMoriHeader = renderMoriHeader;
+
     /* 인프라 현황 위젯 24h/12h 전환 + Zabbix/Wazuh 딥링크 (대시보드=인프라 뷰) */
     let _infraWindow = '24h';
     function setInfraWindow(w) {
@@ -495,6 +558,7 @@
       _lastOverviewData = overview;
       renderSecurityHero();
       try { renderFirstRunGuide(); } catch (e) {}
+      try { renderMoriHeader().catch(function () {}); } catch (e) {}
       renderInfraStatus();
       const o = {
         total_hosts: overview.total_hosts ?? 0, online_hosts: overview.online_hosts ?? 0,
