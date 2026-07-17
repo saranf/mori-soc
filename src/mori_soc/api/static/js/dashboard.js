@@ -906,7 +906,15 @@
         const response = await fetch('/dashboard/preferences');
         const data = await response.json();
         if (response.ok && data.user_dashboard) {
-          userPreferences = data.user_dashboard;
+          // 저장된 설정을 기본값 '위에' 병합 — 사용자가 명시적으로 저장한 키만 우선하고,
+          // 건드린 적 없는 키(새로 추가된 패널 포함)는 배포 기본값(기본 off)을 따른다.
+          const saved = data.user_dashboard || {};
+          userPreferences = {
+            cards: Object.assign({}, defaultPreferences.cards, saved.cards || {}),
+            sections: Object.assign({}, defaultPreferences.sections, saved.sections || {}),
+            asset_columns: Object.assign({}, defaultPreferences.asset_columns, saved.asset_columns || {}),
+            guides: Object.assign({}, defaultPreferences.guides, saved.guides || {}),
+          };
         }
       } catch (error) {
         dashboardStatusEl.textContent = `preferences load failed: ${error.message}`;
