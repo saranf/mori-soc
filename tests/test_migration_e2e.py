@@ -171,6 +171,7 @@ class MigrationE2ETests(unittest.TestCase):
         from mori_soc.repositories.state_postgres import PostgresStateRepository
         from mori_soc.services.control_governance import (
             apply_cycle_control_update,
+            build_assurance_cycle,
             build_cycle_control,
             build_framework,
             build_framework_version,
@@ -200,6 +201,10 @@ class MigrationE2ETests(unittest.TestCase):
         apply_cycle_control_update(cc25, actor="u", now="2025-06-01T00:00:00+00:00",
                                    evidence_status="approved", assessment_status="effective")
         cc25.pop("_changed", None)
+        # 운영주기 정규화(#4 slice3): cycle_control 은 assurance_cycle 을 참조(FK) → 먼저 생성.
+        cyc25 = build_assurance_cycle(cycle_id="c2025", name="2025", framework_version_id="isms-p:2019",
+                                      now="2025-01-01")
+        repo.save_governance("assurance_cycle", cyc25["id"], cyc25)
         repo.save_governance("cycle_control", cc25["id"], cc25)
 
         # 이벤트 원장에 create/update 기록(hash chain)
@@ -219,7 +224,10 @@ class MigrationE2ETests(unittest.TestCase):
                    "requirement_text": "월간", "interpretations": {}}
         repo.save_governance("control_definition", new_ctl["id"], new_ctl)
 
-        # 4) 2026 주기 이관 — 계보 기반 마이그레이션
+        # 4) 2026 주기 이관 — 계보 기반 마이그레이션(대상 주기 먼저 생성)
+        cyc26 = build_assurance_cycle(cycle_id="c2026", name="2026", framework_version_id="isms-p:2023",
+                                      now="2026-01-01")
+        repo.save_governance("assurance_cycle", cyc26["id"], cyc26)
         plan = plan_cycle_migration([cc25], [old_ctl], [new_ctl], "c2026",
                                     now="2026-01-01T00:00:00+00:00", created_by="u")
         for cc in plan["cycle_controls"]:
@@ -326,6 +334,32 @@ class MigrationE2ETests(unittest.TestCase):
         bad_cov = dict(rel, id="rel-bad", relationship_id="rel-bad", coverage_percent=150)
         with self.assertRaises(Exception):
             repo.save_governance("control_relationship", "rel-bad", bad_cov)
+
+    def test_governance_normalized3_cycle_fk(self) -> None:
+        """정규화 3차(#4): cycle_control 은 실재하는 assurance_cycle 을 참조해야(FK)."""
+        from mori_soc.repositories.state_postgres import PostgresStateRepository
+        from mori_soc.services.control_governance import (
+            build_assurance_cycle,
+            build_cycle_control,
+            build_framework,
+            build_framework_version,
+        )
+        repo = PostgresStateRepository(self._url)
+        repo.apply_schema()
+        # 존재하지 않는 cycle 참조 → 거부
+        cc = build_cycle_control(cycle_id="ghost", control_ref="x", now="2026-01-01")
+        with self.assertRaises(Exception):
+            repo.save_governance("cycle_control", cc["id"], cc)
+        # framework→version→cycle 순서로 만들면 통과(scope_snapshot 없이 nullable)
+        repo.save_governance("framework", build_framework(framework_id="F", name="F")["id"],
+                             build_framework(framework_id="F", name="F"))
+        v = build_framework_version(framework_id="F", version="1", now="2026-01-01")
+        repo.save_governance("framework_version", v["id"], v)
+        cyc = build_assurance_cycle(cycle_id="cyc1", name="c", framework_version_id="f:1", now="2026-01-01")
+        repo.save_governance("assurance_cycle", cyc["id"], cyc)
+        cc2 = build_cycle_control(cycle_id="cyc1", control_ref="x", now="2026-01-01")
+        repo.save_governance("cycle_control", cc2["id"], cc2)   # 예외 없이 통과
+        self.assertIn(cc2["id"], {c["id"] for c in repo.load_governance("cycle_control")})
 
     def test_governance_normalized_backfill(self) -> None:
         """구 범용 스토어(ui_control_governance)의 데이터가 정규 테이블로 이관되는가(idempotent)."""

@@ -878,11 +878,20 @@ class PostgresStateRepository(StateRepository):
         "control_relationship": ("gov_control_relationships", "relationship_id",
                                 ("source_control_id", "target_control_id", "relationship_type",
                                  "coverage_percent")),
+        # 정규화 3차(#4) — 운영주기 체인.
+        "assurance_cycle": ("gov_assurance_cycles", "cycle_id",
+                           ("framework_version_id", "scope_snapshot_id", "name", "status",
+                            "period_start", "period_end")),
+        "cycle_control": ("gov_cycle_controls", "cycle_control_id",
+                         ("cycle_id", "control_ref", "evidence_status", "assessment_status")),
     }
+    # nullable FK 컬럼 — 빈 문자열은 NULL 로 저장(존재하지 않는 ''을 참조하지 않도록).
+    _NULLIFY_EMPTY_GOV = {("assurance_cycle", "scope_snapshot_id")}
     # backfill FK 순서 — 부모가 먼저 정규 테이블에 있어야 자식 FK 가 통과한다.
     _BACKFILL_ORDER = ("framework", "framework_version", "control_definition",
                        "organization_control", "scope_snapshot", "evidence_contract",
-                       "evidence_mapping", "control_relationship")
+                       "evidence_mapping", "control_relationship",
+                       "assurance_cycle", "cycle_control")
 
     def load_governance(self, kind: str) -> list[dict[str, Any]]:
         spec = self._NORMALIZED_GOV.get(kind)
@@ -912,7 +921,14 @@ class PostgresStateRepository(StateRepository):
             if spec is not None:
                 table, pk, cols = spec
                 allcols = (pk, *cols, "metadata")
-                vals = [entity_id, *[record.get(c) for c in cols], meta]
+
+                def _col(c: str) -> Any:
+                    v = record.get(c)
+                    # nullable FK 컬럼의 빈 문자열은 NULL 로(존재하지 않는 ''참조 방지).
+                    if v == "" and (kind, c) in self._NULLIFY_EMPTY_GOV:
+                        return None
+                    return v
+                vals = [entity_id, *[_col(c) for c in cols], meta]
                 placeholders = ", ".join(["%s"] * len(allcols))
                 updates = ", ".join(f"{c}=EXCLUDED.{c}" for c in (*cols, "metadata"))
                 cur.execute(

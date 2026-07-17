@@ -119,8 +119,12 @@ POST /assurance-cycles/{id}/initialize-from/{prev} · /controls/{id}/overlay-vie
   (FK org_control, UNIQUE org+version) · `gov_evidence_mappings`(FK org_control) ·
   `gov_scope_snapshots` · `gov_control_relationships`(coverage 0~100 CHECK·자기참조 CHECK·
   source+target+type UNIQUE). schema 020, 동일 dispatch·backfill(FK 순서) 패턴.
-- **잔여**: assurance_cycles·cycle_controls 정규화(control_ref 이중 대상 때문에 별도 슬라이스).
-  in-memory 는 dict 유지(단일 테넌트).
+- **3차(완료)**: `gov_assurance_cycles`(FK framework_version·nullable FK scope_snapshot) →
+  `gov_cycle_controls`(FK cycle). cycle_control.control_ref 는 통제정의/내부통제 이중 대상이라
+  FK 없이 서비스층 검증. nullable FK 빈 문자열은 NULL 저장. schema 021.
+- **완결**: 10개 거버넌스 객체 전부 정규 테이블 + DB 제약(FK·UNIQUE·CHECK·부분유니크). 원본은
+  metadata JSONB 로 정확 round-trip, 구 범용 스토어→정규 backfill(FK 순서·실패보존). in-memory 는
+  dict 유지(단일 테넌트).
 
 ## 7. 검증 상태
 
