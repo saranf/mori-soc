@@ -162,6 +162,93 @@ class MigrationE2ETests(unittest.TestCase):
         self.assertEqual(rows[0]["status"], "approved")
         self.assertEqual(rows[0]["pdf_sha256"], "p" * 64)
 
+    def test_control_governance_persist_events_and_as_of(self) -> None:
+        """통제 거버넌스 시나리오 E2E(S4): 등록 → 운영 → 버전변경 → 이관 → 재시작 → 과거 재현.
+
+        실 postgres 에 저장하고 새 repo 인스턴스(=재시작)로 다시 읽어 governance 객체·이벤트
+        원장·history 가 보존되는지, hash chain 이 무결한지, as-of 재현이 되는지 검증한다.
+        """
+        from mori_soc.repositories.state_postgres import PostgresStateRepository
+        from mori_soc.services.control_governance import (
+            apply_cycle_control_update,
+            build_cycle_control,
+            build_framework_version,
+            build_governance_event,
+            cycle_control_as_of,
+            plan_cycle_migration,
+            verify_governance_chain,
+        )
+        repo = PostgresStateRepository(self._url)
+        repo.apply_schema()
+
+        # 1) ISMS-P 2019 등록 + 통제 정의(구버전)
+        v19 = build_framework_version(framework_id="ISMS-P", version="2019", now="2019-01-01")
+        repo.save_governance("framework_version", v19["id"], v19)
+        old_ctl = {"id": "isms-p:2019:2.9.4", "framework_version_id": "isms-p:2019",
+                   "control_uid": "log", "display_code": "2.9.4", "title": "로그",
+                   "requirement_text": "분기", "interpretations": {}}
+        repo.save_governance("control_definition", old_ctl["id"], old_ctl)
+
+        # 2) 2025 주기 통제 — 담당자·적용성 설정, 증적 approved·평가 effective 로 운영
+        cc25 = build_cycle_control(cycle_id="c2025", control_ref="isms-p:2019:2.9.4",
+                                   assignee="김보안", applicability="applicable",
+                                   now="2025-02-01T00:00:00+00:00", created_by="u")
+        apply_cycle_control_update(cc25, actor="u", now="2025-06-01T00:00:00+00:00",
+                                   evidence_status="approved", assessment_status="effective")
+        cc25.pop("_changed", None)
+        repo.save_governance("cycle_control", cc25["id"], cc25)
+
+        # 이벤트 원장에 create/update 기록(hash chain)
+        prev = "GENESIS"
+        for rev, etype in ((1, "create"), (2, "update")):
+            ev = build_governance_event(prev, kind="cycle_control", entity_id=cc25["id"],
+                                        revision=rev, event_type=etype, actor="u",
+                                        occurred_at=f"2025-0{rev}-01T00:00:00+00:00", payload={})
+            repo.append_governance_event(ev)
+            prev = ev["hash"]
+
+        # 3) ISMS-P 2023 — 통제 번호·내용 변경(2.9.4 → 2.10.2, 요구 변경)
+        v23 = build_framework_version(framework_id="ISMS-P", version="2023", now="2023-01-01")
+        repo.save_governance("framework_version", v23["id"], v23)
+        new_ctl = {"id": "isms-p:2023:2.10.2", "framework_version_id": "isms-p:2023",
+                   "control_uid": "log", "display_code": "2.10.2", "title": "로그",
+                   "requirement_text": "월간", "interpretations": {}}
+        repo.save_governance("control_definition", new_ctl["id"], new_ctl)
+
+        # 4) 2026 주기 이관 — 계보 기반 마이그레이션
+        plan = plan_cycle_migration([cc25], [old_ctl], [new_ctl], "c2026",
+                                    now="2026-01-01T00:00:00+00:00", created_by="u")
+        for cc in plan["cycle_controls"]:
+            repo.save_governance("cycle_control", cc["id"], cc)
+
+        # 5) 재시작(새 repo 인스턴스)
+        repo2 = PostgresStateRepository(self._url)
+
+        # governance 객체 보존
+        ccs = repo2.load_governance("cycle_control")
+        by_id = {c["id"]: c for c in ccs}
+        self.assertIn("c2025:isms-p-2019-2.9.4", by_id)
+        migrated = by_id["c2026:isms-p-2023-2.10.2"]
+        self.assertEqual(migrated["assignee"], "김보안")               # 담당자 승계
+        self.assertEqual(migrated["assessment_status"], "not_assessed")  # 평가 초기화
+        self.assertEqual(migrated["carried_from_control_ref"], "isms-p:2019:2.9.4")
+        self.assertTrue(migrated["requires_design_review"])              # 내용 변경
+
+        # 이벤트 원장·hash chain 보존
+        events = repo2.load_governance_events()
+        self.assertGreaterEqual(len(events), 2)
+        self.assertTrue(verify_governance_chain(
+            repo2.load_governance_events(kind="cycle_control", entity_id=cc25["id"]))["ok"])
+
+        # 6) 과거 재현 — 2025 통제의 2025-03 시점(승인 전)과 2025-07 시점(승인 후) 모두 재현
+        cc25_loaded = by_id["c2025:isms-p-2019-2.9.4"]
+        mar = cycle_control_as_of(cc25_loaded, "2025-03-01T00:00:00+00:00")
+        self.assertEqual(mar["evidence_status"], "missing")           # 승인 전
+        self.assertEqual(mar["assignee"], "김보안")                    # 최초 상태 복원(S1b)
+        jul = cycle_control_as_of(cc25_loaded, "2025-07-01T00:00:00+00:00")
+        self.assertEqual(jul["evidence_status"], "approved")          # 승인 후
+        self.assertEqual(jul["assessment_status"], "effective")
+
     def test_worker_leader_lock_single_holder(self) -> None:
         # 리더 선출(#26): 한 번에 한 연결만 advisory lock 을 쥔다.
         import os
