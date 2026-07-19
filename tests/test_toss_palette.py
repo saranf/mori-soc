@@ -16,6 +16,8 @@ from mori_soc.api.templates.dashboard import render_user_dashboard_html
 import mori_soc.api.templates.dashboard as _dash_mod
 
 _STATIC = pathlib.Path(_dash_mod.__file__).parent.parent / "static"
+# 증적 PDF/SVG 생성기(개인정보 처리흐름표·SoA·공용 PDF) — UI와 같은 6색 규율.
+_SERVICES = pathlib.Path(_dash_mod.__file__).parent.parent.parent / "services"
 
 # 토스 6색 팔레트 + 중성/틴트(색=상태). 6자리 hex 소문자 기준.
 _ALLOWED_HEX = {
@@ -57,6 +59,10 @@ class TossPaletteGuardTest(unittest.TestCase):
             "console.css": (_STATIC / "css" / "console.css").read_text(encoding="utf-8"),
             "dashboard.js": (_STATIC / "js" / "dashboard.js").read_text(encoding="utf-8"),
             "console.js": (_STATIC / "js" / "console.js").read_text(encoding="utf-8"),
+            # 증적 산출물 생성기 소스(색 상수만 텍스트 스캔 — 모듈 임포트/reportlab 불필요).
+            "pdf.py": (_SERVICES / "pdf.py").read_text(encoding="utf-8"),
+            "data_flow.py": (_SERVICES / "data_flow.py").read_text(encoding="utf-8"),
+            "soa.py": (_SERVICES / "soa.py").read_text(encoding="utf-8"),
         }
 
     def test_no_forbidden_legacy_hex(self) -> None:
