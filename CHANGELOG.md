@@ -9,6 +9,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha
 > continuity — they are the changelog milestone counter, not the package version. New entries use
 > the package version.
 
+## [Unreleased] — 2026-07-20 — 전 UI 토스(Toss) 스타일 개편 (진행 중)
+
+### Changed
+- **전 UI 토스 디자인 언어 이관** — 그레이 앱 배경(#f2f4f6)+흰 카드 부양, 소프트 섀도, KPI 빅넘버
+  (tabular-nums), 필형 상태칩, 슬림 탭. `dashboard.css`·`console.css` 재작성(클래스명 100% 보존 →
+  마크업·JS·라우팅·i18n 무손상).
+- **6색 = 상태 규율 유지, 값만 토스로 교체** — 파 `#3182f6`·위험 `#f04452`·완료 `#15c47e`·주의 `#f5a623`·
+  잉크 `#191f28`·배경 `#f2f4f6`. JS/템플릿 인라인 hex 스윕(dashboard.js 959개 등), 6색 밖 잔재·장식
+  그라디언트 전면 제거. 보조 텍스트를 회색(#8b95a1)으로 위계 복구.
+- **증적 PDF/SVG 토스 팔레트** — 개인정보 처리흐름표·SoA·공용 PDF(`pdf.py`·`data_flow.py`·`soa.py`)
+  색을 토스 중성색으로(흐름표 6색 의미매핑 수집파·저장초·이용노·파기빨 보존).
+- **Swagger 기능별 분류** — `openapi_tags` 16개 그룹 설명·논리순서(핵심 통제·증적 → 버티컬 → 증적소스 →
+  운영) + `swagger_ui_parameters`(docExpansion none·filter). 엔드포인트 기존 `tags=` 유지.
+
+### Added
+- 공용 컴포넌트(공통화): `.stat-mini`(미니 통계 타일 ×10)·`.detail-link`(상세 링크 ×4)·`.dl-pill`
+  (CSV/PDF/ZIP 다운로드 필 ×6) — 반복 인라인 스타일 대체.
+- 심사 준비 준비율 링 상시표시(데이터 0건이어도 토스 링 + 빈 상태 카피).
+- 회귀 가드 테스트: `test_toss_palette.py`(6색 밖/구팔레트/그라디언트 유입 차단 — UI + 증적 PDF 생성기),
+  `test_openapi_tags.py`(라우트 태그의 그룹 메타 완전성).
+
+### 남은 작업 (정직 표기)
+- 뷰별 "한눈에" 정보설계(IA) 재구성은 **미완** — 색·컴포넌트만 교체, 패널 구조는 기존 유지. 무엇을
+  앞세우고 접을지는 제품 판단 + 브라우저 눈검증 필요.
+- 토스 테마 `/docs` 커스텀 라우트는 부팅 안전상 보류(테스트 환경에 fastapi 필요). 계획: `docs/redesign-toss-plan.md`.
+
 ## [0.6.0] — Control-to-Evidence 운영 플랫폼 + 감사 무결성 강화
 
 ### Added
