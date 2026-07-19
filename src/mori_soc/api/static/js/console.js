@@ -95,9 +95,9 @@
       const sizes = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
       const el = document.createElement('div');
       el.className = 'pgbar';
-      el.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:8px;font-size:12px;color:#111827;flex-wrap:wrap';
+      el.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:8px;font-size:12px;color:#191f28;flex-wrap:wrap';
       el.innerHTML = `<span>${start + 1}–${Math.min(end, total)} / ${total}</span>` +
-        `<select onchange="_pgSize('${key}',this.value)" style="background:#e5e7eb;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:3px 6px;font-size:12px">${sizes.map(s => `<option value="${s}"${s === st.size ? ' selected' : ''}>${s}</option>`).join('')}</select>` +
+        `<select onchange="_pgSize('${key}',this.value)" style="background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:3px 6px;font-size:12px">${sizes.map(s => `<option value="${s}"${s === st.size ? ' selected' : ''}>${s}</option>`).join('')}</select>` +
         `<button class="secondary" style="width:auto;padding:2px 9px;font-size:12px" onclick="_pgGo('${key}',-1)" ${st.page <= 1 ? 'disabled' : ''}>이전</button>` +
         `<span>${st.page}/${pages}</span>` +
         `<button class="secondary" style="width:auto;padding:2px 9px;font-size:12px" onclick="_pgGo('${key}',1)" ${st.page >= pages ? 'disabled' : ''}>다음</button>`;
@@ -339,7 +339,7 @@
       ], items, tt('admin.dyn.none_show_hosts','표시할 호스트가 없습니다.'));
     }
 
-    const UI_TRIAGE_COLORS = {new:'#ca8a04', acknowledged:'#2563eb', investigating:'#2563eb', closed:'#16a34a', false_positive:'#111827'};
+    const UI_TRIAGE_COLORS = {new:'#f5a623', acknowledged:'#3182f6', investigating:'#3182f6', closed:'#15c47e', false_positive:'#191f28'};
     let uiTriageData = {};
     async function loadUiTriageData() {
       try { const r = await fetch('/alerts'); const d = await r.json(); (d.alerts||[]).forEach(a => { uiTriageData[a.alert_id] = a.triage || {status:'pending'}; }); } catch(_) {}
@@ -352,7 +352,7 @@
           label: 'Host',
           render: (item) => `<strong>${escapeHtml(item.hostname || '-')}</strong><br /><span class="subtext">${escapeHtml(item.host_id || '-')}</span>`,
         },
-        { label: tt('admin.dyn.col.owner','담당자'), render: (item) => `<span style="color:#16a34a">${escapeHtml(item.owner || '-')}</span>` },
+        { label: tt('admin.dyn.col.owner','담당자'), render: (item) => `<span style="color:#15c47e">${escapeHtml(item.owner || '-')}</span>` },
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'Severity', render: (item) => escapeHtml(item.severity) },
         { label: 'Message', render: (item) => escapeHtml(item.message) },
@@ -361,7 +361,7 @@
           render: (item) => {
             const tr = uiTriageData[item.alert_id] || {status:'new'};
             const st = tr.status || 'new';
-            const color = UI_TRIAGE_COLORS[st] || '#111827';
+            const color = UI_TRIAGE_COLORS[st] || '#191f28';
             return `<span style="background:${color}22;color:${color};padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">${escapeHtml(st)}</span>`;
           }
         },
@@ -375,20 +375,20 @@
           label: 'Host',
           render: (item) => `<strong>${escapeHtml(item.hostname || item.host_id)}</strong><br /><span class="subtext">${escapeHtml(item.host_id)}</span>`,
         },
-        { label: tt('admin.dyn.col.owner','담당자'), render: (item) => `<span style="color:#16a34a">${escapeHtml(item.owner || '-')}</span>` },
+        { label: tt('admin.dyn.col.owner','담당자'), render: (item) => `<span style="color:#15c47e">${escapeHtml(item.owner || '-')}</span>` },
         { label: 'Source', render: (item) => escapeHtml(item.source) },
         { label: 'CVE', render: (item) => escapeHtml(item.cve || '-') },
         { label: 'Package', render: (item) => escapeHtml(item.package_name || '-') },
         { label: tt('admin.dyn.col.action_plan','조치 계획'), render: (item) => {
-          if (!item.plan_text) return `<span style="color:#111827;font-size:11px">${tt('admin.dyn.unset','미설정')}</span>`;
-          const tgt = item.plan_target_date ? `<br /><span style="color:#111827;font-size:11px">~${escapeHtml(item.plan_target_date)}</span>` : '';
-          const by = item.plan_updated_by ? ` <span style="color:#111827;font-size:11px">(${escapeHtml(item.plan_updated_by)})</span>` : '';
-          return `<span style="color:#16a34a;font-size:12px" title="${escapeHtml(item.plan_text)}">${escapeHtml(item.plan_text.substring(0,30))}${item.plan_text.length>30?'…':''}</span>${by}${tgt}`;
+          if (!item.plan_text) return `<span style="color:#191f28;font-size:11px">${tt('admin.dyn.unset','미설정')}</span>`;
+          const tgt = item.plan_target_date ? `<br /><span style="color:#191f28;font-size:11px">~${escapeHtml(item.plan_target_date)}</span>` : '';
+          const by = item.plan_updated_by ? ` <span style="color:#191f28;font-size:11px">(${escapeHtml(item.plan_updated_by)})</span>` : '';
+          return `<span style="color:#15c47e;font-size:12px" title="${escapeHtml(item.plan_text)}">${escapeHtml(item.plan_text.substring(0,30))}${item.plan_text.length>30?'…':''}</span>${by}${tgt}`;
         }},
         { label: tt('admin.dyn.col.exception','조치 예외'), render: (item) => {
-          if (!item.exception_until) return `<span style="color:#111827;font-size:11px">${tt('admin.dyn.none_word','없음')}</span>`;
-          const reason = item.exception_reason ? `<br /><span style="color:#111827;font-size:11px">${escapeHtml(item.exception_reason.substring(0,30))}${item.exception_reason.length>30?'…':''}</span>` : '';
-          return `<span style="color:#ca8a04;font-size:12px">~${escapeHtml(item.exception_until)}</span>${reason}`;
+          if (!item.exception_until) return `<span style="color:#191f28;font-size:11px">${tt('admin.dyn.none_word','없음')}</span>`;
+          const reason = item.exception_reason ? `<br /><span style="color:#191f28;font-size:11px">${escapeHtml(item.exception_reason.substring(0,30))}${item.exception_reason.length>30?'…':''}</span>` : '';
+          return `<span style="color:#f5a623;font-size:12px">~${escapeHtml(item.exception_until)}</span>${reason}`;
         }},
       ], items, tt('admin.dyn.none_critical_vuln2','critical 취약점이 없습니다.'));
     }
@@ -483,7 +483,7 @@
       }
       const statusToBadge = { success: 'online', error: 'offline', running: 'unknown', unknown: 'unknown' };
       sourceCoverageEl.innerHTML = items.map((item) => {
-        const staleBadge = item.is_stale ? ' <span class="badge" style="background:#ca8a04;color:#000">STALE</span>' : '';
+        const staleBadge = item.is_stale ? ' <span class="badge" style="background:#f5a623;color:#000">STALE</span>' : '';
         return `
         <div class="coverage-item">
           <div class="metric-label">${escapeHtml(item.source.toUpperCase())}</div>
@@ -748,7 +748,7 @@
                 <td>${i + 1}</td>
                 <td><span class="result-badge ${escapeHtml(badgeClass(ev.source))}">${escapeHtml(ev.source || '-')}</span></td>
                 <td>${escapeHtml(ev.summary || ev.raw_ref || '-')}</td>
-                <td><span class="mono" style="font-size:11px;color:#111827;">${escapeHtml(ev.record_id || '-')}</span></td>
+                <td><span class="mono" style="font-size:11px;color:#191f28;">${escapeHtml(ev.record_id || '-')}</span></td>
               </tr>
             `).join('')}
           </tbody>
@@ -902,7 +902,7 @@
     let _editingHostname = null; // track if we are editing
 
     const impLabel = { '상':tt('admin.s.opt.high','상'), '중':tt('admin.s.opt.mid','중'), '하':tt('admin.s.opt.low','하') };
-    const impColor = { '상':'#dc2626', '중':'#ca8a04', '하':'#16a34a' };
+    const impColor = { '상':'#f04452', '중':'#f5a623', '하':'#15c47e' };
 
     async function loadOwners() {
       ownersListEl.innerHTML = `<span class="empty">${tt('admin.dyn.loading','로딩 중…')}</span>`;
@@ -913,20 +913,20 @@
         if (!list.length) { ownersListEl.innerHTML = `<span class="empty">${tt('admin.dyn.none_owners','등록된 담당자 없음')}</span>`; return; }
         const rows = list.map(o => {
           const imp = o.importance || '';
-          const impBadge = imp ? `<span style="background:#e5e7eb;color:${impColor[imp]||'#111827'};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px">${escapeHtml(impLabel[imp]||imp)}</span>` : '';
-          const catBadge = o.category ? `<span style="color:#2563eb;font-size:11px;margin-left:6px">[${escapeHtml(o.category)}]</span>` : '';
-          const tags = (o.scope_tags||[]).map(t=>`<span style="color:#2563eb;border:1px solid #2563eb;border-radius:5px;padding:0 5px;font-size:10px;margin-left:3px">${escapeHtml(t)}</span>`).join('');
-          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:13px;gap:8px">
+          const impBadge = imp ? `<span style="background:#e5e8eb;color:${impColor[imp]||'#191f28'};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px">${escapeHtml(impLabel[imp]||imp)}</span>` : '';
+          const catBadge = o.category ? `<span style="color:#3182f6;font-size:11px;margin-left:6px">[${escapeHtml(o.category)}]</span>` : '';
+          const tags = (o.scope_tags||[]).map(t=>`<span style="color:#3182f6;border:1px solid #3182f6;border-radius:5px;padding:0 5px;font-size:10px;margin-left:3px">${escapeHtml(t)}</span>`).join('');
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid #e5e8eb;font-size:13px;gap:8px">
             <div style="flex:1;min-width:0">
-              <strong style="color:#111827">${escapeHtml(o.hostname)}</strong>${catBadge}${impBadge}${tags}
-              <br><span style="color:#16a34a;font-size:12px">${escapeHtml(o.owner||'-')}</span>
-              ${o.team ? `<span style="color:#111827;margin-left:6px;font-size:12px">(${escapeHtml(o.team)})</span>` : ''}
-              ${o.email ? `<span style="color:#111827;font-size:11px;margin-left:6px">${escapeHtml(o.email)}</span>` : ''}
+              <strong style="color:#191f28">${escapeHtml(o.hostname)}</strong>${catBadge}${impBadge}${tags}
+              <br><span style="color:#15c47e;font-size:12px">${escapeHtml(o.owner||'-')}</span>
+              ${o.team ? `<span style="color:#191f28;margin-left:6px;font-size:12px">(${escapeHtml(o.team)})</span>` : ''}
+              ${o.email ? `<span style="color:#191f28;font-size:11px;margin-left:6px">${escapeHtml(o.email)}</span>` : ''}
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0">
-              <button onclick="editScopeTags('${escapeHtml(o.hostname)}')" style="background:#e5e7eb;border:1px solid #e5e7eb;color:#2563eb;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px">${tt('admin.dyn.scope','범위태그')}</button>
-              <button onclick="editOwner('${escapeHtml(o.hostname)}')" style="background:#e5e7eb;border:1px solid #e5e7eb;color:#2563eb;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px">${tt('admin.dyn.edit','수정')}</button>
-              <button onclick="deleteOwner('${escapeHtml(o.hostname)}')" style="background:#fee2e2;border:none;color:#dc2626;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px">${tt('admin.dyn.delete','삭제')}</button>
+              <button onclick="editScopeTags('${escapeHtml(o.hostname)}')" style="background:#e5e8eb;border:1px solid #e5e8eb;color:#3182f6;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px">${tt('admin.dyn.scope','범위태그')}</button>
+              <button onclick="editOwner('${escapeHtml(o.hostname)}')" style="background:#e5e8eb;border:1px solid #e5e8eb;color:#3182f6;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px">${tt('admin.dyn.edit','수정')}</button>
+              <button onclick="deleteOwner('${escapeHtml(o.hostname)}')" style="background:#fdecee;border:none;color:#f04452;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px">${tt('admin.dyn.delete','삭제')}</button>
             </div>
           </div>`;
         }).join('');
@@ -945,14 +945,14 @@
         const d = await res.json();
         const is = d.in_scope || {};
         const tagChips = (d.tags||[]).map(t=>{
-          const col = t.coverage_pct>=90?'#16a34a':(t.coverage_pct>=60?'#ca8a04':'#dc2626');
+          const col = t.coverage_pct>=90?'#15c47e':(t.coverage_pct>=60?'#f5a623':'#f04452');
           return `<span style="border:1px solid ${col};color:${col};border-radius:5px;padding:1px 6px;font-size:11px;margin:2px 4px 2px 0;display:inline-block">${escapeHtml(t.tag)} ${t.monitored}/${t.assets} (${t.coverage_pct}%)</span>`;
         }).join('');
-        box.innerHTML = `<div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:12px">
-          <div style="font-weight:600;color:#111827">${tt('admin.dyn.scope_cov','인증범위 커버리지')}</div>
-          <div style="font-size:11px;color:#111827;margin:2px 0 6px;line-height:1.5">${tt('admin.dyn.scope_help','읽는 법: 자산에 붙인 범위 태그별로 <b>기술 신호(모니터링)로 커버되는 비율</b>이에요. ‘인증범위 포함’ 태그 자산 중 실제 수집되는 자산 비율이 인증범위 커버리지예요. 초록≥90%·노랑≥60%·빨강 미만. 미커버 자산은 증적 공백 후보예요.')}</div>
-          <div><b>${tt('admin.dyn.scope_inscope','인증범위 포함')}</b>: ${is.monitored||0}/${is.assets||0} (${is.coverage_pct||0}%)${is.unmonitored?` · <span style="color:#dc2626">${tt('admin.dyn.scope_uncov','미커버')} ${is.unmonitored}</span>`:''}</div>
-          <div style="margin-top:4px">${tagChips||`<span style="color:#6b7280;font-size:11px">${tt('admin.dyn.scope_notag','범위 태그가 붙은 자산이 없어요. ‘범위태그’ 버튼으로 지정하세요.')}</span>`}</div>
+        box.innerHTML = `<div style="border:1px solid #e5e8eb;border-radius:8px;padding:8px 10px;font-size:12px">
+          <div style="font-weight:600;color:#191f28">${tt('admin.dyn.scope_cov','인증범위 커버리지')}</div>
+          <div style="font-size:11px;color:#191f28;margin:2px 0 6px;line-height:1.5">${tt('admin.dyn.scope_help','읽는 법: 자산에 붙인 범위 태그별로 <b>기술 신호(모니터링)로 커버되는 비율</b>이에요. ‘인증범위 포함’ 태그 자산 중 실제 수집되는 자산 비율이 인증범위 커버리지예요. 초록≥90%·노랑≥60%·빨강 미만. 미커버 자산은 증적 공백 후보예요.')}</div>
+          <div><b>${tt('admin.dyn.scope_inscope','인증범위 포함')}</b>: ${is.monitored||0}/${is.assets||0} (${is.coverage_pct||0}%)${is.unmonitored?` · <span style="color:#f04452">${tt('admin.dyn.scope_uncov','미커버')} ${is.unmonitored}</span>`:''}</div>
+          <div style="margin-top:4px">${tagChips||`<span style="color:#8b95a1;font-size:11px">${tt('admin.dyn.scope_notag','범위 태그가 붙은 자산이 없어요. ‘범위태그’ 버튼으로 지정하세요.')}</span>`}</div>
         </div>`;
       } catch(e) { /* silent */ }
     }
@@ -993,7 +993,7 @@
       ownCategoryEl.value = o.category || '';
       ownImportanceEl.value = o.importance || '';
       ownerFormTitleEl.textContent = `${hostname} ${tt('admin.dyn.editing','수정 중')}`;
-      ownerFormTitleEl.style.color = '#ca8a04';
+      ownerFormTitleEl.style.color = '#f5a623';
       cancelEditBtn.style.display = '';
       ownerStatusEl.textContent = '';
       // scroll form into view
@@ -1007,7 +1007,7 @@
       ownHostnameEl.readOnly = false;
       ownHostnameEl.style.opacity = '1';
       ownerFormTitleEl.textContent = tt('admin.dyn.new_asset','새 자산 등록');
-      ownerFormTitleEl.style.color = '#2563eb';
+      ownerFormTitleEl.style.color = '#3182f6';
       cancelEditBtn.style.display = 'none';
     }
 
@@ -1060,7 +1060,7 @@
             <div class="meta mono" style="word-break:break-all">${escapeHtml(w.url)}</div>
             <div style="margin-top:8px;display:flex;gap:8px">
               <button class="secondary" style="width:auto;padding:4px 12px;font-size:12px" onclick="testWebhook('${escapeHtml(w.id)}', this)">${tt('admin.dyn.test','테스트')}</button>
-              <button class="ghost" style="width:auto;padding:4px 12px;font-size:12px;border-color:#dc2626;color:#dc2626" onclick="deleteWebhook('${escapeHtml(w.id)}', this)">${tt('admin.dyn.delete','삭제')}</button>
+              <button class="ghost" style="width:auto;padding:4px 12px;font-size:12px;border-color:#f04452;color:#f04452" onclick="deleteWebhook('${escapeHtml(w.id)}', this)">${tt('admin.dyn.delete','삭제')}</button>
             </div>
           </div>
         `).join('');
@@ -1194,15 +1194,15 @@
         }
         const statusBadge = s => ({pending:tt('admin.dyn.signup.pending','대기중'), approved:tt('admin.dyn.signup.approved','승인됨'), rejected:tt('admin.dyn.signup.rejected','거절됨')}[s] || s);
         signupListEl.innerHTML = reqs.map(r => `
-          <div class="owner-row" style="border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:10px;">
+          <div class="owner-row" style="border:1px solid #e5e8eb;border-radius:10px;padding:12px;margin-bottom:10px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
               <div>
-                <strong>${r.name}</strong> <span style="color:#111827;font-size:12px;">${r.email}</span>
-                ${r.username ? `<span style="color:#2563eb;font-size:12px;margin-left:6px;font-family:monospace">@${r.username}</span>` : ''}
-                ${r.department ? `<span style="color:#111827;font-size:12px;margin-left:6px;">[${r.department}]</span>` : ''}
-                <div style="font-size:12px;color:#111827;margin-top:4px;">${r.reason || tt('admin.dyn.no_reason','(사유 없음)')}</div>
-                <div style="font-size:11px;color:#111827;margin-top:4px;">${tt('admin.dyn.col.created','요청일')}: ${r.created_at || '-'}${r.reviewed_at ? ' / ' + tt('admin.dyn.col.reviewed','처리일') + ': ' + r.reviewed_at : ''}</div>
-                ${r.status === 'approved' && r.username ? `<div style="font-size:11px;color:#16a34a;margin-top:3px">${tt('admin.dyn.signup.provisioned','계정 생성됨')}: ${r.username} (${r.role || 'user'}, ${r.backend || ''})</div>` : ''}
+                <strong>${r.name}</strong> <span style="color:#191f28;font-size:12px;">${r.email}</span>
+                ${r.username ? `<span style="color:#3182f6;font-size:12px;margin-left:6px;font-family:monospace">@${r.username}</span>` : ''}
+                ${r.department ? `<span style="color:#191f28;font-size:12px;margin-left:6px;">[${r.department}]</span>` : ''}
+                <div style="font-size:12px;color:#191f28;margin-top:4px;">${r.reason || tt('admin.dyn.no_reason','(사유 없음)')}</div>
+                <div style="font-size:11px;color:#191f28;margin-top:4px;">${tt('admin.dyn.col.created','요청일')}: ${r.created_at || '-'}${r.reviewed_at ? ' / ' + tt('admin.dyn.col.reviewed','처리일') + ': ' + r.reviewed_at : ''}</div>
+                ${r.status === 'approved' && r.username ? `<div style="font-size:11px;color:#15c47e;margin-top:3px">${tt('admin.dyn.signup.provisioned','계정 생성됨')}: ${r.username} (${r.role || 'user'}, ${r.backend || ''})</div>` : ''}
               </div>
               <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                 <span>${statusBadge(r.status)}</span>
@@ -1240,7 +1240,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || res.status);
         if (status === 'approved' && data.username) {
-          signupStatusEl.innerHTML = `${tt('admin.dyn.approve_done','승인 완료')} <strong>${data.username}</strong> (${data.role}, ${data.backend}) · ${tt('admin.dyn.signup.initpw','초기 비밀번호')}: <code style="background:#ffffff;padding:1px 6px;border-radius:4px;color:#ca8a04">${data.initial_password}</code> ${tt('admin.dyn.signup.copy_note','(사용자에게 전달, 1회 표시)')}`;
+          signupStatusEl.innerHTML = `${tt('admin.dyn.approve_done','승인 완료')} <strong>${data.username}</strong> (${data.role}, ${data.backend}) · ${tt('admin.dyn.signup.initpw','초기 비밀번호')}: <code style="background:#ffffff;padding:1px 6px;border-radius:4px;color:#f5a623">${data.initial_password}</code> ${tt('admin.dyn.signup.copy_note','(사용자에게 전달, 1회 표시)')}`;
         } else {
           signupStatusEl.textContent = tt('admin.dyn.reject_done','거절 완료');
         }
@@ -1268,12 +1268,12 @@
         if (!sres.ok) { ldapListEl.innerHTML = `<span class="empty">${sres.status===401||sres.status===403 ? tt('admin.dyn.ldap.reauth','세션이 만료됐습니다. 새로고침 후 다시 로그인하세요.') : tt('admin.dyn.error_prefix','오류: ')+('HTTP '+sres.status)}</span>`; return; }
         const st = await sres.json();
         if (!st.enabled) {
-          if (badge) { badge.textContent = tt('admin.dyn.ldap.disabled','● 비활성'); badge.style.color = '#111827'; }
+          if (badge) { badge.textContent = tt('admin.dyn.ldap.disabled','● 비활성'); badge.style.color = '#191f28'; }
           if (form) form.style.display = 'none';
           ldapListEl.innerHTML = `<span class="empty">${tt('admin.dyn.ldap.off_note','LDAP이 꺼져 있습니다. .env 의 MORI_LDAP_ENABLED=true 로 켜면 여기서 관리할 수 있습니다.')}</span>`;
           return;
         }
-        if (badge) { badge.textContent = `● ${tt('admin.dyn.ldap.enabled','활성')} · ${st.url} · ${st.base_dn}`; badge.style.color = '#16a34a'; }
+        if (badge) { badge.textContent = `● ${tt('admin.dyn.ldap.enabled','활성')} · ${st.url} · ${st.base_dn}`; badge.style.color = '#15c47e'; }
         if (Array.isArray(st.roles) && st.roles.length) _ldapRoles = st.roles;
         if (form) form.style.display = 'flex';
         const res = await fetch('/admin/ldap/users');
@@ -1283,11 +1283,11 @@
         if (!users.length) { ldapListEl.innerHTML = `<span class="empty">${tt('admin.dyn.ldap.none','디렉터리에 사용자가 없습니다.')}</span>`; return; }
         ldapListEl.innerHTML = users.map(u => {
           const roleOpts = _ldapRoles.map(r => `<option value="${r}"${u.role===r?' selected':''}>${r}</option>`).join('');
-          return `<div class="owner-row" style="border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          return `<div class="owner-row" style="border:1px solid #e5e8eb;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
             <div>
-              <strong style="font-family:monospace;color:#2563eb">${escapeHtml(u.uid)}</strong>
-              <span style="color:#111827;font-size:13px;margin-left:6px">${escapeHtml(u.cn||'')}</span>
-              ${u.mail ? `<span style="color:#111827;font-size:12px;margin-left:6px">${escapeHtml(u.mail)}</span>` : ''}
+              <strong style="font-family:monospace;color:#3182f6">${escapeHtml(u.uid)}</strong>
+              <span style="color:#191f28;font-size:13px;margin-left:6px">${escapeHtml(u.cn||'')}</span>
+              ${u.mail ? `<span style="color:#191f28;font-size:12px;margin-left:6px">${escapeHtml(u.mail)}</span>` : ''}
             </div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
               <select onchange="ldapSetRole('${escapeHtml(u.uid)}', this.value)" class="inp-sm" style="font-size:12px;padding:4px 8px" title="${tt('admin.dyn.ldap.role','MORI 역할')}">${roleOpts}</select>
@@ -1312,10 +1312,10 @@
         const res = await fetch('/admin/ldap/users', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
         const d = await res.json();
         if (!res.ok) throw new Error(d.detail || res.status);
-        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.added','추가됨')}: ${d.uid} (${d.role})`; ldapStatusMsgEl.style.color = '#16a34a'; }
+        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.added','추가됨')}: ${d.uid} (${d.role})`; ldapStatusMsgEl.style.color = '#15c47e'; }
         ['ldap_new_uid','ldap_new_cn','ldap_new_mail','ldap_new_pw'].forEach(i => g(i).value = '');
         await loadLdapUsers();
-      } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#dc2626'; } }
+      } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#f04452'; } }
     }
     window.ldapAddUser = ldapAddUser;
 
@@ -1324,9 +1324,9 @@
       try {
         const res = await fetch('/admin/ldap/users/' + encodeURIComponent(uid), { method:'DELETE' });
         const d = await res.json(); if (!res.ok) throw new Error(d.detail || res.status);
-        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.deleted','삭제됨')}: ${uid}`; ldapStatusMsgEl.style.color = '#111827'; }
+        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.deleted','삭제됨')}: ${uid}`; ldapStatusMsgEl.style.color = '#191f28'; }
         await loadLdapUsers();
-      } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#dc2626'; } }
+      } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#f04452'; } }
     }
     window.ldapDeleteUser = ldapDeleteUser;
 
@@ -1336,8 +1336,8 @@
       try {
         const res = await fetch('/admin/ldap/users/' + encodeURIComponent(uid) + '/password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password: pw}) });
         const d = await res.json(); if (!res.ok) throw new Error(d.detail || res.status);
-        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.pw_done','비밀번호 재설정됨')}: ${uid}`; ldapStatusMsgEl.style.color = '#16a34a'; }
-      } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#dc2626'; } }
+        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.pw_done','비밀번호 재설정됨')}: ${uid}`; ldapStatusMsgEl.style.color = '#15c47e'; }
+      } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#f04452'; } }
     }
     window.ldapResetPw = ldapResetPw;
 
@@ -1345,8 +1345,8 @@
       try {
         const res = await fetch('/admin/ldap/users/' + encodeURIComponent(uid) + '/role', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({role}) });
         const d = await res.json(); if (!res.ok) throw new Error(d.detail || res.status);
-        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.role_done','역할 변경됨')}: ${uid} → ${role}`; ldapStatusMsgEl.style.color = '#16a34a'; }
-      } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#dc2626'; } }
+        if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.ldap.role_done','역할 변경됨')}: ${uid} → ${role}`; ldapStatusMsgEl.style.color = '#15c47e'; }
+      } catch(e) { if (ldapStatusMsgEl) { ldapStatusMsgEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; ldapStatusMsgEl.style.color='#f04452'; } }
     }
     window.ldapSetRole = ldapSetRole;
 
@@ -1358,15 +1358,15 @@
     const ulogStatusEl = document.getElementById('ulog_status');
     // 분류 → [표시 라벨 i18n키·기본, 색상]
     const ULOG_CAT = {
-      login: ['admin.dyn.cat.login', '로그인', '#2563eb'],
-      action: ['admin.dyn.cat.action', '행동', '#2563eb'],
-      asset: ['admin.dyn.cat.asset', '자산', '#ca8a04'],
-      vuln: ['admin.dyn.cat.vuln', '취약점', '#dc2626'],
-      triage: ['admin.dyn.cat.triage', '트리아지', '#16a34a'],
-      incident: ['admin.dyn.cat.incident', '인시던트', '#ca8a04'],
-      evidence: ['admin.dyn.cat.evidence', '증적', '#2563eb'],
-      account: ['admin.dyn.cat.account', '계정', '#2563eb'],
-      control_evidence: ['admin.dyn.cat.control_evidence', '통제증적', '#16a34a'],
+      login: ['admin.dyn.cat.login', '로그인', '#3182f6'],
+      action: ['admin.dyn.cat.action', '행동', '#3182f6'],
+      asset: ['admin.dyn.cat.asset', '자산', '#f5a623'],
+      vuln: ['admin.dyn.cat.vuln', '취약점', '#f04452'],
+      triage: ['admin.dyn.cat.triage', '트리아지', '#15c47e'],
+      incident: ['admin.dyn.cat.incident', '인시던트', '#f5a623'],
+      evidence: ['admin.dyn.cat.evidence', '증적', '#3182f6'],
+      account: ['admin.dyn.cat.account', '계정', '#3182f6'],
+      control_evidence: ['admin.dyn.cat.control_evidence', '통제증적', '#15c47e'],
     };
     async function loadUnifiedLog() {
       if (!ulogListEl) return;
@@ -1389,22 +1389,22 @@
         const logs = data.logs || [];
         if (!logs.length) { ulogListEl.innerHTML = `<span class="empty">${tt('admin.dyn.none_log','이력 없음')}</span>`; return; }
         ulogListEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead><tr style="background:#f9fafb;">
-            <th style="padding:8px;color:#2563eb;text-align:left">${tt('admin.dyn.col.time','시각')}</th>
-            <th style="padding:8px;color:#2563eb;text-align:left">${tt('admin.dyn.col.category','분류')}</th>
-            <th style="padding:8px;color:#2563eb;text-align:left">${tt('admin.dyn.col.actor','행위자')}</th>
-            <th style="padding:8px;color:#2563eb;text-align:left">${tt('admin.dyn.col.action','액션')}</th>
-            <th style="padding:8px;color:#2563eb;text-align:left">${tt('admin.dyn.col.target','대상')}</th>
-            <th style="padding:8px;color:#2563eb;text-align:left">${tt('admin.dyn.col.detail','상세')}</th>
+          <thead><tr style="background:#f7f8fa;">
+            <th style="padding:8px;color:#3182f6;text-align:left">${tt('admin.dyn.col.time','시각')}</th>
+            <th style="padding:8px;color:#3182f6;text-align:left">${tt('admin.dyn.col.category','분류')}</th>
+            <th style="padding:8px;color:#3182f6;text-align:left">${tt('admin.dyn.col.actor','행위자')}</th>
+            <th style="padding:8px;color:#3182f6;text-align:left">${tt('admin.dyn.col.action','액션')}</th>
+            <th style="padding:8px;color:#3182f6;text-align:left">${tt('admin.dyn.col.target','대상')}</th>
+            <th style="padding:8px;color:#3182f6;text-align:left">${tt('admin.dyn.col.detail','상세')}</th>
           </tr></thead>
           <tbody>
-          ${logs.map(l => { const c = ULOG_CAT[l.category] || ['', l.category, '#111827']; return `<tr style="border-bottom:1px solid #e5e7eb;">
-            <td style="padding:7px 8px;color:#111827;white-space:nowrap">${escapeHtml(formatTime(l.ts))}</td>
+          ${logs.map(l => { const c = ULOG_CAT[l.category] || ['', l.category, '#191f28']; return `<tr style="border-bottom:1px solid #e5e8eb;">
+            <td style="padding:7px 8px;color:#191f28;white-space:nowrap">${escapeHtml(formatTime(l.ts))}</td>
             <td style="padding:7px 8px;font-weight:600;color:${c[2]}">${escapeHtml(tt(c[0], c[1]))}</td>
-            <td style="padding:7px 8px;color:#111827">${escapeHtml(l.actor || '-')}</td>
-            <td style="padding:7px 8px;color:#ca8a04">${escapeHtml(l.action || '-')}</td>
-            <td style="padding:7px 8px;color:#111827">${escapeHtml(l.target || '-')}</td>
-            <td style="padding:7px 8px;color:#111827">${escapeHtml(l.detail || '-')}</td>
+            <td style="padding:7px 8px;color:#191f28">${escapeHtml(l.actor || '-')}</td>
+            <td style="padding:7px 8px;color:#f5a623">${escapeHtml(l.action || '-')}</td>
+            <td style="padding:7px 8px;color:#191f28">${escapeHtml(l.target || '-')}</td>
+            <td style="padding:7px 8px;color:#191f28">${escapeHtml(l.detail || '-')}</td>
           </tr>`; }).join('')}
           </tbody></table>`;
         _pgApply(ulogListEl);
@@ -1449,13 +1449,13 @@
           const allowed = perms[role.key] || [];
           const checks = ROLE_PERM_TABS.map(tab => {
             const checked = allowed.includes(tab.id) ? 'checked' : '';
-            return `<label style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#ffffff;cursor:pointer">
+            return `<label style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #e5e8eb;border-radius:8px;background:#ffffff;cursor:pointer">
               <input type="checkbox" data-role="${role.key}" data-tab="${tab.id}" ${checked} style="width:auto;margin:0" />
               <span style="font-size:13px">${tt(tab.labelKey, tab.label)}</span>
             </label>`;
           }).join('');
-          return `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px">
-            <div style="font-weight:700;color:#2563eb;margin-bottom:10px">${escapeHtml(tt(role.labelKey, role.label))}</div>
+          return `<div style="background:#f7f8fa;border:1px solid #e5e8eb;border-radius:12px;padding:14px">
+            <div style="font-weight:700;color:#3182f6;margin-bottom:10px">${escapeHtml(tt(role.labelKey, role.label))}</div>
             <div style="display:flex;flex-wrap:wrap;gap:8px">${checks}</div>
           </div>`;
         }).join('');
@@ -1484,10 +1484,10 @@
             method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload),
           });
           if (!res.ok) throw new Error(await res.text());
-          statusEl.style.color = '#16a34a';
+          statusEl.style.color = '#15c47e';
           statusEl.textContent = tt('admin.dyn.roleperm_saved','권한이 저장되었습니다. 해당 역할 사용자 재로그인 후 적용됩니다.');
         } catch(e) {
-          statusEl.style.color = '#dc2626';
+          statusEl.style.color = '#f04452';
           statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`;
         }
       });
@@ -1511,9 +1511,9 @@
           const dis = isLocked ? 'disabled' : '';
           const meta = ROLE_PERM_ROLES.find(x => x.key === r);
           const lbl = r === 'admin' ? tt('admin.dyn.role.admin','관리자 (admin)') : (meta ? tt(meta.labelKey, meta.label) : r);
-          return `<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#ffffff;cursor:${isLocked?'not-allowed':'pointer'};opacity:${isLocked?'0.65':'1'}">
+          return `<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid #e5e8eb;border-radius:8px;background:#ffffff;cursor:${isLocked?'not-allowed':'pointer'};opacity:${isLocked?'0.65':'1'}">
             <input type="checkbox" data-acctrole="${r}" ${checked} ${dis} style="width:auto;margin:0" />
-            <span style="font-size:13px">${escapeHtml(lbl)}${isLocked?` <span style="color:#111827;font-size:11px">${tt('admin.dyn.locked','(항상 포함)')}</span>`:''}</span>
+            <span style="font-size:13px">${escapeHtml(lbl)}${isLocked?` <span style="color:#191f28;font-size:11px">${tt('admin.dyn.locked','(항상 포함)')}</span>`:''}</span>
           </label>`;
         }).join('');
       } catch(e) {
@@ -1531,10 +1531,10 @@
           method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({roles}),
         });
         if (!res.ok) throw new Error(await res.text());
-        statusEl.style.color = '#16a34a';
+        statusEl.style.color = '#15c47e';
         statusEl.textContent = tt('admin.dyn.acctrole_saved','저장되었습니다. 대상 사용자 재로그인 후 계정 탭이 보입니다.');
       } catch(e) {
-        statusEl.style.color = '#dc2626';
+        statusEl.style.color = '#f04452';
         statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`;
       }
     });
@@ -1586,13 +1586,13 @@
           body: JSON.stringify({enabled, source}),
         });
         if (!res.ok) throw new Error(await res.text());
-        statusEl.style.color = '#16a34a';
+        statusEl.style.color = '#15c47e';
         statusEl.textContent = enabled
           ? tt('admin.dyn.acctcol_on', '저장되었습니다. 계정 수집이 켜졌습니다.')
           : tt('admin.dyn.acctcol_off', '저장되었습니다. 계정 수집이 꺼져 MORI가 계정 데이터를 받지 않습니다.');
         _acctColRenderHint();
       } catch (e) {
-        statusEl.style.color = '#dc2626';
+        statusEl.style.color = '#f04452';
         statusEl.textContent = `${tt('admin.dyn.error_prefix', '오류: ')}${e.message}`;
       }
     });
@@ -1615,23 +1615,23 @@
         listEl.innerHTML = users.map(u => {
           const activeTabs = u.has_override ? u.user_tabs : u.role_default_tabs;
           const overrideBadge = u.has_override
-            ? `<span style="background:#fef9c3;color:#ca8a04;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px">${tt('admin.dyn.override_custom','개별 설정')}</span>`
-            : `<span style="background:#e5e7eb;color:#2563eb;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px">${tt('admin.dyn.override_default','역할 기본값')}</span>`;
+            ? `<span style="background:#fef3d6;color:#f5a623;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px">${tt('admin.dyn.override_custom','개별 설정')}</span>`
+            : `<span style="background:#e5e8eb;color:#3182f6;padding:2px 8px;border-radius:6px;font-size:11px;margin-left:8px">${tt('admin.dyn.override_default','역할 기본값')}</span>`;
           const checks = ROLE_PERM_TABS.map(tab => {
             const checked = activeTabs.includes(tab.id) ? 'checked' : '';
-            return `<label style="display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #e5e7eb;border-radius:6px;background:#ffffff;cursor:pointer;font-size:12px">
+            return `<label style="display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #e5e8eb;border-radius:6px;background:#ffffff;cursor:pointer;font-size:12px">
               <input type="checkbox" data-user="${escapeHtml(u.username)}" data-utab="${tab.id}" ${checked} style="width:auto;margin:0" onchange="_onUserTabChange('${escapeHtml(u.username)}')" />
               <span>${tt(tab.labelKey, tab.label)}</span>
             </label>`;
           }).join('');
           const resetBtn = u.has_override
-            ? `<button onclick="_resetUserTabs('${escapeHtml(u.username)}')" style="font-size:11px;padding:3px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fee2e2;border-radius:6px;cursor:pointer;margin-left:8px">${tt('admin.dyn.reset','초기화')}</button>`
+            ? `<button onclick="_resetUserTabs('${escapeHtml(u.username)}')" style="font-size:11px;padding:3px 10px;background:#fdecee;color:#f04452;border:1px solid #fdecee;border-radius:6px;cursor:pointer;margin-left:8px">${tt('admin.dyn.reset','초기화')}</button>`
             : '';
-          return `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px" id="usertab_row_${escapeHtml(u.username)}">
+          return `<div style="background:#f7f8fa;border:1px solid #e5e8eb;border-radius:12px;padding:14px" id="usertab_row_${escapeHtml(u.username)}">
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
               <div>
-                <strong style="color:#111827">${escapeHtml(u.username)}</strong>
-                <span style="color:#111827;font-size:12px;margin-left:6px">(${escapeHtml(u.role)})</span>
+                <strong style="color:#191f28">${escapeHtml(u.username)}</strong>
+                <span style="color:#191f28;font-size:12px;margin-left:6px">(${escapeHtml(u.role)})</span>
                 ${overrideBadge}
               </div>
               <div style="display:flex;gap:6px;align-items:center">${resetBtn}</div>
@@ -1650,18 +1650,18 @@
       const tabs = [];
       checkboxes.forEach(cb => { if (cb.checked) tabs.push(cb.dataset.utab); });
       const statusEl = document.getElementById('usertab_status_' + username);
-      if (statusEl) { statusEl.style.color = '#111827'; statusEl.textContent = tt('admin.dyn.saving','저장 중…'); }
+      if (statusEl) { statusEl.style.color = '#191f28'; statusEl.textContent = tt('admin.dyn.saving','저장 중…'); }
       try {
         const res = await fetch(`/admin/user-tab-permissions/${encodeURIComponent(username)}`, {
           method: 'POST', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ tabs }),
         });
         if (!res.ok) throw new Error(await res.text());
-        if (statusEl) { statusEl.style.color = '#16a34a'; statusEl.textContent = tt('admin.dyn.saved_relogin','저장됨 (재로그인 후 적용)'); }
+        if (statusEl) { statusEl.style.color = '#15c47e'; statusEl.textContent = tt('admin.dyn.saved_relogin','저장됨 (재로그인 후 적용)'); }
         // 배지 업데이트
         setTimeout(() => loadUserTabPermissions(), 500);
       } catch(e) {
-        if (statusEl) { statusEl.style.color = '#dc2626'; statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
+        if (statusEl) { statusEl.style.color = '#f04452'; statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
       }
     }
     window._onUserTabChange = _onUserTabChange;
@@ -1672,10 +1672,10 @@
       try {
         const res = await fetch(`/admin/user-tab-permissions/${encodeURIComponent(username)}`, { method: 'DELETE' });
         if (!res.ok) throw new Error(await res.text());
-        if (statusEl) { statusEl.style.color = '#16a34a'; statusEl.textContent = tt('admin.dyn.reset_done','초기화됨'); }
+        if (statusEl) { statusEl.style.color = '#15c47e'; statusEl.textContent = tt('admin.dyn.reset_done','초기화됨'); }
         setTimeout(() => loadUserTabPermissions(), 500);
       } catch(e) {
-        if (statusEl) { statusEl.style.color = '#dc2626'; statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
+        if (statusEl) { statusEl.style.color = '#f04452'; statusEl.textContent = `${tt('admin.dyn.error_prefix','오류: ')}${e.message}`; }
       }
     }
     window._resetUserTabs = _resetUserTabs;
@@ -1687,23 +1687,23 @@
 
     // ── Phase 2: Overview · Compliance · Triage · Remediation 로더 ───────────
     const STATUS_BADGE = {
-      pass:'<span style="background:rgba(34,197,94,.12);color:#16a34a;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">PASS</span>',
-      fail:'<span style="background:rgba(248,113,113,.12);color:#dc2626;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">FAIL</span>',
-      warning:'<span style="background:rgba(250,204,21,.12);color:#ca8a04;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">WARN</span>',
-      not_applicable:'<span style="background:rgba(148,163,184,.12);color:#111827;padding:2px 8px;border-radius:6px;font-size:12px">N/A</span>',
-      not_checked:`<span style="background:rgba(100,116,139,.12);color:#111827;padding:2px 8px;border-radius:6px;font-size:12px">${tt('admin.dyn.metric.not_checked','미점검')}</span>`,
+      pass:'<span style="background:rgba(21,196,126,.12);color:#15c47e;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">PASS</span>',
+      fail:'<span style="background:rgba(240,68,82,.12);color:#f04452;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">FAIL</span>',
+      warning:'<span style="background:rgba(245,166,35,.12);color:#f5a623;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">WARN</span>',
+      not_applicable:'<span style="background:rgba(139,149,161,.12);color:#191f28;padding:2px 8px;border-radius:6px;font-size:12px">N/A</span>',
+      not_checked:`<span style="background:rgba(139,149,161,.12);color:#191f28;padding:2px 8px;border-radius:6px;font-size:12px">${tt('admin.dyn.metric.not_checked','미점검')}</span>`,
     };
     const _statusBadge = (s) => STATUS_BADGE[s] || `<span>${escapeHtml(s||'')}</span>`;
     const _sourceBadge = (src) => {
-      const map = { control_check:'#2563eb', trivy:'#ca8a04', alert:'#dc2626' };
-      const color = map[src] || '#111827';
-      return `<span style="background:rgba(56,189,248,.08);color:${color};padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">${escapeHtml(src||'-')}</span>`;
+      const map = { control_check:'#3182f6', trivy:'#f5a623', alert:'#f04452' };
+      const color = map[src] || '#191f28';
+      return `<span style="background:rgba(49,130,246,.08);color:${color};padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">${escapeHtml(src||'-')}</span>`;
     };
 
     async function loadAdminPhase2Health() {
       const el = document.getElementById('phase2_health');
       if (!el) return;
-      el.innerHTML = `<div class="coverage-item"><span style="color:#111827">${tt('admin.dyn.loading','로딩 중…')}</span></div>`;
+      el.innerHTML = `<div class="coverage-item"><span style="color:#191f28">${tt('admin.dyn.loading','로딩 중…')}</span></div>`;
       try {
         const res = await fetch('/compliance/pdca');
         const data = res.ok ? await res.json() : { summary: {}, pending_count: 0 };
@@ -1718,12 +1718,12 @@
         items.push({ label: 'Incidents', value: inc.total || (inc.incidents||[]).length, hint: 'incident_store' });
         el.innerHTML = items.map(it => `
           <div class="coverage-item">
-            <div style="color:#111827;font-size:12px">${escapeHtml(it.label)}</div>
-            <strong style="color:${it.value>0?'#16a34a':'#dc2626'}">${it.value}</strong>
-            <div style="color:#111827;font-size:11px;margin-top:4px">${escapeHtml(it.hint)}</div>
+            <div style="color:#191f28;font-size:12px">${escapeHtml(it.label)}</div>
+            <strong style="color:${it.value>0?'#15c47e':'#f04452'}">${it.value}</strong>
+            <div style="color:#191f28;font-size:11px;margin-top:4px">${escapeHtml(it.hint)}</div>
           </div>`).join('');
       } catch (e) {
-        el.innerHTML = `<div class="coverage-item"><span style="color:#dc2626">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</span></div>`;
+        el.innerHTML = `<div class="coverage-item"><span style="color:#f04452">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</span></div>`;
       }
     }
 
@@ -1761,21 +1761,21 @@
           const lastErr = rec.last_error_at ? new Date(rec.last_error_at).getTime() : null;
           const lagSec = lastOk != null ? (nowMs - lastOk) / 1000 : null;
           const sla = rec.stale_threshold_seconds || null;
-          let statusColor = '#16a34a', statusLabel = (rec.status||'unknown').toUpperCase();
-          if (rec.status === 'error') { statusColor = '#dc2626'; }
-          else if (rec.is_stale) { statusColor = '#ca8a04'; statusLabel = 'STALE'; }
-          else if (rec.status === 'running') { statusColor = '#2563eb'; }
-          const lagColor = rec.is_stale ? '#ca8a04' : (lagSec != null ? '#111827' : '#111827');
+          let statusColor = '#15c47e', statusLabel = (rec.status||'unknown').toUpperCase();
+          if (rec.status === 'error') { statusColor = '#f04452'; }
+          else if (rec.is_stale) { statusColor = '#f5a623'; statusLabel = 'STALE'; }
+          else if (rec.status === 'running') { statusColor = '#3182f6'; }
+          const lagColor = rec.is_stale ? '#f5a623' : (lagSec != null ? '#191f28' : '#191f28');
           const slaText = sla ? _humanizeLag(sla) : '-';
-          const errBadge = lastErr ? `<div style="color:#dc2626;font-size:11px;margin-top:2px">${tt('admin.dyn.recent_error_prefix','최근 에러: ')}${escapeHtml(formatTime(rec.last_error_at))}</div>` : '';
+          const errBadge = lastErr ? `<div style="color:#f04452;font-size:11px;margin-top:2px">${tt('admin.dyn.recent_error_prefix','최근 에러: ')}${escapeHtml(formatTime(rec.last_error_at))}</div>` : '';
           return `<tr>
             <td><strong>${escapeHtml((rec.source||'-').toUpperCase())}</strong></td>
-            <td><span style="background:rgba(56,189,248,.08);color:${statusColor};padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">${escapeHtml(statusLabel)}</span></td>
+            <td><span style="background:rgba(49,130,246,.08);color:${statusColor};padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">${escapeHtml(statusLabel)}</span></td>
             <td style="text-align:right">${rec.host_count||0}</td>
             <td style="color:${lagColor}">${lagSec != null ? _humanizeLag(lagSec) + tt('admin.dyn.ago_suffix',' 전') : '-'}</td>
-            <td style="color:#111827;font-size:12px">${escapeHtml(slaText)}</td>
-            <td style="text-align:right;color:#111827">${rec.records_collected||0}<div style="color:#111827;font-size:11px">env ${rec.envelopes_normalized||0} · save ${rec.entities_saved||0}</div></td>
-            <td style="color:#111827;font-size:12px;max-width:280px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(rec.message||'-')}${errBadge}</td>
+            <td style="color:#191f28;font-size:12px">${escapeHtml(slaText)}</td>
+            <td style="text-align:right;color:#191f28">${rec.records_collected||0}<div style="color:#191f28;font-size:11px">env ${rec.envelopes_normalized||0} · save ${rec.entities_saved||0}</div></td>
+            <td style="color:#191f28;font-size:12px;max-width:280px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(rec.message||'-')}${errBadge}</td>
           </tr>`;
         };
         el.innerHTML = `<table class="result-table">
@@ -1806,26 +1806,26 @@
         const ps = data.pending_sources || {};
         cardsEl.innerHTML = `
           <div class="metric-card card"><div class="metric-label">${tt('admin.dyn.metric.total_checks','전체 점검')}</div><div class="metric-value">${total}</div></div>
-          <div class="metric-card card"><div class="metric-label">Pass</div><div class="metric-value" style="color:#16a34a">${s.pass||0}</div></div>
-          <div class="metric-card card"><div class="metric-label">Fail</div><div class="metric-value" style="color:#dc2626">${s.fail||0}</div></div>
-          <div class="metric-card card"><div class="metric-label">Warning</div><div class="metric-value" style="color:#ca8a04">${s.warning||0}</div></div>
-          <div class="metric-card card"><div class="metric-label">Pass Rate</div><div class="metric-value" style="color:#2563eb">${passRate===null?'':passRate+'%'}</div></div>
-          <div class="metric-card card"><div class="metric-label">${tt('admin.dyn.metric.pending_icon','미조치')}</div><div class="metric-value" style="color:#ca8a04">${data.pending_count||0}</div><div class="metric-sub">${tt('admin.dyn.col.control','통제')} ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}</div></div>
+          <div class="metric-card card"><div class="metric-label">Pass</div><div class="metric-value" style="color:#15c47e">${s.pass||0}</div></div>
+          <div class="metric-card card"><div class="metric-label">Fail</div><div class="metric-value" style="color:#f04452">${s.fail||0}</div></div>
+          <div class="metric-card card"><div class="metric-label">Warning</div><div class="metric-value" style="color:#f5a623">${s.warning||0}</div></div>
+          <div class="metric-card card"><div class="metric-label">Pass Rate</div><div class="metric-value" style="color:#3182f6">${passRate===null?'':passRate+'%'}</div></div>
+          <div class="metric-card card"><div class="metric-label">${tt('admin.dyn.metric.pending_icon','미조치')}</div><div class="metric-value" style="color:#f5a623">${data.pending_count||0}</div><div class="metric-sub">${tt('admin.dyn.col.control','통제')} ${ps.control_check||0} · Trivy ${ps.trivy||0} · Alert ${ps.alert||0}</div></div>
         `;
         const cats = data.categories || [];
         if (!cats.length) {
           catEl.innerHTML = `<div class="empty">${tt('admin.dyn.none_category','카테고리 데이터 없음 시드 누락 가능성')}</div>`;
         } else {
           catEl.innerHTML = `<table class="result-table">
-            <thead><tr><th>${tt('admin.dyn.col.category','카테고리')}</th><th>${tt('admin.dyn.col.total','총')}</th><th style="color:#16a34a">Pass</th><th style="color:#dc2626">Fail</th><th style="color:#ca8a04">Warning</th><th style="color:#111827">N/A</th><th style="color:#111827">${tt('admin.dyn.col.not_checked','미점검')}</th></tr></thead>
+            <thead><tr><th>${tt('admin.dyn.col.category','카테고리')}</th><th>${tt('admin.dyn.col.total','총')}</th><th style="color:#15c47e">Pass</th><th style="color:#f04452">Fail</th><th style="color:#f5a623">Warning</th><th style="color:#191f28">N/A</th><th style="color:#191f28">${tt('admin.dyn.col.not_checked','미점검')}</th></tr></thead>
             <tbody>${cats.map(c => `<tr>
               <td><strong>${escapeHtml(c.category||'-')}</strong></td>
               <td>${c.total||0}</td>
-              <td style="color:#16a34a">${c.pass||0}</td>
-              <td style="color:#dc2626">${c.fail||0}</td>
-              <td style="color:#ca8a04">${c.warning||0}</td>
-              <td style="color:#111827">${c.not_applicable||0}</td>
-              <td style="color:#111827">${c.not_checked||0}</td>
+              <td style="color:#15c47e">${c.pass||0}</td>
+              <td style="color:#f04452">${c.fail||0}</td>
+              <td style="color:#f5a623">${c.warning||0}</td>
+              <td style="color:#191f28">${c.not_applicable||0}</td>
+              <td style="color:#191f28">${c.not_checked||0}</td>
             </tr>`).join('')}</tbody></table>`;
             _pgApply(catEl);
         }
@@ -1841,9 +1841,9 @@
               <td>${escapeHtml(p.entity_id||'-')}</td>
               <td>${_statusBadge(p.status)}</td>
               <td>${escapeHtml(p.owner||'-')}</td>
-              <td style="${p.overdue?'color:#dc2626;font-weight:700':''}">${p.overdue?'':''}${escapeHtml(p.remediation_due_at?formatTime(p.remediation_due_at):'-')}</td>
-              <td style="color:#111827;font-size:12px">${escapeHtml(p.note||'')}</td>
-            </tr>`).join('')}${pending.length>100?`<tr><td colspan="7" style="color:#111827;text-align:center;padding:8px">… ${pending.length-100}${tt('admin.dyn.more_rows_suffix','건 더 (CSV 다운로드 권장)')}</td></tr>`:''}</tbody></table>`;
+              <td style="${p.overdue?'color:#f04452;font-weight:700':''}">${p.overdue?'':''}${escapeHtml(p.remediation_due_at?formatTime(p.remediation_due_at):'-')}</td>
+              <td style="color:#191f28;font-size:12px">${escapeHtml(p.note||'')}</td>
+            </tr>`).join('')}${pending.length>100?`<tr><td colspan="7" style="color:#191f28;text-align:center;padding:8px">… ${pending.length-100}${tt('admin.dyn.more_rows_suffix','건 더 (CSV 다운로드 권장)')}</td></tr>`:''}</tbody></table>`;
             _pgApply(pendingEl);
         }
       } catch (e) {
@@ -1879,15 +1879,15 @@
           <thead><tr><th>${tt('admin.dyn.col.severity','심각도')}</th><th>${tt('admin.dyn.col.host','호스트')}</th><th>${tt('admin.dyn.col.message','메시지')}</th><th>Triage</th><th>${tt('admin.dyn.col.analyst','분석관')}</th><th>${tt('admin.dyn.col.observed','발생 시각')}</th></tr></thead>
           <tbody>${rows.map(a => {
             const sev = a.severity || '-';
-            const sevColor = sev==='critical'?'#dc2626':sev==='high'?'#ca8a04':'#111827';
+            const sevColor = sev==='critical'?'#f04452':sev==='high'?'#f5a623':'#191f28';
             const t = a.triage || {};
             return `<tr>
               <td><strong style="color:${sevColor}">${escapeHtml(sev.toUpperCase())}</strong></td>
               <td>${escapeHtml(a.hostname||a.host_id||'-')}</td>
-              <td style="color:#111827;max-width:380px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(a.message||'')}</td>
+              <td style="color:#191f28;max-width:380px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(a.message||'')}</td>
               <td>${escapeHtml(TRIAGE_LABEL[t.status]||t.status||tt('admin.dyn.atriage.pending','대기'))}</td>
-              <td style="color:#2563eb">${escapeHtml(t.analyst||'-')}</td>
-              <td style="color:#111827;font-size:12px">${escapeHtml(formatTime(a.observed_at))}</td>
+              <td style="color:#3182f6">${escapeHtml(t.analyst||'-')}</td>
+              <td style="color:#191f28;font-size:12px">${escapeHtml(formatTime(a.observed_at))}</td>
             </tr>`;
           }).join('')}</tbody></table>`;
           _pgApply(el);
@@ -1913,17 +1913,17 @@
           el.innerHTML = `<div class="empty">${tt('admin.dyn.none_incidents','등록된 인시던트 없음')}</div>`;
           return;
         }
-        const STATUS_COLOR = { open:'#dc2626', investigating:'#ca8a04', resolved:'#16a34a', closed:'#111827' };
+        const STATUS_COLOR = { open:'#f04452', investigating:'#f5a623', resolved:'#15c47e', closed:'#191f28' };
         el.innerHTML = `<table class="result-table">
           <thead><tr><th>${tt('admin.dyn.col.title','제목')}</th><th>${tt('admin.dyn.col.status','상태')}</th><th>${tt('admin.dyn.col.host','호스트')}</th><th>${tt('admin.dyn.col.handler','담당자')}</th><th>${tt('admin.dyn.col.analyst','분석관')}</th><th>${tt('admin.dyn.col.created','등록일')}</th><th>${tt('admin.dyn.col.updated','업데이트')}</th></tr></thead>
           <tbody>${list.slice(0,100).map(i => `<tr>
             <td><strong>${escapeHtml(i.title||'-')}</strong></td>
-            <td><span style="background:rgba(56,189,248,.08);color:${STATUS_COLOR[i.status]||'#111827'};padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">${escapeHtml((i.status||'').toUpperCase())}</span></td>
+            <td><span style="background:rgba(49,130,246,.08);color:${STATUS_COLOR[i.status]||'#191f28'};padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">${escapeHtml((i.status||'').toUpperCase())}</span></td>
             <td>${escapeHtml(i.hostname||'-')}</td>
             <td>${escapeHtml(i.handler||'-')}</td>
-            <td style="color:#2563eb">${escapeHtml(i.analyst||'-')}</td>
-            <td style="color:#111827;font-size:12px">${escapeHtml(formatTime(i.created_at))}</td>
-            <td style="color:#111827;font-size:12px">${escapeHtml(formatTime(i.status_updated_at))}</td>
+            <td style="color:#3182f6">${escapeHtml(i.analyst||'-')}</td>
+            <td style="color:#191f28;font-size:12px">${escapeHtml(formatTime(i.created_at))}</td>
+            <td style="color:#191f28;font-size:12px">${escapeHtml(formatTime(i.status_updated_at))}</td>
           </tr>`).join('')}</tbody></table>`;
           _pgApply(el);
       } catch (e) {
@@ -1957,17 +1957,17 @@
           <thead><tr><th>${tt('admin.dyn.col.host','호스트')}</th><th>CVE</th><th>${tt('admin.dyn.col.package','패키지')}</th><th>${tt('admin.dyn.col.severity','심각도')}</th><th>${tt('admin.dyn.col.action_plan','조치 계획')}</th><th>${tt('admin.dyn.col.exception','예외')}</th></tr></thead>
           <tbody>${flatRows.slice(0,150).map(v => {
             const act = v.action || {};
-            const planTxt = act.plan_text ? `<div>${escapeHtml(act.plan_text.substring(0,80))}${act.plan_text.length>80?'…':''}</div><div style="color:#111827;font-size:11px">${tt('admin.dyn.due_prefix','기한 ')}${escapeHtml(act.plan_target_date||'-')} · ${escapeHtml(act.plan_updated_by||'-')}</div>` : `<span style="color:#111827">${tt('admin.dyn.unregistered','미등록')}</span>`;
-            const excTxt = act.exception_until ? `<div style="color:#ca8a04">~${escapeHtml(act.exception_until)}</div><div style="color:#111827;font-size:11px">${escapeHtml((act.exception_reason||'').substring(0,60))}</div>` : '<span style="color:#111827">-</span>';
+            const planTxt = act.plan_text ? `<div>${escapeHtml(act.plan_text.substring(0,80))}${act.plan_text.length>80?'…':''}</div><div style="color:#191f28;font-size:11px">${tt('admin.dyn.due_prefix','기한 ')}${escapeHtml(act.plan_target_date||'-')} · ${escapeHtml(act.plan_updated_by||'-')}</div>` : `<span style="color:#191f28">${tt('admin.dyn.unregistered','미등록')}</span>`;
+            const excTxt = act.exception_until ? `<div style="color:#f5a623">~${escapeHtml(act.exception_until)}</div><div style="color:#191f28;font-size:11px">${escapeHtml((act.exception_reason||'').substring(0,60))}</div>` : '<span style="color:#191f28">-</span>';
             return `<tr>
               <td><strong>${escapeHtml(v.hostname||'-')}</strong></td>
               <td style="font-family:ui-monospace">${escapeHtml(v.cve||v.vuln_id||'-')}</td>
-              <td style="color:#111827">${escapeHtml(v.package_name||'-')}</td>
-              <td><strong style="color:${v.severity==='critical'?'#dc2626':'#ca8a04'}">${escapeHtml((v.severity||'').toUpperCase())}</strong></td>
-              <td style="color:#111827;font-size:12px">${planTxt}</td>
+              <td style="color:#191f28">${escapeHtml(v.package_name||'-')}</td>
+              <td><strong style="color:${v.severity==='critical'?'#f04452':'#f5a623'}">${escapeHtml((v.severity||'').toUpperCase())}</strong></td>
+              <td style="color:#191f28;font-size:12px">${planTxt}</td>
               <td style="font-size:12px">${excTxt}</td>
             </tr>`;
-          }).join('')}${flatRows.length>150?`<tr><td colspan="6" style="color:#111827;text-align:center;padding:8px">… ${flatRows.length-150}${tt('admin.dyn.more_rows_short','건 더')}</td></tr>`:''}</tbody></table>`;
+          }).join('')}${flatRows.length>150?`<tr><td colspan="6" style="color:#191f28;text-align:center;padding:8px">… ${flatRows.length-150}${tt('admin.dyn.more_rows_short','건 더')}</td></tr>`:''}</tbody></table>`;
           _pgApply(el);
       } catch (e) {
         el.innerHTML = `<div class="empty">${tt('admin.dyn.load_fail_prefix','로드 실패: ')}${escapeHtml(e.message)}</div>`;
@@ -2011,9 +2011,9 @@
           <thead><tr><th>${tt('admin.dyn.col.host','호스트')}</th><th>${tt('admin.dyn.col.target_date','목표일')}</th><th>${tt('admin.dyn.col.plan_content','계획 내용')}</th><th>${tt('admin.dyn.col.updated','업데이트')}</th></tr></thead>
           <tbody>${rows.slice(0,100).map(r => `<tr>
             <td><strong>${escapeHtml(r.hostname)}</strong></td>
-            <td style="color:#ca8a04">${escapeHtml(r.plan.target_date||'-')}</td>
-            <td style="color:#111827">${escapeHtml((r.plan.text||'').substring(0,200))}${(r.plan.text||'').length>200?'…':''}</td>
-            <td style="color:#111827;font-size:12px">${escapeHtml(formatTime(r.plan.updated_at)||'-')} · ${escapeHtml(r.plan.updated_by||'-')}</td>
+            <td style="color:#f5a623">${escapeHtml(r.plan.target_date||'-')}</td>
+            <td style="color:#191f28">${escapeHtml((r.plan.text||'').substring(0,200))}${(r.plan.text||'').length>200?'…':''}</td>
+            <td style="color:#191f28;font-size:12px">${escapeHtml(formatTime(r.plan.updated_at)||'-')} · ${escapeHtml(r.plan.updated_by||'-')}</td>
           </tr>`).join('')}</tbody></table>`;
           _pgApply(el);
       } catch (e) {
@@ -2057,7 +2057,7 @@
         const badge = document.getElementById('admin_user_badge');
         if (badge && me.username) {
           const roleLabel = _adminRoleLabel(role);
-          badge.innerHTML = '<strong style="color:#2563eb">' + me.username + '</strong> <span style="background:#e5e7eb;color:#2563eb;padding:2px 8px;border-radius:6px;font-size:12px">' + roleLabel + '</span>';
+          badge.innerHTML = '<strong style="color:#3182f6">' + me.username + '</strong> <span style="background:#e5e8eb;color:#3182f6;padding:2px 8px;border-radius:6px;font-size:12px">' + roleLabel + '</span>';
         }
       } catch(e) { /* ignore */ }
     }

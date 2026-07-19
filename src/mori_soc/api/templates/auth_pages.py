@@ -15,27 +15,27 @@ def render_login_html(error: str = "", next_url: str = "/ui") -> str:
   <title data-i18n-doctitle="login.doctitle">MORI SOC 로그인</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ background: #f7f8fb; color: #111827; font-family: 'Segoe UI', system-ui, sans-serif;
+    body {{ background: #f7f8fb; color: #191f28; font-family: 'Segoe UI', system-ui, sans-serif;
            display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
-    .login-card {{ background: #ffffff; border: 1px solid #e5e7eb; border-radius: 18px; padding: 40px 36px;
+    .login-card {{ background: #ffffff; border: 1px solid #e5e8eb; border-radius: 18px; padding: 40px 36px;
                    width: 100%; max-width: 400px; box-shadow: 0 1px 2px rgba(17,24,39,.06), 0 12px 32px rgba(17,24,39,.06); }}
     .login-logo {{ text-align: center; margin-bottom: 28px; }}
-    .login-logo h1 {{ font-size: 28px; font-weight: 800; color: #2563eb; letter-spacing: -0.5px; }}
-    .login-logo p {{ font-size: 13px; color: #111827; margin-top: 6px; }}
-    label {{ display: block; font-size: 12px; color: #111827; margin-bottom: 5px; font-weight: 600; letter-spacing: .5px; }}
-    input {{ width: 100%; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
-             color: #111827; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s; }}
-    input:focus {{ border-color: #2563eb; }}
+    .login-logo h1 {{ font-size: 28px; font-weight: 800; color: #3182f6; letter-spacing: -0.5px; }}
+    .login-logo p {{ font-size: 13px; color: #191f28; margin-top: 6px; }}
+    label {{ display: block; font-size: 12px; color: #191f28; margin-bottom: 5px; font-weight: 600; letter-spacing: .5px; }}
+    input {{ width: 100%; background: #ffffff; border: 1px solid #e5e8eb; border-radius: 8px;
+             color: #191f28; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s; }}
+    input:focus {{ border-color: #3182f6; }}
     .field {{ margin-bottom: 16px; }}
     .btn {{ width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
             cursor: pointer; transition: all .2s; margin-top: 8px; }}
-    .btn-primary {{ background: #2563eb; color: #fff; }}
-    .btn-primary:hover {{ background: #2563eb; }}
-    .login-error {{ background: #fee2e2; border: 1px solid #dc2626; color: #dc2626; border-radius: 8px;
+    .btn-primary {{ background: #3182f6; color: #fff; }}
+    .btn-primary:hover {{ background: #3182f6; }}
+    .login-error {{ background: #fdecee; border: 1px solid #f04452; color: #f04452; border-radius: 8px;
                     padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }}
-    .login-footer {{ text-align: center; margin-top: 20px; font-size: 13px; color: #111827; }}
-    .login-footer a {{ color: #2563eb; text-decoration: none; }}
-    .status-line {{ font-size: 12px; color: #111827; min-height: 18px; margin-top: 6px; text-align: center; }}
+    .login-footer {{ text-align: center; margin-top: 20px; font-size: 13px; color: #191f28; }}
+    .login-footer a {{ color: #3182f6; text-decoration: none; }}
+    .status-line {{ font-size: 12px; color: #191f28; min-height: 18px; margin-top: 6px; text-align: center; }}
   </style>
 </head>
 <body>
@@ -87,12 +87,12 @@ def render_login_html(error: str = "", next_url: str = "/ui") -> str:
 def render_signup_request_html(success: bool = False) -> str:
     """가입 요청 페이지 HTML 반환 (KO/EN 토글 지원)."""
     body_html = """
-    <p data-i18n="signup.intro" style="color:#111827;font-size:14px;margin-bottom:20px;">계정 사용을 원하시면 아래 정보를 입력하고 운영자에게 가입을 요청하세요.</p>
+    <p data-i18n="signup.intro" style="color:#191f28;font-size:14px;margin-bottom:20px;">계정 사용을 원하시면 아래 정보를 입력하고 운영자에게 가입을 요청하세요.</p>
     <div class="field"><label data-i18n="signup.label.name">이름</label><input id="req_name" placeholder="홍길동" data-i18n-placeholder="signup.placeholder.name" /></div>
     <div class="field"><label data-i18n="signup.label.username">로그인 아이디</label><input id="req_username" placeholder="hong" autocomplete="off" data-i18n-placeholder="signup.placeholder.username" /></div>
     <div class="field"><label data-i18n="signup.label.email">이메일</label><input id="req_email" type="email" placeholder="hong@company.com" /></div>
     <div class="field"><label data-i18n="signup.label.dept">부서</label><input id="req_dept" placeholder="보안팀" data-i18n-placeholder="signup.placeholder.dept" /></div>
-    <div class="field"><label data-i18n="signup.label.reason">요청 사유</label><textarea id="req_reason" style="width:100%;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;color:#111827;padding:10px 14px;font-size:14px;min-height:80px;outline:none;" placeholder="업무 목적 및 필요 권한을 간략히 작성해주세요." data-i18n-placeholder="signup.placeholder.reason"></textarea></div>
+    <div class="field"><label data-i18n="signup.label.reason">요청 사유</label><textarea id="req_reason" style="width:100%;background:#ffffff;border:1px solid #e5e8eb;border-radius:8px;color:#191f28;padding:10px 14px;font-size:14px;min-height:80px;outline:none;" placeholder="업무 목적 및 필요 권한을 간략히 작성해주세요." data-i18n-placeholder="signup.placeholder.reason"></textarea></div>
     <button class="btn btn-primary" id="submit_btn" data-i18n="signup.button.submit">가입 요청 제출</button>
     <div class="status-line" id="status"></div>
     <div class="login-footer"><a href="/login" data-i18n="signup.back">← 로그인으로 돌아가기</a></div>
@@ -115,14 +115,14 @@ def render_signup_request_html(success: bool = False) -> str:
             const title = window.t('signup.success.title');
             const bodyHtml = window.t('signup.success.body');
             const back = window.t('signup.back');
-            document.querySelector('.login-card').innerHTML = '<div style="text-align:center;padding:40px 0"><div style="font-size:48px"></div><h2 style="color:#16a34a;margin:16px 0 8px">' + title + '</h2><p style="color:#111827">' + bodyHtml + '</p><div style="margin-top:24px"><a href="/login" style="color:#2563eb">' + back + '</a></div></div>';
+            document.querySelector('.login-card').innerHTML = '<div style="text-align:center;padding:40px 0"><div style="font-size:48px"></div><h2 style="color:#15c47e;margin:16px 0 8px">' + title + '</h2><p style="color:#191f28">' + bodyHtml + '</p><div style="margin-top:24px"><a href="/login" style="color:#3182f6">' + back + '</a></div></div>';
           } else {
             const d = await res.json().catch(() => ({}));
             statusEl.textContent = d.detail || window.t('signup.error.generic');
           }
         } catch(e) { statusEl.textContent = window.t('signup.error.network') + e.message; }
       });
-    </script>""" if not success else '<div style="text-align:center;padding:40px 0"><div style="font-size:48px"></div><h2 data-i18n="signup.success.title" style="color:#16a34a">가입 요청 완료</h2><p data-i18n-html="signup.success.body" style="color:#111827;margin-top:8px">운영자 승인 후 계정이 생성됩니다.<br>이메일로 안내드리겠습니다.</p><div style="margin-top:24px"><a href="/login" data-i18n="signup.back" style="color:#2563eb">← 로그인으로 돌아가기</a></div></div>'
+    </script>""" if not success else '<div style="text-align:center;padding:40px 0"><div style="font-size:48px"></div><h2 data-i18n="signup.success.title" style="color:#15c47e">가입 요청 완료</h2><p data-i18n-html="signup.success.body" style="color:#191f28;margin-top:8px">운영자 승인 후 계정이 생성됩니다.<br>이메일로 안내드리겠습니다.</p><div style="margin-top:24px"><a href="/login" data-i18n="signup.back" style="color:#3182f6">← 로그인으로 돌아가기</a></div></div>'
     i18n_runtime = _i18n_script(_SIGNUP_I18N)
     toggle_widget = _i18n_toggle_html()
     return f"""<!DOCTYPE html>
@@ -133,24 +133,24 @@ def render_signup_request_html(success: bool = False) -> str:
   <title data-i18n-doctitle="signup.doctitle">MORI SOC 가입 요청</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ background: #f7f8fb; color: #111827; font-family: 'Segoe UI', system-ui, sans-serif;
+    body {{ background: #f7f8fb; color: #191f28; font-family: 'Segoe UI', system-ui, sans-serif;
            display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
-    .login-card {{ background: #ffffff; border: 1px solid #e5e7eb; border-radius: 18px; padding: 40px 36px;
+    .login-card {{ background: #ffffff; border: 1px solid #e5e8eb; border-radius: 18px; padding: 40px 36px;
                    width: 100%; max-width: 440px; box-shadow: 0 1px 2px rgba(17,24,39,.06), 0 12px 32px rgba(17,24,39,.06); }}
     .login-logo {{ text-align: center; margin-bottom: 24px; }}
-    .login-logo h1 {{ font-size: 24px; font-weight: 800; color: #2563eb; }}
-    label {{ display: block; font-size: 12px; color: #111827; margin-bottom: 5px; font-weight: 600; letter-spacing: .5px; }}
-    input {{ width: 100%; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
-             color: #111827; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s; }}
-    input:focus {{ border-color: #2563eb; }}
+    .login-logo h1 {{ font-size: 24px; font-weight: 800; color: #3182f6; }}
+    label {{ display: block; font-size: 12px; color: #191f28; margin-bottom: 5px; font-weight: 600; letter-spacing: .5px; }}
+    input {{ width: 100%; background: #ffffff; border: 1px solid #e5e8eb; border-radius: 8px;
+             color: #191f28; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s; }}
+    input:focus {{ border-color: #3182f6; }}
     .field {{ margin-bottom: 14px; }}
     .btn {{ width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
             cursor: pointer; transition: all .2s; margin-top: 4px; }}
-    .btn-primary {{ background: #2563eb; color: #fff; }}
-    .btn-primary:hover {{ background: #2563eb; }}
+    .btn-primary {{ background: #3182f6; color: #fff; }}
+    .btn-primary:hover {{ background: #3182f6; }}
     .login-footer {{ text-align: center; margin-top: 20px; font-size: 13px; }}
-    .login-footer a {{ color: #2563eb; text-decoration: none; }}
-    .status-line {{ font-size: 12px; color: #dc2626; min-height: 18px; margin-top: 6px; text-align: center; }}
+    .login-footer a {{ color: #3182f6; text-decoration: none; }}
+    .status-line {{ font-size: 12px; color: #f04452; min-height: 18px; margin-top: 6px; text-align: center; }}
   </style>
 </head>
 <body>

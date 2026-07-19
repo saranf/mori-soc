@@ -56,7 +56,7 @@ _ATAB_REMEDIATION_HTML = """    <!-- ── Tab: Remediation (vuln_actions + act
           <h2 data-i18n="admin.h.trivy_remediation">Trivy 취약점 조치 상태</h2>
           <div class="subtext" data-i18n-html="admin.s.sub.trivy">
             Critical / High 취약점과 등록된 조치 계획(plan) · 예외(exception) 입니다.
-            편집은 <a href="/ui#assets" style="color:#2563eb">사용자 대시보드 Assets 탭의 취약점 카드</a>에서 가능합니다.
+            편집은 <a href="/ui#assets" style="color:#3182f6">사용자 대시보드 Assets 탭의 취약점 카드</a>에서 가능합니다.
           </div>
           <div class="actions" style="margin-bottom:12px">
             <button id="admin_reload_vulns" class="secondary" data-i18n="admin.s.btn.refresh">새로고침</button>
@@ -80,7 +80,7 @@ _ATAB_ASSETS_HTML = """    <!-- ── Tab: 자산 관리 ───────�
         <h2 data-i18n="admin.h.asset_owners">자산 담당자 관리</h2>
         <div class="subtext" data-i18n="admin.s.sub.asset_owners">서버·PC 자산의 담당자와 팀을 등록합니다. 호스트명과 정확히 일치해야 합니다.</div>
         <div id="owners_list" class="list" style="margin-bottom:16px;max-height:360px;overflow-y:auto"><span class="empty" data-i18n="admin.dyn.loading">로딩 중…</span></div>
-        <div id="owner_form_title" style="font-size:14px;font-weight:700;color:#2563eb;margin-bottom:8px;" data-i18n="admin.dyn.new_asset">새 자산 등록</div>
+        <div id="owner_form_title" style="font-size:14px;font-weight:700;color:#3182f6;margin-bottom:8px;" data-i18n="admin.dyn.new_asset">새 자산 등록</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="row"><label data-i18n="admin.s.lbl.hostname">호스트명</label><input id="own_hostname" placeholder="예: db-prod-01" data-i18n-placeholder="admin.s.ph.hostname" /></div>
           <div class="row"><label data-i18n="admin.s.lbl.owner">담당자</label><input id="own_owner" placeholder="예: 홍길동" data-i18n-placeholder="admin.s.ph.owner" /></div>
@@ -157,18 +157,18 @@ _ATAB_SETTINGS_HTML = """    <!-- ── Tab: 쿼리 ─────────
 
         <!-- ── Dev Tools (자연어 / 구조화 질의 접기 기본) ───────────── -->
         <details class="card" style="padding:0">
-          <summary style="cursor:pointer;padding:18px 22px;font-size:18px;font-weight:700;color:#111827;list-style:none">
-            Dev Tools <span style="color:#111827;font-weight:400;font-size:13px" data-i18n="admin.s.devtools_tag"> 자연어 / 구조화 질의 (개발자용)</span>
+          <summary style="cursor:pointer;padding:18px 22px;font-size:18px;font-weight:700;color:#191f28;list-style:none">
+            Dev Tools <span style="color:#191f28;font-weight:400;font-size:13px" data-i18n="admin.s.devtools_tag"> 자연어 / 구조화 질의 (개발자용)</span>
           </summary>
           <div style="padding:0 22px 22px 22px">
-            <div class="subtext" style="margin-bottom:12px" data-i18n-html="admin.s.sub.devtools">관리자가 직접 백엔드 질의를 시험하기 위한 도구입니다. 일반 사용자 화면은 <a href="/ui" style="color:#2563eb">/ui</a> 를 참고하세요.</div>
+            <div class="subtext" style="margin-bottom:12px" data-i18n-html="admin.s.sub.devtools">관리자가 직접 백엔드 질의를 시험하기 위한 도구입니다. 일반 사용자 화면은 <a href="/ui" style="color:#3182f6">/ui</a> 를 참고하세요.</div>
             <section style="margin-bottom:18px">
-              <h3 style="margin:0 0 8px 0;font-size:15px;color:#111827" data-i18n="admin.h.quick_actions">Quick Actions</h3>
+              <h3 style="margin:0 0 8px 0;font-size:15px;color:#191f28" data-i18n="admin.h.quick_actions">Quick Actions</h3>
               <div class="quick-actions" id="quick_queries"></div>
             </section>
             <section style="margin-bottom:18px">
-              <h3 style="margin:0 0 8px 0;font-size:15px;color:#111827" data-i18n="admin.h.nlq">Natural Language Query</h3>
-              <div class="subtext"><span data-i18n="admin.s.sub.nlq">자연스럽게 질문하면 의도를 해석해 실행합니다.</span> <a href="#" id="query_guide_link" style="color:#2563eb;" data-i18n="admin.s.link.query_guide">질의 가이드</a></div>
+              <h3 style="margin:0 0 8px 0;font-size:15px;color:#191f28" data-i18n="admin.h.nlq">Natural Language Query</h3>
+              <div class="subtext"><span data-i18n="admin.s.sub.nlq">자연스럽게 질문하면 의도를 해석해 실행합니다.</span> <a href="#" id="query_guide_link" style="color:#3182f6;" data-i18n="admin.s.link.query_guide">질의 가이드</a></div>
               <div class="row">
                 <label for="nlp_text" data-i18n="admin.s.lbl.question">질문</label>
                 <textarea id="nlp_text" data-i18n="admin.s.nlq_default">오프라인 호스트 보여줘</textarea>
@@ -183,7 +183,7 @@ _ATAB_SETTINGS_HTML = """    <!-- ── Tab: 쿼리 ─────────
               <div class="status-line" id="query_status">catalog loading...</div>
             </section>
             <section style="margin-bottom:18px">
-              <h3 style="margin:0 0 8px 0;font-size:15px;color:#111827" data-i18n="admin.h.query_builder">Structured Query Builder</h3>
+              <h3 style="margin:0 0 8px 0;font-size:15px;color:#191f28" data-i18n="admin.h.query_builder">Structured Query Builder</h3>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div class="row"><label for="intent">Intent</label><select id="intent"></select></div>
                 <div class="row"><label for="time_range">time_range</label><input id="time_range" value="24h" /></div>
@@ -199,7 +199,7 @@ _ATAB_SETTINGS_HTML = """    <!-- ── Tab: 쿼리 ─────────
               </div>
             </section>
             <section>
-              <h3 style="margin:0 0 8px 0;font-size:15px;color:#111827" data-i18n="admin.h.request_response">Request / Response</h3>
+              <h3 style="margin:0 0 8px 0;font-size:15px;color:#191f28" data-i18n="admin.h.request_response">Request / Response</h3>
               <div class="row"><label for="payload">Request Payload</label><textarea id="payload">__PAYLOAD_JSON__</textarea></div>
               <div class="row"><label>Response</label><div id="result" class="query-result-area"><span class="result-placeholder" data-i18n="admin.dyn.not_run_yet">아직 실행 전입니다.</span></div></div>
             </section>
@@ -227,7 +227,7 @@ _ATAB_ACCESS_HTML = """    <!-- ── Tab: Access Control (가입 요청 + RBAC
         <section class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
             <h2 style="margin:0" data-i18n="admin.h.ldap">LDAP 사용자 관리</h2>
-            <span id="ldap_status_badge" style="font-size:12px;color:#111827"></span>
+            <span id="ldap_status_badge" style="font-size:12px;color:#191f28"></span>
           </div>
           <div class="subtext" data-i18n="admin.s.sub.ldap">디렉터리에 사용자를 직접 추가·삭제하고 비밀번호·역할을 바꿉니다. 여기서 만든 계정은 같은 LDAP을 보는 Grafana/Zabbix/Fleet 에서도 로그인됩니다. (LDAP 비활성 시 .env의 MORI_LDAP_ENABLED=true 필요)</div>
           <div id="ldap_add_form" style="display:none;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0">
@@ -281,9 +281,9 @@ _ATAB_ACCESS_HTML = """    <!-- ── Tab: Access Control (가입 요청 + RBAC
               </select>
             </label>
           </div>
-          <div id="acctcol_hint" style="display:none;margin:10px 0;padding:10px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-left:3px solid #2563eb;border-radius:8px;font-size:12px;color:#4b5563;line-height:1.7">
+          <div id="acctcol_hint" style="display:none;margin:10px 0;padding:10px 12px;background:#f7f8fa;border:1px solid #e5e8eb;border-left:3px solid #3182f6;border-radius:8px;font-size:12px;color:#4b5563;line-height:1.7">
             <div data-i18n="admin.s.acct_collect_script_hint">Fleet이 없는 서버에서는 아래 스크립트를 실행하면 로컬 계정이 수집됩니다(cron 등록 포함). 토큰은 서버의 환경변수로 넘기세요 — 화면에 노출하지 않습니다.</div>
-            <pre id="acctcol_cmd" style="margin:8px 0 0;padding:8px 10px;background:#ffffff;border:1px solid #e5e7eb;border-radius:6px;overflow-x:auto;font-size:11px;color:#111827"></pre>
+            <pre id="acctcol_cmd" style="margin:8px 0 0;padding:8px 10px;background:#ffffff;border:1px solid #e5e8eb;border-radius:6px;overflow-x:auto;font-size:11px;color:#191f28"></pre>
           </div>
           <div class="actions">
             <button id="save_acctcol" data-i18n="admin.s.btn.save">저장</button>

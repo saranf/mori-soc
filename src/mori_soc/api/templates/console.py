@@ -33,24 +33,24 @@ def render_query_console_html(docs_url: str = DOCS_PORTAL_URL) -> str:
         <button data-atab="settings" onclick="switchAdminTab('settings')" data-i18n="admin.tab.settings">설정</button>
       </nav>
       <div class="top-actions">
-        <span id="admin_user_badge" style="font-size:13px;color:#111827"></span>
+        <span id="admin_user_badge" style="font-size:13px;color:#191f28"></span>
         <a class="portal-link" href="/ui" data-i18n="admin.actions.user_dashboard">사용자 대시보드</a>
         <button id="refresh_dashboard" class="secondary" style="width:auto;padding:6px 12px;font-size:13px" data-i18n="admin.actions.refresh">Refresh Dashboard</button>
         <div class="account-wrap" style="position:relative">
           <button id="account_btn" type="button" onclick="toggleAccountMenu()" class="ghost" style="width:auto;padding:6px 12px;border-radius:999px" data-i18n="admin.actions.account">계정</button>
-          <div id="account_menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:12px;min-width:230px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)">
-            <button id="query_guide" type="button" style="display:block;width:100%;text-align:left;background:transparent;border:none;color:#111827;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer" data-i18n="admin.actions.query_guide">Query Guide</button>
-            <div style="border-top:1px solid #e5e7eb;margin:8px 0"></div>
-            <a href="__DOCS_PORTAL_URL__" target="_blank" rel="noreferrer" style="display:block;color:#111827;font-size:12px;padding:5px 4px;text-decoration:none" data-i18n="admin.links.docs">운영 문서 / 포털</a>
-            <a href="/docs" target="_blank" rel="noreferrer" style="display:block;color:#111827;font-size:12px;padding:5px 4px;text-decoration:none" data-i18n="admin.links.api">API 문서 (Swagger)</a>
-            <a href="/health" target="_blank" rel="noreferrer" style="display:block;color:#111827;font-size:12px;padding:5px 4px;text-decoration:none">Health JSON</a>
-            <a href="/dashboard/summary" target="_blank" rel="noreferrer" style="display:block;color:#111827;font-size:12px;padding:5px 4px;text-decoration:none">Dashboard JSON</a>
-            <a href="/catalog" target="_blank" rel="noreferrer" style="display:block;color:#111827;font-size:12px;padding:5px 4px;text-decoration:none">Query Catalog JSON</a>
-            <div style="border-top:1px solid #e5e7eb;margin:8px 0"></div>
-            <div style="font-size:12px;color:#111827;margin-bottom:6px" data-i18n="admin.account.language">언어 / Language</div>
+          <div id="account_menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:12px;min-width:230px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,0.45)">
+            <button id="query_guide" type="button" style="display:block;width:100%;text-align:left;background:transparent;border:none;color:#191f28;font-size:13px;font-weight:600;padding:6px 4px;cursor:pointer" data-i18n="admin.actions.query_guide">Query Guide</button>
+            <div style="border-top:1px solid #e5e8eb;margin:8px 0"></div>
+            <a href="__DOCS_PORTAL_URL__" target="_blank" rel="noreferrer" style="display:block;color:#191f28;font-size:12px;padding:5px 4px;text-decoration:none" data-i18n="admin.links.docs">운영 문서 / 포털</a>
+            <a href="/docs" target="_blank" rel="noreferrer" style="display:block;color:#191f28;font-size:12px;padding:5px 4px;text-decoration:none" data-i18n="admin.links.api">API 문서 (Swagger)</a>
+            <a href="/health" target="_blank" rel="noreferrer" style="display:block;color:#191f28;font-size:12px;padding:5px 4px;text-decoration:none">Health JSON</a>
+            <a href="/dashboard/summary" target="_blank" rel="noreferrer" style="display:block;color:#191f28;font-size:12px;padding:5px 4px;text-decoration:none">Dashboard JSON</a>
+            <a href="/catalog" target="_blank" rel="noreferrer" style="display:block;color:#191f28;font-size:12px;padding:5px 4px;text-decoration:none">Query Catalog JSON</a>
+            <div style="border-top:1px solid #e5e8eb;margin:8px 0"></div>
+            <div style="font-size:12px;color:#191f28;margin-bottom:6px" data-i18n="admin.account.language">언어 / Language</div>
             __I18N_TOGGLE__
-            <div style="border-top:1px solid #e5e7eb;margin:10px 0"></div>
-            <a href="/auth/logout" style="display:block;text-align:center;color:#dc2626;font-size:13px" data-i18n="admin.actions.logout">로그아웃</a>
+            <div style="border-top:1px solid #e5e8eb;margin:10px 0"></div>
+            <a href="/auth/logout" style="display:block;text-align:center;color:#f04452;font-size:13px" data-i18n="admin.actions.logout">로그아웃</a>
           </div>
         </div>
       </div>
