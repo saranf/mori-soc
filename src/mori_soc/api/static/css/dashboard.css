@@ -254,6 +254,9 @@
     /* 공용 '상세 →' 링크 버튼(공통화) — 카드 헤더의 탭 이동 링크. */
     .detail-link { background: none; border: none; color: var(--c-blue); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
     .detail-link:hover { color: var(--c-blue-ink); text-decoration: underline; }
+    /* 공용 다운로드 필(공통화) — CSV/PDF/ZIP 다운로드 버튼·링크 6종 통일. */
+    .dl-pill { display: inline-flex; align-items: center; gap: 5px; width: auto; background: var(--c-surface); border: 1px solid var(--c-line); color: var(--c-blue); padding: 6px 13px; border-radius: 8px; font-size: 12.5px; font-weight: 700; text-decoration: none; cursor: pointer; }
+    .dl-pill:hover { background: var(--c-blue-soft); border-color: var(--c-blue); color: var(--c-blue-ink); }
 
     /* 준비율 도넛 링 — --p(0~100). conic-gradient. */
     .mori-ring { --p: 0; width: 100px; height: 100px; border-radius: 999px; flex: 0 0 auto;

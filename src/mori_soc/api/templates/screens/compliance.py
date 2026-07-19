@@ -33,7 +33,7 @@ _TAB_COMPLIANCE_HTML = """    <!-- ── Tab: 심사 준비 (Compliance PDCA) �
       <section class=\"card\">
         <div style=\"display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap\">
           <h2 style=\"margin:0\" data-i18n=\"dash.pdca.pending_title\">미조치 / 기한 초과 항목</h2>
-          <button id=\"pdca_pending_csv_btn\" onclick=\"openCsvPreview({title:tt(\'dash.pdca.pending_csv_preview_title\',\'PDCA 미조치 CSV 미리보기\'),filename:\'mori-pdca-pending.csv\',url:\'/compliance/pdca/pending.csv\'})\" style=\"background:#f7f8fa;border:1px solid #e5e8eb;color:#3182f6;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer\">CSV</button>
+          <button id=\"pdca_pending_csv_btn\" onclick=\"openCsvPreview({title:tt(\'dash.pdca.pending_csv_preview_title\',\'PDCA 미조치 CSV 미리보기\'),filename:\'mori-pdca-pending.csv\',url:\'/compliance/pdca/pending.csv\'})\" class=\"dl-pill\">CSV</button>
         </div>
         <div class=\"subtext\" data-i18n=\"dash.pdca.pending_sub\">점검에서 실패·경고가 뜬 통제예요. 기한이 지난 항목은 빨간색으로 보여요.</div>
         <div id=\"pdca_pending_table\" style=\"margin-top:8px;overflow-x:auto\"></div>
@@ -44,8 +44,8 @@ _TAB_COMPLIANCE_HTML = """    <!-- ── Tab: 심사 준비 (Compliance PDCA) �
         <div style=\"display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap\">
           <h2 style=\"margin:0\" data-i18n=\"dash.soa.title\">적용선언서 (SoA · ISO 27001)</h2>
           <div style=\"display:flex;gap:6px;align-items:center;flex-wrap:wrap\">
-            <a href=\"/compliance/soa.csv\" download style=\"background:#f7f8fa;border:1px solid #e5e8eb;color:#3182f6;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none\">CSV</a>
-            <a href=\"/compliance/soa.pdf\" target=\"_blank\" style=\"background:#f7f8fa;border:1px solid #e5e8eb;color:#3182f6;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none\">PDF</a>
+            <a href=\"/compliance/soa.csv\" download class=\"dl-pill\">CSV</a>
+            <a href=\"/compliance/soa.pdf\" target=\"_blank\" class=\"dl-pill\">PDF</a>
           </div>
         </div>
         <div class=\"subtext\" data-i18n=\"dash.soa.sub\">ISO 27001 필수 산출물 — 통제별 적용여부·근거·이행상태를 카탈로그와 통제 상태에서 생성해요. 통제 상태를 채울수록 근거·이행상태가 실질화돼요.</div>
@@ -65,7 +65,7 @@ _TAB_COMPLIANCE_HTML = """    <!-- ── Tab: 심사 준비 (Compliance PDCA) �
               <button class=\"secondary\" style=\"width:auto;padding:6px 12px;font-size:12px\" onclick=\"loadAuditSample()\" data-i18n=\"dash.sample.btn\">감사 표본</button>
               <button class=\"secondary\" style=\"width:auto;padding:6px 12px;font-size:12px\" onclick=\"loadGapDeadlines()\" data-i18n=\"dash.gapdl.btn\">Gap 기한·예외</button>
               <button class=\"secondary\" style=\"width:auto;padding:6px 12px;font-size:12px\" onclick=\"loadChangeReport()\" data-i18n=\"dash.chg.btn\">월별 변경</button>
-              <a href=\"/controls/evidence-bundle.zip\" download style=\"background:#f7f8fa;border:1px solid #e5e8eb;color:#3182f6;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none\" data-i18n=\"dash.ctl.zip\">전체 증적 ZIP</a>
+              <a href=\"/controls/evidence-bundle.zip\" download class=\"dl-pill\" data-i18n=\"dash.ctl.zip\">전체 증적 ZIP</a>
             </div>
           </div>
           <div id=\"evidence_freshness_box\" style=\"display:none;margin-top:8px;padding:10px 12px;background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px\"></div>
