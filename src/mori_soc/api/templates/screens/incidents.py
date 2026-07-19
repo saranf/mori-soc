@@ -10,14 +10,14 @@ _TAB_INCIDENTS_HTML = """    <!-- ── Tab: Incidents ────────
         <div class=\"subtext\" data-i18n=\"dash.card.incidents.sub\">여러 경보를 하나의 인시던트로 묶고 조사 노트를 남깁니다.</div>
         <!-- 검색 + 날짜 필터 + CSV 다운로드 -->
         <div style=\"display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:#f7f8fa;border-radius:8px;border:1px solid #e5e8eb\">
-          <input type=\"text\" id=\"inc_search\" placeholder=\"제목 · 담당자 · 상태 검색\" data-i18n-placeholder=\"dash.inc.search_ph\" style=\"background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:5px 10px;font-size:13px;min-width:180px;flex:1\" />
+          <input type=\"text\" id=\"inc_search\" placeholder=\"제목 · 담당자 · 상태 검색\" data-i18n-placeholder=\"dash.inc.search_ph\" style=\"background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:5px 10px;font-size:13px;min-width:180px;flex:1\" />
           <div style=\"display:flex;align-items:center;gap:6px\">
             <label style=\"color:#191f28;font-size:13px;white-space:nowrap\" data-i18n=\"dash.inc.date_from\">시작일</label>
-            <input type=\"date\" id=\"inc_date_from\" style=\"background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:5px 8px;font-size:13px\" />
+            <input type=\"date\" id=\"inc_date_from\" style=\"background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:5px 8px;font-size:13px\" />
           </div>
           <div style=\"display:flex;align-items:center;gap:6px\">
             <label style=\"color:#191f28;font-size:13px;white-space:nowrap\" data-i18n=\"dash.inc.date_to\">종료일</label>
-            <input type=\"date\" id=\"inc_date_to\" style=\"background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:5px 8px;font-size:13px\" />
+            <input type=\"date\" id=\"inc_date_to\" style=\"background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:5px 8px;font-size:13px\" />
           </div>
           <button id=\"inc_filter_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px\" data-i18n=\"dash.inc.filter_btn\">조회</button>
           <button id=\"inc_new_btn\" style=\"padding:5px 14px;font-size:13px;background:#3182f6;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600\" data-i18n=\"dash.inc.new_btn\">+ 새 인시던트</button>

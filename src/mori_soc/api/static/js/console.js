@@ -97,7 +97,7 @@
       el.className = 'pgbar';
       el.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:8px;font-size:12px;color:#191f28;flex-wrap:wrap';
       el.innerHTML = `<span>${start + 1}–${Math.min(end, total)} / ${total}</span>` +
-        `<select onchange="_pgSize('${key}',this.value)" style="background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:3px 6px;font-size:12px">${sizes.map(s => `<option value="${s}"${s === st.size ? ' selected' : ''}>${s}</option>`).join('')}</select>` +
+        `<select onchange="_pgSize('${key}',this.value)" style="background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:3px 6px;font-size:12px">${sizes.map(s => `<option value="${s}"${s === st.size ? ' selected' : ''}>${s}</option>`).join('')}</select>` +
         `<button class="secondary" style="width:auto;padding:2px 9px;font-size:12px" onclick="_pgGo('${key}',-1)" ${st.page <= 1 ? 'disabled' : ''}>이전</button>` +
         `<span>${st.page}/${pages}</span>` +
         `<button class="secondary" style="width:auto;padding:2px 9px;font-size:12px" onclick="_pgGo('${key}',1)" ${st.page >= pages ? 'disabled' : ''}>다음</button>`;

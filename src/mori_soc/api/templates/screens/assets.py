@@ -111,7 +111,7 @@ _TAB_ASSETS_HTML = """    <!-- ── Tab: 자산 현황 ───────�
             <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.mine\">내 담당 서버</h2>
             <div style=\"display:flex;align-items:center;gap:8px\">
               <label style=\"color:#191f28;font-size:13px;white-space:nowrap\" data-i18n=\"dash.assets.mine.groupby\">그룹 기준</label>
-              <select id=\"mine_group_by\" onchange=\"renderMyServers()\" style=\"background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:4px 8px;font-size:13px\">
+              <select id=\"mine_group_by\" onchange=\"renderMyServers()\" style=\"background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:4px 8px;font-size:13px\">
                 <option value=\"category\" data-i18n=\"dash.assets.mine.group.category\">카테고리</option>
                 <option value=\"team\" data-i18n=\"dash.assets.mine.group.team\">팀</option>
                 <option value=\"importance\" data-i18n=\"dash.assets.mine.group.importance\">중요도</option>

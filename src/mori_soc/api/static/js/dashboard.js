@@ -204,7 +204,7 @@
       el.className = 'pgbar';
       el.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:8px;font-size:12px;color:#191f28;flex-wrap:wrap';
       el.innerHTML = `<span>${start + 1}–${Math.min(end, total)} / ${total}</span>` +
-        `<select onchange="_pgSize('${key}',this.value)" style="background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:3px 6px;font-size:12px">${sizes.map(s => `<option value="${s}"${s === st.size ? ' selected' : ''}>${s}</option>`).join('')}</select>` +
+        `<select onchange="_pgSize('${key}',this.value)" style="background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:3px 6px;font-size:12px">${sizes.map(s => `<option value="${s}"${s === st.size ? ' selected' : ''}>${s}</option>`).join('')}</select>` +
         `<button class="secondary" style="width:auto;padding:2px 9px;font-size:12px" onclick="_pgGo('${key}',-1)" ${st.page <= 1 ? 'disabled' : ''}>이전</button>` +
         `<span>${st.page}/${pages}</span>` +
         `<button class="secondary" style="width:auto;padding:2px 9px;font-size:12px" onclick="_pgGo('${key}',1)" ${st.page >= pages ? 'disabled' : ''}>다음</button>`;
@@ -2026,7 +2026,7 @@
         for (let i = 1; i <= 9; i++) opts += `<option value="${i}"${i===_riskDoa?' selected':''}>${i}${tt('dash.risk.pt','점')}</option>`;
         el.innerHTML = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#ffffff;border:1px solid #e5e8eb;border-radius:8px;padding:8px 12px">
           <span style="font-size:12px;color:#15c47e;font-weight:700">${label}</span>
-          <select id="doa_input" style="background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:4px 8px;font-size:13px">${opts}</select>
+          <select id="doa_input" style="background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:4px 8px;font-size:13px">${opts}</select>
           <button onclick="saveRiskDoa()" class="secondary" style="width:auto;padding:4px 12px;font-size:12px">${tt('dash.risk.doa_save','저장')}</button>
           <span id="doa_status" style="font-size:11px;color:#191f28"></span>
           <span style="font-size:11px;color:#191f28;flex-basis:100%">${help}</span>
@@ -3509,7 +3509,7 @@
           if (res.ok) { const d = await res.json(); const ctl = d.control||{}; c = { ...c, ...ctl, id: ctl.id||decodeURIComponent(enc), evidence_sources: ctl.evidence_sources||[] }; }
         } catch(e) {}
       }
-      const inp = 'background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:6px 9px;font-size:13px';
+      const inp = 'background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:6px 9px;font-size:13px';
       box.innerHTML = `<div style="font-weight:700;color:#15c47e;margin-bottom:8px">${isEdit?tt('dash.ctl.edit_ttl','통제 수정'):tt('dash.ctl.add_ttl','통제 추가')}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <input id="ce_id" placeholder="ID (예: PIPA-5)" value="${escapeHtml(c.id)}" ${isEdit?'readonly':''} style="${inp}" />
@@ -3558,7 +3558,7 @@
     function openNlpImport() {
       const box = document.getElementById('ctl_nlp');
       document.getElementById('ctl_editor').style.display = 'none';
-      const inp = 'background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:6px 9px;font-size:13px';
+      const inp = 'background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:6px 9px;font-size:13px';
       box.innerHTML = `<div style="font-weight:700;color:#3182f6;margin-bottom:6px">${tt('dash.ctl.nlp_ttl','법령/고시 텍스트 → 통제 초안')}</div>
         <div class="subtext" style="margin-bottom:8px">${tt('dash.ctl.nlp_help','법령 원문을 붙여넣으면 통제 초안으로 바꿔서 저장해요. Claude 키가 있으면 더 정확하게, 없으면 조항 단위로 나눠요.')}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
@@ -3595,7 +3595,7 @@
     function openCodeReviewScan() {
       const box = document.getElementById('ctl_nlp');
       document.getElementById('ctl_editor').style.display = 'none';
-      const inp = 'background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:6px 9px;font-size:13px';
+      const inp = 'background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:6px 9px;font-size:13px';
       box.innerHTML = `<div style="font-weight:700;color:#3182f6;margin-bottom:6px">${tt('dash.ctl.scan_ttl','GitHub 레포 코드 보안 리뷰 요청')}</div>
         <div class="subtext" style="margin-bottom:8px">${tt('dash.ctl.scan_help','레포 URL과 GitHub 토큰(actions:write)을 넣으면 그 레포의 CI에서 무료 보안 스캔(Semgrep)이 돌고 결과가 MORI로 자동 회수돼요. MORI는 코드를 가져오지 않고 토큰도 저장하지 않아요. 대상 레포에 code-review-semgrep.yml 1개만 있으면 돼요.')}</div>
         <div style="margin-bottom:8px;background:#ffffff;border:1px solid #e5e8eb;border-radius:8px;padding:8px 10px;font-size:12px;color:#191f28;line-height:1.6">${tt('dash.ctl.scan_warn_pr','온디맨드 스캔 = 무료 Semgrep(SAST)로 기존 코드 전체를 스캔해요. 대상 레포에 code-review-semgrep.yml 1개만 두면 이 버튼으로 바로 스캔돼요. (더 깊은 유료 Claude 리뷰는 code-review-fullscan.yml 참고.)')}</div>
@@ -4138,7 +4138,7 @@
     async function openClaudeKey() {
       const box = document.getElementById('ctl_nlp');
       document.getElementById('ctl_editor').style.display = 'none';
-      const inp = 'background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:6px 9px;font-size:13px';
+      const inp = 'background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:6px 9px;font-size:13px';
       let st = { configured:false, source:'none', masked:'', env_locked:false };
       try { const r = await fetch('/controls/claude-key'); if (r.ok) st = await r.json(); } catch(e) {}
       const statusLine = st.configured

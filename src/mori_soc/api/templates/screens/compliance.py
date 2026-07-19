@@ -82,13 +82,13 @@ _TAB_COMPLIANCE_HTML = """    <!-- ── Tab: 심사 준비 (Compliance PDCA) �
             <span id=\"ctl_key_status\" style=\"font-size:11px;color:#191f28\"></span>
             <span style=\"width:1px;height:20px;background:#e5e8eb\"></span>
             <span style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.ctl.snap_sched\">정기 증적 스냅샷</span>
-            <select id=\"snap_schedule\" onchange=\"saveSnapshotConfig()\" style=\"background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:5px 8px;font-size:12px\">
+            <select id=\"snap_schedule\" onchange=\"saveSnapshotConfig()\" style=\"background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:5px 8px;font-size:12px\">
               <option value=\"off\" data-i18n=\"dash.ctl.snap_off\">끔</option>
               <option value=\"daily\" data-i18n=\"dash.ctl.snap_daily\">매일</option>
               <option value=\"weekly\" data-i18n=\"dash.ctl.snap_weekly\">매주</option>
               <option value=\"monthly\" data-i18n=\"dash.ctl.snap_monthly\">매월</option>
             </select>
-            <select id=\"snap_scope\" onchange=\"saveSnapshotConfig()\" style=\"background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:5px 8px;font-size:12px\">
+            <select id=\"snap_scope\" onchange=\"saveSnapshotConfig()\" style=\"background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:5px 8px;font-size:12px\">
               <option value=\"mapped\" data-i18n=\"dash.ctl.snap_mapped\">증적 있는 통제만</option>
               <option value=\"all\" data-i18n=\"dash.ctl.snap_all\">전 통제</option>
             </select>

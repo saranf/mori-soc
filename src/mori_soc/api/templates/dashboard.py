@@ -174,14 +174,14 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
       </div>
       <div style=\"display:flex;flex-direction:column;gap:12px\">
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.plan_content\">조치 계획 내용</label>
-          <textarea id=\"plan_text\" rows=\"4\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 2024년 2분기 내 패키지 업그레이드 예정\" data-i18n-placeholder=\"dash.ph.plan_example\"></textarea>
+          <textarea id=\"plan_text\" rows=\"4\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 2024년 2분기 내 패키지 업그레이드 예정\" data-i18n-placeholder=\"dash.ph.plan_example\"></textarea>
         </div>
         <div style=\"display:flex;gap:12px\">
           <div style=\"flex:1\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.target_date\">목표 완료일</label>
-            <input type=\"date\" id=\"plan_target_date\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+            <input type=\"date\" id=\"plan_target_date\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
           </div>
           <div style=\"flex:1\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.author\">작성자</label>
-            <input id=\"plan_updated_by\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 김보안\" data-i18n-placeholder=\"dash.ph.author_example\" />
+            <input id=\"plan_updated_by\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 김보안\" data-i18n-placeholder=\"dash.ph.author_example\" />
           </div>
         </div>
         <div style=\"display:flex;gap:10px;justify-content:flex-end;margin-top:4px\">
@@ -201,13 +201,13 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
       </div>
       <div style=\"display:flex;flex-direction:column;gap:12px\">
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.profile.display_name\">이름</label>
-          <input id=\"profile_display_name\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"dash.profile.display_name_ph\" />
+          <input id=\"profile_display_name\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"dash.profile.display_name_ph\" />
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.profile.department\">부서</label>
-          <input id=\"profile_department\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 인프라팀\" data-i18n-placeholder=\"dash.profile.department_ph\" />
+          <input id=\"profile_department\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 인프라팀\" data-i18n-placeholder=\"dash.profile.department_ph\" />
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.profile.assigned_servers\">담당 서버 (호스트명)</label>
-          <textarea id=\"profile_assigned_servers\" rows=\"4\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"한 줄에 하나씩 또는 쉼표로 구분\" data-i18n-placeholder=\"dash.profile.assigned_servers_ph\"></textarea>
+          <textarea id=\"profile_assigned_servers\" rows=\"4\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"한 줄에 하나씩 또는 쉼표로 구분\" data-i18n-placeholder=\"dash.profile.assigned_servers_ph\"></textarea>
           <span style=\"color:#191f28;font-size:11px\" data-i18n=\"dash.profile.assigned_servers_hint\">내 서버 탭에서 이 호스트만 모아 볼 수 있습니다.</span>
         </div>
         <div id=\"profile_modal_status\" style=\"font-size:13px;color:#191f28;\"></div>
@@ -228,16 +228,16 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
       </div>
       <div style=\"display:flex;flex-direction:column;gap:12px\">
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.hostname\">호스트명</label>
-          <input id=\"owner_modal_hostname\" readonly style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+          <input id=\"owner_modal_hostname\" readonly style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.analyst\">담당자</label>
-          <input id=\"owner_modal_owner\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"dash.ph.owner_example\" />
+          <input id=\"owner_modal_owner\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"dash.ph.owner_example\" />
         </div>
         <div id=\"owner_modal_category_row\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.category\">카테고리 (서버 분류)</label>
-          <input id=\"owner_modal_category\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 웹 서버\" data-i18n-placeholder=\"dash.ph.category_example\" />
+          <input id=\"owner_modal_category\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 웹 서버\" data-i18n-placeholder=\"dash.ph.category_example\" />
         </div>
         <div id=\"owner_modal_importance_row\"><label style=\"color:#191f28;font-size:13px\"><span data-i18n=\"dash.f.importance\">중요도</span> <span style=\"color:#191f28;font-size:11px\" data-i18n=\"dash.modal.importance_hint\">(자동 분류 재정의)</span></label>
-          <select id=\"owner_modal_importance\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\">
+          <select id=\"owner_modal_importance\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\">
             <option value=\"\" data-i18n=\"dash.opt.auto\">자동 (기본)</option>
             <option value=\"상\" data-i18n=\"dash.opt.high\">상</option>
             <option value=\"중\" data-i18n=\"dash.opt.mid\">중</option>
@@ -245,13 +245,13 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
           </select>
         </div>
         <div id=\"owner_modal_exception_row\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.exception_until\">처리 예외 기한</label>
-          <input type=\"date\" id=\"owner_modal_exception_until\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+          <input type=\"date\" id=\"owner_modal_exception_until\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
           <span style=\"color:#191f28;font-size:11px\" data-i18n=\"dash.modal.exception_hint\">이 날짜까지 점검/알림 예외 처리됩니다</span>
           <label style=\"color:#191f28;font-size:13px;margin-top:8px;display:block\" data-i18n=\"dash.f.exception_reason\">예외 사유</label>
-          <textarea id=\"owner_modal_exception_reason\" rows=\"2\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 레거시 시스템으로 패치 불가, 2분기 교체 예정\" data-i18n-placeholder=\"dash.ph.exception_reason_example\"></textarea>
+          <textarea id=\"owner_modal_exception_reason\" rows=\"2\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 레거시 시스템으로 패치 불가, 2분기 교체 예정\" data-i18n-placeholder=\"dash.ph.exception_reason_example\"></textarea>
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.team\">팀</label>
-          <input id=\"owner_modal_team\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 인프라팀\" data-i18n-placeholder=\"dash.ph.team_example\" />
+          <input id=\"owner_modal_team\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 인프라팀\" data-i18n-placeholder=\"dash.ph.team_example\" />
         </div>
 
         <div id=\"owner_modal_status\" style=\"font-size:13px;color:#191f28;\"></div>
@@ -349,27 +349,27 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
       <!-- 조치 계획 영역 -->
       <div id=\"vuln_plan_section\" style=\"display:none;flex-direction:column;gap:10px\">
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.plan_content\">조치 계획 내용</label>
-          <textarea id=\"vuln_plan_text\" rows=\"4\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 다음 정기 패치 일정에 openssh 9.3p2로 업그레이드\" data-i18n-placeholder=\"dash.ph.vuln_plan_example\"></textarea>
+          <textarea id=\"vuln_plan_text\" rows=\"4\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 다음 정기 패치 일정에 openssh 9.3p2로 업그레이드\" data-i18n-placeholder=\"dash.ph.vuln_plan_example\"></textarea>
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.target_date\">목표 완료일</label>
-          <input type=\"date\" id=\"vuln_plan_target_date\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+          <input type=\"date\" id=\"vuln_plan_target_date\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.author\">작성자</label>
-          <input id=\"vuln_plan_updated_by\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: security\" data-i18n-placeholder=\"dash.ph.security_example\" />
+          <input id=\"vuln_plan_updated_by\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: security\" data-i18n-placeholder=\"dash.ph.security_example\" />
         </div>
       </div>
 
       <!-- 조치 예외 영역 -->
       <div id=\"vuln_exception_section\" style=\"display:none;flex-direction:column;gap:10px\">
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.modal.exception_period\">예외 처리 기한</label>
-          <input type=\"date\" id=\"vuln_exception_until\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+          <input type=\"date\" id=\"vuln_exception_until\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
           <span style=\"color:#191f28;font-size:11px\" data-i18n=\"dash.modal.vuln_exception_hint\">이 날짜까지 해당 취약점 점검/알림에서 제외됩니다</span>
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.exception_reason\">예외 사유</label>
-          <textarea id=\"vuln_exception_reason\" rows=\"3\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 종속 라이브러리 호환성 이슈로 차분기 교체 예정\" data-i18n-placeholder=\"dash.ph.vuln_exception_reason_example\"></textarea>
+          <textarea id=\"vuln_exception_reason\" rows=\"3\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 종속 라이브러리 호환성 이슈로 차분기 교체 예정\" data-i18n-placeholder=\"dash.ph.vuln_exception_reason_example\"></textarea>
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.author\">작성자</label>
-          <input id=\"vuln_exception_updated_by\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: security\" data-i18n-placeholder=\"dash.ph.security_example\" />
+          <input id=\"vuln_exception_updated_by\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: security\" data-i18n-placeholder=\"dash.ph.security_example\" />
         </div>
       </div>
 
@@ -396,16 +396,16 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
       <div style=\"display:flex;flex-direction:column;gap:10px\">
         <div style=\"display:flex;gap:10px;flex-wrap:wrap\">
           <div style=\"flex:1;min-width:180px\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.impact\">영향도 (자산 중요도)</label>
-            <select id=\"risk_impact\" onchange=\"_riskRecalc()\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px\">
+            <select id=\"risk_impact\" onchange=\"_riskRecalc()\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px\">
               <option value=\"3\" data-i18n=\"dash.acc.impf.high\">상 (3)</option><option value=\"2\" data-i18n=\"dash.acc.impf.mid\">중 (2)</option><option value=\"1\" data-i18n=\"dash.acc.impf.low\">하 (1)</option>
             </select></div>
           <div style=\"flex:1;min-width:180px\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.likelihood\">발생가능성 (심각도 기반)</label>
-            <select id=\"risk_likelihood\" onchange=\"_riskRecalc()\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px\">
+            <select id=\"risk_likelihood\" onchange=\"_riskRecalc()\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px\">
               <option value=\"3\" data-i18n=\"dash.acc.impf.high\">상 (3)</option><option value=\"2\" data-i18n=\"dash.acc.impf.mid\">중 (2)</option><option value=\"1\" data-i18n=\"dash.acc.impf.low\">하 (1)</option>
             </select></div>
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.treatment\">위험 처리 결정</label>
-          <select id=\"risk_treatment\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px\">
+          <select id=\"risk_treatment\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px\">
             <option value=\"\" data-i18n=\"dash.risk.t.none\">미정</option>
             <option value=\"mitigate\" data-i18n=\"dash.risk.t.mitigate\">조치(경감)</option>
             <option value=\"accept\" data-i18n=\"dash.risk.t.accept\">수용</option>
@@ -414,17 +414,17 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
           </select></div>
         <div style=\"display:flex;gap:10px;flex-wrap:wrap\">
           <div style=\"flex:1;min-width:180px\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.accept_approver\">승인자</label>
-            <input id=\"risk_accept_approver\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
+            <input id=\"risk_accept_approver\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
           <div style=\"flex:1;min-width:180px\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.review_due\">재평가 예정일</label>
-            <input type=\"date\" id=\"risk_review_due\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
+            <input type=\"date\" id=\"risk_review_due\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.accept_reason\">수용 사유</label>
-          <textarea id=\"risk_accept_reason\" rows=\"2\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\"></textarea></div>
+          <textarea id=\"risk_accept_reason\" rows=\"2\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\"></textarea></div>
         <div style=\"display:flex;gap:10px;flex-wrap:wrap\">
           <div style=\"flex:1;min-width:160px\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.residual\">잔여 위험</label>
-            <input id=\"risk_residual\" data-i18n-placeholder=\"dash.risk.f.residual_ph\" placeholder=\"예: 중간 / 낮음\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
+            <input id=\"risk_residual\" data-i18n-placeholder=\"dash.risk.f.residual_ph\" placeholder=\"예: 중간 / 낮음\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
           <div style=\"flex:1;min-width:160px\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.assessed_by\">평가자</label>
-            <input id=\"risk_assessed_by\" style=\"width:100%;background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
+            <input id=\"risk_assessed_by\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
         </div>
       </div>
       <!-- 산정 근거 (관리자 전용) -->
