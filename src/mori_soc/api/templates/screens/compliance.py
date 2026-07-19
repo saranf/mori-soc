@@ -8,7 +8,7 @@ _TAB_COMPLIANCE_HTML = """    <!-- ── Tab: 심사 준비 (Compliance PDCA) �
       <!-- 심사 준비 히어로: 준비율 링 + 동적 헤드라인 + Pass/Warning/Fail 카운트 (renderPdca 가 실데이터로 채움) -->
       <section class=\"card\" id=\"pdca_hero\">
         <div style=\"display:flex;align-items:center;gap:24px;flex-wrap:wrap\">
-          <div class=\"mori-ring\" id=\"pdca_readiness_ring\" style=\"display:none\" title=\"통제 점검 Pass / 전체 비율\">
+          <div class=\"mori-ring\" id=\"pdca_readiness_ring\" style=\"--p:0\" title=\"통제 점검 Pass / 전체 비율\">
             <div class=\"inner\"><b id=\"pdca_readiness_pct\">–</b><span data-i18n=\"dash.pdca.ready_label\">준비됨</span></div>
           </div>
           <div style=\"flex:1;min-width:240px\">

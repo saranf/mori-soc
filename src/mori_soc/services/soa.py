@@ -17,7 +17,7 @@ _IMPL_EN = {
 }
 _NOT_APPLICABLE = "해당없음"
 
-_BLACK = "#111827"
+_BLACK = "#191f28"
 
 
 def build_soa_rows(catalog: dict[str, Any],

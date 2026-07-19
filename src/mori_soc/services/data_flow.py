@@ -755,8 +755,8 @@ def render_data_flow_svg(rows: list[dict[str, Any]]) -> str:
     n = max(len(rows), 1)
     width = pad_left + len(STAGES) * col_w + (len(STAGES) - 1) * gap + 30
     height = pad_top + n * (row_h + 18) + 30
-    # 팔레트 6색만: 파(#2563eb)·초(#16a34a)·노(#ca8a04)·빨(#dc2626), 배경 흰(#fff), 텍스트 검(#111827).
-    stage_stroke = {"수집": "#2563eb", "저장": "#16a34a", "이용": "#ca8a04", "파기": "#dc2626"}
+    # 팔레트 6색만: 파(#3182f6)·초(#15c47e)·노(#f5a623)·빨(#f04452), 배경 흰(#fff), 텍스트 검(#191f28).
+    stage_stroke = {"수집": "#3182f6", "저장": "#15c47e", "이용": "#f5a623", "파기": "#f04452"}
 
     def cell_text(stage: str, r: dict[str, Any]) -> str:
         if stage == "수집":
@@ -773,7 +773,7 @@ def render_data_flow_svg(rows: list[dict[str, Any]]) -> str:
     parts.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
                  f'width="100%" style="max-width:{width}px;font-family:system-ui,sans-serif">')
     parts.append('<defs><marker id="arw" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">'
-                 '<path d="M0,0 L8,4 L0,8 Z" fill="#111827"/></marker></defs>')
+                 '<path d="M0,0 L8,4 L0,8 Z" fill="#191f28"/></marker></defs>')
     # 단계 헤더 — 흰 배경 + 단계색 테두리/글자(팔레트 준수)
     for i, st in enumerate(STAGES):
         x = pad_left + i * (col_w + gap)
@@ -787,7 +787,7 @@ def render_data_flow_svg(rows: list[dict[str, Any]]) -> str:
         item = _esc(r.get("item")) or "(항목 미기재)"
         subj = _esc(r.get("subject"))
         label = item + (f" · {subj}" if subj else "")
-        parts.append(f'<text x="12" y="{y + row_h/2}" font-size="12" font-weight="600" fill="#111827">{label}</text>')
+        parts.append(f'<text x="12" y="{y + row_h/2}" font-size="12" font-weight="600" fill="#191f28">{label}</text>')
         for i, st in enumerate(STAGES):
             x = pad_left + i * (col_w + gap)
             parts.append(f'<rect x="{x}" y="{y}" width="{col_w}" height="{row_h}" rx="8" '
@@ -798,11 +798,11 @@ def render_data_flow_svg(rows: list[dict[str, Any]]) -> str:
             for li, ln in enumerate(lines):
                 ln = (ln[:26] + "…") if len(ln) > 27 else ln
                 parts.append(f'<text x="{x + col_w/2}" y="{y + 30 + li*18}" text-anchor="middle" '
-                             f'font-size="11" fill="#111827">{ln}</text>')
+                             f'font-size="11" fill="#191f28">{ln}</text>')
             if i < len(STAGES) - 1:
                 ax = x + col_w
                 parts.append(f'<line x1="{ax}" y1="{y + row_h/2}" x2="{ax + gap - 6}" y2="{y + row_h/2}" '
-                             f'stroke="#111827" stroke-width="1.6" marker-end="url(#arw)"/>')
+                             f'stroke="#191f28" stroke-width="1.6" marker-end="url(#arw)"/>')
         # 제3자/국외 배지
         extra = []
         if str(r.get("third_party") or "").strip() and str(r.get("third_party")).strip() not in ("없음", "-", "n/a"):
@@ -811,10 +811,10 @@ def render_data_flow_svg(rows: list[dict[str, Any]]) -> str:
             extra.append("국외이전")
         if extra:
             parts.append(f'<text x="{width - 16}" y="{y + row_h/2}" text-anchor="end" font-size="10" '
-                         f'fill="#dc2626">{" · ".join(extra)}</text>')
+                         f'fill="#f04452">{" · ".join(extra)}</text>')
     if not rows:
         parts.append(f'<text x="{width/2}" y="{pad_top + 30}" text-anchor="middle" font-size="13" '
-                     f'fill="#111827">흐름표가 비어 있습니다 — 행을 추가하거나 PII 스캔으로 시드하세요.</text>')
+                     f'fill="#191f28">흐름표가 비어 있습니다 — 행을 추가하거나 PII 스캔으로 시드하세요.</text>')
     parts.append("</svg>")
     return "".join(parts)
 
@@ -941,7 +941,7 @@ def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
     """
     groups = _swimlane_groups(rows)[:8]
     tcols = _table_column_map(rows)
-    BLUE, GREEN, YELLOW, RED, BLACK = "#2563eb", "#16a34a", "#ca8a04", "#dc2626", "#111827"
+    BLUE, GREEN, YELLOW, RED, BLACK = "#3182f6", "#15c47e", "#f5a623", "#f04452", "#191f28"
     collect, use, dispose, linked = [], [], [], []
     for g in groups:
         for src, dst in ((g["collect"], collect), (g["use"], use), (g["dispose"], dispose), (g["linked"], linked)):
@@ -953,9 +953,9 @@ def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
     nw, cx, bx = 200, 150, 470       # 노드폭, 세로축 좌상단 x, 분기(오른쪽) x
     width = 720
     defs = ('<defs><marker id="ov" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">'
-            '<path d="M0,0 L9,4 L0,8 Z" fill="#111827"/></marker>'
+            '<path d="M0,0 L9,4 L0,8 Z" fill="#191f28"/></marker>'
             '<marker id="ovr" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">'
-            '<path d="M0,0 L9,4 L0,8 Z" fill="#dc2626"/></marker></defs>')
+            '<path d="M0,0 L9,4 L0,8 Z" fill="#f04452"/></marker></defs>')
 
     def _txt(x, y, t, size=9, col=BLACK, anchor="middle", bold=False):
         w = ' font-weight="700"' if bold else ""
@@ -991,10 +991,10 @@ def render_data_flow_overview_svg(rows: list[dict[str, Any]]) -> str:
                 + _txt(x + w / 2, y + h / 2 + 3, title, 10, BLACK, bold=True))
 
     def vary(x, y1, y2, mid="ov"):   # 세로 화살표
-        return f'<line x1="{x}" y1="{y1}" x2="{x}" y2="{y2 - 4}" stroke="{"#dc2626" if mid=="ovr" else BLACK}" stroke-width="1.7" marker-end="url(#{mid})"/>'
+        return f'<line x1="{x}" y1="{y1}" x2="{x}" y2="{y2 - 4}" stroke="{"#f04452" if mid=="ovr" else BLACK}" stroke-width="1.7" marker-end="url(#{mid})"/>'
 
     def hary(x1, x2, y, label="", mid="ov"):  # 가로 화살표 + 라벨
-        s = [f'<line x1="{x1}" y1="{y}" x2="{x2 - 4}" y2="{y}" stroke="{"#dc2626" if mid=="ovr" else BLACK}" stroke-width="1.7" marker-end="url(#{mid})"/>']
+        s = [f'<line x1="{x1}" y1="{y}" x2="{x2 - 4}" y2="{y}" stroke="{"#f04452" if mid=="ovr" else BLACK}" stroke-width="1.7" marker-end="url(#{mid})"/>']
         if label:
             s.append(_txt((x1 + x2) / 2, y - 5, label, 9, BLACK, bold=True))
         return "".join(s)
@@ -1137,9 +1137,9 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
 
     from mori_soc.services.pdf import get_pdf_font as _get_pdf_font
 
-    BLACK, WHITE, NEUTRAL = colors.HexColor("#111827"), colors.white, colors.HexColor("#e5e7eb")
-    BLUE, GREEN, YELLOW, RED = (colors.HexColor("#2563eb"), colors.HexColor("#16a34a"),
-                               colors.HexColor("#ca8a04"), colors.HexColor("#dc2626"))
+    BLACK, WHITE, NEUTRAL = colors.HexColor("#191f28"), colors.white, colors.HexColor("#e5e8eb")
+    BLUE, GREEN, YELLOW, RED = (colors.HexColor("#3182f6"), colors.HexColor("#15c47e"),
+                               colors.HexColor("#f5a623"), colors.HexColor("#f04452"))
     STAGE_COLOR = {"수집": BLUE, "저장": GREEN, "이용": YELLOW, "파기": RED}
 
     font = _get_pdf_font()

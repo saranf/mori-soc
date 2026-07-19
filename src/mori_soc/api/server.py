@@ -267,6 +267,35 @@ def _install_secret_redaction() -> None:
     _redaction_installed = True
 
 
+# ── Swagger/OpenAPI 기능별 분류(#redesign-toss) ────────────────────────────
+# 엔드포인트엔 이미 tags= 가 붙어 있어, 여기서 "표시 순서 + 그룹 설명"을 준다.
+# 순서: 핵심 흐름(통제·증적) 먼저 → 버티컬 → 증적 소스 → 운영/관리.
+MORI_API_DESCRIPTION = (
+    "MORI SOC — 기존 도구(Zabbix·Fleet·Wazuh·Trivy·Loki) 위에 read-only 로 얹히는 "
+    "ISMS-P / ISO 27001 **증적 층**. 소스→수집→사람의 판단→통제→증적 승인→감사 패키지.\n\n"
+    "아래 엔드포인트는 **기능별로 그룹**돼 있습니다 — 핵심(통제·증적) → 버티컬(개인정보·계정·취약점) "
+    "→ 증적 소스(ingest) → 운영/관리."
+)
+MORI_OPENAPI_TAGS = [
+    {"name": "Health", "description": "헬스체크·상태 — 라이브니스/레디니스 프로브."},
+    {"name": "Auth", "description": "인증·세션 — 로그인/로그아웃, 가입 승인 요청."},
+    {"name": "Compliance", "description": "통제 점검·심사 준비 — PDCA, SoA(적용선언서), 증적 신선도·감사 표본·전체 증적 ZIP."},
+    {"name": "Governance", "description": "통제 운영 플랫폼 — Framework·Version(불변)·AssuranceCycle·EvidenceContract, as-of 재현."},
+    {"name": "Privacy", "description": "개인정보 3.x — 처리흐름도(SVG), 외부 수신자 구분, 개인정보 증적 패키지(PDF/CSV/ZIP)."},
+    {"name": "Vulnerabilities", "description": "취약점 조치 — CVE 조치·예외·기한(예외 자동연장 금지)."},
+    {"name": "Assets", "description": "자산·담당자 — 인벤토리, 중요도, 인증범위 커버리지."},
+    {"name": "Accounts", "description": "계정 거버넌스 — 로컬 계정×LDAP×승인대장, 퇴사자·미승인 sudo·휴면 검출."},
+    {"name": "Incidents", "description": "인시던트 — 확정 경보의 인시던트 승격·타임라인."},
+    {"name": "Alerts", "description": "알림 분류(Triage) — 확정/예외/담당자, 옵트인 Zabbix write-back."},
+    {"name": "Sources", "description": "증적 소스 수집(ingest) — Trivy·Wazuh·code-review·privacy-flow·evidence, OIDC 검증."},
+    {"name": "Zabbix", "description": "증적 소스: Zabbix — 모니터링 호스트/트리거(read-only)."},
+    {"name": "Trivy", "description": "증적 소스: Trivy — 컨테이너/이미지 취약점 스캔 결과."},
+    {"name": "Fleet", "description": "증적 소스: Fleet/osquery — 엔드포인트 인벤토리."},
+    {"name": "Admin", "description": "관리자 — 콘솔 운영, 사용자·시스템 관리."},
+    {"name": "Settings", "description": "설정 — 소스 연결·가드레일·정기 증적 스냅샷."},
+]
+
+
 def create_app(
     service: QueryService | None = None,
     service_factory=None,
@@ -284,7 +313,19 @@ def create_app(
         state_repo = InMemoryStateRepository()
 
     from mori_soc.version import __version__ as _app_version  # 단일 버전 출처
-    app = FastAPI(title="MORI SOC — Audit-Ready Security Operations API", version=_app_version)
+    app = FastAPI(
+        title="MORI SOC — Audit-Ready Security Operations API",
+        version=_app_version,
+        description=MORI_API_DESCRIPTION,
+        openapi_tags=MORI_OPENAPI_TAGS,
+        # Swagger UI 사용성: 태그 그룹만 펼치고(엔드포인트는 접힘), 상단 검색·필터 노출.
+        # tagsSorter 미지정 → openapi_tags 에 정의한 논리적 그룹 순서를 그대로 유지.
+        swagger_ui_parameters={
+            "docExpansion": "none",
+            "filter": True,
+            "displayRequestDuration": True,
+        },
+    )
 
     # 정적 자산(#34 UI 분리): CSS 등 보간 없는 자산을 별도 파일로 서빙(/static, 무인증).
     try:

@@ -2601,8 +2601,14 @@
               cntEl.style.display = 'flex';
             }
           } else {
-            if (ringEl) ringEl.style.display = 'none';
-            if (headEl) headEl.textContent = '';
+            // 데이터 없어도 토스식 링은 항상 표시(0% 회색 트랙 + '–') + 친절한 빈 상태 안내
+            if (ringEl) {
+              ringEl.style.setProperty('--p', 0);
+              const pe = document.getElementById('pdca_readiness_pct');
+              if (pe) pe.textContent = '–';
+              ringEl.style.display = '';
+            }
+            if (headEl) headEl.textContent = tt('dash.pdca.hero_empty', '아직 통제 점검 데이터가 없어요. 통제 상태를 채우면 준비율이 바로 나와요.');
             if (cntEl) cntEl.style.display = 'none';
           }
         } catch (e) {}

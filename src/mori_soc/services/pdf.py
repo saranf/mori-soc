@@ -53,7 +53,7 @@ def pdf_table(headers: list[Any], rows: list[list[Any]], col_widths: list[float]
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.platypus import Paragraph, Table, TableStyle
     f = font or get_pdf_font()
-    black = colors.HexColor("#111827")
+    black = colors.HexColor("#191f28")
     cell = ParagraphStyle("pdfcell", parent=getSampleStyleSheet()["Normal"], fontName=f,
                           fontSize=8, leading=10.5, textColor=black)
 
@@ -67,9 +67,9 @@ def pdf_table(headers: list[Any], rows: list[list[Any]], col_widths: list[float]
         ("FONTNAME", (0, 0), (-1, -1), f),
         ("FONTSIZE", (0, 0), (-1, -1), 8),
         ("TEXTCOLOR", (0, 0), (-1, -1), black),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e5e7eb")),
-        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f9fafb")]),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e5e8eb")),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e8eb")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f7f8fa")]),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
