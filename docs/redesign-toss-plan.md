@@ -85,3 +85,33 @@ Phase 0에서 B/다크를 택했을 때만.
 ## 추천 착수 슬라이스 (첫 PR)
 
 **로그인 + 사용자 대시보드 1화면**을 Phase 1+2+3 수직 관통으로 먼저 완성 → 토스 방향을 실화면·실데이터·한영·테스트그린으로 검증한 뒤 나머지 12뷰 확산. (되돌리기 쉽고 방향 합의에 가장 레버리지 큼.)
+
+---
+
+## 진행 현황 (2026-07-20)
+
+| 슬라이스 | 상태 | 커밋 |
+|---|---|---|
+| 전 UI 팔레트·컴포넌트 토스 이관(CSS 재작성 + JS/템플릿 hex 스윕) | ✅ | 181de41 |
+| 증적 PDF 팔레트 토스화 + Swagger 기능별 분류 + 심사링 상시표시 | ✅ | 0ca6fd8 |
+| 뷰별 "한눈에" 레이아웃 재구성(마크업/JS 렌더러) | ⬜ 대기 | — |
+
+---
+
+## 추가 표면 A — 개인정보/증적 PDF 아웃풋
+
+- **엔진**: ReportLab(프로그램 생성, HTML 아님). 팔레트가 `services/pdf.py` 한 곳(공용 프리미티브)에 집중.
+- **완료**: `pdf.py·data_flow.py·soa.py` 팔레트를 토스 중성색으로. 개인정보 흐름표 SVG 6색 의미매핑(수집파·저장초·이용노·파기빨) 보존. PDF 색 검증 테스트 없어 안전.
+- **남은 깊이작업**: 표 헤더/여백/타이포를 토스 문서 레이아웃으로(요약카드 상단, 흐름 라이프사이클 바, 외부수신자 구분). ReportLab이라 레이아웃 변경은 코드 작업 — `docs` 목업 참고. reportlab 설치 테스트 환경에서 PDF 바이트 생성 스모크 필요.
+
+## 추가 표면 B — Swagger / OpenAPI (기능별 분류)
+
+- **현황**: 엔드포인트엔 이미 `tags=`(Compliance 46·Governance 32·Privacy 28·Admin 18·Accounts 15·Sources 11·Assets 8·Vuln 7·Auth 7·Incidents 4·Alerts 4·Health 3·Settings 2·Zabbix/Trivy/Fleet 각 1).
+- **완료**: `server.py`에 `openapi_tags` 16개 그룹 **설명+논리순서**(핵심 통제·증적 → 버티컬 → 증적소스 → 운영) + `swagger_ui_parameters`(docExpansion none·filter). 순수 메타라 부팅 안전.
+- **남은 깊이작업(부팅 안전상 보류)**: 토스 테마 `/docs` — `docs_url=None` + `get_swagger_ui_html` 커스텀 라우트 + 토스 CSS 주입. **이 환경엔 fastapi 미설치라 라우트 배선 런타임 검증 불가 → 테스트 환경에서 진행.** 태그 일관화(code-review 엔드포인트가 Sources/Compliance로 갈림 정리).
+
+## 남은 큰 덩어리 — 뷰별 "한눈에" IA 재구성 (Phase 3 본체)
+
+색은 끝났고, "토스답게" = **정보설계**(요약 먼저·상세 접기·큰 숫자·여백)라 **탭마다 마크업/JS 렌더러를 다시 짜야** 함. 각 뷰가 **무엇을 앞세우고 무엇을 접을지**는 제품 판단이 필요 → 뷰 단위로 목업 합의 후 실装. 심사 준비 히어로(링 상시표시)가 첫 스텝.
+
+**제약**: 이 개발 환경엔 **fastapi·reportlab·pytest·브라우저 미설치** → create_app 런타임·PDF 생성·실화면 눈검증 불가. 정적 렌더 스모크 + compileall로만 검증 중. 실검증은 `docker compose up` 또는 테스트 환경 필요.
