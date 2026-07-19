@@ -119,13 +119,15 @@ _TAB_COMPLIANCE_HTML = """    <!-- ── Tab: 심사 준비 (Compliance PDCA) �
         </div>
       </details>
 
-      <!-- ── 증적 리포트 다운로드 ────────────────────────────────────── -->
-      <section class=\"card\" style=\"margin-top:20px\">
-        <h2 data-i18n=\"dash.card.reports\">감사 증적 리포트 다운로드</h2>
-        <div class=\"subtext\" data-i18n=\"dash.card.reports.sub\">감사 증적으로 쓸 리포트를 CSV로 받을 수 있어요. 미리보기로 컬럼을 먼저 확인하세요.</div>
-        <div id=\"report_download_area\" style=\"margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px\">
+      <!-- ── 증적 리포트 다운로드 (토스 IA: 내보내기는 보조 → 접이식) ──────── -->
+      <details class=\"card\" style=\"margin-top:20px;padding:0\">
+        <summary style=\"cursor:pointer;padding:16px 18px;font-weight:800;font-size:15px;letter-spacing:-0.02em\" data-i18n=\"dash.card.reports\">감사 증적 리포트 다운로드</summary>
+        <div style=\"padding:0 18px 18px\">
+          <div class=\"subtext\" data-i18n=\"dash.card.reports.sub\">감사 증적으로 쓸 리포트를 CSV로 받을 수 있어요. 미리보기로 컬럼을 먼저 확인하세요.</div>
+          <div id=\"report_download_area\" style=\"margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px\">
+          </div>
         </div>
-      </section>
+      </details>
 
     </div>
 
