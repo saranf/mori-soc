@@ -80,7 +80,7 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
               <div style=\"display:flex;gap:8px;align-items:center;flex-wrap:wrap\">
                 <span id=\"acc_summary\" style=\"font-size:12px;color:#191f28\"></span>
                 <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"openCsvPreview({title:tt('dash.acc.csv_preview_title','계정 거버넌스 CSV 미리보기'),filename:'mori-accounts-overview.csv',url:'/accounts/overview.csv'})\" data-i18n=\"dash.acc.csv\">CSV</button>
-                <button onclick=\"switchTab('accounts')\" style=\"background:none;border:none;color:#3182f6;font-size:12px;cursor:pointer\" data-i18n=\"dash.acc.detail\">계정 탭에서 상세 →</button>
+                <button onclick=\"switchTab('accounts')\" class=\"detail-link\" data-i18n=\"dash.acc.detail\">계정 탭에서 상세 →</button>
               </div>
             </div>
             <div class=\"subtext\" data-i18n=\"dash.acc.sub\">서버·PC의 로컬 계정을 LDAP·승인 대장과 대조해 이상 계정을 찾아요. ISMS-P 2.5.1·2.5.5·2.5.6 접근권한 검토 증적이에요.</div>
@@ -89,7 +89,7 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
           <section class=\"card\" id=\"fleet_status_section\">
             <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
               <h2 style=\"margin:0\" data-i18n=\"dash.fleet.title\">PC 자산 현황</h2>
-              <button onclick=\"switchTab('assets')\" style=\"background:none;border:none;color:#3182f6;font-size:12px;cursor:pointer\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
+              <button onclick=\"switchTab('assets')\" class=\"detail-link\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
             </div>
             <div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-top:10px\">
               <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.fleet_total\">전체 PC</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"fleet_total\">-</div></div>
@@ -101,7 +101,7 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
           <section class=\"card\" id=\"zabbix_status_section\">
             <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
               <h2 style=\"margin:0\" data-i18n=\"dash.zabbix.title\">서버 자산 현황</h2>
-              <button onclick=\"switchTab('assets');switchAssetTab('zabbix')\" style=\"background:none;border:none;color:#3182f6;font-size:12px;cursor:pointer\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
+              <button onclick=\"switchTab('assets');switchAssetTab('zabbix')\" class=\"detail-link\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
             </div>
             <div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-top:10px\">
               <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.zabbix_total\">전체 서버</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"zabbix_total\">-</div></div>
@@ -113,7 +113,7 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
           <section class=\"card\" id=\"trivy_status_section\">
             <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
               <h2 style=\"margin:0\" data-i18n=\"dash.vuln.title\">취약점 현황</h2>
-              <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" style=\"background:none;border:none;color:#3182f6;font-size:12px;cursor:pointer\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
+              <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" class=\"detail-link\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
             </div>
             <div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-top:10px\">
               <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.trivy_affected\">영향받는 호스트</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"trivy_affected_hosts\">-</div></div>

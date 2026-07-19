@@ -251,6 +251,9 @@
 
     /* 공용 미니 통계 타일(공통화) — overview 인프라/PC/서버 카드 반복 인라인 대체. */
     .stat-mini { flex: 1; min-width: 90px; background: var(--c-paper); border: 1px solid var(--c-line); border-radius: 12px; padding: 12px 14px; }
+    /* 공용 '상세 →' 링크 버튼(공통화) — 카드 헤더의 탭 이동 링크. */
+    .detail-link { background: none; border: none; color: var(--c-blue); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
+    .detail-link:hover { color: var(--c-blue-ink); text-decoration: underline; }
 
     /* 준비율 도넛 링 — --p(0~100). conic-gradient. */
     .mori-ring { --p: 0; width: 100px; height: 100px; border-radius: 999px; flex: 0 0 auto;
