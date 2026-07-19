@@ -92,9 +92,9 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
               <button onclick=\"switchTab('assets')\" style=\"background:none;border:none;color:#3182f6;font-size:12px;cursor:pointer\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
             </div>
             <div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-top:10px\">
-              <div style=\"flex:1;min-width:100px;background:#ffffff;border:1px solid #e5e8eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.fleet_total\">전체 PC</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"fleet_total\">-</div></div>
-              <div style=\"flex:1;min-width:100px;background:#ffffff;border:1px solid #e5e8eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.online\">온라인</div><div style=\"font-size:24px;font-weight:800;color:#15c47e;margin-top:2px\" id=\"fleet_online\">-</div></div>
-              <div style=\"flex:1;min-width:100px;background:#ffffff;border:1px solid #e5e8eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.offline\">오프라인</div><div style=\"font-size:24px;font-weight:800;color:#f04452;margin-top:2px\" id=\"fleet_offline\">-</div></div>
+              <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.fleet_total\">전체 PC</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"fleet_total\">-</div></div>
+              <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.online\">온라인</div><div style=\"font-size:24px;font-weight:800;color:#15c47e;margin-top:2px\" id=\"fleet_online\">-</div></div>
+              <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.offline\">오프라인</div><div style=\"font-size:24px;font-weight:800;color:#f04452;margin-top:2px\" id=\"fleet_offline\">-</div></div>
             </div>
           </section>
           <!-- 서버 자산 현황 (Zabbix) — 자산 탭에서 이동 -->
@@ -104,9 +104,9 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
               <button onclick=\"switchTab('assets');switchAssetTab('zabbix')\" style=\"background:none;border:none;color:#3182f6;font-size:12px;cursor:pointer\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
             </div>
             <div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-top:10px\">
-              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e8eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.zabbix_total\">전체 서버</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"zabbix_total\">-</div></div>
-              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e8eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.online\">온라인</div><div style=\"font-size:24px;font-weight:800;color:#15c47e;margin-top:2px\" id=\"zabbix_online\">-</div></div>
-              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e8eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.offline\">오프라인</div><div style=\"font-size:24px;font-weight:800;color:#f04452;margin-top:2px\" id=\"zabbix_offline\">-</div></div>
+              <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.zabbix_total\">전체 서버</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"zabbix_total\">-</div></div>
+              <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.online\">온라인</div><div style=\"font-size:24px;font-weight:800;color:#15c47e;margin-top:2px\" id=\"zabbix_online\">-</div></div>
+              <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.offline\">오프라인</div><div style=\"font-size:24px;font-weight:800;color:#f04452;margin-top:2px\" id=\"zabbix_offline\">-</div></div>
             </div>
           </section>
           <!-- 취약점 현황 (Trivy) — 자산 탭에서 이동 -->
@@ -116,10 +116,10 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
               <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" style=\"background:none;border:none;color:#3182f6;font-size:12px;cursor:pointer\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
             </div>
             <div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-top:10px\">
-              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e8eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.trivy_affected\">영향받는 호스트</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"trivy_affected_hosts\">-</div></div>
-              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e8eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.trivy_total\">전체 취약점</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"trivy_total_vulns\">-</div></div>
-              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e8eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#191f28\">Critical</div><div style=\"font-size:24px;font-weight:800;color:#f04452;margin-top:2px\" id=\"trivy_critical\">-</div></div>
-              <div style=\"flex:1;min-width:90px;background:#ffffff;border:1px solid #e5e8eb;border-radius:10px;padding:12px\"><div style=\"font-size:12px;color:#191f28\">High</div><div style=\"font-size:24px;font-weight:800;color:#f5a623;margin-top:2px\" id=\"trivy_high\">-</div></div>
+              <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.trivy_affected\">영향받는 호스트</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"trivy_affected_hosts\">-</div></div>
+              <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.assets.trivy_total\">전체 취약점</div><div style=\"font-size:24px;font-weight:800;margin-top:2px\" id=\"trivy_total_vulns\">-</div></div>
+              <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\">Critical</div><div style=\"font-size:24px;font-weight:800;color:#f04452;margin-top:2px\" id=\"trivy_critical\">-</div></div>
+              <div class=\"stat-mini\"><div style=\"font-size:12px;color:#191f28\">High</div><div style=\"font-size:24px;font-weight:800;color:#f5a623;margin-top:2px\" id=\"trivy_high\">-</div></div>
             </div>
           </section>
           <section class=\"card\" id=\"source_coverage_section\">

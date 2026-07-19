@@ -249,6 +249,9 @@
       .mori-strip .ms-cta { margin-left: 0; flex-basis: 100%; }
     }
 
+    /* 공용 미니 통계 타일(공통화) — overview 인프라/PC/서버 카드 반복 인라인 대체. */
+    .stat-mini { flex: 1; min-width: 90px; background: var(--c-paper); border: 1px solid var(--c-line); border-radius: 12px; padding: 12px 14px; }
+
     /* 준비율 도넛 링 — --p(0~100). conic-gradient. */
     .mori-ring { --p: 0; width: 100px; height: 100px; border-radius: 999px; flex: 0 0 auto;
       background: conic-gradient(var(--c-blue) calc(var(--p) * 1%), var(--c-surface-2) 0); display: grid; place-items: center; }
