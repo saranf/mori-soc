@@ -21,7 +21,7 @@ _TAB_INCIDENTS_HTML = """    <!-- ── Tab: Incidents ────────
           </div>
           <button id=\"inc_filter_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px\" data-i18n=\"dash.inc.filter_btn\">조회</button>
           <button id=\"inc_new_btn\" style=\"padding:5px 14px;font-size:13px;background:#3182f6;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600\" data-i18n=\"dash.inc.new_btn\">+ 새 인시던트</button>
-          <button id=\"inc_csv_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px;background:#dbeafe;color:#3182f6\" data-i18n=\"dash.inc.csv_btn\">CSV 다운로드</button>
+          <button id=\"inc_csv_btn\" class=\"secondary\" style=\"padding:5px 14px;font-size:13px;background:#eaf1fe;color:#3182f6\" data-i18n=\"dash.inc.csv_btn\">CSV 다운로드</button>
         </div>
         <!-- 요약 스트립: 인시던트 상태별 집계 (loadIncidents 가 실데이터로 채움) -->
         <div class=\"mori-strip\" id=\"incident_summary\" style=\"display:none;margin-bottom:14px;padding:14px 16px;background:#f7f8fa;border:1px solid #e5e8eb;border-radius:12px\"></div>

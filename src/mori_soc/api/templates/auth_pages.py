@@ -15,7 +15,7 @@ def render_login_html(error: str = "", next_url: str = "/ui") -> str:
   <title data-i18n-doctitle="login.doctitle">MORI SOC 로그인</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ background: #f7f8fb; color: #191f28; font-family: 'Segoe UI', system-ui, sans-serif;
+    body {{ background: #f2f4f6; color: #191f28; font-family: 'Segoe UI', system-ui, sans-serif;
            display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
     .login-card {{ background: #ffffff; border: 1px solid #e5e8eb; border-radius: 18px; padding: 40px 36px;
                    width: 100%; max-width: 400px; box-shadow: 0 1px 2px rgba(17,24,39,.06), 0 12px 32px rgba(17,24,39,.06); }}
@@ -133,7 +133,7 @@ def render_signup_request_html(success: bool = False) -> str:
   <title data-i18n-doctitle="signup.doctitle">MORI SOC 가입 요청</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ background: #f7f8fb; color: #191f28; font-family: 'Segoe UI', system-ui, sans-serif;
+    body {{ background: #f2f4f6; color: #191f28; font-family: 'Segoe UI', system-ui, sans-serif;
            display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
     .login-card {{ background: #ffffff; border: 1px solid #e5e8eb; border-radius: 18px; padding: 40px 36px;
                    width: 100%; max-width: 440px; box-shadow: 0 1px 2px rgba(17,24,39,.06), 0 12px 32px rgba(17,24,39,.06); }}

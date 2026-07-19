@@ -77,7 +77,7 @@ _TAB_ASSETS_HTML = """    <!-- ── Tab: 자산 현황 ───────�
         </section>
         <!-- 위험성 평가 매트릭스 팝업 -->
         <div id=\"risk_matrix_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:center;justify-content:center\">
-          <div style=\"background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:24px 28px;width:1080px;max-width:96vw;max-height:90vh;overflow:auto\">
+          <div style=\"background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:24px 28px;width:1080px;max-width:96vw;max-height:90vh;overflow:auto\">
             <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px\">
               <h3 style=\"color:#3182f6;margin:0\" data-i18n=\"dash.risk.matrix_title\">위험성 평가 매트릭스</h3>
               <button onclick=\"closeRiskMatrixModal()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>

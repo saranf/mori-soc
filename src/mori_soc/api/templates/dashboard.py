@@ -308,8 +308,8 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px;flex-wrap:wrap\">
         <h3 id=\"report_preview_title\" style=\"color:#3182f6;margin:0\" data-i18n=\"dash.modal.report_preview_title\">리포트 미리보기</h3>
         <div style=\"display:flex;gap:8px;align-items:center\">
-          <a id=\"report_preview_download\" href=\"#\" download style=\"background:#dbeafe;border:1px solid #dbeafe;color:#3182f6;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none\" data-i18n=\"dash.modal.csv_download\">CSV 다운로드</a>
-          <a id=\"report_preview_download_pdf\" href=\"#\" download style=\"background:#ffedd5;border:1px solid #f5a623;color:#f5a623;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none\" data-i18n=\"dash.modal.pdf_download\">PDF 다운로드</a>
+          <a id=\"report_preview_download\" href=\"#\" download style=\"background:#eaf1fe;border:1px solid #eaf1fe;color:#3182f6;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none\" data-i18n=\"dash.modal.csv_download\">CSV 다운로드</a>
+          <a id=\"report_preview_download_pdf\" href=\"#\" download style=\"background:#fef3d6;border:1px solid #f5a623;color:#f5a623;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none\" data-i18n=\"dash.modal.pdf_download\">PDF 다운로드</a>
           <button onclick=\"closeReportPreview()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
         </div>
       </div>
@@ -332,7 +332,7 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
       </div>
       <div style=\"display:flex;gap:10px;justify-content:flex-end\">
         <button onclick=\"closeIncidentCsvNotice()\" style=\"background:#e5e8eb;border:1px solid #e5e8eb;color:#191f28;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px\" data-i18n=\"dash.f.cancel\">취소</button>
-        <button id=\"incident_csv_confirm_btn\" style=\"background:#dbeafe;border:1px solid #dbeafe;color:#3182f6;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600\" data-i18n=\"dash.modal.download\">다운로드</button>
+        <button id=\"incident_csv_confirm_btn\" style=\"background:#eaf1fe;border:1px solid #eaf1fe;color:#3182f6;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600\" data-i18n=\"dash.modal.download\">다운로드</button>
       </div>
     </div>
   </div>
@@ -428,7 +428,7 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
         </div>
       </div>
       <!-- 산정 근거 (관리자 전용) -->
-      <div id=\"risk_provenance\" style=\"display:none;margin-top:14px;border:1px solid #dbeafe;border-radius:8px;padding:10px 12px;background:#f7f8fa\"></div>
+      <div id=\"risk_provenance\" style=\"display:none;margin-top:14px;border:1px solid #eaf1fe;border-radius:8px;padding:10px 12px;background:#f7f8fa\"></div>
       <div id=\"risk_modal_status\" style=\"font-size:13px;color:#191f28;margin-top:10px\"></div>
       <div style=\"display:flex;gap:8px;justify-content:flex-end;margin-top:12px\">
         <button id=\"risk_modal_save\" onclick=\"saveRiskAssessment()\" style=\"background:#3182f6;border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px\" data-i18n=\"dash.f.save\">저장</button>

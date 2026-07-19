@@ -281,7 +281,7 @@ _ATAB_ACCESS_HTML = """    <!-- ── Tab: Access Control (가입 요청 + RBAC
               </select>
             </label>
           </div>
-          <div id="acctcol_hint" style="display:none;margin:10px 0;padding:10px 12px;background:#f7f8fa;border:1px solid #e5e8eb;border-left:3px solid #3182f6;border-radius:8px;font-size:12px;color:#4b5563;line-height:1.7">
+          <div id="acctcol_hint" style="display:none;margin:10px 0;padding:10px 12px;background:#f7f8fa;border:1px solid #e5e8eb;border-left:3px solid #3182f6;border-radius:8px;font-size:12px;color:#4e5968;line-height:1.7">
             <div data-i18n="admin.s.acct_collect_script_hint">Fleet이 없는 서버에서는 아래 스크립트를 실행하면 로컬 계정이 수집됩니다(cron 등록 포함). 토큰은 서버의 환경변수로 넘기세요 — 화면에 노출하지 않습니다.</div>
             <pre id="acctcol_cmd" style="margin:8px 0 0;padding:8px 10px;background:#ffffff;border:1px solid #e5e8eb;border-radius:6px;overflow-x:auto;font-size:11px;color:#191f28"></pre>
           </div>

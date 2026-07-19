@@ -877,7 +877,7 @@
         return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#e5e8eb;color:#3182f6;" class="${cls}">${escapeHtml(src||'-')}</span>`;
       };
       const rows = evidence.map((ev, i) => `
-        <tr style="border-bottom:1px solid #dbeafe;">
+        <tr style="border-bottom:1px solid #eaf1fe;">
           <td style="padding:7px 10px;color:#191f28">${i+1}</td>
           <td style="padding:7px 10px">${srcBadge(ev.source)}</td>
           <td style="padding:7px 10px;font-size:13px">${escapeHtml(ev.summary || ev.raw_ref || '-')}</td>
@@ -1026,7 +1026,7 @@
             <td>${(() => { const u=_alertSourceUrl(a); const b=`<span style="background:#e5e8eb;color:#3182f6;padding:2px 8px;border-radius:4px;font-size:12px">${escapeHtml(a.source)}</span>`; return u?`<a href="${escapeHtml(u)}" target="_blank" rel="noopener" style="text-decoration:none" title="${escapeHtml(a.source)} ${tt('dash.triage.open_source','원본 열기')}">${b}</a>`:b; })()}</td>
             <td><strong>${escapeHtml(a.hostname || a.host_id || '-')}</strong></td>
             <td style="color:#15c47e;font-size:12px">${escapeHtml(alertOwner)}</td>
-            <td><span style="background:#ffffff;padding:2px 6px;border-radius:4px;font-size:12px">${escapeHtml(a.severity)}</span>${a.resolved_at?`<br><span title="${escapeHtml(formatTime(a.resolved_at))}" style="background:#dcfce7;color:#15c47e;border:1px solid #dcfce7;padding:1px 6px;border-radius:4px;font-size:10px">${tt('dash.triage.source_resolved','소스 해소')}</span>`:''}</td>
+            <td><span style="background:#ffffff;padding:2px 6px;border-radius:4px;font-size:12px">${escapeHtml(a.severity)}</span>${a.resolved_at?`<br><span title="${escapeHtml(formatTime(a.resolved_at))}" style="background:#e3f8ef;color:#15c47e;border:1px solid #e3f8ef;padding:1px 6px;border-radius:4px;font-size:10px">${tt('dash.triage.source_resolved','소스 해소')}</span>`:''}</td>
             <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(a.message)}</td>
             <td style="color:#191f28;font-size:12px">${escapeHtml(triageAnalyst || '-')}</td>
             <td style="color:#f5a623;font-size:12px">${escapeHtml(triageChangedBy || '-')}</td>
@@ -1407,8 +1407,8 @@
     function _mineRow(h, kind) {
       const statusCls = h.status === 'online' ? 'online' : h.status === 'offline' ? 'offline' : 'unknown';
       const typeBadge = kind === 'fleet'
-        ? `<span style="background:#dbeafe;color:#15c47e;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700">PC</span>`
-        : `<span style="background:#dbeafe;color:#3182f6;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700">${tt('dash.mine.server','서버')}</span>`;
+        ? `<span style="background:#eaf1fe;color:#15c47e;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700">PC</span>`
+        : `<span style="background:#eaf1fe;color:#3182f6;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700">${tt('dash.mine.server','서버')}</span>`;
       const imp = (h.importance || '').trim();
       const impCell = imp
         ? `<span style="color:${_MINE_IMP_COLOR[imp]||'#191f28'};font-weight:700">${escapeHtml(imp)}</span>`
@@ -1483,7 +1483,7 @@
       const excStr = h.exception_until
         ? `${escapeHtml(String(h.exception_until).slice(0,10))}${h.exception_reason ? ' · ' + escapeHtml(h.exception_reason) : ''}`
         : '-';
-      const ownerCell = `${escapeHtml(ownerLabel)} <button onclick="openOwnerModal('${escapeHtml(hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}','${_at}','','','${escapeHtml(h.importance||'')}')" style="margin-left:8px;padding:2px 8px;font-size:11px;border-radius:4px;background:#e5e8eb;color:#3182f6;border:1px solid #d1d5db;cursor:pointer">${tt('dash.dyn.edit_btn','수정')}</button>`;
+      const ownerCell = `${escapeHtml(ownerLabel)} <button onclick="openOwnerModal('${escapeHtml(hostname)}','${escapeHtml(h.owner||'')}','${escapeHtml(h.team||'')}','${escapeHtml(h.category||'')}','${_at}','','','${escapeHtml(h.importance||'')}')" style="margin-left:8px;padding:2px 8px;font-size:11px;border-radius:4px;background:#e5e8eb;color:#3182f6;border:1px solid #e5e8eb;cursor:pointer">${tt('dash.dyn.edit_btn','수정')}</button>`;
       const meta = `<div style="background:#ffffff;border:1px solid #e5e8eb;border-radius:8px;padding:10px 14px;margin-bottom:14px">
         ${_kv(tt('dash.dyn.lbl.type','유형'), _at==='server' ? tt('dash.host.kind_server','서버') : 'PC')}
         ${_kv(tt('dash.dyn.lbl.platform','플랫폼'), escapeHtml((h.platform||'').trim()||'-'))}
@@ -1646,7 +1646,7 @@
           const cnt = (r.vuln_plans_count || 0) + (r.vuln_exceptions_count || 0);
           planCell = `<span style="color:#f5a623;font-size:12px;font-weight:600">${tt('dash.dyn.cve_plan_detail','CVE별 상세 계획')}</span>
             <br><span style="color:#191f28;font-size:11px">${tt('dash.dyn.plan_count','계획')} ${r.vuln_plans_count||0} · ${tt('dash.dyn.exception_count','예외')} ${r.vuln_exceptions_count||0}</span>
-            <br><button onclick="showVulnPlansNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})" style="font-size:10px;padding:1px 6px;background:#fef9c3;border:1px solid #fef9c3;border-radius:3px;color:#f5a623;cursor:pointer;margin-top:2px">${tt('dash.dyn.notice_btn','안내')}</button>`;
+            <br><button onclick="showVulnPlansNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})" style="font-size:10px;padding:1px 6px;background:#fef3d6;border:1px solid #fef3d6;border-radius:3px;color:#f5a623;cursor:pointer;margin-top:2px">${tt('dash.dyn.notice_btn','안내')}</button>`;
         } else if (r.action_plan) {
           planCell = `<span style="color:#15c47e;font-size:12px" title="${escapeHtml(r.action_plan)}">${planText}</span>${r.action_target_date ? '<br><span style="color:#191f28;font-size:11px">~' + escapeHtml(r.action_target_date) + '</span>' : ''}<br><button onclick="openPlanModal('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}')" style="font-size:10px;padding:1px 6px;background:#e5e8eb;border:1px solid #e5e8eb;border-radius:3px;color:#3182f6;cursor:pointer;margin-top:2px">${tt('dash.dyn.edit_btn','수정')}</button>`;
         } else {
@@ -1661,11 +1661,11 @@
           const cnt = (r.vuln_plans_count || 0) + (r.vuln_exceptions_count || 0);
           exCell = `<span style="color:#f5a623;font-size:12px;font-weight:600">${tt('dash.dyn.cve_exception_detail','CVE별 상세 예외')}</span>
             <br><span style="color:#191f28;font-size:11px">${tt('dash.dyn.exception_count','예외')} ${r.vuln_exceptions_count||0} · ${tt('dash.dyn.plan_count','계획')} ${r.vuln_plans_count||0}</span>
-            <br><button onclick="showVulnExceptionsNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})" style="font-size:10px;padding:1px 6px;background:#fef9c3;border:1px solid #fef9c3;border-radius:3px;color:#f5a623;cursor:pointer;margin-top:2px">${tt('dash.dyn.notice_btn','안내')}</button>`;
+            <br><button onclick="showVulnExceptionsNotice('${escapeHtml(r.host_id)}','${escapeHtml(r.hostname)}',${cnt})" style="font-size:10px;padding:1px 6px;background:#fef3d6;border:1px solid #fef3d6;border-radius:3px;color:#f5a623;cursor:pointer;margin-top:2px">${tt('dash.dyn.notice_btn','안내')}</button>`;
         } else if (exUntil) {
-          exCell = `<span style="color:#f5a623;font-size:12px">~${escapeHtml(exUntil)}</span>${exReason ? '<br><span style="color:#191f28;font-size:11px" title="'+escapeHtml(exReason)+'">'+escapeHtml(exReason.substring(0,20))+(exReason.length>20?'…':'')+'</span>' : ''}<br><button onclick="openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','${escapeHtml(exUntil)}','${escapeHtml(exReason).replace(/'/g,"\\'")}')" style="font-size:10px;padding:1px 6px;background:#fef9c3;border:1px solid #fef9c3;border-radius:3px;color:#f5a623;cursor:pointer;margin-top:2px">${tt('dash.dyn.edit_btn','수정')}</button>`;
+          exCell = `<span style="color:#f5a623;font-size:12px">~${escapeHtml(exUntil)}</span>${exReason ? '<br><span style="color:#191f28;font-size:11px" title="'+escapeHtml(exReason)+'">'+escapeHtml(exReason.substring(0,20))+(exReason.length>20?'…':'')+'</span>' : ''}<br><button onclick="openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','${escapeHtml(exUntil)}','${escapeHtml(exReason).replace(/'/g,"\\'")}')" style="font-size:10px;padding:1px 6px;background:#fef3d6;border:1px solid #fef3d6;border-radius:3px;color:#f5a623;cursor:pointer;margin-top:2px">${tt('dash.dyn.edit_btn','수정')}</button>`;
         } else {
-          exCell = `<button onclick="openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','','')" style="font-size:11px;padding:2px 7px;background:#fef9c3;border:1px solid #fef9c3;border-radius:4px;color:#f5a623;cursor:pointer">${tt('dash.dyn.add_exception_btn','+ 예외 설정')}</button>`;
+          exCell = `<button onclick="openOwnerModal('${escapeHtml(r.hostname)}','${escapeHtml(ownerData.owner||'')}','${escapeHtml(ownerData.team||'')}','','trivy','','')" style="font-size:11px;padding:2px 7px;background:#fef3d6;border:1px solid #fef3d6;border-radius:4px;color:#f5a623;cursor:pointer">${tt('dash.dyn.add_exception_btn','+ 예외 설정')}</button>`;
         }
         const totalCell = r.total > 0
           ? `<button onclick="openVulnListModal('${escapeHtml(r.host_id)}')" title="${tt('dash.dyn.view_vuln_detail','취약점 상세 보기')}" style="background:#e5e8eb;border:1px solid #e5e8eb;color:#3182f6;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:13px;font-weight:700">${r.total} ${tt('dash.dyn.cases_unit','건')}</button>`
@@ -1717,8 +1717,8 @@
     function _vulnBulkBarHtml() {
       return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:8px 12px;background:#f7f8fa;border:1px solid #e5e8eb;border-radius:8px">
         <span style="font-size:12px;color:#191f28">${tt('dash.dyn.bulk_selected','선택')} <b id="vuln_bulk_count" style="color:#3182f6">0</b>${tt('dash.dyn.cases_unit','건')}</span>
-        <button onclick="openVulnBulkAction('plan')" style="width:auto;padding:5px 12px;font-size:12px;background:#dcfce7;border:1px solid #dcfce7;color:#15c47e;border-radius:6px;cursor:pointer">${tt('dash.dyn.bulk_plan','일괄 조치 계획')}</button>
-        <button onclick="openVulnBulkAction('exception')" style="width:auto;padding:5px 12px;font-size:12px;background:#fef9c3;border:1px solid #fef9c3;color:#f5a623;border-radius:6px;cursor:pointer">${tt('dash.dyn.bulk_exception','일괄 조치 예외')}</button>
+        <button onclick="openVulnBulkAction('plan')" style="width:auto;padding:5px 12px;font-size:12px;background:#e3f8ef;border:1px solid #e3f8ef;color:#15c47e;border-radius:6px;cursor:pointer">${tt('dash.dyn.bulk_plan','일괄 조치 계획')}</button>
+        <button onclick="openVulnBulkAction('exception')" style="width:auto;padding:5px 12px;font-size:12px;background:#fef3d6;border:1px solid #fef3d6;color:#f5a623;border-radius:6px;cursor:pointer">${tt('dash.dyn.bulk_exception','일괄 조치 예외')}</button>
         <span style="font-size:11px;color:#191f28">${tt('dash.dyn.bulk_hint','체크한 CVE에 한 번에 적용')}</span>
       </div>`;
     }
@@ -1801,7 +1801,7 @@
           ? `${_riskBadge(rk.level, true)}${rk.assessed?'':`<div style="color:#191f28;font-size:9px;margin-top:2px">${tt('dash.risk.badge_unassessed','미평가')}</div>`}`
           : `<span style="color:#191f28;font-size:11px">-</span>`;
         const riskTd = showRisk
-          ? `<td style="padding:6px 8px;text-align:center;white-space:nowrap">${riskCell}<br><button onclick="openRiskModal('${escapeHtml(v.vuln_id)}')" style="font-size:10px;padding:1px 6px;background:#dbeafe;border:1px solid #dbeafe;border-radius:3px;color:#3182f6;cursor:pointer;margin-top:3px">${tt('dash.risk.btn','평가')}</button></td>`
+          ? `<td style="padding:6px 8px;text-align:center;white-space:nowrap">${riskCell}<br><button onclick="openRiskModal('${escapeHtml(v.vuln_id)}')" style="font-size:10px;padding:1px 6px;background:#eaf1fe;border:1px solid #eaf1fe;border-radius:3px;color:#3182f6;cursor:pointer;margin-top:3px">${tt('dash.risk.btn','평가')}</button></td>`
           : '';
         return `<tr>
           <td style="padding:6px 8px;text-align:center"><input type="checkbox" class="vuln_bulk_cb" value="${escapeHtml(v.vuln_id)}" onclick="_updateVulnBulkCount()" style="cursor:pointer"></td>
@@ -1811,8 +1811,8 @@
           <td style="padding:6px 8px;font-size:12px">${escapeHtml(v.package_name||'-')}</td>
           <td style="padding:6px 8px;font-size:12px;color:#191f28">${versionStr}</td>
           <td style="padding:6px 8px;font-size:11px;color:#191f28">${escapeHtml(formatTime(v.detected_at))}</td>
-          <td style="padding:6px 8px;min-width:140px">${planLabel}<br><button onclick="openVulnActionModal('${escapeHtml(v.vuln_id)}','plan')" style="font-size:10px;padding:1px 6px;background:#dcfce7;border:1px solid #dcfce7;border-radius:3px;color:#15c47e;cursor:pointer;margin-top:3px">${tt('dash.dyn.edit_plan_btn','조치 계획')}</button></td>
-          <td style="padding:6px 8px;min-width:140px">${exLabel}<br><button onclick="openVulnActionModal('${escapeHtml(v.vuln_id)}','exception')" style="font-size:10px;padding:1px 6px;background:#fef9c3;border:1px solid #fef9c3;border-radius:3px;color:#f5a623;cursor:pointer;margin-top:3px">${tt('dash.dyn.edit_exception_btn','조치 예외')}</button></td>
+          <td style="padding:6px 8px;min-width:140px">${planLabel}<br><button onclick="openVulnActionModal('${escapeHtml(v.vuln_id)}','plan')" style="font-size:10px;padding:1px 6px;background:#e3f8ef;border:1px solid #e3f8ef;border-radius:3px;color:#15c47e;cursor:pointer;margin-top:3px">${tt('dash.dyn.edit_plan_btn','조치 계획')}</button></td>
+          <td style="padding:6px 8px;min-width:140px">${exLabel}<br><button onclick="openVulnActionModal('${escapeHtml(v.vuln_id)}','exception')" style="font-size:10px;padding:1px 6px;background:#fef3d6;border:1px solid #fef3d6;border-radius:3px;color:#f5a623;cursor:pointer;margin-top:3px">${tt('dash.dyn.edit_exception_btn','조치 예외')}</button></td>
         </tr>`;
       }).join('');
       return hostBanner + _vulnBulkBarHtml() + `<table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -1880,8 +1880,8 @@
         bodyEl.innerHTML = '<div class="empty" style="color:#191f28;padding:24px;text-align:center">' + tt('dash.dyn.pdca.do_no_items','조치가 필요한 항목이 없습니다. ') + '</div>';
       } else {
         const sourceBadge = (s) => {
-          if (s === 'trivy') return '<span style="background:#fef9c3;color:#f5a623;padding:2px 6px;border-radius:4px;font-size:10px">Trivy</span>';
-          if (s === 'alert') return '<span style="background:#fee2e2;color:#f04452;padding:2px 6px;border-radius:4px;font-size:10px">Alert</span>';
+          if (s === 'trivy') return '<span style="background:#fef3d6;color:#f5a623;padding:2px 6px;border-radius:4px;font-size:10px">Trivy</span>';
+          if (s === 'alert') return '<span style="background:#fdecee;color:#f04452;padding:2px 6px;border-radius:4px;font-size:10px">Alert</span>';
           return '<span style="background:#f7f8fa;color:#3182f6;padding:2px 6px;border-radius:4px;font-size:10px">' + tt('dash.dyn.pdca.control_badge','통제') + '</span>';
         };
         bodyEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -1896,8 +1896,8 @@
           </tr></thead><tbody>`
           + items.map(i => {
             const statusBadge = i.status === 'fail'
-              ? '<span style="background:#fee2e2;color:#f04452;padding:2px 8px;border-radius:999px;font-size:11px">Fail</span>'
-              : '<span style="background:#fef9c3;color:#f5a623;padding:2px 8px;border-radius:999px;font-size:11px">Warning</span>';
+              ? '<span style="background:#fdecee;color:#f04452;padding:2px 8px;border-radius:999px;font-size:11px">Fail</span>'
+              : '<span style="background:#fef3d6;color:#f5a623;padding:2px 8px;border-radius:999px;font-size:11px">Warning</span>';
             const due = i.remediation_due_at ? new Date(i.remediation_due_at).toLocaleDateString('ko-KR') : '-';
             const overdueFlag = i.overdue ? ' ' : '';
             return `<tr style="border-bottom:1px solid #e5e8eb">
@@ -2078,7 +2078,7 @@
         <td style="padding:6px 8px;color:#191f28;font-size:12px">${escapeHtml(it.hostname)}</td>
         <td style="padding:6px 8px;text-align:center"><span style="color:${it.severity==='critical'?'#f04452':'#f5a623'};text-transform:uppercase;font-size:11px">${escapeHtml(it.severity)}</span></td>
         <td style="padding:6px 8px;text-align:center;font-size:11px;color:#191f28">${it.doa_accept?`<span style="background:#15c47e22;border:1px solid #15c47e;color:#15c47e;border-radius:5px;padding:1px 6px;font-weight:700">${tt('dash.risk.doa_accept','기본수용')}</span>`:(it.assessed?tt('dash.risk.assessed','평가됨'):tt('dash.risk.badge_unassessed','미평가'))}</td>
-        <td style="padding:6px 8px;text-align:center">${_canAssessRisk()?`<button onclick="closeRiskBucketModal();openRiskModal('${escapeHtml(it.vuln_id)}')" style="font-size:10px;padding:2px 8px;background:#dbeafe;border:1px solid #dbeafe;border-radius:4px;color:#3182f6;cursor:pointer">${tt('dash.risk.btn','평가')}</button>`:''}</td>
+        <td style="padding:6px 8px;text-align:center">${_canAssessRisk()?`<button onclick="closeRiskBucketModal();openRiskModal('${escapeHtml(it.vuln_id)}')" style="font-size:10px;padding:2px 8px;background:#eaf1fe;border:1px solid #eaf1fe;border-radius:4px;color:#3182f6;cursor:pointer">${tt('dash.risk.btn','평가')}</button>`:''}</td>
       </tr>`).join('');
       return `<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f7f8fa">
         <th style="padding:8px;color:#3182f6">${tt('dash.risk.col','위험등급')}</th><th style="padding:8px;color:#3182f6;text-align:left">CVE</th>
@@ -2725,7 +2725,7 @@
               g.agg.not_checked += c.not_checked; g.agg.total += c.total;
             });
             const secTable = rows => `<table style="width:100%;border-collapse:collapse;font-size:12px;margin:4px 0 2px 14px">
-              <tbody>${rows.map(c => `<tr style="border-bottom:1px solid #f1f5f9">
+              <tbody>${rows.map(c => `<tr style="border-bottom:1px solid #f7f8fa">
                 <td style="padding:4px 8px;color:#191f28">${escapeHtml(c.category)}</td>
                 <td style="text-align:right;padding:4px 8px;color:#15c47e;width:42px">${c.pass}</td>
                 <td style="text-align:right;padding:4px 8px;color:#f04452;width:42px">${c.fail}</td>
@@ -2766,8 +2766,8 @@
             pendingEl.innerHTML = breakdown + '<div class="empty" style="color:#191f28;padding:12px">' + tt('dash.dyn.pdca.no_pending','미조치 항목이 없습니다. ') + '</div>';
           } else {
             const sourceBadge = (s) => {
-              if (s === 'trivy') return '<span style="background:#fef9c3;color:#f5a623;padding:2px 6px;border-radius:4px;font-size:10px">Trivy</span>';
-              if (s === 'alert') return '<span style="background:#fee2e2;color:#f04452;padding:2px 6px;border-radius:4px;font-size:10px">Alert</span>';
+              if (s === 'trivy') return '<span style="background:#fef3d6;color:#f5a623;padding:2px 6px;border-radius:4px;font-size:10px">Trivy</span>';
+              if (s === 'alert') return '<span style="background:#fdecee;color:#f04452;padding:2px 6px;border-radius:4px;font-size:10px">Alert</span>';
               return '<span style="background:#f7f8fa;color:#3182f6;padding:2px 6px;border-radius:4px;font-size:10px">' + tt('dash.dyn.pdca.control_badge','통제') + '</span>';
             };
             pendingEl.innerHTML = breakdown + `<table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -2782,8 +2782,8 @@
               </tr></thead><tbody>`
               + items.map(i => {
                 const statusBadge = i.status === 'fail'
-                  ? '<span style="background:#fee2e2;color:#f04452;padding:2px 8px;border-radius:999px;font-size:11px">Fail</span>'
-                  : '<span style="background:#fef9c3;color:#f5a623;padding:2px 8px;border-radius:999px;font-size:11px">Warning</span>';
+                  ? '<span style="background:#fdecee;color:#f04452;padding:2px 8px;border-radius:999px;font-size:11px">Fail</span>'
+                  : '<span style="background:#fef3d6;color:#f5a623;padding:2px 8px;border-radius:999px;font-size:11px">Warning</span>';
                 const due = i.remediation_due_at ? new Date(i.remediation_due_at).toLocaleDateString('ko-KR') : '-';
                 const overdueFlag = i.overdue ? ' ' : '';
                 return `<tr style="border-bottom:1px solid #e5e8eb">
@@ -2821,8 +2821,8 @@
             <div style="font-size:14px;font-weight:700;color:#191f28;margin-bottom:4px">${escapeHtml(rt.label)}</div>
             <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
               <button onclick="openReportPreview('${rt.id}', '${escapeHtml(rt.label)}')" style="flex:1;min-width:80px;padding:6px 10px;background:#e5e8eb;color:#191f28;border:1px solid #e5e8eb;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">${tt('dash.dyn.preview_btn','미리보기')}</button>
-              <a href="${rt.url_csv}" download style="flex:1;min-width:60px;text-align:center;padding:6px 10px;background:#dbeafe;color:#3182f6;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none">CSV</a>
-              <a href="${rt.url_pdf || (rt.url_json + '?format=pdf')}" download style="flex:1;min-width:60px;text-align:center;padding:6px 10px;background:#ffedd5;color:#f5a623;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none">PDF</a>
+              <a href="${rt.url_csv}" download style="flex:1;min-width:60px;text-align:center;padding:6px 10px;background:#eaf1fe;color:#3182f6;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none">CSV</a>
+              <a href="${rt.url_pdf || (rt.url_json + '?format=pdf')}" download style="flex:1;min-width:60px;text-align:center;padding:6px 10px;background:#fef3d6;color:#f5a623;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none">PDF</a>
             </div>
           </div>
         `).join('');
@@ -3044,7 +3044,7 @@
       review_required:   ['#f5a623', 'dash.fresh.review',  '검토 필요'],
       evidence_available:['#3182f6', 'dash.fresh.avail',   '증적 있음(검토 전)'],
       human_verified:    ['#15c47e', 'dash.fresh.verified','담당자 검증'],
-      no_evidence:       ['#6b7280', 'dash.fresh.none',    '증적 없음'],
+      no_evidence:       ['#8b95a1', 'dash.fresh.none',    '증적 없음'],
     };
     async function loadEvidenceFreshness() {
       const box = document.getElementById('evidence_freshness_box');
@@ -3157,8 +3157,8 @@
         const res = await fetch('/controls/change-report'+q);
         if (!res.ok) { box.innerHTML = `<span class="empty">${tt('dash.ctl.err','불러오지 못했습니다.')}</span>`; return; }
         const d = await res.json();
-        const kv = (obj) => Object.keys(obj||{}).length ? Object.entries(obj).map(([k,v])=>`${escapeHtml(k)} <b>${v}</b>`).join(' · ') : `<span style="color:#6b7280">${tt('dash.chg.none','변경 없음')}</span>`;
-        const gapList = (arr) => (arr&&arr.length) ? arr.map(g=>`<li>${escapeHtml(g.control_id||'-')} ${escapeHtml(g.title||'')}</li>`).join('') : `<li style="color:#6b7280">${tt('dash.chg.none','변경 없음')}</li>`;
+        const kv = (obj) => Object.keys(obj||{}).length ? Object.entries(obj).map(([k,v])=>`${escapeHtml(k)} <b>${v}</b>`).join(' · ') : `<span style="color:#8b95a1">${tt('dash.chg.none','변경 없음')}</span>`;
+        const gapList = (arr) => (arr&&arr.length) ? arr.map(g=>`<li>${escapeHtml(g.control_id||'-')} ${escapeHtml(g.title||'')}</li>`).join('') : `<li style="color:#8b95a1">${tt('dash.chg.none','변경 없음')}</li>`;
         box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px"><div style="font-weight:600;color:#191f28;font-size:12px">${tt('dash.chg.btn','월별 변경')} — <input id="chg_month" type="month" value="${escapeHtml(d.month||'')}" onchange="loadChangeReport(this.value)" style="font-size:12px;padding:2px 6px;border:1px solid #e5e8eb;border-radius:5px"></div><button class="secondary" style="width:auto;padding:2px 9px;font-size:11px" onclick="document.getElementById('change_report_box').style.display='none'">${tt('dash.dyn.cancel','닫기')}</button></div>
           <div style="font-size:11px;color:#191f28;margin:4px 0 6px;line-height:1.6">${tt('dash.chg.help','읽는 법: 선택한 달에 MORI 데이터에서 실제로 바뀐 것만 모았어요. 새 증적(통제별), 승인/대체 스냅샷, 신규 Gap, Gap 전이(조치·예외·재검증). 별도 BI가 아니라 승인·Gap·증적 데이터에서 바로 나온 값이에요.')}</div>
           <div style="font-size:12px;line-height:1.9">
@@ -3186,7 +3186,7 @@
         if (covEl && cov.lite && cov.full) {
           let t = `lite ${cov.lite.pct}% (${cov.lite.covered}/${cov.lite.total}) · full ${cov.full.pct}% (${cov.full.covered}/${cov.full.total})`;
           covEl.innerHTML = escapeHtml(t)
-            + (cov.review ? ` · <span style="color:#a16207" title="${tt('dash.ctl.review_tip','커버리지 %는 검토완료(reviewed)+증적 연결 통제만 집계합니다. 나머지는 초안(draft)이며 공식 고시 대비 검토 전입니다.')}">${tt('dash.ctl.reviewed','검토완료')} ${cov.review.reviewed}/${cov.review.total} (${cov.review.pct}%)</span>` : '');
+            + (cov.review ? ` · <span style="color:#f5a623" title="${tt('dash.ctl.review_tip','커버리지 %는 검토완료(reviewed)+증적 연결 통제만 집계합니다. 나머지는 초안(draft)이며 공식 고시 대비 검토 전입니다.')}">${tt('dash.ctl.reviewed','검토완료')} ${cov.review.reviewed}/${cov.review.total} (${cov.review.pct}%)</span>` : '');
         }
         const fwLabel = { 'isms-p': 'ISMS-P', 'iso27001': 'ISO 27001:2022', 'custom': 'Custom / 법령' };
         const smap = data.status_map || {};
@@ -3203,7 +3203,7 @@
           const clickable = 'cursor:pointer';  // M2-7: 상태 편집 위해 전 항목 클릭 가능
           const st = smap[c.id];
           const stBadge = (st && st.status && st.status !== '미정') ? _ctlStatusBadge(st.status) : '';
-          const draftBadge = (c.status && c.status !== 'reviewed') ? `<span title="${tt('dash.ctl.draft_tip','초안 — 공식 고시 대비 검토 전')}" style="background:#fef9c3;color:#a16207;border:1px solid #a1620733;padding:0 5px;border-radius:5px;font-size:9px;margin-left:4px;vertical-align:middle">${tt('dash.ctl.draft','draft')}</span>` : '';
+          const draftBadge = (c.status && c.status !== 'reviewed') ? `<span title="${tt('dash.ctl.draft_tip','초안 — 공식 고시 대비 검토 전')}" style="background:#fef3d6;color:#f5a623;border:1px solid #f5a62333;padding:0 5px;border-radius:5px;font-size:9px;margin-left:4px;vertical-align:middle">${tt('dash.ctl.draft','draft')}</span>` : '';
           const pdf = c.mapped ? `<a href="/controls/detail/${enc}/evidence.pdf" target="_blank" title="${tt('dash.ctl.pdf','증적 팩 PDF')}" style="margin-left:6px;text-decoration:none;font-size:11px"></a>` : '';
           const editBtns = _ctlCanEdit ? `<span onclick="openControlEditor('${enc}')" title="${tt('dash.ctl.edit','수정')}" style="cursor:pointer;margin-left:6px;font-size:11px"></span><span onclick="deleteControl('${enc}')" title="${tt('dash.ctl.del','삭제')}" style="cursor:pointer;margin-left:3px;font-size:11px"></span>` : '';
           return `<div style="padding:3px 0;${dim}"><span onclick="toggleControlDetail('${enc}', this)" style="${clickable}"><span style="color:#191f28;font-size:11px">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${draftBadge}${stBadge}${srcs}</span>${pdf}${editBtns}<div class="ctl-detail" style="display:none;margin:4px 0 8px 16px;padding:6px 10px;background:#f7f8fa;border:1px solid #e5e8eb;border-radius:8px;font-size:12px"></div></div>`;
@@ -3335,7 +3335,7 @@
         const SHOW = 3;
         const rowHtml = (r, idx) => {
           const isAuto = r.source === 'auto';
-          const autoBadge = isAuto ? ` <span style="background:#dbeafe;color:#3182f6;padding:0 5px;border-radius:4px;font-size:10px">${tt('dash.ctl.ev_auto','자동')}</span>` : '';
+          const autoBadge = isAuto ? ` <span style="background:#eaf1fe;color:#3182f6;padding:0 5px;border-radius:4px;font-size:10px">${tt('dash.ctl.ev_auto','자동')}</span>` : '';
           const meta = [r.collected_at, r.collected_by].filter(Boolean).map(escapeHtml).join(' · ');
           const ref = (r.reference && !isAuto) ? ` <a href="${escapeHtml(r.reference)}" target="_blank" style="color:#3182f6"></a>` : '';
           const del = canEdit ? `<span onclick="deleteEvidenceRecord('${enc}','${escapeHtml(r.id)}')" style="cursor:pointer;color:#f04452;margin-left:6px">×</span>` : '';
@@ -3897,7 +3897,7 @@
           </div>
           <button class="secondary" style="width:auto;padding:3px 10px;font-size:12px" onclick="savePolicyCompare()">${tt('dash.pf.p_compare','저장·대조')}</button>
           <span id="pol_msg" style="font-size:11px;color:#15c47e;margin-left:6px"></span>
-          <div style="font-size:10px;color:#6b7280;margin-top:4px">${escapeHtml(d.legal_note||tt('dash.pf.p_legal','법적 판정이 아니라 검토 대상입니다 — 확정은 개인정보 담당자 검토 필요.'))}</div>
+          <div style="font-size:10px;color:#8b95a1;margin-top:4px">${escapeHtml(d.legal_note||tt('dash.pf.p_legal','법적 판정이 아니라 검토 대상입니다 — 확정은 개인정보 담당자 검토 필요.'))}</div>
           <div id="pol_diff">${renderPolicyDiff(pol, d.diff||{})}</div>
         </div>`;
       } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
@@ -3929,7 +3929,7 @@
           const dot = c.has_evidence ? `<span style="color:#15c47e">●</span>` : `<span style="color:#f04452">○</span>`;
           return `<tr><td style="padding:3px 6px;border-bottom:1px solid #eef1f4;font-size:11px">${dot} <b>${escapeHtml(c.control_id)}</b> ${escapeHtml(c.name)}</td><td style="padding:3px 6px;border-bottom:1px solid #eef1f4;font-size:11px;text-align:right">${c.evidence_rows}</td></tr>`;
         }).join('');
-        const arts = (m.artifacts||[]).map(a=>`<li>${escapeHtml(a.name)} — ${a.rows}${tt('dash.pf.k_rows','건')} <span style="color:#6b7280">(${escapeHtml(a.file)})</span></li>`).join('');
+        const arts = (m.artifacts||[]).map(a=>`<li>${escapeHtml(a.name)} — ${a.rows}${tt('dash.pf.k_rows','건')} <span style="color:#8b95a1">(${escapeHtml(a.file)})</span></li>`).join('');
         const rv = m.review_summary||{}; const ps = m.policy_summary||{};
         box.innerHTML = `<div style="font-size:11px;color:#191f28;margin-bottom:6px;line-height:1.6">${tt('dash.pf.pkg_help','읽는 법: 이미 수집·확정된 개인정보 증적(흐름표·처리업무·외부수신자·파일개요·처리방침 대조·담당자 확인)을 ISMS-P 3.x 통제 단위로 묶은 <b>감사 패키지</b>예요. ●=근거 있음, ○=근거 없음. ZIP에는 manifest.json + CSV들 + 흐름표 PDF가 들어가요. 새 증적을 만드는 게 아니라 기존 증적을 제출 형태로 조립해요.')}</div>
           <div style="margin-bottom:6px"><a href="/privacy/isms-3x-package.zip" target="_blank" class="secondary" style="width:auto;padding:3px 10px;font-size:12px;text-decoration:none;color:#3182f6;border:1px solid #e5e8eb;border-radius:6px">${tt('dash.pf.pkg_zip','증적 패키지 ZIP 내려받기')}</a></div>
@@ -3938,7 +3938,7 @@
           <div style="font-size:11px;font-weight:600;color:#191f28;margin:8px 0 2px">${tt('dash.pf.k_artifacts','포함 산출물')}</div>
           <ul style="margin:0;padding-left:16px;font-size:11px;line-height:1.6">${arts}</ul>
           <div style="font-size:11px;color:#191f28;margin-top:6px">${tt('dash.pf.k_review','담당자 확인')}: <b>${rv.confirmed||0}</b>/${rv.total||0} · ${tt('dash.pf.k_policy','처리방침 불일치')}: ${tt('dash.pf.p_only_code','코드에만')} ${ps.only_in_code||0}, ${tt('dash.pf.p_only_policy','방침에만')} ${ps.only_in_policy||0}, ${tt('dash.pf.p_retention','보유기간')} ${ps.retention_mismatch||0}</div>
-          <div style="font-size:10px;color:#6b7280;margin-top:4px">${escapeHtml(m.note||'')}</div>`;
+          <div style="font-size:10px;color:#8b95a1;margin-top:4px">${escapeHtml(m.note||'')}</div>`;
       } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.pf.denied','권한이 없어요 (admin·security)')}</span>`; }
     }
     window.loadIsms3xPackage = loadIsms3xPackage;
@@ -4412,10 +4412,10 @@
       const head = '<thead><tr style="color:#191f28;border-bottom:1px solid #191f28;background:#ffffff;position:sticky;top:0">'
         + headers.map(h => `<th style="text-align:left;padding:6px 10px;font-size:12px;white-space:nowrap">${escapeHtml(h)}</th>`).join('')
         + '</tr></thead>';
-      const body = shown.map(r => '<tr style="border-bottom:1px solid #e2e8f0">'
+      const body = shown.map(r => '<tr style="border-bottom:1px solid #e5e8eb">'
         + headers.map((_, idx) => `<td style="padding:6px 10px;font-size:12px;color:#191f28;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(r[idx] || '')}">${escapeHtml(r[idx] || '')}</td>`).join('')
         + '</tr>').join('');
-      bodyEl.innerHTML = `<div style="max-height:60vh;overflow:auto;border:1px solid #e2e8f0;border-radius:6px"><table style="width:100%;border-collapse:collapse">${head}<tbody>${body}</tbody></table></div>${overflowNote}`;
+      bodyEl.innerHTML = `<div style="max-height:60vh;overflow:auto;border:1px solid #e5e8eb;border-radius:6px"><table style="width:100%;border-collapse:collapse">${head}<tbody>${body}</tbody></table></div>${overflowNote}`;
     }
 
     /* 범용 CSV 미리보기+다운로드 (report_preview_modal 재사용). opts:{title,subtitle,filename,url|text} */
