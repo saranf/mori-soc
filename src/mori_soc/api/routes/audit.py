@@ -44,11 +44,7 @@ def register_audit(ctx: RouteContext) -> None:
     @app.post("/admin/action-audit-log", tags=["Admin"])
     def record_action_audit(payload: dict[str, Any], request: Any = None) -> dict[str, Any]:
         """프런트엔드에서 탭 전환·쿼리 실행 등을 기록할 때 호출."""
-        token = ""
-        if hasattr(request, "cookies"):
-            token = request.cookies.get("mori_session", "")
-        sess = sessions.get(token, {})
-        uname = sess.get("username", "anonymous")
+        uname = ctx.session_username(request) or "anonymous"
         action = str(payload.get("action", "UNKNOWN"))
         detail = str(payload.get("detail", ""))
         _log_action(uname, action, detail)
@@ -65,14 +61,10 @@ def register_audit(ctx: RouteContext) -> None:
         return {"audit_log": result, "total": len(result)}
 
     # ── 통합 이력 로그 (검색 가능) ────────────────────────────────────────────
-    def _session_role(request: Request) -> str | None:
-        token = request.cookies.get("mori_session", "") if hasattr(request, "cookies") else ""
-        sess = sessions.get(token) if sessions else None
-        return (sess or {}).get("role")
-
     def _require_log_view(request: Request) -> None:
-        if ctx.auth_enabled and _session_role(request) not in _LOG_VIEW_ROLES:
-            raise HTTPException(status_code=403, detail="통합 로그는 admin·security·auditor 전용입니다.")
+        # 공용 ctx 게이트로 위임(공통화 C3).
+        ctx.require_role(request, set(_LOG_VIEW_ROLES),
+                         detail="통합 로그는 admin·security·auditor 전용입니다.")
 
     @app.get("/admin/audit-log/verify", tags=["Assets"])
     def audit_log_verify(request: Request) -> dict[str, Any]:

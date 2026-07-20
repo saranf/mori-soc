@@ -51,14 +51,12 @@ def register_compliance(ctx: RouteContext) -> None:
     sessions = ctx.sessions
 
     def _evidence_role(request: Request) -> str | None:
-        token = request.cookies.get("mori_session", "")
-        sess = sessions.get(token) if sessions else None
-        return sess.get("role") if sess else None
+        # 공용 RouteContext.session_role 로 위임(쿠키→세션→role 파싱 단일화, 공통화 C3).
+        return ctx.session_role(request)
 
     def _require_ev(request: Request) -> None:
-        """admin·security 전용 자원 공통 게이트. 미충족 시 403."""
-        if ctx.auth_enabled and _evidence_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="admin 또는 security 권한이 필요합니다.")
+        """admin·security 전용 자원 공통 게이트(공용 ctx 위임). 미충족 시 403."""
+        ctx.require_admin_or_security(request, detail="admin 또는 security 권한이 필요합니다.")
 
     def _persist_evidence(rec: dict[str, Any]) -> dict[str, Any]:
         """증적 레코드 저장 공통 보일러플레이트(메모리+영속) + provenance 스탬프(#21)."""

@@ -184,12 +184,6 @@ def register_sources(ctx: RouteContext) -> None:
         except Exception as exc:  # JWKS 조회 실패 등
             raise HTTPException(status_code=503, detail=f"OIDC verify unavailable: {exc}") from exc
 
-    def _session_role(request: Request) -> str | None:
-        """현재 세션 롤(admin/security/...)을 반환. 미인증 시 None."""
-        token = request.cookies.get("mori_session", "")
-        sess = sessions.get(token) if sessions else None
-        return sess.get("role") if sess else None
-
     # ── Fleet 전용 API ───────────────────────────────────────────────────────
     @app.get("/fleet/hosts", tags=["Fleet"])
     def fleet_hosts_get() -> Any:
@@ -592,8 +586,7 @@ def register_sources(ctx: RouteContext) -> None:
 
         base/head(commit) 미지정 시 최근 2개 스캔을 비교. 입력이 같은데 결과가 다르면 비결정성 경고.
         """
-        if ctx.auth_enabled and _session_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="scan diff requires admin or security role")
+        ctx.require_admin_or_security(request, detail="scan diff requires admin or security role")
         if state_repo is None:
             raise HTTPException(status_code=503, detail="state store unavailable")
         events = [e for e in state_repo.load_evidence_events(limit=1000)
@@ -681,10 +674,7 @@ def register_sources(ctx: RouteContext) -> None:
         코드 경로·스니펫·메시지가 담기므로 증적 조회와 동일하게 admin·security 전용.
         repo/commit 쿼리로 특정 스캔만 필터 가능(스캔 이력의 '결과 다운로드'). 없으면 전체.
         """
-        if ctx.auth_enabled:
-            role = _session_role(request)
-            if role not in ("admin", "security"):
-                raise HTTPException(status_code=403, detail="findings export requires admin or security role")
+        ctx.require_admin_or_security(request, detail="findings export requires admin or security role")
         want_repo = (repo or "").strip()
         want_commit = (commit or "").strip()
         rows: list[dict[str, Any]] = []
@@ -726,8 +716,7 @@ def register_sources(ctx: RouteContext) -> None:
         자동 승격은 ingest 시점에만 동작하므로, 그 이전에 들어온 스캔은 이 엔드포인트로
         한 번 올린다. id 가 결정적이라 재실행/이후 재수신과 충돌 없이 idempotent.
         """
-        if ctx.auth_enabled and _session_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="backfill requires admin or security role")
+        ctx.require_admin_or_security(request, detail="backfill requires admin or security role")
         if state_repo is None:
             raise HTTPException(status_code=503, detail="state store unavailable")
         import re as _re
@@ -753,8 +742,7 @@ def register_sources(ctx: RouteContext) -> None:
     # ── 스캔 이력 항목 삭제(X 버튼) ─────────────────────────────────────────────
     @app.delete("/controls/code-review/scan/{event_id}", tags=["Compliance"])
     def code_review_scan_delete(event_id: str, request: Request) -> dict[str, Any]:
-        if ctx.auth_enabled and _session_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="requires admin or security role")
+        ctx.require_admin_or_security(request, detail="requires admin or security role")
         if state_repo is None:
             raise HTTPException(status_code=503, detail="state store unavailable")
         try:
@@ -767,8 +755,7 @@ def register_sources(ctx: RouteContext) -> None:
     @app.get("/admin/schema-migrations", tags=["Sources"])
     def schema_migrations(request: Request) -> dict[str, Any]:
         """schema_migrations 기록(버전·checksum·적용시각·성공)을 조회(#6). CLI: 이 엔드포인트."""
-        if ctx.auth_enabled and _session_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="requires admin or security role")
+        ctx.require_admin_or_security(request, detail="requires admin or security role")
         fn = getattr(state_repo, "applied_migrations", None)
         rows = fn() if callable(fn) else []
         failed = [r for r in rows if not r.get("success")]
@@ -930,10 +917,7 @@ def register_sources(ctx: RouteContext) -> None:
     def evidence_list(request: Request, limit: int = 200, host: str | None = None,
                       delta: str | None = None) -> dict[str, Any]:
         """적재된 CSOP 증적 이벤트를 최신순 조회. admin·security 롤만 접근 가능."""
-        if ctx.auth_enabled:
-            role = _session_role(request)
-            if role not in ("admin", "security"):
-                raise HTTPException(status_code=403, detail="evidence access requires admin or security role")
+        ctx.require_admin_or_security(request, detail="evidence access requires admin or security role")
         if state_repo is None:
             raise HTTPException(status_code=503, detail="evidence requires a configured state backend")
 

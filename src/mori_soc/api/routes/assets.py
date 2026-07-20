@@ -113,11 +113,6 @@ def register_assets(ctx: RouteContext) -> None:
         "scope_tags": ["인증범위", "범위태그", "scope", "범위"],
     }
 
-    def _session_role(request: Request) -> str | None:
-        token = request.cookies.get("mori_session", "") if hasattr(request, "cookies") else ""
-        sess = ctx.sessions.get(token) if ctx.sessions else None
-        return (sess or {}).get("role")
-
     @app.get("/assets/owners/import-template.csv", tags=["Assets"])
     def owners_import_template() -> StreamingResponse:
         """자산 담당자 가져오기 양식(헤더 + 예시 1행)."""
@@ -132,8 +127,7 @@ def register_assets(ctx: RouteContext) -> None:
     @app.post("/assets/owners/import", tags=["Assets"])
     def owners_import(payload: dict[str, Any], request: Request) -> Any:
         """CSV 텍스트를 받아 자산 담당자를 일괄 upsert. admin·security 전용(대량 변경)."""
-        if ctx.auth_enabled and _session_role(request) not in ("admin", "security"):
-            raise HTTPException(status_code=403, detail="자산 일괄 가져오기는 admin·security 전용입니다.")
+        ctx.require_admin_or_security(request, detail="자산 일괄 가져오기는 admin·security 전용입니다.")
         from mori_soc.services.csv_import import parse_csv
         rows, errors = parse_csv(str(payload.get("csv", "")), _OWNER_ALIASES, required=["hostname"])
         changed_by = _get_session_username(request) or "unknown"

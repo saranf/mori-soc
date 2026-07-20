@@ -129,8 +129,12 @@ class RouteContext:
 
     # ── 공용 세션/역할 접근(C1: 8개 라우터의 쿠키→세션→role 추출 복붙 제거) ─────────────
     def session(self, request: Any) -> "Optional[dict[str, Any]]":
-        """요청 쿠키(mori_session)로 세션 레코드를 찾는다(없으면 None)."""
-        token = request.cookies.get("mori_session", "")
+        """요청 쿠키(mori_session)로 세션 레코드를 찾는다(없으면 None).
+
+        request 가 None 이거나 cookies 속성이 없어도 안전(일부 엔드포인트는 request 선택적).
+        """
+        cookies = getattr(request, "cookies", None)
+        token = cookies.get("mori_session", "") if cookies else ""
         return self.sessions.get(token) if self.sessions else None
 
     def session_role(self, request: Any) -> Optional[str]:
@@ -155,6 +159,10 @@ class RouteContext:
             from fastapi import HTTPException
             raise HTTPException(status_code=403, detail=detail)
         return role
+
+    def require_admin_or_security(self, request: Any, *, detail: str) -> Optional[str]:
+        """가장 흔한 게이트({admin, security}) 축약 — 증적·개인정보·위험 조회 계열 공용."""
+        return self.require_role(request, {"admin", "security"}, detail=detail)
 
 
 __all__ = ["RouteContext"]

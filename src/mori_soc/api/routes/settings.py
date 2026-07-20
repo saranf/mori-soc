@@ -35,15 +35,9 @@ def register_settings(ctx: RouteContext) -> None:
     settings = ctx.settings
     sessions = ctx.sessions
 
-    def _role(request: Request) -> str | None:
-        token = request.cookies.get("mori_session", "")
-        sess = sessions.get(token) if sessions else None
-        return sess.get("role") if sess else None
-
     def _username(request: Request) -> str:
-        token = request.cookies.get("mori_session", "")
-        sess = sessions.get(token) if sessions else None
-        return (sess.get("username") if sess else "") or ""
+        # 공용 RouteContext.session_username 로 위임(공통화 C3).
+        return ctx.session_username(request)
 
     @app.get("/settings/risk", tags=["Settings"])
     def get_risk_settings() -> dict[str, Any]:
@@ -58,8 +52,7 @@ def register_settings(ctx: RouteContext) -> None:
     @app.put("/settings/risk", tags=["Settings"])
     def put_risk_settings(payload: dict[str, Any], request: Request) -> dict[str, Any]:
         """위험 DoA 기준 저장 — admin 전용."""
-        if ctx.auth_enabled and _role(request) != "admin":
-            raise HTTPException(status_code=403, detail="risk settings require admin role")
+        ctx.require_role(request, {"admin"}, detail="risk settings require admin role")
         raw = payload.get("doa")
         try:
             value = int(raw)
