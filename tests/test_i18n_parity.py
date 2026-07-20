@@ -86,3 +86,34 @@ class I18nCoverageTests(unittest.TestCase):
         for name, d in _DICTS.items():
             leftover = sorted(k for k, v in d["en"].items() if self._KOREAN.search(str(v)))
             self.assertEqual(leftover, [], f"{name}: EN 값에 한국어가 남아 있다 -> {leftover}")
+
+
+class I18nNoDuplicateKeysTests(unittest.TestCase):
+    """중복 키 금지(공통화 C4) — Python 은 중복 키를 last-wins 로 조용히 삼키므로 런타임
+    dict 로는 못 잡는다. 원본을 AST 로 읽어 한 사전 안에 같은 키가 두 번 나오면 실패시킨다.
+    (과거 ko 블록에 영문이 섞여 174+63건 중복 → 언어 표시가 붙여넣기 순서에 의존하던 버그.)
+    """
+
+    def test_no_duplicate_keys_in_any_i18n_dict(self) -> None:
+        import ast
+
+        path = Path(mori_soc.api.__file__).parent / "i18n.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        offenders: list[str] = []
+        for node in tree.body:
+            val = name = None
+            if isinstance(node, ast.AnnAssign) and isinstance(node.value, ast.Dict):
+                val, name = node.value, getattr(node.target, "id", "?")
+            elif isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict):
+                val, name = node.value, getattr(node.targets[0], "id", "?")
+            if val is None or not str(name).endswith("_I18N"):
+                continue
+            for lk, lv in zip(val.keys, val.values, strict=False):
+                if not (isinstance(lk, ast.Constant) and lk.value in ("ko", "en")
+                        and isinstance(lv, ast.Dict)):
+                    continue
+                keys = [k.value for k in lv.keys if isinstance(k, ast.Constant)]
+                dups = sorted({k for k in keys if keys.count(k) > 1})
+                if dups:
+                    offenders.append(f"{name}.{lk.value}: {dups[:10]}")
+        self.assertEqual(offenders, [], f"i18n 중복 키 발견 -> {offenders}")

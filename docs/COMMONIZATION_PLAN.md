@@ -12,7 +12,7 @@
 | C1 ☑ | content_hash / canonicalization 3중 구현 | services | **정합성(감사)** | CRITICAL·전역 |
 | C2 ☑ | CSV가 공용 render_csv 우회 → 수식 인젝션 미방어 | routes+services | **보안** | CRITICAL·전역 |
 | C3 ☑ | RBAC 역할추출·403 인라인 중복(공용 ctx 미채택) | routes | **보안** | CRITICAL·전역 |
-| C4 | i18n 중복키·ko 블록에 영문 혼입(triplicated) | i18n | **정합성(한영)** | MAJOR·전역 |
+| C4 ☑ | i18n 중복키·ko 블록에 영문 혼입(triplicated) | i18n | **정합성(한영)** | MAJOR·전역 |
 | C5 | ReportLab 문서 스캐폴딩·팔레트 재정의 | services | DRY·시각드리프트 | MAJOR·전역 |
 | C6 | PDF/ZIP/format 응답 셰이핑 반복 | routes | DRY | MAJOR·전역 |
 | C7 | Postgres 커넥션·upsert·컬럼목록 보일러플레이트 | repositories | DRY | MAJOR·전역 |
@@ -52,7 +52,7 @@
 - **C1 ☑ 완료** `services/hashing.py` 신설(`canonical_json`·`sha256_hex`·`content_hash`·`short_id`, `CANONICALIZATION` 단일화). 3개 content_hash(evidence·control_governance·evidence_bundle) + short-id 6곳(provenance·evidence_approval·control_governance rel-·gap_workflow·normalization alias-/scoped) 통합, 중복 삭제. **기존 공식과 바이트 동일 출력**을 `tests/test_hashing.py`로 고정(감사 해시 무드리프트). 496 통과·mypy 게이트 clean.
 - **C2 ☑ 완료** csv_export 에 `SafeWriter`/`SafeDictWriter`/`safe_writer`/`safe_dict_writer`/`defuse_cell`/`csv_text_response` 추가(fastapi 임포트는 지연화 → 순수 서비스도 안전 임포트). 손수 CSV 전수 전환: reports.py(6빌더)·control_catalog(2)·soa·query_service → safe writer; routes sources(trivy)·incidents·accounts_gov(계정명!)·compliance(evidence/SoA/report/PDCA/INDEX) → csv_streaming_response/csv_text_response/safe_writer. **모든 감사 CSV 셀이 이제 무력화**(계정명·finding·호스트명 인젝션 갭 폐쇄). 미사용 `import csv/io` 삭제. 506 통과.
 - **C3 ☑ 완료** `ctx.require_admin_or_security` 추가 + `ctx.session` 을 request=None 안전화. 로컬 쿠키파싱 헬퍼 정리: sources(`_session_role` 삭제, 인라인 403 6곳→ctx), assets(삭제), audit(`_session_role` 삭제·username→ctx), settings(`_role` 삭제·username 위임), compliance(`_evidence_role`/`_require_ev`→ctx 위임, 25 호출부 유지). authz 로직 단일화(‘not in’/‘!=’ 발산 제거). test_route_context 추가, 500 통과·mypy 게이트 clean.
-- **C4** i18n 중복키 가드(중복 시 raise하는 dict 서브클래스) 도입 + `dash.acc.*` triplicated 정리. **선(先) 가드로 회귀 방지**, 후(後) tuple 레이아웃 전환.
+- **C4 ☑ 완료** AST 기반 언어인식 중복 제거: ko 는 한글값·en 은 영문값을 남겨 438개 중복 엔트리 삭제(3474→3197줄). 붙여넣기 순서로 한국어 UI 에 영문이 뜨던 실버그 2건 수정(`dash.acc.detail`·`dash.acc.csv_preview_title`). ko/en 파리티 완전 일치(1099/1099·410/410) 확인. AST 중복키 가드 테스트 추가(런타임 last-wins 로 은폐되는 중복을 원본 파싱으로 검출). 507 통과. (전면 tuple 레이아웃 전환은 후속 — 현재 가드로 회귀 차단됨.)
 
 ### Phase 2 — 구조 백엔드 (MAJOR)
 - **C5** `pdf.py` `new_doc`/`PALETTE` → `reports.py:595`·`control_catalog.py:279/455`·`data_flow.py:1122`·`soa.py:84` 스캐폴딩·팔레트 흡수(슬레이트/토스 색 드리프트도 해소).
