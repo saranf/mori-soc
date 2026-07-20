@@ -25,6 +25,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha
   라우트로 토스 CSS 주입(topbar 숨김·method별 6색·라운드 카드·시스템 폰트). openapi.json/redoc 무손상.
 
 ### Added
+- **번들 Zabbix 모리답게** — 공식 rebranding(`deploy/zabbix/brand.conf.php`: MORI 로고 SVG·푸터·헬프)
+  zabbix-web 마운트 + 라이트/다크 토스 액센트 CSS(`mori-accent.css`, 색 주입은 옵트인). 외부 Zabbix 제외.
+- **대시보드 토스 IA** — 요약 KPI를 위험 히어로보다 위로, '오늘의 작업 큐'(액션)를 인프라(상태)보다 앞으로,
+  최상단 패널-편집 크롬 최소화(드래그 안내·크기 초기화는 편집 박스로).
+- **로그인·가입 페이지 토스 통일** — 파란 라운드 로고 마크·시스템 폰트·서피스 입력·소프트 섀도.
 - 공용 컴포넌트(공통화): `.stat-mini`(미니 통계 타일 ×10)·`.detail-link`(상세 링크 ×4)·`.dl-pill`
   (CSV/PDF/ZIP 다운로드 필 ×6) — 반복 인라인 스타일 대체.
 - 심사 준비 준비율 링 상시표시(데이터 0건이어도 토스 링 + 빈 상태 카피).
