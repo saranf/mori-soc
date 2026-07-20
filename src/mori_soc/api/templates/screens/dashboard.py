@@ -56,6 +56,15 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
       </section>
       <!-- P1: #dash_grid 레이아웃 CSS는 static/css/dashboard.css 로 이관됨 -->
       <div id=\"dash_grid\">
+          <!-- 토스식: 액션 큐(오늘의 작업 큐 · 증적 공백)를 맨 앞으로 (admin·security 전용) -->
+          <section class=\"card\" id=\"evidence_gap_card\">
+            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+              <h2 style=\"margin:0\" data-i18n=\"dash.gap.title\">오늘의 작업 큐 (증적 공백)</h2>
+              <span id=\"evidence_gap_ts\" style=\"font-size:12px;color:#191f28\"></span>
+            </div>
+            <div class=\"subtext\" data-i18n=\"dash.gap.sub\">아직 증적이 안 남은 미조치 항목이에요. 카드를 누르면 해당 탭으로 가요.</div>
+            <div id=\"evidence_gap_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
+          </section>
           <!-- 인프라 현황 (24h/12h 전환 + Zabbix/Wazuh 딥링크) -->
           <section class=\"card\" id=\"infra_status_section\">
             <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
@@ -66,16 +75,6 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
               </div>
             </div>
             <div id=\"infra_status_body\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.status.loading\">로딩 중…</span></div>
-          </section>
-          <!-- PC 자산 현황 (Fleet: 전체/온라인/오프라인) — 자산 탭에서 이동 -->
-          <!-- 증적 공백 / 오늘의 작업 큐 (admin·security 전용) -->
-          <section class=\"card\" id=\"evidence_gap_card\">
-            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
-              <h2 style=\"margin:0\" data-i18n=\"dash.gap.title\">오늘의 작업 큐 (증적 공백)</h2>
-              <span id=\"evidence_gap_ts\" style=\"font-size:12px;color:#191f28\"></span>
-            </div>
-            <div class=\"subtext\" data-i18n=\"dash.gap.sub\">아직 증적이 안 남은 미조치 항목이에요. 카드를 누르면 해당 탭으로 가요.</div>
-            <div id=\"evidence_gap_box\" style=\"margin-top:10px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
           </section>
           <!-- 계정 거버넌스 요약 (admin·security 전용) — 계정 탭에서 이동 -->
           <section class=\"card\" id=\"acc_gov_dash_section\" style=\"display:none\">
