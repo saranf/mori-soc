@@ -7,7 +7,7 @@ _TAB_ACCOUNTS_HTML = """    <!-- ── Tab: 계정 거버넌스 (admin·securit
     <div class=\"tab-panel\" id=\"tab_accounts\">
 
       <section class=\"card\">
-        <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+        <div class=\"row-between\">
           <h2 style=\"margin:0\" data-i18n=\"dash.acc.list_title\">계정 목록 (서버 · PC)</h2>
           <div style=\"display:flex;gap:6px;flex-wrap:wrap;align-items:center\">
             <input id=\"acc_search\" placeholder=\"계정/호스트 검색…\" data-i18n-placeholder=\"dash.acc.search_ph\" oninput=\"renderAccounts()\" style=\"background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:5px 10px;font-size:13px;width:180px\" />
@@ -20,7 +20,7 @@ _TAB_ACCOUNTS_HTML = """    <!-- ── Tab: 계정 거버넌스 (admin·securit
 
       <!-- 접속 발자취 (Access Trail) — 실제 접속기록 미리보기, 전체는 Loki -->
       <section class=\"card\">
-        <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+        <div class=\"row-between\">
           <h2 style=\"margin:0\" data-i18n=\"dash.acc.trail_title\">접속 발자취 (누가 · 언제 · 어디서)</h2>
           <div style=\"display:flex;gap:10px;align-items:center\">
             <span id=\"acc_trail_meta\" style=\"font-size:12px;color:#191f28\"></span>
@@ -45,7 +45,7 @@ _TAB_ACCOUNTS_HTML = """    <!-- ── Tab: 계정 거버넌스 (admin·securit
           <div id=\"acc_approvals\" class=\"table-wrap\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
         </section>
         <section class=\"card\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+          <div class=\"row-between\">
             <h2 style=\"margin:0\" data-i18n=\"dash.acc.ip_title\">IP 리스트</h2>
             <button class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" onclick=\"exportIpCsv()\" data-i18n=\"dash.acc.ip_csv\">선별 CSV</button>
           </div>

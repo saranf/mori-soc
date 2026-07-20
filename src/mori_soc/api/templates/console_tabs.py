@@ -231,7 +231,7 @@ _ATAB_ACCESS_HTML = """    <!-- ── Tab: Access Control (가입 요청 + RBAC
 
         <!-- LDAP 사용자 관리 (admin 전용, LDAP 활성 시) -->
         <section class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div class="row-between">
             <h2 style="margin:0" data-i18n="admin.h.ldap">LDAP 사용자 관리</h2>
             <span id="ldap_status_badge" style="font-size:12px;color:#191f28"></span>
           </div>

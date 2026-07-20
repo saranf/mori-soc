@@ -245,6 +245,8 @@
     details.card > summary::after { content: "▸"; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); color: var(--c-ink-3); font-size: 12px; transition: transform .15s ease; }
     details.card[open] > summary::after { transform: translateY(-50%) rotate(90deg); }
     @media (prefers-reduced-motion: reduce) { details.card > summary::after { transition: none; } }
+    /* 공용 헤더 행(공통화) — 카드/섹션 제목+액션 양끝 정렬 반복 인라인 대체. */
+    .row-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
     /* 공용 폼 입력(공통화) — 모달·폼의 풀폭 input/select/textarea 반복 인라인 대체. */
     .inp { width: 100%; background: var(--c-surface); border: 1px solid var(--c-line); color: var(--c-ink); border-radius: 6px; padding: 7px; font-size: 13px; box-sizing: border-box; font-family: inherit; }
     .inp:focus { outline: none; border-color: var(--c-blue); background: var(--c-paper); }

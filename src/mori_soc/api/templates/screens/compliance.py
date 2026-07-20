@@ -57,7 +57,7 @@ _TAB_COMPLIANCE_HTML = """    <!-- ── Tab: 심사 준비 (Compliance PDCA) �
         <summary style=\"cursor:pointer;padding:16px 18px;font-weight:700;color:#191f28;font-size:15px\" data-i18n=\"dash.pdca.detail_toggle\">상세 분석 통제 카탈로그 · 통제 상태 · 카테고리 · PDCA Cycle (펼치기)</summary>
         <!-- 통제 카탈로그 트리 (ISMS-P 101 × ISO, admin·security 전용) 이행 상태 편집 -->
         <section class=\"card\" id=\"control_tree_card\" style=\"margin:0 16px 12px\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+          <div class=\"row-between\">
             <h2 style=\"margin:0\" data-i18n=\"dash.ctl.title\">통제 카탈로그 (ISMS-P × ISO 27001)</h2>
             <div style=\"display:flex;align-items:center;gap:10px;flex-wrap:wrap\">
               <span id=\"control_tree_coverage\" style=\"font-size:12px;color:#191f28\"></span>

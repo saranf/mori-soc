@@ -16,7 +16,7 @@ _TAB_ASSETS_HTML = """    <!-- ── Tab: 자산 현황 ───────�
       <!-- Fleet PC Section (전체/온라인/오프라인 요약은 대시보드 'PC 자산 현황' 패널로 이동) -->
       <div id=\"assets_fleet_section\">
         <section class=\"card\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
+          <div class=\"row-between\" style=\"margin-bottom:10px\">
             <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.fleet\">PC 자산 목록 (Fleet)</h2>
             <div style=\"display:flex;gap:6px;\">
               <button onclick=\"onDemandRefresh('fleet')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.assets.refresh\">새로고침</button>
@@ -39,7 +39,7 @@ _TAB_ASSETS_HTML = """    <!-- ── Tab: 자산 현황 ───────�
       <!-- Zabbix Server Section -->
       <div id=\"assets_zabbix_section\" class=\"hidden\">
         <section class=\"card\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
+          <div class=\"row-between\" style=\"margin-bottom:10px\">
             <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.zabbix\">서버 자산 목록 (Zabbix)</h2>
             <div style=\"display:flex;gap:6px;\">
               <button onclick=\"onDemandRefresh('zabbix')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.assets.refresh\">새로고침</button>
@@ -64,7 +64,7 @@ _TAB_ASSETS_HTML = """    <!-- ── Tab: 자산 현황 ───────�
       <div id=\"assets_trivy_section\" class=\"hidden\">
         <!-- 위험성 평가 매트릭스 (R-4) — 더블클릭 시 팝업 (카드 요약은 여기, 매트릭스는 모달) -->
         <section class=\"card\" id=\"risk_matrix_card\" ondblclick=\"openRiskMatrixModal()\" style=\"cursor:pointer\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+          <div class=\"row-between\">
             <h2 style=\"margin:0\" data-i18n=\"dash.risk.matrix_title\">위험성 평가 매트릭스</h2>
             <div style=\"display:flex;align-items:center;gap:10px\">
               <span id=\"risk_matrix_assessed\" style=\"font-size:12px;color:#191f28\"></span>
@@ -86,7 +86,7 @@ _TAB_ASSETS_HTML = """    <!-- ── Tab: 자산 현황 ───────�
           </div>
         </div>
         <section class=\"card\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
+          <div class=\"row-between\" style=\"margin-bottom:10px\">
             <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.trivy\">취약점 현황 (Trivy)</h2>
             <button onclick=\"downloadAssetsCSV('trivy')\" class=\"secondary\" style=\"width:auto;padding:6px 14px;font-size:13px;\" data-i18n=\"dash.btn.csv\">CSV 내보내기</button>
           </div>
@@ -107,7 +107,7 @@ _TAB_ASSETS_HTML = """    <!-- ── Tab: 자산 현황 ───────�
       <!-- My Servers Section -->
       <div id=\"assets_mine_section\" class=\"hidden\">
         <section class=\"card\">
-          <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;\">
+          <div class=\"row-between\" style=\"margin-bottom:10px\">
             <h2 style=\"margin:0\" data-i18n=\"dash.card.assets.mine\">내 담당 서버</h2>
             <div style=\"display:flex;align-items:center;gap:8px\">
               <label style=\"color:#191f28;font-size:13px;white-space:nowrap\" data-i18n=\"dash.assets.mine.groupby\">그룹 기준</label>

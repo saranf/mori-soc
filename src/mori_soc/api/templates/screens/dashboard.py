@@ -48,7 +48,7 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
       <section class=\"metrics\" id=\"overview_cards\"><div class=\"empty\" style=\"padding:16px;color:#191f28\" data-i18n=\"dash.status.overview_loading\">요약 카드를 불러오는 중…</div></section>
       <!-- 보안 요약 히어로 (Toss형: 위험 TOP 랭킹) -->
       <section class=\"card\" id=\"security_hero_section\" style=\"background:#ffffff;border:1px solid #e5e8eb\">
-        <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+        <div class=\"row-between\">
           <h2 style=\"margin:0\" data-i18n=\"dash.hero.section\">지금 봐야 할 보안 현황</h2>
           <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" class=\"secondary\" style=\"width:auto;padding:5px 12px;font-size:12px\" data-i18n=\"dash.hero.goto_risk\">위험 매트릭스 →</button>
         </div>
@@ -58,7 +58,7 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
       <div id=\"dash_grid\">
           <!-- 토스식: 액션 큐(오늘의 작업 큐 · 증적 공백)를 맨 앞으로 (admin·security 전용) -->
           <section class=\"card\" id=\"evidence_gap_card\">
-            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+            <div class=\"row-between\">
               <h2 style=\"margin:0\" data-i18n=\"dash.gap.title\">오늘의 작업 큐 (증적 공백)</h2>
               <span id=\"evidence_gap_ts\" style=\"font-size:12px;color:#191f28\"></span>
             </div>
@@ -67,7 +67,7 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
           </section>
           <!-- 인프라 현황 (24h/12h 전환 + Zabbix/Wazuh 딥링크) -->
           <section class=\"card\" id=\"infra_status_section\">
-            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+            <div class=\"row-between\">
               <h2 style=\"margin:0\" data-i18n=\"dash.infra.title\">인프라 현황</h2>
               <div style=\"display:flex;gap:4px;background:#ffffff;border:1px solid #e5e8eb;border-radius:8px;padding:2px\">
                 <button id=\"infra_win_24\" onclick=\"setInfraWindow('24h')\" style=\"padding:3px 10px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:#e5e8eb;color:#191f28\">24h</button>
@@ -78,7 +78,7 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
           </section>
           <!-- 계정 거버넌스 요약 (admin·security 전용) — 계정 탭에서 이동 -->
           <section class=\"card\" id=\"acc_gov_dash_section\" style=\"display:none\">
-            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+            <div class=\"row-between\">
               <h2 style=\"margin:0\" data-i18n=\"dash.acc.title\">계정 거버넌스 (접근권한 검토)</h2>
               <div style=\"display:flex;gap:8px;align-items:center;flex-wrap:wrap\">
                 <span id=\"acc_summary\" style=\"font-size:12px;color:#191f28\"></span>
@@ -90,7 +90,7 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
             <div class=\"metrics\" id=\"acc_finding_cards\" style=\"margin-top:12px\"></div>
           </section>
           <section class=\"card\" id=\"fleet_status_section\">
-            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+            <div class=\"row-between\">
               <h2 style=\"margin:0\" data-i18n=\"dash.fleet.title\">PC 자산 현황</h2>
               <button onclick=\"switchTab('assets')\" class=\"detail-link\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
             </div>
@@ -102,7 +102,7 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
           </section>
           <!-- 서버 자산 현황 (Zabbix) — 자산 탭에서 이동 -->
           <section class=\"card\" id=\"zabbix_status_section\">
-            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+            <div class=\"row-between\">
               <h2 style=\"margin:0\" data-i18n=\"dash.zabbix.title\">서버 자산 현황</h2>
               <button onclick=\"switchTab('assets');switchAssetTab('zabbix')\" class=\"detail-link\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
             </div>
@@ -114,7 +114,7 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
           </section>
           <!-- 취약점 현황 (Trivy) — 자산 탭에서 이동 -->
           <section class=\"card\" id=\"trivy_status_section\">
-            <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
+            <div class=\"row-between\">
               <h2 style=\"margin:0\" data-i18n=\"dash.vuln.title\">취약점 현황</h2>
               <button onclick=\"switchTab('assets');switchAssetTab('trivy')\" class=\"detail-link\" data-i18n=\"dash.fleet.detail\">자산 현황에서 상세 →</button>
             </div>
