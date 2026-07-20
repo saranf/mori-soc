@@ -336,6 +336,13 @@ services:
       ZBX_LDAP_SEARCH_ATTRIBUTE: ${ZABBIX_LDAP_SEARCH_ATTRIBUTE:-uid}
       ZBX_LDAP_BIND_DN: ${ZABBIX_LDAP_BIND_DN:-cn=admin,dc=mori,dc=local}
       ZBX_LDAP_BIND_PASSWORD: ${LDAP_ADMIN_PASSWORD:-admin}
+    # MORI 리브랜딩(모리답게) — 로고·푸터·헬프 교체. 재설치해도 마운트 유지되면 유지됨.
+    # 토스 색 테마(mori-accent.css)는 옵트인 — deploy/zabbix/README.md 참고.
+    volumes:
+      - ./deploy/zabbix/brand.conf.php:/usr/share/zabbix/local/conf/brand.conf.php:ro
+      - ./deploy/zabbix/mori-logo.svg:/usr/share/zabbix/local/conf/mori-logo.svg:ro
+      - ./deploy/zabbix/mori-logo-sidebar.svg:/usr/share/zabbix/local/conf/mori-logo-sidebar.svg:ro
+      - ./deploy/zabbix/mori-logo-compact.svg:/usr/share/zabbix/local/conf/mori-logo-compact.svg:ro
     ports:
       - "${ZABBIX_WEB_PORT:-18081}:8080"
     networks: [soc]

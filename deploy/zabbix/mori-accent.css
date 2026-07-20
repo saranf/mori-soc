@@ -1,0 +1,46 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   MORI 액센트 — 번들 Zabbix 라이트/다크 테마에 토스 블루를 얹는 오버라이드.
+   6색만 사용(모리다움). Zabbix 내장 테마 위에 '색만' 바꾼다(레이아웃 유지).
+
+   ⚠️ 정직 표기: 이 CSS 의 선택자는 Zabbix 7.4 프런트엔드 클래스명을 기준으로 한
+   best-effort 다. 실행 중인 인스턴스에서 눈으로 확인하고, 안 먹는 선택자는
+   개발자도구로 실제 클래스명을 잡아 조정하세요(버전마다 다를 수 있음).
+   적용법: README.md 의 "토스 색 테마(옵트인)" 참고 — nginx sub_filter 주입.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  --mori-blue: #3182f6;
+  --mori-blue-ink: #1b64da;
+  --mori-blue-soft: rgba(49, 130, 246, .12);
+}
+
+/* ── 공통: 링크·강조 ─────────────────────────────────────────────── */
+.blue-theme a:not(.btn),
+.dark-theme a:not(.btn) { color: var(--mori-blue); }
+.blue-theme a:not(.btn):hover,
+.dark-theme a:not(.btn):hover { color: var(--mori-blue-ink); }
+
+/* ── 주요 액션 버튼(생성/적용) → 토스 블루 ────────────────────────── */
+.blue-theme .btn-alt.js-create-item,
+.blue-theme button[type="submit"].form_submit,
+.blue-theme .btn.btn-large,
+.dark-theme .btn.btn-large { background-color: var(--mori-blue); border-color: var(--mori-blue); }
+
+/* ── 상단 헤더/사이드바 활성 표시 ─────────────────────────────────── */
+.blue-theme .sidebar .menu-main li.is-selected > a,
+.dark-theme .sidebar .menu-main li.is-selected > a { box-shadow: inset 3px 0 0 var(--mori-blue); }
+.blue-theme .sidebar .menu-main a:hover,
+.dark-theme .sidebar .menu-main a:hover { background-color: var(--mori-blue-soft); }
+
+/* ── 로그인 페이지: 토스 그레이 배경 + 카드 ───────────────────────── */
+.blue-theme.signin-container,
+.blue-theme .signin-container { background: #f2f4f6; }
+.dark-theme.signin-container,
+.dark-theme .signin-container { background: #131417; }
+
+/* ── 탭/필터 활성 색 ──────────────────────────────────────────────── */
+.blue-theme .tabs .active,
+.dark-theme .tabs .active { border-bottom-color: var(--mori-blue); color: var(--mori-blue-ink); }
+
+/* ── 링크형 아이콘 버튼 hover ─────────────────────────────────────── */
+.blue-theme .link-action:hover,
+.dark-theme .link-action:hover { color: var(--mori-blue-ink); }
