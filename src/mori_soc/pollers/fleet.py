@@ -31,30 +31,18 @@ class FleetPoller(BasePollerService):
     """
 
     # ── 수집 기준값 (collection-standards.md 기준) ─────────────────
-    _DEFAULT_POLL_INTERVAL: int = 86400      # 하루 1회 (24h)
-    _DEFAULT_STALE_THRESHOLD: int = 864000   # 10일
-    _DEFAULT_MAX_RETRIES: int = 3
-    _DEFAULT_RETRY_BACKOFF: int = 15
+    DEFAULT_POLL_INTERVAL: int = 86400      # 하루 1회 (24h)
+    DEFAULT_STALE_THRESHOLD: int = 864000   # 10일
+    DEFAULT_MAX_RETRIES: int = 3
+    DEFAULT_RETRY_BACKOFF: int = 15
 
     @property
     def source_name(self) -> str:
         return "fleet"
 
-    @property
-    def poll_interval_seconds(self) -> int:
-        return max(1, int(os.getenv("MORI_FLEET_INTERVAL_SECONDS", str(self._DEFAULT_POLL_INTERVAL))))
 
-    @property
-    def stale_threshold_seconds(self) -> int:
-        return max(1, int(os.getenv("MORI_FLEET_STALE_SECONDS", str(self._DEFAULT_STALE_THRESHOLD))))
 
-    @property
-    def max_retries(self) -> int:
-        return max(0, int(os.getenv("MORI_FLEET_MAX_RETRIES", str(self._DEFAULT_MAX_RETRIES))))
 
-    @property
-    def retry_backoff_seconds(self) -> int:
-        return max(0, int(os.getenv("MORI_FLEET_RETRY_BACKOFF_SECONDS", str(self._DEFAULT_RETRY_BACKOFF))))
 
     def build_collector(self) -> BaseCollector | None:
         if not _env_flag("MORI_ENABLE_FLEET", default=False):

@@ -30,30 +30,18 @@ class TrivyPoller(BasePollerService):
     """
 
     # ── 수집 기준값 (collection-standards.md 기준) ─────────────────
-    _DEFAULT_POLL_INTERVAL: int = 86400   # 24h (batch)
-    _DEFAULT_STALE_THRESHOLD: int = 604800  # 7일
-    _DEFAULT_MAX_RETRIES: int = 2
-    _DEFAULT_RETRY_BACKOFF: int = 30
+    DEFAULT_POLL_INTERVAL: int = 86400   # 24h (batch)
+    DEFAULT_STALE_THRESHOLD: int = 604800  # 7일
+    DEFAULT_MAX_RETRIES: int = 2
+    DEFAULT_RETRY_BACKOFF: int = 30
 
     @property
     def source_name(self) -> str:
         return "trivy"
 
-    @property
-    def poll_interval_seconds(self) -> int:
-        return max(1, int(os.getenv("MORI_TRIVY_INTERVAL_SECONDS", str(self._DEFAULT_POLL_INTERVAL))))
 
-    @property
-    def stale_threshold_seconds(self) -> int:
-        return max(1, int(os.getenv("MORI_TRIVY_STALE_SECONDS", str(self._DEFAULT_STALE_THRESHOLD))))
 
-    @property
-    def max_retries(self) -> int:
-        return max(0, int(os.getenv("MORI_TRIVY_MAX_RETRIES", str(self._DEFAULT_MAX_RETRIES))))
 
-    @property
-    def retry_backoff_seconds(self) -> int:
-        return max(0, int(os.getenv("MORI_TRIVY_RETRY_BACKOFF_SECONDS", str(self._DEFAULT_RETRY_BACKOFF))))
 
     def build_collector(self) -> BaseCollector | None:
         if not _env_flag("MORI_ENABLE_TRIVY", default=False):

@@ -24,30 +24,18 @@ class LdapSyncPoller(BasePollerService):
     """
 
     # ── 수집 기준값 (collection-standards.md 기준) ─────────────────
-    _DEFAULT_POLL_INTERVAL: int = 3600    # 1h
-    _DEFAULT_STALE_THRESHOLD: int = 28800  # 8h
-    _DEFAULT_MAX_RETRIES: int = 3
-    _DEFAULT_RETRY_BACKOFF: int = 30
+    DEFAULT_POLL_INTERVAL: int = 3600    # 1h
+    DEFAULT_STALE_THRESHOLD: int = 28800  # 8h
+    DEFAULT_MAX_RETRIES: int = 3
+    DEFAULT_RETRY_BACKOFF: int = 30
 
     @property
     def source_name(self) -> str:
         return "ldap"
 
-    @property
-    def poll_interval_seconds(self) -> int:
-        return max(1, int(os.getenv("MORI_LDAP_INTERVAL_SECONDS", str(self._DEFAULT_POLL_INTERVAL))))
 
-    @property
-    def stale_threshold_seconds(self) -> int:
-        return max(1, int(os.getenv("MORI_LDAP_STALE_SECONDS", str(self._DEFAULT_STALE_THRESHOLD))))
 
-    @property
-    def max_retries(self) -> int:
-        return max(0, int(os.getenv("MORI_LDAP_MAX_RETRIES", str(self._DEFAULT_MAX_RETRIES))))
 
-    @property
-    def retry_backoff_seconds(self) -> int:
-        return max(0, int(os.getenv("MORI_LDAP_RETRY_BACKOFF_SECONDS", str(self._DEFAULT_RETRY_BACKOFF))))
 
     def build_collector(self) -> BaseCollector | None:
         if not _env_flag("MORI_ENABLE_LDAP_SYNC", default=False):

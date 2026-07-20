@@ -58,11 +58,7 @@ ACK_MODES = frozenset({MODE_ACK_COMMENT, MODE_SUPPRESS})
 ACK_STATUSES = frozenset({"reviewing", "resolved"})
 
 
-def _env_flag(name: str, default: bool = False) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+from mori_soc._env import env_flag as _env_flag  # 공용 헬퍼 재-export(공통화 C10)
 
 
 @dataclass(frozen=True)

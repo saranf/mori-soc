@@ -62,32 +62,36 @@ class BasePollerService(ABC):
         """Parse env-vars and return a collector, or *None* if disabled/misconfigured."""
 
     # ── 수집 기준값 (docs/collection-standards.md 기준) ───────────
-    # 서브클래스에서 오버라이드해 소스별 기준값 적용
+    # 서브클래스는 아래 DEFAULT_* 클래스 상수만 바꾸면 된다(프로퍼티 재정의 불필요, 공통화 C10).
+    # 프로퍼티는 MORI_{SOURCE}_* 환경변수를 우선하고, 없으면 이 기본값을 쓴다.
+    DEFAULT_POLL_INTERVAL: int = 60
+    DEFAULT_STALE_THRESHOLD: int = 600
+    DEFAULT_MAX_RETRIES: int = 3
+    DEFAULT_RETRY_BACKOFF: int = 10
 
     @property
     def poll_interval_seconds(self) -> int:
         """폴링 주기(초). 환경변수 MORI_{SOURCE}_INTERVAL_SECONDS 우선."""
         env_key = f"MORI_{self.source_name.upper()}_INTERVAL_SECONDS"
-        fallback = int(os.getenv("MORI_WORKER_INTERVAL_SECONDS", "60"))
-        return max(1, int(os.getenv(env_key, str(fallback))))
+        return max(1, int(os.getenv(env_key, str(self.DEFAULT_POLL_INTERVAL))))
 
     @property
     def stale_threshold_seconds(self) -> int:
         """last_success_at 이 이 시간(초) 이상 경과하면 stale 처리."""
         env_key = f"MORI_{self.source_name.upper()}_STALE_SECONDS"
-        return max(1, int(os.getenv(env_key, "600")))
+        return max(1, int(os.getenv(env_key, str(self.DEFAULT_STALE_THRESHOLD))))
 
     @property
     def max_retries(self) -> int:
         """한 사이클 내 최대 재시도 횟수."""
         env_key = f"MORI_{self.source_name.upper()}_MAX_RETRIES"
-        return max(0, int(os.getenv(env_key, "3")))
+        return max(0, int(os.getenv(env_key, str(self.DEFAULT_MAX_RETRIES))))
 
     @property
     def retry_backoff_seconds(self) -> int:
         """재시도 사이 대기 시간(초)."""
         env_key = f"MORI_{self.source_name.upper()}_RETRY_BACKOFF_SECONDS"
-        return max(0, int(os.getenv(env_key, "10")))
+        return max(0, int(os.getenv(env_key, str(self.DEFAULT_RETRY_BACKOFF))))
 
     def is_stale(self, sync: SourceSync | None) -> bool:
         """마지막 성공 sync 가 stale_threshold_seconds 이상 경과했는지 확인."""
@@ -202,11 +206,8 @@ def _repository_from_env() -> BaseRepository:
     return InMemoryRepository()
 
 
-def _env_flag(name: str, *, default: bool) -> bool:
-    value = os.getenv(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
+# 공용 헬퍼 재-export(하위호환: 서브클래스가 `from .base import _env_flag` 로 가져감). 공통화 C10.
+from mori_soc._env import env_flag as _env_flag  # noqa: E402
 
 
 def _truncate(message: str, limit: int = 500) -> str:
