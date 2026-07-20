@@ -10,10 +10,10 @@ import pathlib
 import re
 import unittest
 
+import mori_soc.api.templates.dashboard as _dash_mod
 from mori_soc.api.templates.auth_pages import render_login_html
 from mori_soc.api.templates.console import render_query_console_html
 from mori_soc.api.templates.dashboard import render_user_dashboard_html
-import mori_soc.api.templates.dashboard as _dash_mod
 
 _STATIC = pathlib.Path(_dash_mod.__file__).parent.parent / "static"
 # 증적 PDF/SVG 생성기(개인정보 처리흐름표·SoA·공용 PDF) — UI와 같은 6색 규율.

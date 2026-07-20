@@ -22,6 +22,7 @@ except Exception:  # pragma: no cover
 class SwaggerDocsTest(unittest.TestCase):
     def _client(self):
         from fastapi.testclient import TestClient
+
         from mori_soc.api.server import create_app
         from mori_soc.services.query_service import InMemoryQueryStore, QueryService
 
