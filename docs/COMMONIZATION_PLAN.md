@@ -13,7 +13,7 @@
 | C2 ☑ | CSV가 공용 render_csv 우회 → 수식 인젝션 미방어 | routes+services | **보안** | CRITICAL·전역 |
 | C3 ☑ | RBAC 역할추출·403 인라인 중복(공용 ctx 미채택) | routes | **보안** | CRITICAL·전역 |
 | C4 ☑ | i18n 중복키·ko 블록에 영문 혼입(triplicated) | i18n | **정합성(한영)** | MAJOR·전역 |
-| C5 | ReportLab 문서 스캐폴딩·팔레트 재정의 | services | DRY·시각드리프트 | MAJOR·전역 |
+| C5 ◐ | ReportLab 문서 스캐폴딩·팔레트 재정의 | services | DRY·시각드리프트 | MAJOR·전역 |
 | C6 | PDF/ZIP/format 응답 셰이핑 반복 | routes | DRY | MAJOR·전역 |
 | C7 | Postgres 커넥션·upsert·컬럼목록 보일러플레이트 | repositories | DRY | MAJOR·전역 |
 | C8 | 프론트 공용 모듈 부재(dashboard↔console 바이트동일) | JS/CSS | DRY·유지비 | MAJOR·전역 |
@@ -55,7 +55,7 @@
 - **C4 ☑ 완료** AST 기반 언어인식 중복 제거: ko 는 한글값·en 은 영문값을 남겨 438개 중복 엔트리 삭제(3474→3197줄). 붙여넣기 순서로 한국어 UI 에 영문이 뜨던 실버그 2건 수정(`dash.acc.detail`·`dash.acc.csv_preview_title`). ko/en 파리티 완전 일치(1099/1099·410/410) 확인. AST 중복키 가드 테스트 추가(런타임 last-wins 로 은폐되는 중복을 원본 파싱으로 검출). 507 통과. (전면 tuple 레이아웃 전환은 후속 — 현재 가드로 회귀 차단됨.)
 
 ### Phase 2 — 구조 백엔드 (MAJOR)
-- **C5** `pdf.py` `new_doc`/`PALETTE` → `reports.py:595`·`control_catalog.py:279/455`·`data_flow.py:1122`·`soa.py:84` 스캐폴딩·팔레트 흡수(슬레이트/토스 색 드리프트도 해소).
+- **C5 ◐ 부분** `pdf.py` 에 `PALETTE`(6색+중립)·공용 `esc`(html.escape)·`new_doc`(SimpleDocTemplate) 신설, `pdf_table` 이 내부 `_esc`/하드코딩 hex 대신 이를 사용(단일 소스화). **잔여(보류):** reports·control_catalog 는 슬레이트색(#1e293b/#cbd5e1)·soa/data_flow 는 자체 TableStyle 이라, 이를 PALETTE/new_doc 로 흡수하면 감사 PDF **시각이 바뀐다** → 캐노니컬 6 hex(토스 vs #111827 계열) 확정이 필요한 **디자인 결정**이므로 별도 처리로 분리. (커밋 후 PDF 렌더 테스트 통과.)
 - **C6** `http_helpers`·`zip_bundle_response`로 PDF 4곳·ZIP 3곳·format 분기 2곳 통일.
 - **C7** `_pg_common` + `_NORMALIZED_GOV`가 이미 증명한 spec 방식을 전 store로 일반화(save/load 15쌍), `postgres.py` isinstance 250줄 → 레지스트리, 인메모리 store 테이블화.
 
