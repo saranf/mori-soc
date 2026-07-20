@@ -166,22 +166,22 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
   </dialog>
 
   <!-- 조치 계획 모달 -->
-  <div id=\"plan_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
+  <div id=\"plan_modal\" class=\"modal-overlay\" style=\"z-index:9999\">
     <div style=\"background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:28px 32px;width:500px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
         <h3 id=\"plan_modal_title\" style=\"color:#15c47e;margin:0\" data-i18n=\"dash.modal.action_plan\">조치 계획</h3>
-        <button onclick=\"closePlanModal()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+        <button onclick=\"closePlanModal()\" class=\"icon-btn\">×</button>
       </div>
       <div style=\"display:flex;flex-direction:column;gap:12px\">
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.plan_content\">조치 계획 내용</label>
-          <textarea id=\"plan_text\" rows=\"4\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 2024년 2분기 내 패키지 업그레이드 예정\" data-i18n-placeholder=\"dash.ph.plan_example\"></textarea>
+          <textarea id=\"plan_text\" rows=\"4\" class=\"inp\" placeholder=\"예: 2024년 2분기 내 패키지 업그레이드 예정\" data-i18n-placeholder=\"dash.ph.plan_example\"></textarea>
         </div>
         <div style=\"display:flex;gap:12px\">
           <div style=\"flex:1\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.target_date\">목표 완료일</label>
-            <input type=\"date\" id=\"plan_target_date\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+            <input type=\"date\" id=\"plan_target_date\" class=\"inp\" />
           </div>
           <div style=\"flex:1\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.author\">작성자</label>
-            <input id=\"plan_updated_by\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 김보안\" data-i18n-placeholder=\"dash.ph.author_example\" />
+            <input id=\"plan_updated_by\" class=\"inp\" placeholder=\"예: 김보안\" data-i18n-placeholder=\"dash.ph.author_example\" />
           </div>
         </div>
         <div style=\"display:flex;gap:10px;justify-content:flex-end;margin-top:4px\">
@@ -193,21 +193,21 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
   </div>
 
   <!-- 프로필 편집 모달 -->
-  <div id=\"profile_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
+  <div id=\"profile_modal\" class=\"modal-overlay\" style=\"z-index:9999\">
     <div style=\"background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:28px 32px;width:440px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
         <h3 id=\"profile_modal_title\" style=\"color:#3182f6;margin:0\" data-i18n=\"dash.profile.title\">내 프로필 편집</h3>
-        <button onclick=\"closeProfileModal()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+        <button onclick=\"closeProfileModal()\" class=\"icon-btn\">×</button>
       </div>
       <div style=\"display:flex;flex-direction:column;gap:12px\">
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.profile.display_name\">이름</label>
-          <input id=\"profile_display_name\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"dash.profile.display_name_ph\" />
+          <input id=\"profile_display_name\" class=\"inp\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"dash.profile.display_name_ph\" />
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.profile.department\">부서</label>
-          <input id=\"profile_department\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 인프라팀\" data-i18n-placeholder=\"dash.profile.department_ph\" />
+          <input id=\"profile_department\" class=\"inp\" placeholder=\"예: 인프라팀\" data-i18n-placeholder=\"dash.profile.department_ph\" />
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.profile.assigned_servers\">담당 서버 (호스트명)</label>
-          <textarea id=\"profile_assigned_servers\" rows=\"4\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"한 줄에 하나씩 또는 쉼표로 구분\" data-i18n-placeholder=\"dash.profile.assigned_servers_ph\"></textarea>
+          <textarea id=\"profile_assigned_servers\" rows=\"4\" class=\"inp\" placeholder=\"한 줄에 하나씩 또는 쉼표로 구분\" data-i18n-placeholder=\"dash.profile.assigned_servers_ph\"></textarea>
           <span style=\"color:#191f28;font-size:11px\" data-i18n=\"dash.profile.assigned_servers_hint\">내 서버 탭에서 이 호스트만 모아 볼 수 있습니다.</span>
         </div>
         <div id=\"profile_modal_status\" style=\"font-size:13px;color:#191f28;\"></div>
@@ -220,24 +220,24 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
   </div>
 
   <!-- 담당자 편집 모달 (사용자용) -->
-  <div id=\"owner_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;\">
+  <div id=\"owner_modal\" class=\"modal-overlay\" style=\"z-index:9999\">
     <div style=\"background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:28px 32px;width:440px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
         <h3 id=\"owner_modal_title\" style=\"color:#15c47e;margin:0\" data-i18n=\"dash.modal.edit_owner_title\">담당자/카테고리 수정</h3>
-        <button onclick=\"closeOwnerModal()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+        <button onclick=\"closeOwnerModal()\" class=\"icon-btn\">×</button>
       </div>
       <div style=\"display:flex;flex-direction:column;gap:12px\">
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.hostname\">호스트명</label>
-          <input id=\"owner_modal_hostname\" readonly style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+          <input id=\"owner_modal_hostname\" readonly class=\"inp\" />
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.analyst\">담당자</label>
-          <input id=\"owner_modal_owner\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"dash.ph.owner_example\" />
+          <input id=\"owner_modal_owner\" class=\"inp\" placeholder=\"예: 홍길동\" data-i18n-placeholder=\"dash.ph.owner_example\" />
         </div>
         <div id=\"owner_modal_category_row\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.category\">카테고리 (서버 분류)</label>
-          <input id=\"owner_modal_category\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 웹 서버\" data-i18n-placeholder=\"dash.ph.category_example\" />
+          <input id=\"owner_modal_category\" class=\"inp\" placeholder=\"예: 웹 서버\" data-i18n-placeholder=\"dash.ph.category_example\" />
         </div>
         <div id=\"owner_modal_importance_row\"><label style=\"color:#191f28;font-size:13px\"><span data-i18n=\"dash.f.importance\">중요도</span> <span style=\"color:#191f28;font-size:11px\" data-i18n=\"dash.modal.importance_hint\">(자동 분류 재정의)</span></label>
-          <select id=\"owner_modal_importance\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\">
+          <select id=\"owner_modal_importance\" class=\"inp\">
             <option value=\"\" data-i18n=\"dash.opt.auto\">자동 (기본)</option>
             <option value=\"상\" data-i18n=\"dash.opt.high\">상</option>
             <option value=\"중\" data-i18n=\"dash.opt.mid\">중</option>
@@ -245,13 +245,13 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
           </select>
         </div>
         <div id=\"owner_modal_exception_row\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.exception_until\">처리 예외 기한</label>
-          <input type=\"date\" id=\"owner_modal_exception_until\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+          <input type=\"date\" id=\"owner_modal_exception_until\" class=\"inp\" />
           <span style=\"color:#191f28;font-size:11px\" data-i18n=\"dash.modal.exception_hint\">이 날짜까지 점검/알림 예외 처리됩니다</span>
           <label style=\"color:#191f28;font-size:13px;margin-top:8px;display:block\" data-i18n=\"dash.f.exception_reason\">예외 사유</label>
-          <textarea id=\"owner_modal_exception_reason\" rows=\"2\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 레거시 시스템으로 패치 불가, 2분기 교체 예정\" data-i18n-placeholder=\"dash.ph.exception_reason_example\"></textarea>
+          <textarea id=\"owner_modal_exception_reason\" rows=\"2\" class=\"inp\" placeholder=\"예: 레거시 시스템으로 패치 불가, 2분기 교체 예정\" data-i18n-placeholder=\"dash.ph.exception_reason_example\"></textarea>
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.team\">팀</label>
-          <input id=\"owner_modal_team\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: 인프라팀\" data-i18n-placeholder=\"dash.ph.team_example\" />
+          <input id=\"owner_modal_team\" class=\"inp\" placeholder=\"예: 인프라팀\" data-i18n-placeholder=\"dash.ph.team_example\" />
         </div>
 
         <div id=\"owner_modal_status\" style=\"font-size:13px;color:#191f28;\"></div>
@@ -264,11 +264,11 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
   </div>
 
   <!-- Trivy 호스트별 취약점 리스트 모달 -->
-  <div id=\"vuln_list_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
+  <div id=\"vuln_list_modal\" class=\"modal-overlay\" style=\"z-index:9998\">
     <div style=\"background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:24px 28px;width:980px;max-width:96vw;max-height:88vh;overflow:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:14px\">
         <h3 id=\"vuln_list_modal_title\" style=\"color:#f5a623;margin:0\" data-i18n=\"dash.modal.vuln_detail_title\">취약점 상세</h3>
-        <button onclick=\"closeVulnListModal()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+        <button onclick=\"closeVulnListModal()\" class=\"icon-btn\">×</button>
       </div>
       <div id=\"vuln_list_modal_subtitle\" style=\"color:#191f28;font-size:12px;margin-bottom:10px\"></div>
       <div id=\"vuln_list_modal_body\"></div>
@@ -276,11 +276,11 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
   </div>
 
   <!-- 호스트 단위 조치 계획 안내 모달 (CVE별 상세 계획 존재 시) -->
-  <div id=\"vuln_plans_notice_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
+  <div id=\"vuln_plans_notice_modal\" class=\"modal-overlay\" style=\"z-index:9998\">
     <div style=\"background:#f7f8fa;border:1px solid #fef3d6;border-radius:10px;padding:28px 32px;width:480px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
         <h3 style=\"color:#f5a623;margin:0\" data-i18n=\"dash.modal.plan_exists_title\">상세 계획이 정해져 있습니다</h3>
-        <button onclick=\"closeVulnPlansNotice()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+        <button onclick=\"closeVulnPlansNotice()\" class=\"icon-btn\">×</button>
       </div>
       <div id=\"vuln_plans_notice_body\" style=\"color:#191f28;font-size:13px;line-height:1.6;margin-bottom:18px\"></div>
       <div style=\"display:flex;gap:10px;justify-content:flex-end\">
@@ -291,11 +291,11 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
   </div>
 
   <!-- PDCA Do(조치) 항목 상세 모달 -->
-  <div id=\"pdca_do_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:center;justify-content:center;\">
+  <div id=\"pdca_do_modal\" class=\"modal-overlay\" style=\"z-index:9998\">
     <div style=\"background:#f7f8fa;border:1px solid #f5a623;border-radius:10px;padding:24px 28px;width:1080px;max-width:96vw;max-height:88vh;overflow:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:14px\">
         <h3 style=\"color:#f5a623;margin:0\" data-i18n=\"dash.modal.pdca_do_title\">Do 조치가 필요한 항목</h3>
-        <button onclick=\"closePdcaDoModal()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+        <button onclick=\"closePdcaDoModal()\" class=\"icon-btn\">×</button>
       </div>
       <div id=\"pdca_do_modal_subtitle\" style=\"color:#191f28;font-size:12px;margin-bottom:10px\"></div>
       <div id=\"pdca_do_modal_body\"></div>
@@ -303,14 +303,14 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
   </div>
 
   <!-- 감사 증적 리포트 미리보기 모달 (CSV 미리보기 + 다운로드) -->
-  <div id=\"report_preview_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:center;justify-content:center;\">
+  <div id=\"report_preview_modal\" class=\"modal-overlay\" style=\"z-index:9998\">
     <div style=\"background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:24px 28px;width:1080px;max-width:96vw;max-height:88vh;overflow:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px;flex-wrap:wrap\">
         <h3 id=\"report_preview_title\" style=\"color:#3182f6;margin:0\" data-i18n=\"dash.modal.report_preview_title\">리포트 미리보기</h3>
         <div style=\"display:flex;gap:8px;align-items:center\">
           <a id=\"report_preview_download\" href=\"#\" download class=\"dl-pill\" data-i18n=\"dash.modal.csv_download\">CSV 다운로드</a>
           <a id=\"report_preview_download_pdf\" href=\"#\" download style=\"background:#fef3d6;border:1px solid #f5a623;color:#f5a623;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none\" data-i18n=\"dash.modal.pdf_download\">PDF 다운로드</a>
-          <button onclick=\"closeReportPreview()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+          <button onclick=\"closeReportPreview()\" class=\"icon-btn\">×</button>
         </div>
       </div>
       <div id=\"report_preview_subtitle\" style=\"color:#191f28;font-size:12px;margin-bottom:10px\" data-i18n=\"dash.modal.report_preview_sub\">CSV 파일이 아래와 같은 형태로 생성됩니다. (상위 50행만 표시)</div>
@@ -319,11 +319,11 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
   </div>
 
   <!-- 인시던트 CSV 다운로드 안내 모달 -->
-  <div id=\"incident_csv_notice_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
+  <div id=\"incident_csv_notice_modal\" class=\"modal-overlay\" style=\"z-index:9998\">
     <div style=\"background:#f7f8fa;border:1px solid #fef3d6;border-radius:10px;padding:28px 32px;width:520px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
         <h3 style=\"color:#f5a623;margin:0\" data-i18n=\"dash.modal.incident_csv_title\">인시던트 CSV 다운로드</h3>
-        <button onclick=\"closeIncidentCsvNotice()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+        <button onclick=\"closeIncidentCsvNotice()\" class=\"icon-btn\">×</button>
       </div>
       <div style=\"color:#191f28;font-size:13px;line-height:1.7;margin-bottom:18px\">
         <div style=\"margin-bottom:10px\" data-i18n-html=\"dash.modal.incident_csv_warn_html\"><strong style=\"color:#f5a623\">변경 내역(history)은 CSV 내역에 포함되지 않습니다.</strong></div>
@@ -338,38 +338,38 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
   </div>
 
   <!-- 취약점별 조치 계획 / 조치 예외 편집 모달 -->
-  <div id=\"vuln_action_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;\">
+  <div id=\"vuln_action_modal\" class=\"modal-overlay\" style=\"z-index:9999\">
     <div style=\"background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:24px 28px;width:520px;max-width:95vw\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:14px\">
         <h3 id=\"vuln_action_modal_title\" style=\"color:#15c47e;margin:0\" data-i18n=\"dash.modal.vuln_action_title\">취약점 조치</h3>
-        <button onclick=\"closeVulnActionModal()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+        <button onclick=\"closeVulnActionModal()\" class=\"icon-btn\">×</button>
       </div>
       <div id=\"vuln_action_modal_meta\" style=\"color:#191f28;font-size:12px;margin-bottom:12px;border:1px solid #e5e8eb;border-radius:6px;padding:8px 10px;background:#ffffff\"></div>
 
       <!-- 조치 계획 영역 -->
       <div id=\"vuln_plan_section\" style=\"display:none;flex-direction:column;gap:10px\">
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.plan_content\">조치 계획 내용</label>
-          <textarea id=\"vuln_plan_text\" rows=\"4\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 다음 정기 패치 일정에 openssh 9.3p2로 업그레이드\" data-i18n-placeholder=\"dash.ph.vuln_plan_example\"></textarea>
+          <textarea id=\"vuln_plan_text\" rows=\"4\" class=\"inp\" placeholder=\"예: 다음 정기 패치 일정에 openssh 9.3p2로 업그레이드\" data-i18n-placeholder=\"dash.ph.vuln_plan_example\"></textarea>
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.target_date\">목표 완료일</label>
-          <input type=\"date\" id=\"vuln_plan_target_date\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+          <input type=\"date\" id=\"vuln_plan_target_date\" class=\"inp\" />
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.author\">작성자</label>
-          <input id=\"vuln_plan_updated_by\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: security\" data-i18n-placeholder=\"dash.ph.security_example\" />
+          <input id=\"vuln_plan_updated_by\" class=\"inp\" placeholder=\"예: security\" data-i18n-placeholder=\"dash.ph.security_example\" />
         </div>
       </div>
 
       <!-- 조치 예외 영역 -->
       <div id=\"vuln_exception_section\" style=\"display:none;flex-direction:column;gap:10px\">
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.modal.exception_period\">예외 처리 기한</label>
-          <input type=\"date\" id=\"vuln_exception_until\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" />
+          <input type=\"date\" id=\"vuln_exception_until\" class=\"inp\" />
           <span style=\"color:#191f28;font-size:11px\" data-i18n=\"dash.modal.vuln_exception_hint\">이 날짜까지 해당 취약점 점검/알림에서 제외됩니다</span>
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.exception_reason\">예외 사유</label>
-          <textarea id=\"vuln_exception_reason\" rows=\"3\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\" placeholder=\"예: 종속 라이브러리 호환성 이슈로 차분기 교체 예정\" data-i18n-placeholder=\"dash.ph.vuln_exception_reason_example\"></textarea>
+          <textarea id=\"vuln_exception_reason\" rows=\"3\" class=\"inp\" placeholder=\"예: 종속 라이브러리 호환성 이슈로 차분기 교체 예정\" data-i18n-placeholder=\"dash.ph.vuln_exception_reason_example\"></textarea>
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.f.author\">작성자</label>
-          <input id=\"vuln_exception_updated_by\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" placeholder=\"예: security\" data-i18n-placeholder=\"dash.ph.security_example\" />
+          <input id=\"vuln_exception_updated_by\" class=\"inp\" placeholder=\"예: security\" data-i18n-placeholder=\"dash.ph.security_example\" />
         </div>
       </div>
 
@@ -383,11 +383,11 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
   </div>
 
   <!-- 위험성 평가 모달 (R-4) -->
-  <div id=\"risk_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;\">
+  <div id=\"risk_modal\" class=\"modal-overlay\" style=\"z-index:9999\">
     <div style=\"background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:24px 28px;width:560px;max-width:95vw;max-height:88vh;overflow-y:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:14px\">
         <h3 id=\"risk_modal_title\" style=\"color:#3182f6;margin:0\" data-i18n=\"dash.risk.modal_title\">위험성 평가</h3>
-        <button onclick=\"closeRiskModal()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+        <button onclick=\"closeRiskModal()\" class=\"icon-btn\">×</button>
       </div>
       <div id=\"risk_modal_meta\" style=\"color:#191f28;font-size:12px;margin-bottom:12px;border:1px solid #e5e8eb;border-radius:6px;padding:8px 10px;background:#ffffff\"></div>
       <!-- 현재 등급 배지 + 자동 제안 -->
@@ -396,16 +396,16 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
       <div style=\"display:flex;flex-direction:column;gap:10px\">
         <div style=\"display:flex;gap:10px;flex-wrap:wrap\">
           <div style=\"flex:1;min-width:180px\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.impact\">영향도 (자산 중요도)</label>
-            <select id=\"risk_impact\" onchange=\"_riskRecalc()\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px\">
+            <select id=\"risk_impact\" onchange=\"_riskRecalc()\" class=\"inp\">
               <option value=\"3\" data-i18n=\"dash.acc.impf.high\">상 (3)</option><option value=\"2\" data-i18n=\"dash.acc.impf.mid\">중 (2)</option><option value=\"1\" data-i18n=\"dash.acc.impf.low\">하 (1)</option>
             </select></div>
           <div style=\"flex:1;min-width:180px\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.likelihood\">발생가능성 (심각도 기반)</label>
-            <select id=\"risk_likelihood\" onchange=\"_riskRecalc()\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px\">
+            <select id=\"risk_likelihood\" onchange=\"_riskRecalc()\" class=\"inp\">
               <option value=\"3\" data-i18n=\"dash.acc.impf.high\">상 (3)</option><option value=\"2\" data-i18n=\"dash.acc.impf.mid\">중 (2)</option><option value=\"1\" data-i18n=\"dash.acc.impf.low\">하 (1)</option>
             </select></div>
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.treatment\">위험 처리 결정</label>
-          <select id=\"risk_treatment\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px\">
+          <select id=\"risk_treatment\" class=\"inp\">
             <option value=\"\" data-i18n=\"dash.risk.t.none\">미정</option>
             <option value=\"mitigate\" data-i18n=\"dash.risk.t.mitigate\">조치(경감)</option>
             <option value=\"accept\" data-i18n=\"dash.risk.t.accept\">수용</option>
@@ -414,17 +414,17 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
           </select></div>
         <div style=\"display:flex;gap:10px;flex-wrap:wrap\">
           <div style=\"flex:1;min-width:180px\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.accept_approver\">승인자</label>
-            <input id=\"risk_accept_approver\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
+            <input id=\"risk_accept_approver\" class=\"inp\" /></div>
           <div style=\"flex:1;min-width:180px\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.review_due\">재평가 예정일</label>
-            <input type=\"date\" id=\"risk_review_due\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
+            <input type=\"date\" id=\"risk_review_due\" class=\"inp\" /></div>
         </div>
         <div><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.accept_reason\">수용 사유</label>
-          <textarea id=\"risk_accept_reason\" rows=\"2\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box\"></textarea></div>
+          <textarea id=\"risk_accept_reason\" rows=\"2\" class=\"inp\"></textarea></div>
         <div style=\"display:flex;gap:10px;flex-wrap:wrap\">
           <div style=\"flex:1;min-width:160px\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.residual\">잔여 위험</label>
-            <input id=\"risk_residual\" data-i18n-placeholder=\"dash.risk.f.residual_ph\" placeholder=\"예: 중간 / 낮음\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
+            <input id=\"risk_residual\" data-i18n-placeholder=\"dash.risk.f.residual_ph\" placeholder=\"예: 중간 / 낮음\" class=\"inp\" /></div>
           <div style=\"flex:1;min-width:160px\"><label style=\"color:#191f28;font-size:13px\" data-i18n=\"dash.risk.f.assessed_by\">평가자</label>
-            <input id=\"risk_assessed_by\" style=\"width:100%;background:#f7f8fa;border:1px solid #e5e8eb;color:#191f28;border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box\" /></div>
+            <input id=\"risk_assessed_by\" class=\"inp\" /></div>
         </div>
       </div>
       <!-- 산정 근거 (관리자 전용) -->
@@ -438,22 +438,22 @@ __TAB_DASHBOARD____TAB_TRIAGE____TAB_INCIDENTS____TAB_ASSETS____TAB_COMPLIANCE__
   </div>
 
   <!-- 위험 버킷 드릴다운 모달 (매트릭스 셀/칩 클릭) -->
-  <div id=\"risk_bucket_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
+  <div id=\"risk_bucket_modal\" class=\"modal-overlay\" style=\"z-index:9998\">
     <div style=\"background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:24px 28px;width:660px;max-width:95vw;max-height:82vh;overflow-y:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px\">
         <h3 id=\"risk_bucket_modal_title\" style=\"color:#3182f6;margin:0\" data-i18n=\"dash.risk.bucket_title\">위험 상세</h3>
-        <button onclick=\"closeRiskBucketModal()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+        <button onclick=\"closeRiskBucketModal()\" class=\"icon-btn\">×</button>
       </div>
       <div id=\"risk_bucket_modal_body\"></div>
     </div>
   </div>
 
   <!-- 내 서버 호스트 상세 모달 (행 더블클릭) -->
-  <div id=\"host_detail_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;\">
+  <div id=\"host_detail_modal\" class=\"modal-overlay\" style=\"z-index:9998\">
     <div style=\"background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:24px 28px;width:640px;max-width:95vw;max-height:85vh;overflow-y:auto\">
       <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px\">
         <h3 id=\"host_detail_title\" style=\"color:#15c47e;margin:0\" data-i18n=\"dash.host.detail_title\">호스트 상세</h3>
-        <button onclick=\"closeHostDetail()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+        <button onclick=\"closeHostDetail()\" class=\"icon-btn\">×</button>
       </div>
       <div id=\"host_detail_body\" style=\"color:#191f28;font-size:13px\"></div>
     </div>
