@@ -8,9 +8,10 @@ AI 가 확정하지 않는다 — 후보를 만들고 사람이 판단한다(모
 """
 from __future__ import annotations
 
-import hashlib
 from datetime import datetime
 from typing import Any
+
+from mori_soc.services.hashing import short_id
 
 STATUSES = ("candidate", "confirmed", "policy_review", "false_positive",
             "remediation", "accepted_exception", "resolved")
@@ -37,7 +38,7 @@ def can_transition(current: str, target: str) -> bool:
 
 def gap_id_for(source: str, control_id: str, key: str) -> str:
     """Gap 결정적 id — 같은 결함(source·control·key)이면 같은 id(중복 생성 방지)."""
-    return "gap-" + hashlib.sha1(f"{source}|{control_id}|{key}".encode("utf-8")).hexdigest()[:16]
+    return short_id(source, control_id, key, prefix="gap")
 
 
 def build_gap(*, source: str, control_id: str, key: str, title: str, detail: str, now: str,

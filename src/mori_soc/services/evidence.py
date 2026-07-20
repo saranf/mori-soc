@@ -6,9 +6,9 @@
 """
 from __future__ import annotations
 
-import hashlib
-import json
 from typing import Any
+
+from mori_soc.services.hashing import content_hash as _content_hash
 
 # content_hash 계산에 쓰는 '의미 있는' 필드(존재하는 것만). id·타임스탬프·updated_at 은 제외
 # (같은 증적 내용이면 언제 승격하든 같은 해시가 나오도록).
@@ -20,11 +20,7 @@ _CONTENT_KEYS = (
 
 
 def content_hash(rec: dict[str, Any]) -> str:
-    payload = json.dumps(
-        {k: rec.get(k) for k in _CONTENT_KEYS if k in rec},
-        sort_keys=True, ensure_ascii=False,
-    )
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return _content_hash(rec, include=_CONTENT_KEYS)
 
 
 def stamp_evidence(rec: dict[str, Any]) -> dict[str, Any]:

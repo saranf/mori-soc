@@ -10,6 +10,8 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
+from mori_soc.services.hashing import short_id
+
 STATUSES = ("draft", "reviewed", "approved", "superseded", "revoked")
 
 # 허용 전이(요청 상태로 갈 수 있는 현재 상태들).
@@ -45,8 +47,7 @@ def build_approval(*, control_id: str, evidence_id: str, content_hash: str, vers
                    status: str, actor: str, reason: str = "", pdf_hash: str = "",
                    prev_approval_id: str = "", generated_at: str = "", now: str) -> dict[str, Any]:
     """승인 스냅샷 레코드를 만든다(불변 기록). approval_id 는 (evidence_id·content_hash·status·now) 결정적."""
-    approval_id = "appr-" + hashlib.sha1(
-        f"{evidence_id}|{content_hash}|{status}|{now}".encode("utf-8")).hexdigest()[:16]
+    approval_id = short_id(evidence_id, content_hash, status, now, prefix="appr")
     record: dict[str, Any] = {
         "approval_id": approval_id,
         "control_id": control_id,

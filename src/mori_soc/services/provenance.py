@@ -61,9 +61,8 @@ def tags_for_source(source: str | None, *, tool: str | None = None,
 def scan_input_signature(repo: str | None, commit: str | None, tool: str | None,
                          scanner: str | None, ruleset: str | None, model: str | None) -> str:
     """스캔 재현성 식별자(#2) — 동일 입력이면 동일 signature. commit·scanner·ruleset·model·tool."""
-    import hashlib
-    seed = "|".join(str(x or "") for x in (repo, commit, tool, scanner, ruleset, model))
-    return hashlib.sha1(seed.encode("utf-8")).hexdigest()[:16]
+    from mori_soc.services.hashing import short_id
+    return short_id(repo, commit, tool, scanner, ruleset, model)
 
 
 def build_provenance_detail(rec: dict[str, Any], tags: list[str]) -> dict[str, Any]:

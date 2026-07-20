@@ -15,6 +15,9 @@ import hashlib
 import json
 from typing import Any
 
+from mori_soc.services.hashing import CANONICALIZATION, HASH_ALGORITHM, short_id
+from mori_soc.services.hashing import content_hash as _hash_content
+
 # 저장 네임스페이스(kind).
 KIND_FRAMEWORK = "framework"
 KIND_FRAMEWORK_VERSION = "framework_version"
@@ -55,11 +58,8 @@ def _slug(s: str) -> str:
     return "".join(c if c.isalnum() or c in "-._" else "-" for c in str(s or "").strip().lower())[:60]
 
 
-# content_hash 캐노니컬화 규칙(리뷰 #6) — 나중에 방식이 바뀌면 같은 내용도 해시가 달라질 수
-# 있으므로, 어떤 규칙·알고리즘으로 해시했는지 레코드에 함께 기록한다.
+# content_hash 캐노니컬화 규칙(리뷰 #6) — 상수·엔진은 services.hashing 단일 소스(공통화 C1).
 #   canonicalization = mori-jcs-v1: json.dumps(정렬 키 · 비ASCII 보존 · UTF-8, lifecycle/감사 제외)
-CANONICALIZATION = "mori-jcs-v1"
-HASH_ALGORITHM = "sha256"
 
 # content_hash 대상에서 제외하는 **lifecycle/감사/해시메타** — 실질 내용이 아니다.
 # status·activated_*·retired_*·effective_to·lifecycle 는 상태 전환 시 바뀌지만 '기준 원문 내용'이
@@ -78,9 +78,7 @@ def content_hash(record: dict[str, Any]) -> str:
     같은 내용이면 draft/active/retired 어느 상태든 동일 해시 — 버전 무결성·diff·export 에서
     상태 전환에 흔들리지 않는 안정적 지문이 된다. 캐노니컬화 규칙은 CANONICALIZATION(mori-jcs-v1).
     """
-    core = {k: v for k, v in record.items() if k not in _HASH_VOLATILE}
-    blob = json.dumps(core, ensure_ascii=False, sort_keys=True)
-    return "sha256:" + hashlib.sha256(blob.encode("utf-8")).hexdigest()
+    return _hash_content(record, exclude=_HASH_VOLATILE, prefix="sha256:")
 
 
 def _stamp_hash(record: dict[str, Any]) -> dict[str, Any]:
@@ -200,8 +198,7 @@ def build_control_definition(*, framework_version_id: str, display_code: str, ti
 def build_relationship(*, source_control_id: str, target_control_id: str, relationship_type: str,
                        coverage_percent: int | None = None, rationale: str = "",
                        provenance: str = "HUMAN", reviewed_by: str = "", now: str = "") -> dict[str, Any]:
-    rel_id = "rel-" + hashlib.sha1(
-        f"{source_control_id}|{target_control_id}|{relationship_type}".encode("utf-8")).hexdigest()[:16]
+    rel_id = short_id(source_control_id, target_control_id, relationship_type, prefix="rel")
     return {
         "id": rel_id, "relationship_id": rel_id, "source_control_id": source_control_id,
         "target_control_id": target_control_id, "relationship_type": relationship_type,

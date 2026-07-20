@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -19,6 +18,7 @@ from mori_soc.models import (
     QueryResult,
     Vulnerability,
 )
+from mori_soc.services.hashing import short_id
 
 ASSET_BUCKET_BY_SOURCE = {
     "fleet": "pc",
@@ -164,9 +164,8 @@ class EnvelopeEntityMapper:
         return host_id
 
     def _build_alias(self, host_id: str, alias: str, source: str, alias_type: str, observed_at):
-        digest = hashlib.sha1(f"{host_id}|{source}|{alias_type}|{alias}".encode("utf-8")).hexdigest()
         return HostAlias(
-            alias_id=f"alias-{digest[:16]}",
+            alias_id=short_id(host_id, source, alias_type, alias, prefix="alias"),
             host_id=host_id,
             source=source,
             alias_type=alias_type,
@@ -393,8 +392,7 @@ class EnvelopeEntityMapper:
     def _scoped_host_id(self, bucket: str, identity: str) -> str:
         safe_identity = re.sub(r"[^A-Za-z0-9._-]+", "-", identity).strip("-._")
         if not safe_identity:
-            digest = hashlib.sha1(identity.encode("utf-8")).hexdigest()
-            safe_identity = digest[:16]
+            safe_identity = short_id(identity)
         if safe_identity.startswith(f"{bucket}-"):
             return safe_identity
         return f"{bucket}-{safe_identity}"

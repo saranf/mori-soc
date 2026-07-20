@@ -14,21 +14,20 @@ import hmac
 import json
 from typing import Any
 
+from mori_soc.services.hashing import CANONICALIZATION
+from mori_soc.services.hashing import sha256_hex as _sha256
+
 # 무결성 매니페스트 파일명 — 번들 콘텐츠의 'manifest.json'(내용)과 대소문자만 다르면 macOS/
 # Windows(대소문자 무시)에서 압축 해제 시 충돌·덮어씀. 소문자·비충돌 이름으로 고정(리뷰 #2).
 MANIFEST_NAME = "integrity-manifest.json"
-CANONICALIZATION = "mori-jcs-v1"   # JSON sort_keys + ensure_ascii=False + UTF-8
 HASH_ALGO = "sha256"
 SIG_ALGO = "hmac-sha256"
 
 
-def _sha256(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
-
-
 def _canonical(obj: Any) -> bytes:
-    """캐노니컬 JSON(정렬 키·비ASCII 보존·UTF-8). 같은 내용이면 항상 같은 바이트."""
-    return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    """캐노니컬 JSON(compact) — services.hashing 단일 소스에 위임(공통화 C1)."""
+    from mori_soc.services.hashing import canonical_json
+    return canonical_json(obj, compact=True)
 
 
 def _manifest_from_entries(
