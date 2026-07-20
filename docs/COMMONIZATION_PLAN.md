@@ -15,12 +15,18 @@
 | C4 ☑ | i18n 중복키·ko 블록에 영문 혼입(triplicated) | i18n | **정합성(한영)** | MAJOR·전역 |
 | C5 ◐ | ReportLab 문서 스캐폴딩·팔레트 재정의 | services | DRY·시각드리프트 | MAJOR·전역 |
 | C6 ◐ | PDF/ZIP/format 응답 셰이핑 반복 | routes | DRY | MAJOR·전역 |
-| C7 | Postgres 커넥션·upsert·컬럼목록 보일러플레이트 | repositories | DRY | MAJOR·전역 |
-| C8 | 프론트 공용 모듈 부재(dashboard↔console 바이트동일) | JS/CSS | DRY·유지비 | MAJOR·전역 |
-| C9 | 콜렉터 helper(str/id/time/severity)·Zabbix transport 중복 | collectors | DRY | MAJOR·국소 |
+| C7 ⏸ | Postgres 커넥션·upsert·컬럼목록 보일러플레이트 | repositories | DRY | MAJOR·전역 |
+| C8 ⏸ | 프론트 공용 모듈 부재(dashboard↔console 바이트동일) | JS/CSS | DRY·유지비 | MAJOR·전역 |
+| C9 ⏸ | 콜렉터 helper(str/id/time/severity)·Zabbix transport 중복 | collectors | DRY | MAJOR·국소 |
 | C10 ☑ | poller 임계치 프로퍼티 20종 재오버라이드 + `_env_flag` 중복 | pollers | DRY | MINOR·국소 |
 | C11 ◐ | text 유틸(esc·coerce·parse_iso·group_by) 산재 | services | DRY | MINOR·전역 |
-| C12 | 인메모리/템플릿/payloads 미세 중복 | repo/templates | DRY | MINOR·국소 |
+| C12 ⏸ | 인메모리/템플릿/payloads 미세 중복 | repo/templates | DRY | MINOR·국소 |
+
+> ⏸ = **환경/위험 사유로 보류.** 이 리포에서 안전하게 검증할 수단이 없어 보류한 항목:
+> - **C7**: state_postgres 재작성은 **실 Postgres E2E 검증 필수**인데 이 환경엔 DB 가 없어 pg 테스트가 skip 된다 → 영속 코드를 검증 없이 바꾸면 데이터 유실/키 깨짐 위험(모리다움 위반). 실 DB 붙는 CI/스테이징에서 진행 권장.
+> - **C8**: 프론트 공용화는 JS 테스트 러너·브라우저 QA 없이 검증 불가(회귀 위험). 별도 프론트 세션 권장.
+> - **C9**: `_make_id` 출력이 **영속 저장 키**라 콜렉터별 포맷(zabbix `zabbix-{p}-` vs fleet `{p}-`, vuln 전용 파트)이 다름 → 통합 시 키 포맷 변경=데이터 불연속. C1 처럼 바이트 동일 보장 + 실 수집 검증 후 진행.
+> - **C12**: payloads 의 vuln-action 필드 dict 이 사이트마다 필드/형변환이 미묘하게 달라(str 강제 유무) 통합 시 API JSON 이 바뀔 수 있음 → 이득 대비 위험이 커 보류.
 
 ---
 
