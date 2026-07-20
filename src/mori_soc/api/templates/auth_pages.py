@@ -15,33 +15,37 @@ def render_login_html(error: str = "", next_url: str = "/ui") -> str:
   <title data-i18n-doctitle="login.doctitle">MORI SOC 로그인</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ background: #f2f4f6; color: #191f28; font-family: 'Segoe UI', system-ui, sans-serif;
-           display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
-    .login-card {{ background: #ffffff; border: 1px solid #e5e8eb; border-radius: 18px; padding: 40px 36px;
-                   width: 100%; max-width: 400px; box-shadow: 0 1px 2px rgba(17,24,39,.06), 0 12px 32px rgba(17,24,39,.06); }}
+    body {{ background: #f2f4f6; color: #191f28; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+           display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; -webkit-font-smoothing: antialiased; }}
+    .login-card {{ background: #ffffff; border: 1px solid #e5e8eb; border-radius: 20px; padding: 40px 36px;
+                   width: 100%; max-width: 400px; box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 12px 32px rgba(15,23,42,.06); }}
     .login-logo {{ text-align: center; margin-bottom: 28px; }}
-    .login-logo h1 {{ font-size: 28px; font-weight: 800; color: #3182f6; letter-spacing: -0.5px; }}
-    .login-logo p {{ font-size: 13px; color: #191f28; margin-top: 6px; }}
-    label {{ display: block; font-size: 12px; color: #191f28; margin-bottom: 5px; font-weight: 600; letter-spacing: .5px; }}
-    input {{ width: 100%; background: #ffffff; border: 1px solid #e5e8eb; border-radius: 8px;
-             color: #191f28; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s; }}
-    input:focus {{ border-color: #3182f6; }}
+    .login-logo .mark {{ width: 52px; height: 52px; border-radius: 15px; background: #3182f6; color: #fff;
+                         display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800;
+                         margin: 0 auto 14px; letter-spacing: -1px; }}
+    .login-logo h1 {{ font-size: 24px; font-weight: 800; color: #191f28; letter-spacing: -0.5px; }}
+    .login-logo p {{ font-size: 13px; color: #8b95a1; margin-top: 6px; font-weight: 500; }}
+    label {{ display: block; font-size: 12px; color: #4e5968; margin-bottom: 6px; font-weight: 700; }}
+    input {{ width: 100%; background: #f7f8fa; border: 1px solid #e5e8eb; border-radius: 12px;
+             color: #191f28; padding: 12px 14px; font-size: 14.5px; outline: none; transition: border-color .15s, background .15s; }}
+    input:focus {{ border-color: #3182f6; background: #ffffff; }}
     .field {{ margin-bottom: 16px; }}
-    .btn {{ width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
-            cursor: pointer; transition: all .2s; margin-top: 8px; }}
+    .btn {{ width: 100%; padding: 13px; border: none; border-radius: 13px; font-size: 15px; font-weight: 800;
+            cursor: pointer; transition: filter .15s; margin-top: 8px; }}
     .btn-primary {{ background: #3182f6; color: #fff; }}
-    .btn-primary:hover {{ background: #3182f6; }}
-    .login-error {{ background: #fdecee; border: 1px solid #f04452; color: #f04452; border-radius: 8px;
+    .btn-primary:hover {{ filter: brightness(.96); }}
+    .login-error {{ background: #fdecee; border: 1px solid #f04452; color: #f04452; border-radius: 12px;
                     padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }}
-    .login-footer {{ text-align: center; margin-top: 20px; font-size: 13px; color: #191f28; }}
-    .login-footer a {{ color: #3182f6; text-decoration: none; }}
-    .status-line {{ font-size: 12px; color: #191f28; min-height: 18px; margin-top: 6px; text-align: center; }}
+    .login-footer {{ text-align: center; margin-top: 20px; font-size: 13px; color: #8b95a1; }}
+    .login-footer a {{ color: #3182f6; text-decoration: none; font-weight: 700; }}
+    .status-line {{ font-size: 12px; color: #8b95a1; min-height: 18px; margin-top: 6px; text-align: center; }}
   </style>
 </head>
 <body>
   {toggle_widget}
   <div class="login-card">
     <div class="login-logo">
+      <div class="mark">M</div>
       <h1>MORI SOC</h1>
       <p data-i18n="login.brand_sub">Audit-Ready Security Operations</p>
     </div>
@@ -92,7 +96,7 @@ def render_signup_request_html(success: bool = False) -> str:
     <div class="field"><label data-i18n="signup.label.username">로그인 아이디</label><input id="req_username" placeholder="hong" autocomplete="off" data-i18n-placeholder="signup.placeholder.username" /></div>
     <div class="field"><label data-i18n="signup.label.email">이메일</label><input id="req_email" type="email" placeholder="hong@company.com" /></div>
     <div class="field"><label data-i18n="signup.label.dept">부서</label><input id="req_dept" placeholder="보안팀" data-i18n-placeholder="signup.placeholder.dept" /></div>
-    <div class="field"><label data-i18n="signup.label.reason">요청 사유</label><textarea id="req_reason" style="width:100%;background:#ffffff;border:1px solid #e5e8eb;border-radius:8px;color:#191f28;padding:10px 14px;font-size:14px;min-height:80px;outline:none;" placeholder="업무 목적 및 필요 권한을 간략히 작성해주세요." data-i18n-placeholder="signup.placeholder.reason"></textarea></div>
+    <div class="field"><label data-i18n="signup.label.reason">요청 사유</label><textarea id="req_reason" style="min-height:80px" placeholder="업무 목적 및 필요 권한을 간략히 작성해주세요." data-i18n-placeholder="signup.placeholder.reason"></textarea></div>
     <button class="btn btn-primary" id="submit_btn" data-i18n="signup.button.submit">가입 요청 제출</button>
     <div class="status-line" id="status"></div>
     <div class="login-footer"><a href="/login" data-i18n="signup.back">← 로그인으로 돌아가기</a></div>
@@ -133,30 +137,33 @@ def render_signup_request_html(success: bool = False) -> str:
   <title data-i18n-doctitle="signup.doctitle">MORI SOC 가입 요청</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ background: #f2f4f6; color: #191f28; font-family: 'Segoe UI', system-ui, sans-serif;
-           display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }}
-    .login-card {{ background: #ffffff; border: 1px solid #e5e8eb; border-radius: 18px; padding: 40px 36px;
-                   width: 100%; max-width: 440px; box-shadow: 0 1px 2px rgba(17,24,39,.06), 0 12px 32px rgba(17,24,39,.06); }}
+    body {{ background: #f2f4f6; color: #191f28; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+           display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; -webkit-font-smoothing: antialiased; }}
+    .login-card {{ background: #ffffff; border: 1px solid #e5e8eb; border-radius: 20px; padding: 40px 36px;
+                   width: 100%; max-width: 440px; box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 12px 32px rgba(15,23,42,.06); }}
     .login-logo {{ text-align: center; margin-bottom: 24px; }}
-    .login-logo h1 {{ font-size: 24px; font-weight: 800; color: #3182f6; }}
-    label {{ display: block; font-size: 12px; color: #191f28; margin-bottom: 5px; font-weight: 600; letter-spacing: .5px; }}
-    input {{ width: 100%; background: #ffffff; border: 1px solid #e5e8eb; border-radius: 8px;
-             color: #191f28; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s; }}
-    input:focus {{ border-color: #3182f6; }}
+    .login-logo .mark {{ width: 48px; height: 48px; border-radius: 14px; background: #3182f6; color: #fff;
+                         display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800;
+                         margin: 0 auto 12px; letter-spacing: -1px; }}
+    .login-logo h1 {{ font-size: 22px; font-weight: 800; color: #191f28; letter-spacing: -0.5px; }}
+    label {{ display: block; font-size: 12px; color: #4e5968; margin-bottom: 6px; font-weight: 700; }}
+    input, textarea {{ width: 100%; background: #f7f8fa; border: 1px solid #e5e8eb; border-radius: 12px;
+             color: #191f28; padding: 12px 14px; font-size: 14.5px; outline: none; transition: border-color .15s, background .15s; font-family: inherit; }}
+    input:focus, textarea:focus {{ border-color: #3182f6; background: #ffffff; }}
     .field {{ margin-bottom: 14px; }}
-    .btn {{ width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
-            cursor: pointer; transition: all .2s; margin-top: 4px; }}
+    .btn {{ width: 100%; padding: 13px; border: none; border-radius: 13px; font-size: 15px; font-weight: 800;
+            cursor: pointer; transition: filter .15s; margin-top: 4px; }}
     .btn-primary {{ background: #3182f6; color: #fff; }}
-    .btn-primary:hover {{ background: #3182f6; }}
-    .login-footer {{ text-align: center; margin-top: 20px; font-size: 13px; }}
-    .login-footer a {{ color: #3182f6; text-decoration: none; }}
+    .btn-primary:hover {{ filter: brightness(.96); }}
+    .login-footer {{ text-align: center; margin-top: 20px; font-size: 13px; color: #8b95a1; }}
+    .login-footer a {{ color: #3182f6; text-decoration: none; font-weight: 700; }}
     .status-line {{ font-size: 12px; color: #f04452; min-height: 18px; margin-top: 6px; text-align: center; }}
   </style>
 </head>
 <body>
   {toggle_widget}
   <div class="login-card">
-    <div class="login-logo"><h1 data-i18n="signup.brand_title">MORI SOC 가입 요청</h1></div>
+    <div class="login-logo"><div class="mark">M</div><h1 data-i18n="signup.brand_title">MORI SOC 가입 요청</h1></div>
     {body_html}
   </div>
   {i18n_runtime}
