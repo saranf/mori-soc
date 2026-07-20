@@ -108,6 +108,12 @@
     .guide-dialog-head h3 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
     .guide-dialog-copy { color: var(--c-ink-2); font-size: 14px; line-height: 1.5; }
     .dialog-body { padding: 0 22px 22px; max-height: 60vh; overflow: auto; }
+    /* 공용 접이식 드로어(공통화) — .card details 헤더에 일관된 토스 셰브런(▸). */
+    details.card > summary { list-style: none; position: relative; }
+    details.card > summary::-webkit-details-marker { display: none; }
+    details.card > summary::after { content: "▸"; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); color: var(--c-ink-3); font-size: 12px; transition: transform .15s ease; }
+    details.card[open] > summary::after { transform: translateY(-50%) rotate(90deg); }
+    @media (prefers-reduced-motion: reduce) { details.card > summary::after { transition: none; } }
     /* Admin tabs */
     .atab-panel { display: none; margin-top: 16px; }
     .atab-panel.active { display: block; }
