@@ -16,6 +16,7 @@ from typing import Any
 from fastapi import HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 
+from mori_soc.api.http_helpers import pdf_response
 from mori_soc.api.routes.context import RouteContext
 from mori_soc.services.csv_export import csv_streaming_response
 from mori_soc.services.data_flow import (
@@ -495,9 +496,7 @@ def register_privacy(ctx: RouteContext) -> None:
                                        gaps=meta.get("gaps") or [], summary=meta.get("summary") or {})
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
-        ts = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        return Response(content=pdf, media_type="application/pdf",
-                        headers={"Content-Disposition": f'attachment; filename="mori-personal-data-flow-{ts}.pdf"'})
+        return pdf_response(pdf, "mori-personal-data-flow")
 
     # ── 3.x 통제 증적 승격 ─────────────────────────────────────────────────────
     @app.post("/privacy/data-flow/promote-evidence", tags=["Privacy"])

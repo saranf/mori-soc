@@ -14,7 +14,7 @@
 | C3 ☑ | RBAC 역할추출·403 인라인 중복(공용 ctx 미채택) | routes | **보안** | CRITICAL·전역 |
 | C4 ☑ | i18n 중복키·ko 블록에 영문 혼입(triplicated) | i18n | **정합성(한영)** | MAJOR·전역 |
 | C5 ◐ | ReportLab 문서 스캐폴딩·팔레트 재정의 | services | DRY·시각드리프트 | MAJOR·전역 |
-| C6 | PDF/ZIP/format 응답 셰이핑 반복 | routes | DRY | MAJOR·전역 |
+| C6 ◐ | PDF/ZIP/format 응답 셰이핑 반복 | routes | DRY | MAJOR·전역 |
 | C7 | Postgres 커넥션·upsert·컬럼목록 보일러플레이트 | repositories | DRY | MAJOR·전역 |
 | C8 | 프론트 공용 모듈 부재(dashboard↔console 바이트동일) | JS/CSS | DRY·유지비 | MAJOR·전역 |
 | C9 | 콜렉터 helper(str/id/time/severity)·Zabbix transport 중복 | collectors | DRY | MAJOR·국소 |
@@ -56,7 +56,7 @@
 
 ### Phase 2 — 구조 백엔드 (MAJOR)
 - **C5 ◐ 부분** `pdf.py` 에 `PALETTE`(6색+중립)·공용 `esc`(html.escape)·`new_doc`(SimpleDocTemplate) 신설, `pdf_table` 이 내부 `_esc`/하드코딩 hex 대신 이를 사용(단일 소스화). **잔여(보류):** reports·control_catalog 는 슬레이트색(#1e293b/#cbd5e1)·soa/data_flow 는 자체 TableStyle 이라, 이를 PALETTE/new_doc 로 흡수하면 감사 PDF **시각이 바뀐다** → 캐노니컬 6 hex(토스 vs #111827 계열) 확정이 필요한 **디자인 결정**이므로 별도 처리로 분리. (커밋 후 PDF 렌더 테스트 통과.)
-- **C6** `http_helpers`·`zip_bundle_response`로 PDF 4곳·ZIP 3곳·format 분기 2곳 통일.
+- **C6 ◐ 부분** `api/http_helpers.py` 신설(`pdf_response`) — PDF 응답 4곳(compliance evidence/SoA/report·privacy data-flow) 통일, 수기 media_type+Content-Disposition+타임스탬프 삭제. test_http_helpers 추가, 507 통과. **잔여:** ZIP 3곳(`zip_bundle_response`)·`call_or_503` 은 사이트별 구조(BundleWriter 스트리밍 vs write_bundle_with_manifest)·예외처리가 달라 별도 처리.
 - **C7** `_pg_common` + `_NORMALIZED_GOV`가 이미 증명한 spec 방식을 전 store로 일반화(save/load 15쌍), `postgres.py` isinstance 250줄 → 레지스트리, 인메모리 store 테이블화.
 
 ### Phase 3 — 콜렉터·폴러 (MAJOR·국소)

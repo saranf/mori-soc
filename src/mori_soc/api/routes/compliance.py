@@ -15,6 +15,7 @@ from typing import Any
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 
+from mori_soc.api.http_helpers import pdf_response
 from mori_soc.api.payloads import build_crosscheck_payload, build_pdca_payload
 from mori_soc.api.routes.context import RouteContext
 from mori_soc.services.csv_export import (
@@ -931,8 +932,7 @@ def register_compliance(ctx: RouteContext) -> None:
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         safe = control_id.replace("/", "_")
-        return StreamingResponse(iter([pdf]), media_type="application/pdf",
-                                 headers={"Content-Disposition": f'attachment; filename="mori-evidence-{safe}.pdf"'})
+        return pdf_response(pdf, f"mori-evidence-{safe}")
 
     @app.get("/controls/detail/{control_id}/evidence.csv", tags=["Compliance"])
     def control_evidence_csv_route(control_id: str, request: Request) -> Any:
@@ -1521,8 +1521,7 @@ def register_compliance(ctx: RouteContext) -> None:
             pdf = soa_to_pdf(rows, soa_summary(rows))
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"SoA PDF unavailable: {exc}") from exc
-        return StreamingResponse(iter([pdf]), media_type="application/pdf",
-                                 headers={"Content-Disposition": 'attachment; filename="mori-soa.pdf"'})
+        return pdf_response(pdf, "mori-soa")
 
     @app.delete("/controls/detail/{control_id}/evidence-records/{evidence_id}", tags=["Compliance"])
     def delete_evidence_record(control_id: str, evidence_id: str, request: Request) -> dict[str, Any]:
@@ -1626,13 +1625,7 @@ def register_compliance(ctx: RouteContext) -> None:
                 raise HTTPException(status_code=503, detail=str(exc)) from exc
             except Exception as exc:
                 raise HTTPException(status_code=500, detail=f"PDF rendering failed: {exc}") from exc
-            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            filename = f"mori-{report_type.replace('_', '-')}-{timestamp}.pdf"
-            return StreamingResponse(
-                iter([pdf_bytes]),
-                media_type="application/pdf",
-                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-            )
+            return pdf_response(pdf_bytes, f"mori-{report_type.replace('_', '-')}")
         return report
 
     # 부팅 시 일정 도래하면 일괄 스냅샷(재기동으로 월간 트리거 커버). 실패해도 앱 기동 계속.
