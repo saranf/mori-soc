@@ -20,20 +20,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); this is an alpha
   그라디언트 전면 제거. 보조 텍스트를 회색(#8b95a1)으로 위계 복구.
 - **증적 PDF/SVG 토스 팔레트** — 개인정보 처리흐름표·SoA·공용 PDF(`pdf.py`·`data_flow.py`·`soa.py`)
   색을 토스 중성색으로(흐름표 6색 의미매핑 수집파·저장초·이용노·파기빨 보존).
-- **Swagger 기능별 분류** — `openapi_tags` 16개 그룹 설명·논리순서(핵심 통제·증적 → 버티컬 → 증적소스 →
-  운영) + `swagger_ui_parameters`(docExpansion none·filter). 엔드포인트 기존 `tags=` 유지.
+- **Swagger 기능별 분류 + 토스 테마 `/docs`** — `openapi_tags` 16개 그룹 설명·논리순서(핵심 통제·증적 →
+  버티컬 → 증적소스 → 운영) + `swagger_ui_parameters`(docExpansion none·filter). `docs_url=None` + 커스텀
+  라우트로 토스 CSS 주입(topbar 숨김·method별 6색·라운드 카드·시스템 폰트). openapi.json/redoc 무손상.
 
 ### Added
 - 공용 컴포넌트(공통화): `.stat-mini`(미니 통계 타일 ×10)·`.detail-link`(상세 링크 ×4)·`.dl-pill`
   (CSV/PDF/ZIP 다운로드 필 ×6) — 반복 인라인 스타일 대체.
 - 심사 준비 준비율 링 상시표시(데이터 0건이어도 토스 링 + 빈 상태 카피).
+- 심사 준비 리포트 다운로드 · 관리자 시스템 진단을 접이식 `<details>` 드로어로(운영 우선), 공용 셰브런
+  어포던스. 입력·셀렉트 배경 토스 서피스 정합(50개).
 - 회귀 가드 테스트: `test_toss_palette.py`(6색 밖/구팔레트/그라디언트 유입 차단 — UI + 증적 PDF 생성기),
-  `test_openapi_tags.py`(라우트 태그의 그룹 메타 완전성).
+  `test_openapi_tags.py`(라우트 태그 그룹 메타 완전성), `test_swagger_docs.py`(토스 `/docs` 200 + 태그 순서 런타임).
+  **전체 512 테스트 그린**(fastapi/reportlab venv 설치 후 실행).
 
 ### 남은 작업 (정직 표기)
-- 뷰별 "한눈에" 정보설계(IA) 재구성은 **미완** — 색·컴포넌트만 교체, 패널 구조는 기존 유지. 무엇을
-  앞세우고 접을지는 제품 판단 + 브라우저 눈검증 필요.
-- 토스 테마 `/docs` 커스텀 라우트는 부팅 안전상 보류(테스트 환경에 fastapi 필요). 계획: `docs/redesign-toss-plan.md`.
+- 뷰별 "한눈에" 정보설계(IA) 재구성은 **부분 완료** — 색·컴포넌트·주요 접이식 IA는 반영, 각 뷰의 세밀한
+  카드/열 레이아웃 재배치는 브라우저 눈검증(디자인 판단)이 필요해 남김. 계획: `docs/redesign-toss-plan.md`.
 
 ## [0.6.0] — Control-to-Evidence 운영 플랫폼 + 감사 무결성 강화
 
