@@ -295,6 +295,33 @@ MORI_OPENAPI_TAGS = [
     {"name": "Settings", "description": "설정 — 소스 연결·가드레일·정기 증적 스냅샷."},
 ]
 
+# 토스 테마 Swagger UI(#redesign-toss) — 기본 /docs 에 주입할 CSS. 6색만 사용(모리다움).
+# CDN swagger CSS 뒤에 </head> 앞으로 주입 → 레이아웃 유지하며 색·타이포만 토스화.
+_TOSS_SWAGGER_CSS = """<style>
+  body{background:#f2f4f6}
+  .swagger-ui .topbar{display:none}
+  .swagger-ui,.swagger-ui .info .title,.swagger-ui .opblock-tag,.swagger-ui .opblock .opblock-summary-description{
+    font-family:-apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Segoe UI",sans-serif}
+  .swagger-ui .info .title{color:#191f28;font-weight:800;letter-spacing:-.02em}
+  .swagger-ui .info .description,.swagger-ui .opblock-description-wrapper p{color:#4e5968}
+  .swagger-ui .opblock-tag{color:#191f28;font-weight:800;border-bottom:1px solid #e5e8eb}
+  .swagger-ui .opblock-tag small{color:#8b95a1;font-weight:600}
+  .swagger-ui .opblock{border-radius:14px;box-shadow:0 1px 3px rgba(15,23,42,.05);margin:0 0 12px}
+  .swagger-ui .opblock.opblock-get{border-color:#3182f6;background:rgba(49,130,246,.04)}
+  .swagger-ui .opblock.opblock-get .opblock-summary-method{background:#3182f6}
+  .swagger-ui .opblock.opblock-post{border-color:#15c47e;background:rgba(21,196,126,.05)}
+  .swagger-ui .opblock.opblock-post .opblock-summary-method{background:#15c47e}
+  .swagger-ui .opblock.opblock-delete{border-color:#f04452;background:rgba(240,68,82,.04)}
+  .swagger-ui .opblock.opblock-delete .opblock-summary-method{background:#f04452}
+  .swagger-ui .opblock.opblock-patch .opblock-summary-method{background:#f5a623}
+  .swagger-ui .btn.execute{background:#3182f6;border-color:#3182f6}
+  .swagger-ui .btn.authorize{color:#3182f6;border-color:#3182f6}
+  .swagger-ui .btn.authorize svg{fill:#3182f6}
+  .swagger-ui .scheme-container{background:#ffffff;box-shadow:none;border-bottom:1px solid #e5e8eb}
+  .swagger-ui select,.swagger-ui input[type=text]{border-radius:8px;border-color:#e5e8eb}
+  .swagger-ui .filter .operation-filter-input{border-radius:10px;border-color:#e5e8eb}
+</style>"""
+
 
 def create_app(
     service: QueryService | None = None,
@@ -318,6 +345,8 @@ def create_app(
         version=_app_version,
         description=MORI_API_DESCRIPTION,
         openapi_tags=MORI_OPENAPI_TAGS,
+        # 기본 /docs 비활성 → 아래에서 토스 테마 주입본을 직접 서빙(#redesign-toss).
+        docs_url=None,
         # Swagger UI 사용성: 태그 그룹만 펼치고(엔드포인트는 접힘), 상단 검색·필터 노출.
         # tagsSorter 미지정 → openapi_tags 에 정의한 논리적 그룹 순서를 그대로 유지.
         swagger_ui_parameters={
@@ -326,6 +355,20 @@ def create_app(
             "displayRequestDuration": True,
         },
     )
+
+    # 토스 테마 Swagger UI — 기본 CSS 뒤에 6색 오버라이드 주입. openapi.json/redoc 는 그대로.
+    from fastapi.openapi.docs import get_swagger_ui_html as _swagger_html
+    from starlette.responses import HTMLResponse as _HTMLResp
+
+    @app.get("/docs", include_in_schema=False)
+    def _mori_swagger_ui() -> Any:  # noqa: ANN401
+        resp = _swagger_html(
+            openapi_url=app.openapi_url or "/openapi.json",
+            title=f"{app.title} — API",
+            swagger_ui_parameters=app.swagger_ui_parameters,
+        )
+        html = resp.body.decode("utf-8").replace("</head>", _TOSS_SWAGGER_CSS + "</head>")
+        return _HTMLResp(html)
 
     # 정적 자산(#34 UI 분리): CSS 등 보간 없는 자산을 별도 파일로 서빙(/static, 무인증).
     try:
