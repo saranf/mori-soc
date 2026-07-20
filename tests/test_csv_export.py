@@ -45,6 +45,49 @@ class CsvExportTests(unittest.TestCase):
         self.assertEqual(parsed[1][4], "normal")      # 일반 값은 그대로
 
 
+class SafeWriterTests(unittest.TestCase):
+    """손수 writer 를 쓰던 빌더도 수식 인젝션 무력화를 거치는지(공통화 C2)."""
+
+    def test_safe_writer_defuses_cells(self) -> None:
+        import io
+
+        from mori_soc.services.csv_export import safe_writer
+        buf = io.StringIO()
+        w = safe_writer(buf)
+        w.writerow(["=SUM(A1)", "-5", "normal", "@x"])
+        line = buf.getvalue().strip()
+        self.assertIn("'=SUM(A1)", line)   # 위험 셀 무력화
+        self.assertIn("'@x", line)
+        self.assertIn("-5", line)          # 음수는 숫자라 그대로
+
+    def test_safe_dict_writer_defuses_values(self) -> None:
+        import io
+
+        from mori_soc.services.csv_export import safe_dict_writer
+        buf = io.StringIO()
+        w = safe_dict_writer(buf, ["name"])
+        w.writeheader()
+        w.writerow({"name": "=cmd|' /C calc'!A0"})
+        self.assertIn("'=cmd", buf.getvalue())
+
+    def test_csv_text_response_has_bom_and_filename(self) -> None:
+        from mori_soc.services.csv_export import csv_text_response
+        resp = csv_text_response("a,b\n1,2\n", "mori-test", timestamp="20260720T000000Z")
+        self.assertTrue(resp.body.startswith("﻿".encode("utf-8")))
+        self.assertIn("mori-test-20260720T000000Z.csv", resp.headers["content-disposition"])
+
+    def test_report_to_csv_defuses_malicious_hostname(self) -> None:
+        # 이전엔 손수 DictWriter 라 무력화 누락 — 이제 safe_writer 경유로 방어.
+        from mori_soc.services.reports import report_to_csv
+        report = {
+            "report_type": "asset_inspection",
+            "hosts": [{"host_id": "h1", "hostname": "=IMPORTXML(1)", "platform": "",
+                       "primary_ip": "", "status": "online", "risk_score": 0,
+                       "last_seen_at": "", "mapped_sources": [], "source_count": 0}],
+        }
+        self.assertIn("'=IMPORTXML(1)", report_to_csv(report))
+
+
 class CsvExportCapTests(unittest.TestCase):
     def test_export_row_cap_truncates(self) -> None:
         import os

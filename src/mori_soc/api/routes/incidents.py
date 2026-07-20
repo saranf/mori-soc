@@ -12,10 +12,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException, Request
-from fastapi.responses import StreamingResponse
 
 from mori_soc.api.payloads import _isoformat
 from mori_soc.api.routes.context import RouteContext
+from mori_soc.services.csv_export import csv_streaming_response
 
 
 def register_incidents(ctx: RouteContext) -> None:
@@ -28,8 +28,6 @@ def register_incidents(ctx: RouteContext) -> None:
 
     @app.get("/incidents", tags=["Incidents"])
     def incidents_list(date_from: str = "", date_to: str = "", search: str = "", format: str = "json") -> Any:
-        import csv as csv_mod
-        import io
         all_items = list(incidents.values())
         # Date filtering on created_at
         if date_from:
@@ -60,27 +58,18 @@ def register_incidents(ctx: RouteContext) -> None:
                 or kw in i.get("status", "").lower()
             ]
         if format == "csv":
-            buf = io.StringIO()
             fieldnames = ["인시던트ID", "제목", "상태", "생성일시", "수정일시", "상태변경일시", "경보수", "노트수"]
-            writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
-            writer.writeheader()
-            for inc in all_items:
-                writer.writerow({
-                    "인시던트ID": inc.get("incident_id", ""),
-                    "제목": inc.get("title", ""),
-                    "상태": inc.get("status", ""),
-                    "생성일시": inc.get("created_at", ""),
-                    "수정일시": inc.get("updated_at", ""),
-                    "상태변경일시": inc.get("status_updated_at", ""),
-                    "경보수": len(inc.get("alert_ids", [])),
-                    "노트수": len(inc.get("notes", [])),
-                })
-            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            return StreamingResponse(
-                iter([buf.getvalue()]),
-                media_type="text/csv; charset=utf-8",
-                headers={"Content-Disposition": f'attachment; filename="mori-incidents-{timestamp}.csv"'},
-            )
+            rows_csv = [{
+                "인시던트ID": inc.get("incident_id", ""),
+                "제목": inc.get("title", ""),
+                "상태": inc.get("status", ""),
+                "생성일시": inc.get("created_at", ""),
+                "수정일시": inc.get("updated_at", ""),
+                "상태변경일시": inc.get("status_updated_at", ""),
+                "경보수": len(inc.get("alert_ids", [])),
+                "노트수": len(inc.get("notes", [])),
+            } for inc in all_items]
+            return csv_streaming_response(rows_csv, {k: k for k in fieldnames}, "mori-incidents")
         # Enrich incidents with related host/owner info
         try:
             store = get_query_service().store

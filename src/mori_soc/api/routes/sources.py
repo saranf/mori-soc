@@ -17,6 +17,7 @@ from fastapi.responses import StreamingResponse
 
 from mori_soc.api.payloads import build_assets_payload
 from mori_soc.api.routes.context import RouteContext
+from mori_soc.services.csv_export import csv_streaming_response
 
 # 인제스트/증적 영속화 실패는 절대 조용히 삼키지 않는다(증적·개인정보 유실 은폐 방지).
 _log = logging.getLogger("mori_soc.ingest")
@@ -225,21 +226,8 @@ def register_sources(ctx: RouteContext) -> None:
         if severity != "all":
             rows = [r for r in rows if (r.get(severity, 0) or 0) > 0]
         if format == "csv":
-            import csv as csv_mod
-            import io
-            buf = io.StringIO()
-            if rows:
-                _trivy_header_map = {"hostname": "호스트명", "critical": "심각", "high": "높음", "medium": "중간", "low": "낮음", "info": "정보", "total": "합계", "latest_cve": "최근CVE", "action_plan": "조치계획", "action_target_date": "목표완료일"}
-                fieldnames = list(_trivy_header_map.keys())
-                writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
-                writer.writerow(_trivy_header_map)
-                writer.writerows(rows)
-            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            return StreamingResponse(
-                iter([buf.getvalue()]),
-                media_type="text/csv; charset=utf-8",
-                headers={"Content-Disposition": f'attachment; filename="mori-trivy-vulns-{timestamp}.csv"'},
-            )
+            _trivy_header_map = {"hostname": "호스트명", "critical": "심각", "high": "높음", "medium": "중간", "low": "낮음", "info": "정보", "total": "합계", "latest_cve": "최근CVE", "action_plan": "조치계획", "action_target_date": "목표완료일"}
+            return csv_streaming_response(rows, _trivy_header_map, "mori-trivy-vulns")
         return {"source": "trivy", "severity_filter": severity, "count": len(rows), "by_host": rows}
 
     # ── Trivy 리포트 HTTP 인제스트 (원격 엔드포인트 → MORI 자동 배송) ──────────
@@ -693,8 +681,6 @@ def register_sources(ctx: RouteContext) -> None:
         코드 경로·스니펫·메시지가 담기므로 증적 조회와 동일하게 admin·security 전용.
         repo/commit 쿼리로 특정 스캔만 필터 가능(스캔 이력의 '결과 다운로드'). 없으면 전체.
         """
-        from mori_soc.services.csv_export import csv_streaming_response
-
         if ctx.auth_enabled:
             role = _session_role(request)
             if role not in ("admin", "security"):

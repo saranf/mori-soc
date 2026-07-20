@@ -6,9 +6,10 @@ MORI다움: 새 데이터를 만들지 않고 **이미 있는 것**(카탈로그
 """
 from __future__ import annotations
 
-import csv
 import io
 from typing import Any
+
+from mori_soc.services.csv_export import safe_writer
 
 # control_status.status(한글) → SoA 이행상태 라벨(영문)
 _IMPL_EN = {
@@ -68,7 +69,7 @@ def soa_summary(rows: list[dict[str, Any]]) -> dict[str, int]:
 def soa_to_csv(rows: list[dict[str, Any]]) -> str:
     """SoA CSV (BOM 없이; 라우트에서 BOM 부착)."""
     buf = io.StringIO()
-    w = csv.writer(buf)
+    w = safe_writer(buf)
     w.writerow(["Control", "Title", "Applicable", "Implementation", "Justification",
                 "Owner", "Evidence sources", "Reviewed"])
     for r in rows:

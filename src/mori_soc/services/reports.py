@@ -10,12 +10,12 @@
 
 from __future__ import annotations
 
-import csv
 import io
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from mori_soc.services.csv_export import safe_dict_writer, safe_writer
 from mori_soc.services.pdf import get_pdf_font as _get_pdf_font
 from mori_soc.services.pdf import pdf_table  # re-export (하위호환)
 from mori_soc.services.query_service import QueryService
@@ -460,7 +460,7 @@ def report_to_csv(report: dict[str, Any]) -> str:
         _write_monthly_csv(buf, report)
     else:
         # Fallback: write summary as key-value
-        writer = csv.writer(buf)
+        writer = safe_writer(buf)
         writer.writerow(["key", "value"])
         for k, v in report.get("summary", {}).items():
             writer.writerow([k, str(v)])
@@ -474,7 +474,7 @@ def _write_asset_csv(buf: io.StringIO, report: dict) -> None:
     header_map = {"host_id": "호스트ID", "hostname": "호스트명", "platform": "플랫폼",
                   "primary_ip": "IP주소", "status": "상태", "risk_score": "위험점수",
                   "last_seen_at": "최종확인일시", "mapped_sources": "매핑소스", "source_count": "소스수"}
-    writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
+    writer = safe_dict_writer(buf, fieldnames, extrasaction="ignore")
     writer.writerow(header_map)
     for h in report.get("hosts", []):
         row = {**h, "mapped_sources": ",".join(h.get("mapped_sources", []))}
@@ -489,7 +489,7 @@ def _write_account_csv(buf: io.StringIO, report: dict) -> None:
                   "email": "이메일", "department": "부서", "status": "상태",
                   "is_privileged": "특권여부", "last_login_at": "최종로그인",
                   "password_last_set": "비밀번호설정일", "privilege_count": "권한수", "groups": "그룹"}
-    writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
+    writer = safe_dict_writer(buf, fieldnames, extrasaction="ignore")
     writer.writerow(header_map)
     for a in report.get("accounts", []):
         row = {**a, "groups": ",".join(a.get("groups", []))}
@@ -502,7 +502,7 @@ def _write_log_collection_csv(buf: io.StringIO, report: dict) -> None:
     header_map = {"source": "소스", "status": "상태", "last_sync_at": "최종동기화",
                   "last_success_at": "최종성공", "records_collected": "수집레코드수",
                   "entities_saved": "저장엔티티수", "host_count": "호스트수", "message": "메시지"}
-    writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
+    writer = safe_dict_writer(buf, fieldnames, extrasaction="ignore")
     writer.writerow(header_map)
     writer.writerows(report.get("sources", []))
 
@@ -512,7 +512,7 @@ def _write_vulnerability_csv(buf: io.StringIO, report: dict) -> None:
     header_map = {"host_id": "호스트ID", "hostname": "호스트명", "critical": "심각",
                   "high": "높음", "medium": "중간", "low": "낮음", "info": "정보",
                   "total": "합계", "cves": "CVE목록"}
-    writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
+    writer = safe_dict_writer(buf, fieldnames, extrasaction="ignore")
     writer.writerow(header_map)
     for row in report.get("by_host", []):
         r = {**row, "cves": ",".join(row.get("cves", []))}
@@ -540,7 +540,7 @@ def _write_risk_register_csv(buf: io.StringIO, report: dict) -> None:
     header_map = ["CVE", "자산(호스트)", "자산중요도", "심각도", "영향도", "발생가능성",
                   "위험점수", "위험등급", "위험처리", "승인자", "잔여위험",
                   "재평가예정일", "평가자", "평가일시", "상태"]
-    writer = csv.writer(buf)
+    writer = safe_writer(buf)
     writer.writerow(header_map)
     for r in report.get("rows", []):
         writer.writerow([
@@ -551,7 +551,7 @@ def _write_risk_register_csv(buf: io.StringIO, report: dict) -> None:
 
 def _write_monthly_csv(buf: io.StringIO, report: dict) -> None:
     """월간 운영 리포트를 섹션별 key-value CSV로 출력."""
-    writer = csv.writer(buf)
+    writer = safe_writer(buf)
     writer.writerow(["섹션", "지표", "값"])
     for section_key in ("assets", "alerts", "vulnerabilities", "collection", "compliance", "identity"):
         section = report.get(section_key, {})

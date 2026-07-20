@@ -16,6 +16,8 @@ import pathlib
 from datetime import datetime, timezone
 from typing import Any
 
+from mori_soc.services.csv_export import safe_writer
+
 _DATA_PATH = pathlib.Path(__file__).resolve().parent.parent / "data" / "controls_catalog.json"
 
 # lite = MORI 코어 + Zabbix + Trivy / full = + Wazuh·Fleet·Loki (README 로드맵 기준)
@@ -387,10 +389,9 @@ def control_evidence_csv(control_id: str, gaps: dict[str, Any] | None = None,
                                   catalog=catalog, evidence_records=evidence_records)
     if detail is None:
         return None
-    import csv as csv_mod
     c = detail["control"]
     buf = io.StringIO()
-    w = csv_mod.writer(buf)
+    w = safe_writer(buf)
     w.writerow(["control_id", "title_ko", "title_en", "framework", "kind", "label",
                 "detail", "collected_by", "collected_at", "reference"])
     cid, tko, ten = c.get("id", ""), c.get("title_ko", ""), c.get("title_en", "")
@@ -418,10 +419,9 @@ def control_evidence_csv(control_id: str, gaps: dict[str, Any] | None = None,
 
 def evidence_document_csv(doc: dict[str, Any]) -> str:
     """증적 문서 CSV — 자산 인벤토리 표 + 문서화된 증적 표(엑셀에서 두 표로 읽힘)."""
-    import csv as csv_mod
     c = doc.get("control", {})
     buf = io.StringIO()
-    w = csv_mod.writer(buf)
+    w = safe_writer(buf)
     w.writerow(["# 통제", c.get("id", ""), c.get("title_ko", "")])
     w.writerow(["# 프레임워크", c.get("framework", ""), f"이행상태: {doc.get('status', '')}"])
     w.writerow(["# 생성", (doc.get("generated_at") or "")[:19], f"수집자: {doc.get('collector', '')}"])

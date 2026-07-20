@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import csv
 import io
 import json
 from collections import Counter, defaultdict
@@ -22,6 +21,7 @@ from mori_soc.models import (
     SourceSync,
     Vulnerability,
 )
+from mori_soc.services.csv_export import safe_dict_writer
 
 from .query_catalog import get_template_query
 
@@ -528,7 +528,7 @@ def query_response_to_csv(response: QueryResponse) -> str:
                 fieldnames.append(key)
 
     buffer = io.StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=fieldnames, lineterminator="\n")
+    writer = safe_dict_writer(buffer, fieldnames, lineterminator="\n")
     writer.writeheader()
     writer.writerows(rows)
     return buffer.getvalue()

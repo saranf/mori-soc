@@ -16,9 +16,10 @@ import logging
 import os
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from fastapi.responses import StreamingResponse
+if TYPE_CHECKING:
+    from fastapi.responses import Response, StreamingResponse
 
 _log = logging.getLogger("mori_soc.export")
 
@@ -64,6 +65,63 @@ def _defuse(value: Any) -> Any:
     return value
 
 
+# 손수 csv.writer/DictWriter 를 쓰던 다중섹션 CSV 빌더(reports·control_catalog·soa 등)도
+# 반드시 셀 무력화를 거치도록, 표준 writer 를 감싸 writerow 시 _defuse 를 자동 적용한다(공통화 C2).
+defuse_cell = _defuse   # 공개 별칭 — 개별 셀을 직접 무력화해야 하는 호출부용.
+
+
+class SafeWriter:
+    """csv.writer 래퍼 — writerow/writerows 시 각 셀을 _defuse 한다."""
+
+    def __init__(self, buf: "io.StringIO", **kwargs: Any) -> None:
+        self._w = _csv.writer(buf, **kwargs)
+
+    def writerow(self, row: Iterable[Any]) -> None:
+        self._w.writerow([_defuse(c) for c in row])
+
+    def writerows(self, rows: Iterable[Iterable[Any]]) -> None:
+        for row in rows:
+            self.writerow(row)
+
+
+class SafeDictWriter:
+    """csv.DictWriter 래퍼 — writeheader/writerow/writerows 시 각 값을 _defuse 한다."""
+
+    def __init__(self, buf: "io.StringIO", fieldnames: Iterable[str], **kwargs: Any) -> None:
+        self._w = _csv.DictWriter(buf, fieldnames=list(fieldnames), **kwargs)
+
+    def writeheader(self) -> None:
+        self._w.writeheader()
+
+    def writerow(self, row: Mapping[str, Any]) -> None:
+        self._w.writerow({k: _defuse(v) for k, v in row.items()})
+
+    def writerows(self, rows: Iterable[Mapping[str, Any]]) -> None:
+        for row in rows:
+            self.writerow(row)
+
+
+def safe_writer(buf: "io.StringIO", **kwargs: Any) -> SafeWriter:
+    return SafeWriter(buf, **kwargs)
+
+
+def safe_dict_writer(buf: "io.StringIO", fieldnames: Iterable[str], **kwargs: Any) -> SafeDictWriter:
+    return SafeDictWriter(buf, fieldnames, **kwargs)
+
+
+def csv_text_response(text: str, filename_prefix: str, *, timestamp: str | None = None) -> "Response":
+    """이미 만들어진 CSV 문자열 → BOM 붙인 다운로드 응답(`<prefix>-<UTC>.csv`).
+
+    엑셀에서 한글이 깨지지 않도록 UTF-8 BOM 을 붙인다. 문자열은 **빌드 시점에 이미 무력화**된
+    것이어야 한다(safe_writer/render_csv 사용) — 완성된 문자열은 재파싱 없이 셀 무력화가 불가.
+    """
+    from fastapi.responses import Response
+    ts = timestamp or datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    body = ("\ufeff" + text).encode("utf-8")
+    headers = {"Content-Disposition": f'attachment; filename="{filename_prefix}-{ts}.csv"'}
+    return Response(content=body, media_type="text/csv; charset=utf-8-sig", headers=headers)
+
+
 def render_csv(rows: Iterable[Mapping[str, Any]], header_map: Mapping[str, str]) -> str:
     """행 목록 → CSV 문자열. header_map = {필드키: 표시헤더}. 표시헤더가 첫 줄.
 
@@ -84,11 +142,12 @@ def csv_streaming_response(
     filename_prefix: str,
     *,
     timestamp: str | None = None,
-) -> StreamingResponse:
+) -> "StreamingResponse":
     """UI 공통 CSV 다운로드 응답 — `<prefix>-<UTC타임스탬프>.csv` 첨부.
 
     행이 상한(MORI_MAX_EXPORT_ROWS)을 넘으면 초과분을 제외하고 헤더로 알린다(잘림 표시).
     """
+    from fastapi.responses import StreamingResponse
     capped_rows, truncated = _cap_rows(rows)
     body = render_csv(capped_rows, header_map)
     ts = timestamp or datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")

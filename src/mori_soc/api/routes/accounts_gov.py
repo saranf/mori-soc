@@ -8,19 +8,18 @@
 """
 from __future__ import annotations
 
-import io
 import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException, Request
-from fastapi.responses import StreamingResponse
 
 from mori_soc.api.auth import _ALL_ROLES, parse_account_view_roles
 from mori_soc.api.payloads import _isoformat
 from mori_soc.api.routes.context import RouteContext
 from mori_soc.services.account_recon import FINDING_KINDS, normalize_account, reconcile
+from mori_soc.services.csv_export import csv_streaming_response
 
 # 계정 수집 설정(ui_settings, schema/008). admin 이 어드민 콘솔에서 조정.
 _COLLECT_ENABLED_KEY = "account_collect_enabled"   # "true"(기본) | "false"
@@ -382,22 +381,21 @@ def register_accounts_gov(ctx: RouteContext) -> None:
     @app.get("/accounts/overview.csv", tags=["Accounts"])
     def accounts_csv(request: Request) -> Any:
         _require_gov(request)
-        import csv as csv_mod
         ov = _overview()
-        buf = io.StringIO()
-        w = csv_mod.writer(buf)
-        w.writerow(["host_key", "host_type", "username", "uid", "privileged", "sudo",
-                    "in_directory", "last_login", "login_age_days", "pwd_last_change", "findings"])
-        for a in ov["accounts"]:
-            w.writerow([a["host_key"], a["host_type"], a["username"], a.get("uid") or "",
-                        "Y" if a["is_privileged"] else "", "Y" if a["is_sudo"] else "",
-                        "Y" if a["in_directory"] else "", a.get("last_login") or "",
-                        a.get("login_age_days") if a.get("login_age_days") is not None else "",
-                        a.get("pwd_last_change") or "", "|".join(a["findings"])])
-        buf.seek(0)
-        ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
-        return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
-                                 headers={"Content-Disposition": f'attachment; filename="mori-accounts-{ts}.csv"'})
+        cols = ["host_key", "host_type", "username", "uid", "privileged", "sudo",
+                "in_directory", "last_login", "login_age_days", "pwd_last_change", "findings"]
+        rows_csv = [{
+            "host_key": a["host_key"], "host_type": a["host_type"], "username": a["username"],
+            "uid": a.get("uid") or "",
+            "privileged": "Y" if a["is_privileged"] else "",
+            "sudo": "Y" if a["is_sudo"] else "",
+            "in_directory": "Y" if a["in_directory"] else "",
+            "last_login": a.get("last_login") or "",
+            "login_age_days": a.get("login_age_days") if a.get("login_age_days") is not None else "",
+            "pwd_last_change": a.get("pwd_last_change") or "",
+            "findings": "|".join(a["findings"]),
+        } for a in ov["accounts"]]
+        return csv_streaming_response(rows_csv, {k: k for k in cols}, "mori-accounts")
 
 
 __all__ = ["register_accounts_gov"]

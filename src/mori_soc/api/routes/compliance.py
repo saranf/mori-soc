@@ -17,7 +17,11 @@ from fastapi.responses import StreamingResponse
 
 from mori_soc.api.payloads import build_crosscheck_payload, build_pdca_payload
 from mori_soc.api.routes.context import RouteContext
-from mori_soc.util import now_iso as _now_iso, to_utf8_bom
+from mori_soc.services.csv_export import (
+    csv_streaming_response,
+    csv_text_response,
+    safe_writer,
+)
 from mori_soc.services.reports import (
     REPORT_TYPES,
     build_risk_register_report,
@@ -25,6 +29,8 @@ from mori_soc.services.reports import (
     report_to_csv,
     report_to_pdf,
 )
+from mori_soc.util import now_iso as _now_iso
+from mori_soc.util import to_utf8_bom
 
 logger = logging.getLogger("mori_soc.api.compliance")
 
@@ -940,8 +946,7 @@ def register_compliance(ctx: RouteContext) -> None:
         if doc is None:
             raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
         safe = control_id.replace("/", "_")
-        return StreamingResponse(iter(["﻿" + evidence_document_csv(doc)]), media_type="text/csv",
-                                 headers={"Content-Disposition": f'attachment; filename="mori-evidence-{safe}.csv"'})
+        return csv_text_response(evidence_document_csv(doc), f"mori-evidence-{safe}")
 
     def _fw_label(fw: str) -> str:
         return {"isms-p": "ISMS-P", "iso27001": "ISO27001"}.get(fw, fw or "기타")
@@ -960,7 +965,6 @@ def register_compliance(ctx: RouteContext) -> None:
         각 통제 폴더에 evidence.pdf + evidence.csv, 루트에 INDEX.csv.
         """
         _require_ev(request)
-        import csv as csv_mod
         import io as io_mod
         import zipfile
 
@@ -1010,7 +1014,7 @@ def register_compliance(ctx: RouteContext) -> None:
                                    len(doc["inventory"]), len(doc["records"])])
                 n += 1
             sio = io_mod.StringIO()
-            csv_mod.writer(sio).writerows(index_rows)
+            safe_writer(sio).writerows(index_rows)
             writer.add("INDEX.csv", to_utf8_bom(sio.getvalue()))
             writer.finalize(generated_at=now_ts,
                             extra={"bundle": "evidence-bundle", "scope": str(scope), "controls": n})
@@ -1508,8 +1512,7 @@ def register_compliance(ctx: RouteContext) -> None:
     def compliance_soa_csv(request: Request) -> Any:
         _require_ev(request)
         from mori_soc.services.soa import soa_to_csv
-        return StreamingResponse(iter(["﻿" + soa_to_csv(_soa_rows())]), media_type="text/csv",
-                                 headers={"Content-Disposition": 'attachment; filename="mori-soa.csv"'})
+        return csv_text_response(soa_to_csv(_soa_rows()), "mori-soa")
 
     @app.get("/compliance/soa.pdf", tags=["Compliance"])
     def compliance_soa_pdf(request: Request) -> Any:
@@ -1548,9 +1551,6 @@ def register_compliance(ctx: RouteContext) -> None:
             )
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"compliance pdca unavailable: {exc}") from exc
-        import csv as csv_mod
-        import io
-        buf = io.StringIO()
         header_map = {
             "source": "출처",
             "control_id": "통제ID",
@@ -1564,18 +1564,12 @@ def register_compliance(ctx: RouteContext) -> None:
             "note": "비고",
         }
         fieldnames = list(header_map.keys())
-        writer = csv_mod.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
-        writer.writerow(header_map)
+        rows_csv = []
         for item in payload.get("pending_remediations", []):
             row = {k: item.get(k, "") for k in fieldnames}
             row["overdue"] = "Y" if item.get("overdue") else "N"
-            writer.writerow(row)
-        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        return StreamingResponse(
-            iter([buf.getvalue()]),
-            media_type="text/csv; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="mori-pdca-pending-{timestamp}.csv"'},
-        )
+            rows_csv.append(row)
+        return csv_streaming_response(rows_csv, header_map, "mori-pdca-pending")
 
     @app.get("/compliance/crosscheck", tags=["Compliance"])
     def compliance_crosscheck() -> dict[str, Any]:
@@ -1626,14 +1620,7 @@ def register_compliance(ctx: RouteContext) -> None:
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"report generation failed: {exc}") from exc
         if format == "csv":
-            csv_content = "\ufeff" + report_to_csv(report)
-            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            filename = f"mori-{report_type.replace('_', '-')}-{timestamp}.csv"
-            return StreamingResponse(
-                iter([csv_content]),
-                media_type="text/csv; charset=utf-8-sig",
-                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-            )
+            return csv_text_response(report_to_csv(report), f"mori-{report_type.replace('_', '-')}")
         if format == "pdf":
             try:
                 pdf_bytes = report_to_pdf(report)
