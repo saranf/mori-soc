@@ -14,8 +14,10 @@ ISMS-P 2.5.1 / 2.5.5 / 2.5.6 · ISO 27001:2022 A.5.16 / A.5.18 / A.8.2.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
+
+from mori_soc.services.text_utils import parse_iso
 
 _DISABLED_STATUSES = {"disabled", "locked", "deleted", "inactive", "expired"}
 FINDING_KINDS = ("leaver", "orphan_priv", "unapproved_sudo", "dormant")
@@ -51,15 +53,10 @@ def normalize_account(a: dict[str, Any], host_type: str) -> dict[str, Any]:
 
 
 def _age_days(iso: str | None, now: datetime) -> int | None:
-    if not iso:
+    dt = parse_iso(iso, assume_utc=True)
+    if dt is None:
         return None
-    try:
-        dt = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return max(0, int((now - dt).total_seconds() // 86400))
-    except (TypeError, ValueError):
-        return None
+    return max(0, int((now - dt).total_seconds() // 86400))
 
 
 def reconcile(

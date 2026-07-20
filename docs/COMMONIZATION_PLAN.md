@@ -19,7 +19,7 @@
 | C8 | 프론트 공용 모듈 부재(dashboard↔console 바이트동일) | JS/CSS | DRY·유지비 | MAJOR·전역 |
 | C9 | 콜렉터 helper(str/id/time/severity)·Zabbix transport 중복 | collectors | DRY | MAJOR·국소 |
 | C10 ☑ | poller 임계치 프로퍼티 20종 재오버라이드 + `_env_flag` 중복 | pollers | DRY | MINOR·국소 |
-| C11 | text 유틸(esc·coerce·parse_iso·group_by) 산재 | services | DRY | MINOR·전역 |
+| C11 ◐ | text 유틸(esc·coerce·parse_iso·group_by) 산재 | services | DRY | MINOR·전역 |
 | C12 | 인메모리/템플릿/payloads 미세 중복 | repo/templates | DRY | MINOR·국소 |
 
 ---
@@ -62,6 +62,9 @@
 ### Phase 3 — 콜렉터·폴러 (MAJOR·국소)
 - **C9** `collectors/_helpers`·`_identity`·`envelopes`·`http`·`severity`로 `_str`/`_make_id`/시각파싱/severity/shared-IP 5~6중 중복 제거. `zabbix_transport.py` TODO대로 콜렉터가 transport 사용.
 - **C10 ☑ 완료** `BasePollerService` 에 `DEFAULT_*` 클래스 상수 도입 → 5개 poller(zabbix·fleet·trivy·wazuh·ldap_sync)의 임계치 프로퍼티 20종 삭제(상수만 선언). 기본값 동작 바이트 동일 확인(30/300/3/10 등). `_env_flag` 2곳(base·zabbix_writeback) → `mori_soc/_env.py` 단일화·재-export. 508 통과·mypy clean. (`pollers/__main__.py` 통합은 선택 잔여.)
+
+### Phase (기타) — text 유틸
+- **C11 ◐ 부분** `esc` 는 C5 에서 pdf.py 로 이관. `services/text_utils.py` 신설 + `parse_iso(assume_utc=)` 로 account_recon·evidence_freshness 통일(test_text_utils, 509 통과). 잔여: coerce_str·append_unique·group_by_ordered·norm_term(다수 클로저), fleet_api `_parse_time`(콜렉터→서비스 레이어 역전 우려로 보류).
 
 ### Phase 4 — 프론트 (MAJOR·전역, 무동작변경)
 - **C8** `common.js` 추출(escapeHtml·formatTime·tt·Paginator·`api.*`·renderTable·chip·color-map·toast) → dashboard↔console 바이트동일 블록 제거. CSV는 `openCsvPreview`+`_parseSimpleCsv`+`downloadTextFile` 공용화 후 낙오 다운로드 5곳 편입(대기중이던 CSV 통일 완료). `tokens.css` 팔레트/프리미티브 공유.

@@ -11,6 +11,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from mori_soc.services.text_utils import parse_iso
+
 # 상태값 — '초록 하나'가 아니라 신뢰 품질을 구분한다.
 STATUSES = (
     "no_evidence",       # 증적 없음
@@ -22,13 +24,7 @@ STATUSES = (
 
 
 def _parse(iso: str) -> datetime | None:
-    s = str(iso or "").strip()
-    if not s:
-        return None
-    try:
-        return datetime.fromisoformat(s.replace("Z", "+00:00"))
-    except ValueError:
-        return None
+    return parse_iso(iso)
 
 
 def _age_days(iso: str, now: datetime) -> int | None:
