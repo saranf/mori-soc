@@ -76,11 +76,11 @@ _TAB_ASSETS_HTML = """    <!-- ── Tab: 자산 현황 ───────�
           <div style=\"font-size:11px;color:#191f28;margin-top:8px\" data-i18n=\"dash.risk.dblclick_hint\">카드를 더블클릭하거나 '매트릭스 열기'를 누르면 3×3 매트릭스가 팝업으로 열립니다.</div>
         </section>
         <!-- 위험성 평가 매트릭스 팝업 -->
-        <div id=\"risk_matrix_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:center;justify-content:center\">
+        <div id=\"risk_matrix_modal\" class=\"modal-overlay\" style=\"z-index:9998\">
           <div style=\"background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:24px 28px;width:1080px;max-width:96vw;max-height:90vh;overflow:auto\">
             <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px\">
               <h3 style=\"color:#3182f6;margin:0\" data-i18n=\"dash.risk.matrix_title\">위험성 평가 매트릭스</h3>
-              <button onclick=\"closeRiskMatrixModal()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+              <button onclick=\"closeRiskMatrixModal()\" class=\"icon-btn\">×</button>
             </div>
             <div id=\"risk_matrix_box\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
           </div>

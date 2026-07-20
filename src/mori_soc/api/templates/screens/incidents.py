@@ -30,11 +30,11 @@ _TAB_INCIDENTS_HTML = """    <!-- ── Tab: Incidents ────────
     </div>
 
     <!-- 새 인시던트 생성 모달 (버튼 클릭 시 팝업) -->
-    <div id=\"incident_create_modal\" style=\"display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center\">
+    <div id=\"incident_create_modal\" class=\"modal-overlay\" style=\"z-index:9998\">
       <div style=\"background:#f7f8fa;border:1px solid #e5e8eb;border-radius:10px;padding:24px 28px;width:560px;max-width:95vw;max-height:90vh;overflow:auto\">
         <div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:16px\">
           <h3 style=\"color:#3182f6;margin:0\" data-i18n=\"dash.inc.create_title\">새 인시던트 생성</h3>
-          <button onclick=\"closeIncidentCreateModal()\" style=\"background:none;border:none;color:#191f28;font-size:20px;cursor:pointer\">×</button>
+          <button onclick=\"closeIncidentCreateModal()\" class=\"icon-btn\">×</button>
         </div>
         <div class=\"row\">
           <label for=\"inc_title\" data-i18n=\"dash.f.title\">제목</label>
