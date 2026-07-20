@@ -10,25 +10,31 @@ _ATAB_OVERVIEW_HTML = """    <!-- ── Tab: Overview ────────�
       </section>
       <section class="metrics" id="overview_cards"></section>
       <div class="stack">
-        <section class="card">
-          <h2 data-i18n="admin.h.phase2_health">Phase 2 데이터 헬스</h2>
-          <div class="subtext" data-i18n="admin.s.sub.phase2_health">PostgreSQL → InMemoryQueryStore 로 로드된 Phase 2 시드 데이터의 현재 카운트입니다. 0이면 시드 누락 또는 schema 002 미적용일 수 있습니다.</div>
-          <div class="coverage" id="phase2_health"></div>
-        </section>
-        <section class="card">
-          <h2 data-i18n="admin.h.source_coverage">Source Coverage</h2>
-          <div class="subtext" data-i18n="admin.s.sub.source_coverage">Fleet / Wazuh / Zabbix / Trivy / host logs 기준으로 현재 MORI에 연결된 호스트 수입니다.</div>
-          <div class="coverage" id="source_coverage"></div>
-          <div class="status-line" id="dashboard_status">dashboard loading...</div>
-        </section>
-        <section class="card">
-          <h2 data-i18n="admin.h.collector_health">Collector Health · Source Freshness</h2>
-          <div class="subtext" data-i18n="admin.s.sub.collector_health">수집기별 마지막 성공 시각과 SLA 임계 대비 지연(lag)을 표시합니다. SLA 초과 시 STALE, 마지막 sync가 error면 표시됩니다.</div>
-          <div class="actions" style="margin-bottom:10px">
-            <button id="admin_reload_freshness" class="secondary" data-i18n="admin.s.btn.refresh">새로고침</button>
+        <!-- 시스템 진단(보조): 데이터 헬스·커버리지·수집기 신선도 → 접이식으로 내려 운영 카드 우선 -->
+        <details class="card" style="padding:0">
+          <summary style="cursor:pointer;padding:16px 18px;font-weight:800;font-size:15px;letter-spacing:-0.02em" data-i18n="admin.h.diagnostics">시스템 진단 · 데이터 헬스 · 커버리지 · 수집기 신선도 (펼치기)</summary>
+          <div style="padding:0 18px 18px;display:grid;gap:18px">
+            <section>
+              <h2 data-i18n="admin.h.phase2_health">Phase 2 데이터 헬스</h2>
+              <div class="subtext" data-i18n="admin.s.sub.phase2_health">PostgreSQL → InMemoryQueryStore 로 로드된 Phase 2 시드 데이터의 현재 카운트입니다. 0이면 시드 누락 또는 schema 002 미적용일 수 있습니다.</div>
+              <div class="coverage" id="phase2_health"></div>
+            </section>
+            <section>
+              <h2 data-i18n="admin.h.source_coverage">Source Coverage</h2>
+              <div class="subtext" data-i18n="admin.s.sub.source_coverage">Fleet / Wazuh / Zabbix / Trivy / host logs 기준으로 현재 MORI에 연결된 호스트 수입니다.</div>
+              <div class="coverage" id="source_coverage"></div>
+              <div class="status-line" id="dashboard_status">dashboard loading...</div>
+            </section>
+            <section>
+              <h2 data-i18n="admin.h.collector_health">Collector Health · Source Freshness</h2>
+              <div class="subtext" data-i18n="admin.s.sub.collector_health">수집기별 마지막 성공 시각과 SLA 임계 대비 지연(lag)을 표시합니다. SLA 초과 시 STALE, 마지막 sync가 error면 표시됩니다.</div>
+              <div class="actions" style="margin-bottom:10px">
+                <button id="admin_reload_freshness" class="secondary" data-i18n="admin.s.btn.refresh">새로고침</button>
+              </div>
+              <div class="table-wrap" id="admin_source_freshness"></div>
+            </section>
           </div>
-          <div class="table-wrap" id="admin_source_freshness"></div>
-        </section>
+        </details>
         <section class="card">
           <h2 data-i18n="admin.h.latest_status">Latest Host Status</h2>
           <div class="subtext" data-i18n="admin.s.sub.latest_status">offline / unknown 호스트를 우선 배치합니다.</div>
