@@ -5,10 +5,9 @@ dashboard_tabs.py 에서 화면 단위로 분리. 순수 문자열 상수 하나
 
 _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ──────────────────────────────────────────────── -->
     <div class=\"tab-panel active\" id=\"tab_dashboard\">
-      <div style=\"display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;\">
-        <span style=\"font-size:11px;color:#191f28;margin-right:auto\" data-i18n=\"dash.panel.resize_hint\">패널 오른쪽-아래 모서리를 드래그해 크기를 조절할 수 있어요 (브라우저에 저장)</span>
-        <button id=\"panel_layout_reset\" class=\"secondary\" onclick=\"resetPanelLayout()\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"dash.panel.reset_layout\">크기 초기화</button>
-        <button id=\"panel_edit_toggle\" class=\"secondary\" onclick=\"togglePanelEdit()\" data-i18n=\"dash.panel.edit\">패널 편집</button>
+      <!-- 토스식: 최상단 크롬 최소화 — '패널 편집'만. 드래그 안내·크기 초기화는 편집 박스 안으로. -->
+      <div style=\"display:flex;justify-content:flex-end;margin-bottom:10px;\">
+        <button id=\"panel_edit_toggle\" class=\"secondary\" onclick=\"togglePanelEdit()\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"dash.panel.edit\">패널 편집</button>
       </div>
       <div id=\"panel_edit_box\" class=\"card hidden\" style=\"margin-bottom:12px;\">
         <div style=\"font-weight:600;color:#3182f6;margin-bottom:4px\" data-i18n=\"dash.panel.edit_title\">표시할 패널 선택</div>
@@ -17,6 +16,10 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
         <div id=\"panel_edit_cards\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 12px\"></div>
         <div style=\"font-size:12px;color:#191f28\" data-i18n=\"dash.panel.group.sections\">패널</div>
         <div id=\"panel_edit_sections\" style=\"display:flex;flex-wrap:wrap;gap:12px;margin-top:6px\"></div>
+        <div style=\"display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid #e5e8eb\">
+          <span style=\"font-size:11px;color:#8b95a1;margin-right:auto\" data-i18n=\"dash.panel.resize_hint\">패널 오른쪽-아래 모서리를 드래그해 크기를 조절할 수 있어요 (브라우저에 저장)</span>
+          <button id=\"panel_layout_reset\" class=\"secondary\" onclick=\"resetPanelLayout()\" style=\"width:auto;padding:6px 12px;font-size:13px\" data-i18n=\"dash.panel.reset_layout\">크기 초기화</button>
+        </div>
       </div>
       <!-- 상태 헤더: 호스트/증적 공백/심사 준비 한 줄 요약 + CTA (dashboard.js renderMoriHeader, 전부 실데이터) -->
       <section class=\"card\" id=\"mori_state_strip\" style=\"display:none;padding:20px 22px\">
@@ -41,7 +44,9 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
           <button class=\"secondary\" onclick=\"switchTab('guides')\" style=\"width:auto\" data-i18n=\"dash.firstrun.fleet\">Fleet 연결 가이드 →</button>
         </div>
       </section>
-      <!-- 보안 요약 히어로 (Toss형: 보안 KPI + 위험 TOP 랭킹) 보안 우선, 인프라는 아래 -->
+      <!-- 토스식: 큰 숫자(요약 KPI)가 먼저, 그다음 '지금 봐야 할' 위험 랭킹 -->
+      <section class=\"metrics\" id=\"overview_cards\"><div class=\"empty\" style=\"padding:16px;color:#191f28\" data-i18n=\"dash.status.overview_loading\">요약 카드를 불러오는 중…</div></section>
+      <!-- 보안 요약 히어로 (Toss형: 위험 TOP 랭킹) -->
       <section class=\"card\" id=\"security_hero_section\" style=\"background:#ffffff;border:1px solid #e5e8eb\">
         <div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px\">
           <h2 style=\"margin:0\" data-i18n=\"dash.hero.section\">지금 봐야 할 보안 현황</h2>
@@ -49,7 +54,6 @@ _TAB_DASHBOARD_HTML = """    <!-- ── Tab: Dashboard ────────
         </div>
         <div id=\"security_hero_body\" style=\"margin-top:12px\"><span class=\"empty\" data-i18n=\"dash.dyn.loading\">로딩 중…</span></div>
       </section>
-      <section class=\"metrics\" id=\"overview_cards\"><div class=\"empty\" style=\"padding:16px;color:#191f28\" data-i18n=\"dash.status.overview_loading\">요약 카드를 불러오는 중…</div></section>
       <!-- P1: #dash_grid 레이아웃 CSS는 static/css/dashboard.css 로 이관됨 -->
       <div id=\"dash_grid\">
           <!-- 인프라 현황 (24h/12h 전환 + Zabbix/Wazuh 딥링크) -->
