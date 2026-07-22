@@ -168,6 +168,59 @@ def build_checklist(signals: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+# ── 스캔 온보딩 핸드오프 (M4) ─────────────────────────────────────────────────
+# 대표 기능(코드 보안 리뷰 + 개인정보 흐름)을 고객 레포에 붙이는 최소 절차를 구조화한다.
+# 정직함: 기본은 **무료(Semgrep)** — ANTHROPIC 키·유료 의존 없이 시작할 수 있음을 명확히 한다.
+def build_scan_setup(
+    public_url: str,
+    audience: str = "mori-ingest",
+    ingest_token_configured: bool = False,
+) -> dict[str, Any]:
+    """코드 스캔(무료 기본) 붙이기 핸드오프 — 필요한 GitHub 시크릿·3스텝·MORI측 설정.
+
+    public_url: 고객 워크플로가 결과를 보낼 MORI 공개 URL(MORI_PUBLIC_URL).
+    audience: OIDC audience(워크플로에 박힘). ingest_token_configured: 정적 토큰 사용 여부.
+    """
+    ingest_url = (public_url or "").strip()
+    github_secrets = [
+        {"name": "MORI_INGEST_URL", "required": True,
+         "value": ingest_url or None,
+         "note_ko": "MORI 공개 주소(결과를 보낼 곳). 미설정이면 워크플로가 전송을 건너뜀."},
+        {"name": "MORI_INGEST_TOKEN", "required": False,
+         "note_ko": "정적 토큰 인증을 쓸 때만. OIDC(권장)만 쓰면 생략 가능."},
+    ]
+    steps = [
+        {"id": "add_workflow", "ko": "워크플로 파일을 레포의 .github/workflows/ 에 추가",
+         "en": "Add the workflow file under .github/workflows/ in your repo"},
+        {"id": "set_secret", "ko": "레포 Settings→Secrets 에 MORI_INGEST_URL 등록",
+         "en": "Add MORI_INGEST_URL in repo Settings→Secrets"},
+        {"id": "run", "ko": "PR 을 열거나 Actions 탭에서 수동 실행(Run workflow)",
+         "en": "Open a PR or run it manually from the Actions tab"},
+    ]
+    # MORI측(서버 운영자) 설정 — 위조 불가 provenance(OIDC)를 켜려면.
+    mori_settings = [
+        {"name": "MORI_PUBLIC_URL", "set": bool(ingest_url),
+         "note_ko": "고객이 결과를 보낼 수 있게 MORI 를 외부에서 접근 가능한 주소로."},
+        {"name": "MORI_OIDC_ALLOWED_REPOS", "set": None,
+         "note_ko": "허용 레포를 제한(선택). 설정 시 그 레포의 서명된 스캔만 검증됨."},
+    ]
+    return {
+        "free": True, "default_scanner": "semgrep",
+        "workflow_filename": ".github/workflows/code-review-semgrep.yml",
+        "ingest_url": ingest_url,
+        "audience": audience or "mori-ingest",
+        "github_secrets": github_secrets,
+        "steps": steps,
+        "mori_settings": mori_settings,
+        "ingest_token_configured": bool(ingest_token_configured),
+        # 유료 심층(Claude fullscan)은 '선택 업그레이드'임을 정직하게 표시(기본 아님).
+        "paid_upgrade": {"id": "fullscan", "ko": "AI 심층 개인정보 흐름(선택·유료) — ANTHROPIC_API_KEY 필요",
+                          "en": "AI deep privacy-flow (optional, paid) — needs ANTHROPIC_API_KEY"},
+        "ready": bool(ingest_url),
+    }
+
+
 __all__ = [
     "connector_catalog", "is_testable", "build_connectors", "build_checklist",
+    "build_scan_setup",
 ]

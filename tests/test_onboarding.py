@@ -9,6 +9,7 @@ import unittest
 from mori_soc.services.onboarding import (
     build_checklist,
     build_connectors,
+    build_scan_setup,
     connector_catalog,
     is_testable,
 )
@@ -95,6 +96,36 @@ class ChecklistTest(unittest.TestCase):
         })
         self.assertTrue(cl["complete"])
         self.assertIsNone(cl["next_step"])
+
+
+class ScanSetupTest(unittest.TestCase):
+    def test_free_is_default(self) -> None:
+        s = build_scan_setup("", audience="mori-ingest")
+        self.assertTrue(s["free"])
+        self.assertEqual(s["default_scanner"], "semgrep")
+        # 유료(Claude)는 선택 업그레이드로만 표기 — 기본 경로가 아니어야 한다.
+        self.assertIn("paid_upgrade", s)
+
+    def test_not_ready_without_public_url(self) -> None:
+        s = build_scan_setup("")
+        self.assertFalse(s["ready"])
+        url_secret = next(x for x in s["github_secrets"] if x["name"] == "MORI_INGEST_URL")
+        self.assertTrue(url_secret["required"])
+        self.assertIsNone(url_secret["value"])
+
+    def test_ready_with_public_url_fills_secret(self) -> None:
+        s = build_scan_setup("https://mori.example", audience="aud")
+        self.assertTrue(s["ready"])
+        self.assertEqual(s["ingest_url"], "https://mori.example")
+        self.assertEqual(s["audience"], "aud")
+        url_secret = next(x for x in s["github_secrets"] if x["name"] == "MORI_INGEST_URL")
+        self.assertEqual(url_secret["value"], "https://mori.example")
+
+    def test_token_optional(self) -> None:
+        s = build_scan_setup("https://m", ingest_token_configured=True)
+        tok = next(x for x in s["github_secrets"] if x["name"] == "MORI_INGEST_TOKEN")
+        self.assertFalse(tok["required"])
+        self.assertTrue(s["ingest_token_configured"])
 
 
 if __name__ == "__main__":

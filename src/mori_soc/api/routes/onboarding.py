@@ -26,6 +26,7 @@ from mori_soc.api.routes.context import RouteContext
 from mori_soc.services.onboarding import (
     build_checklist,
     build_connectors,
+    build_scan_setup,
     is_testable,
 )
 
@@ -75,6 +76,22 @@ def register_onboarding(ctx: RouteContext) -> None:
             "connectors_connected": sum(1 for c in connectors if c.get("state") == "connected"),
             "connectors_total": len(connectors),
         }
+
+    @app.get("/onboarding/scan-setup", tags=["Onboarding"])
+    def onboarding_scan_setup(request: Request) -> dict[str, Any]:
+        """코드 스캔(무료 기본) 붙이기 핸드오프 + 복붙용 워크플로. admin·security 전용.
+
+        기존 code_review_dispatch.workflow_template 를 재활용해 워크플로 본문을 함께 준다
+        (단일 소스 — UI 가 별도 문자열을 갖지 않는다).
+        """
+        ctx.require_admin_or_security(request, detail="scan setup requires admin or security role")
+        audience = os.getenv("MORI_OIDC_AUDIENCE", "mori-ingest").strip() or "mori-ingest"
+        public_url = os.getenv("MORI_PUBLIC_URL", "").strip()
+        token_set = bool(os.getenv("MORI_INGEST_TOKEN", "").strip())
+        setup = build_scan_setup(public_url, audience=audience, ingest_token_configured=token_set)
+        from mori_soc.services.code_review_dispatch import workflow_template
+        setup["workflow_content"] = workflow_template(audience)
+        return setup
 
     @app.post("/onboarding/connectors/{source}/test", tags=["Onboarding"])
     def onboarding_connector_test(source: str, request: Request) -> dict[str, Any]:

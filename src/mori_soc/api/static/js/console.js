@@ -481,14 +481,15 @@
     async function renderOnboarding() {
       const card = document.getElementById('onboarding_card');
       if (!card) return;
-      let status, connectors;
+      let status, connectors, scan;
       try {
-        const [sr, cr] = await Promise.all([
-          fetch('/onboarding/status'), fetch('/onboarding/connectors'),
+        const [sr, cr, xr] = await Promise.all([
+          fetch('/onboarding/status'), fetch('/onboarding/connectors'), fetch('/onboarding/scan-setup'),
         ]);
         if (!sr.ok || !cr.ok) { card.style.display = 'none'; return; }
         status = await sr.json();
         connectors = (await cr.json()).connectors || [];
+        scan = xr.ok ? await xr.json() : null;
       } catch (e) { card.style.display = 'none'; return; }
 
       const cl = status.checklist || { steps: [], done_count: 0, total: 0 };
@@ -536,14 +537,55 @@
         </div>`;
       }).join('');
 
+      // 코드 스캔 붙이기(무료 기본) — 3스텝 + 필요 GitHub 시크릿 + 워크플로 복사(접이식).
+      let scanHtml = '';
+      if (scan) {
+        const steps = (scan.steps || []).map((s, i) =>
+          `<li>${escapeHtml(tt('onboarding.scan.step.' + s.id, s.ko))}</li>`).join('');
+        const secrets = (scan.github_secrets || []).map((sec) => {
+          const tag = sec.required
+            ? `<span class="badge offline">${escapeHtml(tt('onboarding.scan.required','필수'))}</span>`
+            : `<span class="badge unknown">${escapeHtml(tt('onboarding.scan.optional','선택'))}</span>`;
+          return `<div class="metric-sub"><code>${escapeHtml(sec.name)}</code> ${tag} — ${escapeHtml(sec.note_ko || '')}</div>`;
+        }).join('');
+        const readyBadge = scan.ready
+          ? `<span class="badge online">${escapeHtml(tt('onboarding.scan.ready','준비됨'))}</span>`
+          : `<span class="badge offline">${escapeHtml(tt('onboarding.scan.set_public','MORI_PUBLIC_URL 먼저 설정'))}</span>`;
+        scanHtml =
+          `<details class="card" style="padding:0;margin-top:14px"><summary style="cursor:pointer;padding:12px 14px;font-weight:800;font-size:14px">`
+          + `${escapeHtml(tt('onboarding.scan.title','코드 스캔 붙이기 (무료 기본 · Semgrep)'))} ${readyBadge}</summary>`
+          + `<div style="padding:0 14px 14px">`
+          + `<div class="metric-sub" style="margin-bottom:6px">${escapeHtml(tt('onboarding.scan.free_note','ANTHROPIC 키 없이 무료로 시작합니다. AI 심층(유료)은 선택 업그레이드입니다.'))}</div>`
+          + `<ol style="margin:8px 0 8px 18px;padding:0">${steps}</ol>`
+          + `<div style="margin:6px 0">${secrets}</div>`
+          + `<div class="actions" style="margin-top:8px"><button class="secondary" style="width:auto;padding:4px 12px;font-size:12px" data-scan-copy>${escapeHtml(tt('onboarding.scan.copy','워크플로 복사'))}</button>`
+          + `<span class="metric-sub"><code>${escapeHtml(scan.workflow_filename || '')}</code></span>`
+          + `<span class="status-line" data-scan-copy-result></span></div></div></details>`;
+      }
+
       card.innerHTML =
         `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">`
         + `<h2 style="margin:0">${escapeHtml(tt('onboarding.title','실사용 시작 · 온보딩'))}</h2>`
         + `<div>${escapeHtml(tt('onboarding.progress','진행'))} <strong>${cl.done_count}/${cl.total}</strong> &nbsp; ${postureBadge}</div></div>`
         + `<div class="coverage" style="margin-bottom:14px">${stepChips}</div>`
         + `<h2 style="margin:0 0 8px;font-size:15px">${escapeHtml(tt('onboarding.connectors','커넥터 연결 상태'))}</h2>`
-        + `<div class="coverage">${connRows}</div>`;
+        + `<div class="coverage">${connRows}</div>`
+        + scanHtml;
       card.style.display = '';
+
+      // 워크플로 복사 — 클립보드에 워크플로 YAML 을 담아 고객 레포에 붙여넣게 한다.
+      const copyBtn = card.querySelector('[data-scan-copy]');
+      if (copyBtn && scan && scan.workflow_content) {
+        copyBtn.addEventListener('click', async () => {
+          const out = card.querySelector('[data-scan-copy-result]');
+          try {
+            await navigator.clipboard.writeText(scan.workflow_content);
+            if (out) { out.style.color = '#2f7d32'; out.textContent = tt('onboarding.scan.copied','복사됨'); }
+          } catch (e) {
+            if (out) { out.style.color = '#b93838'; out.textContent = tt('onboarding.scan.copy_fail','복사 실패 — 수동 선택'); }
+          }
+        });
+      }
 
       // 연결 테스트 버튼 — 현재 서버 env 로 라이브 시도, 성공/실패를 그 자리에 정직 표기.
       card.querySelectorAll('[data-conn-test]').forEach((btn) => {
