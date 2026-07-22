@@ -330,6 +330,7 @@ MORI_OPENAPI_TAGS = [
     {"name": "Fleet", "description": "증적 소스: Fleet/osquery — 엔드포인트 인벤토리."},
     {"name": "Admin", "description": "관리자 — 콘솔 운영, 사용자·시스템 관리."},
     {"name": "Settings", "description": "설정 — 소스 연결·가드레일·정기 증적 스냅샷."},
+    {"name": "Onboarding", "description": "실사용 온보딩 — 첫 실행 체크리스트·커넥터 상태/연결 테스트·스캔 설정·데모→실전 전환·통제 추천."},
 ]
 
 # 토스 테마 Swagger UI(#redesign-toss) — 기본 /docs 에 주입할 CSS. 6색만 사용(모리다움).

@@ -70,8 +70,15 @@ if __name__ == "__main__":
 
 
 def test_bundle_writer_streams_and_verifies():
-    import io, zipfile, json
-    from mori_soc.services.evidence_bundle import BundleWriter, MANIFEST_NAME, verify_signed_manifest
+    import io
+    import json
+    import zipfile
+
+    from mori_soc.services.evidence_bundle import (
+        MANIFEST_NAME,
+        BundleWriter,
+        verify_signed_manifest,
+    )
     buf=io.BytesIO()
     with zipfile.ZipFile(buf,"w") as z:
         w=BundleWriter(z, secret="k")

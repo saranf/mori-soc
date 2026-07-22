@@ -100,7 +100,7 @@ jobs:
 
       # 고칠 수 있는 CRITICAL 취약점이 있으면 CI 실패(수용 위험은 .trivyignore 에 사유·만료와 함께).
       - name: Trivy image scan — fail on fixable CRITICAL
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: mori-soc:ci
           scanners: vuln
@@ -115,7 +115,7 @@ jobs:
       - name: Trivy image scan — HIGH (informational)
         if: always()
         continue-on-error: true
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: mori-soc:ci
           scanners: vuln

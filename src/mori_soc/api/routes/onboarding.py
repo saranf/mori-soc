@@ -95,9 +95,9 @@ def register_onboarding(ctx: RouteContext) -> None:
         try:
             from mori_soc.api.routes.privacy import PRIVACY_FLOW_CONTROL_IDS
             from mori_soc.services.code_review_dispatch import CODE_REVIEW_CONTROL_IDS
-            from mori_soc.services.control_catalog import maturity_summary
+
             # 병합 카탈로그(admin 오버레이 포함)를 compliance 라우터와 동일하게 얻는다.
-            from mori_soc.services.control_catalog import load_catalog
+            from mori_soc.services.control_catalog import load_catalog, maturity_summary
             catalog = load_catalog()
             auto_ids = set(CODE_REVIEW_CONTROL_IDS) | set(PRIVACY_FLOW_CONTROL_IDS)
             summary = maturity_summary(auto_ids=auto_ids, catalog=catalog)

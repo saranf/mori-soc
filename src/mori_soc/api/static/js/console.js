@@ -519,7 +519,7 @@
         const badge = s.done
           ? `<span class="badge online">${escapeHtml(tt('onboarding.done','완료'))}</span>`
           : (isNext
-              ? `<span class="badge" style="background:#1f6feb;color:#fff">${escapeHtml(tt('onboarding.next','지금 할 일'))}</span>`
+              ? `<span class="badge" style="background:#3182f6;color:#fff">${escapeHtml(tt('onboarding.next','지금 할 일'))}</span>`
               : `<span class="badge unknown">${escapeHtml(tt('onboarding.pending','대기'))}</span>`);
         return `<div class="coverage-item" style="min-width:140px;cursor:pointer" role="button" tabindex="0" title="${label} — ${escapeHtml(goHint)}" onclick="onbStepGo('${escapeHtml(s.action || '')}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();onbStepGo('${escapeHtml(s.action || '')}');}"><div class="metric-sub">${label}</div>${badge}</div>`;
       }).join('');
@@ -531,7 +531,7 @@
         : `<span class="badge offline">${escapeHtml(tt('onboarding.posture.insecure','보안 취약(기본값 점검)'))}</span>`;
       // 운영 모드인데 HTTPS 미구성이면 명시적 사유 힌트(하드거부 아닌 개선 유도).
       const httpsHint = (status.production_mode && status.https_ok === false)
-        ? `<div class="status-line" style="color:#b93838">${escapeHtml(tt('onboarding.https_hint','운영 모드이나 HTTPS 미구성 — MORI_PUBLIC_URL 을 https 로 하거나 MORI_BEHIND_TLS_PROXY=true'))}</div>`
+        ? `<div class="status-line" style="color:#f04452">${escapeHtml(tt('onboarding.https_hint','운영 모드이나 HTTPS 미구성 — MORI_PUBLIC_URL 을 https 로 하거나 MORI_BEHIND_TLS_PROXY=true'))}</div>`
         : '';
 
       // 커넥터 성숙도 배지: verified=초록 / partial=노랑 / scaffold=중립(정직한 표기).
@@ -548,7 +548,7 @@
           ? `<button class="secondary" style="width:auto;padding:4px 12px;font-size:12px" data-conn-test="${escapeHtml(c.id)}">${escapeHtml(tt('onboarding.test','연결 테스트'))}</button>`
           : '';
         const miss = (c.missing_env && c.missing_env.length)
-          ? `<div class="status-line" style="color:#b93838">${escapeHtml(tt('onboarding.missing','미설정 env'))}: ${escapeHtml(c.missing_env.join(', '))}</div>` : '';
+          ? `<div class="status-line" style="color:#f04452">${escapeHtml(tt('onboarding.missing','미설정 env'))}: ${escapeHtml(c.missing_env.join(', '))}</div>` : '';
         const sync = c.last_success_at
           ? `<div class="metric-sub">last sync: ${escapeHtml(formatTime(c.last_success_at))} · records ${escapeHtml(c.records_collected)}</div>` : '';
         return `
@@ -661,9 +661,9 @@
           const out = card.querySelector('[data-scan-copy-result]');
           try {
             await navigator.clipboard.writeText(scan.workflow_content);
-            if (out) { out.style.color = '#2f7d32'; out.textContent = tt('onboarding.scan.copied','복사됨'); }
+            if (out) { out.style.color = '#15c47e'; out.textContent = tt('onboarding.scan.copied','복사됨'); }
           } catch (e) {
-            if (out) { out.style.color = '#b93838'; out.textContent = tt('onboarding.scan.copy_fail','복사 실패 — 수동 선택'); }
+            if (out) { out.style.color = '#f04452'; out.textContent = tt('onboarding.scan.copy_fail','복사 실패 — 수동 선택'); }
           }
         });
       }
@@ -680,11 +680,11 @@
             const r = await fetch(`/onboarding/connectors/${encodeURIComponent(id)}/test`, { method: 'POST' });
             const d = await r.json();
             if (out) {
-              if (d.ok) { out.style.color = '#2f7d32'; out.textContent = `${tt('onboarding.test.ok','연결 성공')} · ${tt('onboarding.test.sample','표본')} ${d.sample_count} (${d.elapsed_ms}ms)`; }
-              else { out.style.color = '#b93838'; out.textContent = `${tt('onboarding.test.fail','연결 실패')}: ${escapeHtml(d.error || d.detail || '')}`.slice(0, 200); }
+              if (d.ok) { out.style.color = '#15c47e'; out.textContent = `${tt('onboarding.test.ok','연결 성공')} · ${tt('onboarding.test.sample','표본')} ${d.sample_count} (${d.elapsed_ms}ms)`; }
+              else { out.style.color = '#f04452'; out.textContent = `${tt('onboarding.test.fail','연결 실패')}: ${escapeHtml(d.error || d.detail || '')}`.slice(0, 200); }
             }
           } catch (e) {
-            if (out) { out.style.color = '#b93838'; out.textContent = `${tt('onboarding.test.fail','연결 실패')}: ${e.message}`; }
+            if (out) { out.style.color = '#f04452'; out.textContent = `${tt('onboarding.test.fail','연결 실패')}: ${e.message}`; }
           } finally {
             btn.disabled = false; btn.textContent = orig;
           }
