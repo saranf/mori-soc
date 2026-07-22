@@ -220,7 +220,43 @@ def build_scan_setup(
     }
 
 
+# ── 데모→실전 전환 준비(M6) ───────────────────────────────────────────────────
+# 정직/안전(모리다움): 데모 시드는 인메모리·마커가 없어 런타임 삭제 시 실데이터를
+# 잘못 지울 위험이 있다. 따라서 파괴적 버튼 대신 **전환 준비 체크리스트 + 안내**를 준다
+# (실제 데모 데이터 제거 = MORI_DEMO_SEED=0 + 재기동).
+def build_go_live(
+    demo_seed_active: bool,
+    production_mode: bool,
+    https_ok: bool,
+    strong_admin: bool,
+    has_real_source: bool,
+) -> dict[str, Any]:
+    """실전 전환 준비 상태 — 5개 항목의 done 판정 + 전환 안내(비파괴)."""
+    steps = [
+        {"id": "seed_off", "ko": "데모 시드 끄기 (MORI_DEMO_SEED=0)",
+         "en": "Turn off demo seed (MORI_DEMO_SEED=0)", "done": not demo_seed_active},
+        {"id": "prod_mode", "ko": "운영 모드 전환 (MORI_DEMO_MODE=false 또는 MORI_PROFILE=production)",
+         "en": "Switch to production (MORI_DEMO_MODE=false or MORI_PROFILE=production)", "done": bool(production_mode)},
+        {"id": "strong_admin", "ko": "강한 admin 비밀번호 설정",
+         "en": "Set a strong admin password", "done": bool(strong_admin)},
+        {"id": "https", "ko": "HTTPS 구성 (또는 TLS 프록시 뒤)",
+         "en": "Configure HTTPS (or behind a TLS proxy)", "done": bool(https_ok)},
+        {"id": "real_source", "ko": "실 소스 연결(경보/자산이 실제로 수집됨)",
+         "en": "Connect a real source (alerts/assets actually collected)", "done": bool(has_real_source)},
+    ]
+    done = sum(1 for s in steps if s["done"])
+    return {
+        "steps": steps,
+        "done_count": done,
+        "total": len(steps),
+        "ready": done == len(steps),
+        # 데모 데이터를 실제로 비우는 절차(파괴적 런타임 삭제 대신).
+        "clear_demo_hint_ko": "데모 데이터는 .env 에서 MORI_DEMO_SEED=0 로 바꾸고 재기동하면 주입되지 않습니다.",
+        "clear_demo_hint_en": "Demo data stops being injected once you set MORI_DEMO_SEED=0 and restart.",
+    }
+
+
 __all__ = [
     "connector_catalog", "is_testable", "build_connectors", "build_checklist",
-    "build_scan_setup",
+    "build_scan_setup", "build_go_live",
 ]

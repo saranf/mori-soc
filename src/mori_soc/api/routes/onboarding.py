@@ -26,6 +26,7 @@ from mori_soc.api.routes.context import RouteContext
 from mori_soc.services.onboarding import (
     build_checklist,
     build_connectors,
+    build_go_live,
     build_scan_setup,
     is_testable,
 )
@@ -80,6 +81,24 @@ def register_onboarding(ctx: RouteContext) -> None:
             "connectors_connected": sum(1 for c in connectors if c.get("state") == "connected"),
             "connectors_total": len(connectors),
         }
+
+    @app.get("/onboarding/go-live", tags=["Onboarding"])
+    def onboarding_go_live(request: Request) -> dict[str, Any]:
+        """데모→실전 전환 준비 상태(비파괴). admin·security 전용."""
+        ctx.require_admin_or_security(request, detail="go-live requires admin or security role")
+        from mori_soc.api.server import _https_ok, _production_mode
+        connectors = build_connectors(_coverage_by_source(), os.environ)
+        demo_seed = str(os.getenv("MORI_DEMO_SEED", "")).strip().lower() in ("1", "true", "yes", "on")
+        # 강한 admin = insecure_defaults 목록에 MORI_ADMIN_PASSWORD 가 없음.
+        strong_admin = "MORI_ADMIN_PASSWORD" not in (ctx.insecure_defaults or [])
+        has_real_source = any(c.get("state") == "connected" for c in connectors)
+        return build_go_live(
+            demo_seed_active=demo_seed,
+            production_mode=_production_mode(),
+            https_ok=_https_ok(),
+            strong_admin=strong_admin,
+            has_real_source=has_real_source,
+        )
 
     @app.get("/onboarding/scan-setup", tags=["Onboarding"])
     def onboarding_scan_setup(request: Request) -> dict[str, Any]:

@@ -481,15 +481,17 @@
     async function renderOnboarding() {
       const card = document.getElementById('onboarding_card');
       if (!card) return;
-      let status, connectors, scan;
+      let status, connectors, scan, golive;
       try {
-        const [sr, cr, xr] = await Promise.all([
-          fetch('/onboarding/status'), fetch('/onboarding/connectors'), fetch('/onboarding/scan-setup'),
+        const [sr, cr, xr, gr] = await Promise.all([
+          fetch('/onboarding/status'), fetch('/onboarding/connectors'),
+          fetch('/onboarding/scan-setup'), fetch('/onboarding/go-live'),
         ]);
         if (!sr.ok || !cr.ok) { card.style.display = 'none'; return; }
         status = await sr.json();
         connectors = (await cr.json()).connectors || [];
         scan = xr.ok ? await xr.json() : null;
+        golive = gr.ok ? await gr.json() : null;
       } catch (e) { card.style.display = 'none'; return; }
 
       const cl = status.checklist || { steps: [], done_count: 0, total: 0 };
@@ -567,6 +569,25 @@
           + `<span class="status-line" data-scan-copy-result></span></div></div></details>`;
       }
 
+      // 데모→실전 전환 준비(비파괴) — 5개 항목 체크 + 전환 안내(접이식).
+      let goLiveHtml = '';
+      if (golive) {
+        const gsteps = (golive.steps || []).map((s) => {
+          const b = s.done
+            ? `<span class="badge online">${escapeHtml(tt('onboarding.done','완료'))}</span>`
+            : `<span class="badge unknown">${escapeHtml(tt('onboarding.pending','대기'))}</span>`;
+          return `<div class="metric-sub">${b} ${escapeHtml(tt('onboarding.golive.step.' + s.id, s.ko))}</div>`;
+        }).join('');
+        const rb = golive.ready
+          ? `<span class="badge online">${escapeHtml(tt('onboarding.golive.ready','실전 준비됨'))}</span>`
+          : `<span class="badge" style="background:#f5a623;color:#000">${golive.done_count}/${golive.total}</span>`;
+        goLiveHtml =
+          `<details class="card" style="padding:0;margin-top:10px"><summary style="cursor:pointer;padding:12px 14px;font-weight:800;font-size:14px">`
+          + `${escapeHtml(tt('onboarding.golive.title','데모 → 실전 전환 준비'))} ${rb}</summary>`
+          + `<div style="padding:0 14px 14px">${gsteps}`
+          + `<div class="status-line" style="margin-top:8px">${escapeHtml(tt('onboarding.golive.clear_hint', golive.clear_demo_hint_ko || ''))}</div></div></details>`;
+      }
+
       card.innerHTML =
         `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">`
         + `<h2 style="margin:0">${escapeHtml(tt('onboarding.title','실사용 시작 · 온보딩'))}</h2>`
@@ -575,7 +596,8 @@
         + httpsHint
         + `<h2 style="margin:10px 0 8px;font-size:15px">${escapeHtml(tt('onboarding.connectors','커넥터 연결 상태'))}</h2>`
         + `<div class="coverage">${connRows}</div>`
-        + scanHtml;
+        + scanHtml
+        + goLiveHtml;
       card.style.display = '';
 
       // 워크플로 복사 — 클립보드에 워크플로 YAML 을 담아 고객 레포에 붙여넣게 한다.

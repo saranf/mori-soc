@@ -9,6 +9,7 @@ import unittest
 from mori_soc.services.onboarding import (
     build_checklist,
     build_connectors,
+    build_go_live,
     build_scan_setup,
     connector_catalog,
     is_testable,
@@ -126,6 +127,33 @@ class ScanSetupTest(unittest.TestCase):
         tok = next(x for x in s["github_secrets"] if x["name"] == "MORI_INGEST_TOKEN")
         self.assertFalse(tok["required"])
         self.assertTrue(s["ingest_token_configured"])
+
+
+class GoLiveTest(unittest.TestCase):
+    def test_all_demo_defaults_not_ready(self) -> None:
+        g = build_go_live(demo_seed_active=True, production_mode=False, https_ok=False,
+                          strong_admin=False, has_real_source=False)
+        self.assertFalse(g["ready"])
+        self.assertEqual(g["done_count"], 0)
+        self.assertEqual(g["total"], 5)
+
+    def test_seed_off_marks_step_done(self) -> None:
+        g = build_go_live(demo_seed_active=False, production_mode=False, https_ok=False,
+                          strong_admin=False, has_real_source=False)
+        seed = next(s for s in g["steps"] if s["id"] == "seed_off")
+        self.assertTrue(seed["done"])
+        self.assertEqual(g["done_count"], 1)
+
+    def test_fully_ready(self) -> None:
+        g = build_go_live(demo_seed_active=False, production_mode=True, https_ok=True,
+                          strong_admin=True, has_real_source=True)
+        self.assertTrue(g["ready"])
+        self.assertEqual(g["done_count"], 5)
+
+    def test_hint_is_nondestructive(self) -> None:
+        # 파괴적 삭제가 아니라 env 재기동 안내여야 한다(모리다움 안전).
+        g = build_go_live(True, False, False, False, False)
+        self.assertIn("MORI_DEMO_SEED=0", g["clear_demo_hint_ko"])
 
 
 if __name__ == "__main__":
