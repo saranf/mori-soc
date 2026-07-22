@@ -4127,7 +4127,7 @@
         const noteEl = _nondet
           ? `<div style="font-size:10px;color:#f5a623;margin-bottom:4px">${tt('dash.ctl.scan_nondet_note','※ AI(Claude) 스캔은 같은 커밋이어도 실행마다 findings 가 달라질 수 있어요(LLM 비결정성). 무료(Semgrep)는 결정적이에요. 무엇이 달라졌는지는 "변경 비교"로 확인하세요.')}</div>`
           : '';
-        box.innerHTML = noteEl + evs.map(e => {
+        const _row = (e) => {
           const env = e.envelope || {};
           const repo = env.repo || e.host_id || '?';
           const commit = (env.commit || '').slice(0,8);
@@ -4150,6 +4150,33 @@
           const nondetEl = (sig && _sigFc[sig] && _sigFc[sig].size > 1)
             ? ` <span style="color:#f5a623;font-size:10px;font-weight:700" title="${tt('dash.ctl.scan_nondet_row_t','같은 입력(sig)인데 findings 수가 달라요 — AI 비결정성. 데이터 오류가 아니라 LLM 특성입니다.')}">${tt('dash.ctl.scan_nondet_row','결과 변동(AI)')}</span>` : '';
           return `<div style="padding:5px 0;border-bottom:1px solid #eef1f4">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style="color:#191f28">${escapeHtml(when)}</span> ${verified}${toolBadge}${nondetEl}${prov}${reproEl}${link}${dl}${diffLink}${del}</div>`;
+        };
+        // 동일 입력(repo|commit|sig) 스캔을 한 그룹으로 — 최신 1건만 펼치고 이전 N회는 접어서 findings 추이 표시.
+        const groups = []; const gmap = {};
+        evs.forEach(e => {
+          const env = e.envelope || {};
+          const key = [env.repo || e.host_id || '?', env.commit || '', env.input_signature || ('id:' + e.id)].join('|');
+          if (!gmap[key]) { gmap[key] = []; groups.push(gmap[key]); }
+          gmap[key].push(e);   // evs 는 최신순 → 그룹 내 [0]=최신
+        });
+        box.innerHTML = noteEl + groups.map(items => {
+          const main = _row(items[0]);
+          if (items.length < 2) return main;
+          const chrono = items.slice().reverse();               // 오래된→최신 순 findings 추이
+          const counts = chrono.map(_fc);
+          const vary = new Set(counts.filter(x => x != null)).size > 1;
+          const trail = counts.map(c => c == null ? '?' : c).join(' → ');
+          const priorRows = items.slice(1).map(e2 => {
+            const env2 = e2.envelope || {};
+            const when2 = String(e2.received_at || env2.scan_time || '').slice(0,16).replace('T',' ');
+            const fc2 = _fc(e2); const fcTxt = fc2 == null ? '?' : fc2;
+            const del2 = e2.id ? ` <a href="#" title="${tt('dash.ctl.scan_del','이력 삭제')}" onclick="event.preventDefault();deleteCodeReviewScan('${escapeHtml(e2.id)}')" style="color:#f04452;text-decoration:none;font-weight:700">×</a>` : '';
+            return `<div style="padding:3px 0 3px 16px;font-size:11px;color:#191f28;border-bottom:1px dashed #eef1f4">${escapeHtml(when2)} · findings ${fcTxt}${env2.tool ? (' · ' + escapeHtml(env2.tool)) : ''}${del2}</div>`;
+          }).join('');
+          const label = vary
+            ? tt('dash.ctl.scan_grp_vary','이전 {n}회 · findings 변동: {t}').replace('{n}', items.length - 1).replace('{t}', trail)
+            : tt('dash.ctl.scan_grp_same','이전 {n}회 · 동일 결과').replace('{n}', items.length - 1);
+          return main + `<details style="margin:2px 0 4px 8px"><summary style="cursor:pointer;font-size:11px;color:${vary ? '#f5a623' : '#191f28'}">${escapeHtml(label)}</summary>${priorRows}</details>`;
         }).join('');
       } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.ctl.scan_hist_err','이력을 불러오지 못했어요')}</span>`; }
     }
