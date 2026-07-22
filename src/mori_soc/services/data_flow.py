@@ -1323,64 +1323,68 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
 
-    # ── 요약 ───────────────────────────────────────────────────────────────────
+    # ── 처리 단계 설명·요약용 집계 ────────────────────────────────────────────────
     items = distinct_pii_items(rows)
     stores = distinct_stores(rows)
     n_third = sum(1 for r in rows if str(r.get("third_party") or "").strip() not in ("", "없음", "-", "n/a"))
     n_over = sum(1 for r in rows if str(r.get("overseas") or "").strip() not in ("", "없음", "-", "n/a"))
-    n_seed = sum(1 for r in rows if r.get("source") == "pii_scan")
+    n_ret = sum(1 for r in rows if str(r.get("retention") or r.get("destruction") or "").strip())
+    enc = str(summary.get("encryption") or "").strip()
+
+    def _distinct(field: str) -> list[str]:
+        out: list[str] = []
+        for r in rows:
+            for v in str(r.get(field) or "").replace("\n", ",").split(","):
+                v = v.strip()
+                if v and v not in out:
+                    out.append(v)
+        return out
+
+    def _join(lst: list[str], n: int = 8) -> str:
+        if not lst:
+            return "—"
+        return ", ".join(lst[:n]) + (f" 외 {len(lst) - n}종" if len(lst) > n else "")
+
+    collect_srcs = _distinct("collection_source")
+    purposes = _distinct("purpose")
+    recipients = classify_external_recipients(rows)
+    overview = build_file_overview(rows)
+    concerns = derive_concerns(rows)
 
     buf = io.BytesIO()
     docp = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=12 * mm, rightMargin=12 * mm,
                              topMargin=13 * mm, bottomMargin=12 * mm, title="MORI 개인정보 처리흐름표")
     content_w = landscape(A4)[0] - 24 * mm
+    note_style = ParagraphStyle("pdf_note", parent=cell, textColor=BLACK)
+
+    # ══ 본문(감사관용): 처리 흐름을 '어떻게 처리되는가'로 설명. 개발 상세는 부록 A ══
     story: list[Any] = [Paragraph("개인정보 처리흐름표 (ISMS-P 3.1 수집 · 3.2 이용/제공 · 3.4 파기)", h1)]
     sub = f"항목 {len(rows)}건" + (f" · 생성 {esc(generated_at)}" if generated_at else "") + " · MORI 코드 리뷰 파이프라인"
     story.append(Paragraph(sub, meta))
     story.append(Paragraph(
-        "이 문서는 개인정보 항목이 <b>수집 → 저장 → 이용 → 파기</b> 각 단계에서 어떻게 처리·저장되는지 기록한 "
-        "ISMS-P 개인정보 처리단계 필수 증적입니다. '테이블·컬럼(코드위치)' 열에 <b>src/…:라인</b> 형태로 표시된 항목은 "
-        "코드 스캔(Semgrep, 고객 CI)에서 자동 발견된 개인정보 처리 지점이며, 저장위치·이용목적·보관/파기는 담당자가 확정합니다. "
-        "MORI 는 코드를 저장하지 않고 스캔 결과만 받습니다.", body))
+        "이 문서는 개인정보가 <b>수집 → 저장 → 이용 → 파기</b> 각 단계에서 어떻게 처리되는지를 설명하는 "
+        "ISMS-P 개인정보 처리단계 증적입니다. 개발 상세(DB 테이블·컬럼·코드 위치)는 <b>부록 A</b>에 별도로 수록했습니다. "
+        "MORI 는 고객 코드를 저장하지 않고 스캔 결과만 받으며, 저장위치·이용목적·보관/파기는 담당자가 확정합니다.", body))
     # 총괄 흐름도(정보주체→수집→저장→이용→파기, 표준 플로우차트)
     story.append(Paragraph("총괄 개인정보 흐름도", h2))
     story += [_overview_drawing(content_w), Spacer(1, 6)]
     # 상세 흐름도(파일별 수집→저장→이용→파기)
     story.append(Paragraph("상세 흐름도 (파일별)", h2))
     story += [_flow_drawing(content_w), Spacer(1, 4)]
-    # ── 별도 페이지: DB 컬럼 ↔ 개인정보 항목 매칭(어느 컬럼에 어떤 정보) ────────────────
-    ci_map = build_column_item_map(rows)
-    if ci_map:
-        from reportlab.platypus import PageBreak
-        story.append(PageBreak())
-        story.append(Paragraph("DB 컬럼 ↔ 개인정보 항목 매칭", h2))
-        story.append(Paragraph("저장 단계에서 <b>어느 DB 컬럼에 어떤 개인정보</b>가 담기는지 매칭한 표입니다"
-                               "(스캔 자동 추출). 총괄 흐름도 '저장(DB)' 노드의 상세.", body))
-        ci_head = ["DB 테이블", "컬럼", "개인정보 항목"]
-        ci_data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in ci_head]]
-        for m in ci_map:
-            ci_data.append([Paragraph(esc(m["table"]), cell), Paragraph(esc(m["column"]), cell),
-                            Paragraph(esc(m["item"]), cell)])
-        ci_table = Table(ci_data, colWidths=[60 * mm, 110 * mm, 70 * mm], repeatRows=1)
-        ci_table.setStyle(TableStyle([
-            ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("BACKGROUND", (0, 0), (-1, 0), BLACK), ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
-            ("GRID", (0, 0), (-1, -1), 0.4, NEUTRAL), ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ]))
-        story += [ci_table, PageBreak()]
-    enc = str(summary.get("encryption") or "").strip()
-    story.append(Paragraph("요약", h2))
+
+    # ── 처리 단계 설명(서술) — 개발 상세 없이 '어떻게 처리되는가' ──────────────────
+    story.append(Paragraph("처리 단계 설명", h2))
     story.append(Paragraph(
-        f"· 개인정보 항목({len(items)}종): {esc(', '.join(items)) or '—'}<br/>"
-        f"· 저장 위치({len(stores)}곳): {esc(', '.join(stores)) or '—'}<br/>"
-        + (f"· 저장 암호화: {esc(enc)}<br/>" if enc else "")
-        + f"· 제3자 제공: {n_third}건 · 국외 이전: {n_over}건"
-        + (f" · 파기 흐름 개선 지점: {len(gaps)}건" if gaps else ""), body))
+        f"· <b>수집(3.1)</b> — {len(items)}종의 개인정보를 {_join(collect_srcs)} 지점에서 수집합니다. 수집 항목: {_join(items)}.<br/>"
+        f"· <b>저장(3.2)</b> — 수집한 개인정보는 {len(stores)}개 저장 위치에 보관됩니다"
+        + (f" (저장 암호화: {esc(enc)})" if enc else "") + ". 구체적 DB 테이블·컬럼·코드 위치는 <b>부록 A</b> 참고.<br/>"
+        f"· <b>이용/제공(3.2)</b> — 주요 처리 목적: {_join(purposes)}. 제3자 제공 {n_third}건 · 국외 이전 {n_over}건.<br/>"
+        f"· <b>파기(3.4)</b> — 전체 {len(rows)}개 항목 중 {n_ret}개에 보유기간·파기 방식이 정의되어 있습니다"
+        + (f" (개선 지점 {len(gaps)}건 — 아래 우려사항 참고)" if gaps else "") + ".", body))
+    story.append(Spacer(1, 6))
+
     # ── 외부 수신자 구분(위탁·제3자 제공·국외이전 후보) — #7 ─────────────────────
-    recipients = classify_external_recipients(rows)
     if recipients:
-        story.append(Spacer(1, 4))
         story.append(Paragraph("외부 수신자 구분 (위탁 · 제3자 제공 · 국외이전 후보)", h2))
         story.append(Paragraph(
             "코드·설정상 외부로 개인정보가 전송되는 수신자를 후보 유형으로 구분한 표입니다. "
@@ -1402,7 +1406,6 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         ]))
         story += [rc_table, Spacer(1, 6)]
     # ── 개인정보 파일 개요(파일=테이블/업무 단위) — 레퍼런스 ③ ─────────────────────
-    overview = build_file_overview(rows)
     if overview:
         story.append(Paragraph("개인정보 파일 개요", h2))
         ov_head = ["파일명", "정보주체 수", "개인정보 항목(필수/선택)", "제3자 제공", "처리 목적"]
@@ -1424,21 +1427,58 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         ]))
         story += [ov_table, Spacer(1, 8)]
 
-    story.append(Paragraph("처리흐름 상세", h2))
-    story.append(table if rows else Paragraph("흐름표가 비어 있습니다 — 스캔에서 개인정보가 발견되지 않았거나 행이 미작성 상태입니다.", body))
-    # 우려사항 및 통제 매핑(레퍼런스 ② 붉은 우려사항) — 도출 우려 + 통제 ID + AI 갭.
-    concerns = derive_concerns(rows)
+    # ── 우려사항 및 통제 매핑(레퍼런스 ② 붉은 우려사항) ─────────────────────────────
     if concerns or gaps:
         story.append(Paragraph("우려사항 및 통제 매핑", h2))
         red = ParagraphStyle("pdf_gap", parent=body, textColor=RED)
         lines = [f"· {esc(c['text'])} <b>[{esc(', '.join(c['controls']))}]</b>" for c in concerns]
         lines += ["· " + esc(g) for g in gaps]
         story.append(Paragraph("<br/>".join(lines), red))
+        story.append(Spacer(1, 6))
+
+    # ── 요약(통제 정합) — ISMS-P 3.x 통제별로 정리 ────────────────────────────────
+    story.append(Paragraph("요약 (통제 정합)", h2))
+    story.append(Paragraph(
+        f"· <b>[3.1 개인정보 수집·이용]</b> 수집 항목 {len(items)}종 · 수집 출처 {len(collect_srcs)}곳<br/>"
+        f"· <b>[3.2 개인정보 이용·제공]</b> 이용 목적 {len(purposes)}종 · 제3자 제공 {n_third}건 · 국외 이전 {n_over}건<br/>"
+        f"· <b>[3.3 개인정보 위탁]</b> 외부 수신자 후보 {len(recipients)}건 (법적 구분은 담당자 확정)<br/>"
+        f"· <b>[3.4 개인정보 파기]</b> 보유기간·파기 정의 {n_ret}/{len(rows)} 항목"
+        + (f" · 개선 지점 {len(gaps)}건" if gaps else "") + "<br/>"
+        f"· <b>[2.7/3.2 개인정보 보호]</b> 저장 암호화: {esc(enc) if enc else '미기재(담당자 확인 필요)'}", body))
     story.append(Spacer(1, 6))
     story.append(Paragraph(
-        "용어 · '구분' = 민감도(일반/고유식별/비밀/금융). 단계: 수집(3.1)=개인정보를 받는 지점 / 저장(3.2)=보관 위치(DB·테이블·컬럼) / "
+        "용어 · '구분' = 민감도(일반/고유식별/비밀/금융). 단계: 수집(3.1)=개인정보를 받는 지점 / 저장(3.2)=보관 위치 / "
         "이용(3.2)=사용·마스킹·제공 / 파기(3.4)=삭제·익명화. '—' 는 미기재. 무료 스캔은 후보, 유료 Claude 는 암호화·마스킹·파기 갭까지 채운다.",
-        ParagraphStyle("pdf_note", parent=cell, textColor=BLACK)))
+        note_style))
+
+    # ══ 부록 A (별도 페이지): 개발 상세 — DB 테이블·컬럼·코드 위치 ═══════════════════
+    from reportlab.platypus import PageBreak
+    story.append(PageBreak())
+    story.append(Paragraph("부록 A. 개발 상세 — DB 테이블·컬럼·코드 위치", h2))
+    story.append(Paragraph(
+        "코드 스캔(Semgrep, 고객 CI)에서 자동 발견된 개인정보 처리 지점의 <b>기술 매핑</b>입니다. "
+        "'저장(테이블·컬럼)' 열의 <b>src/…:라인</b> 은 코드 위치이며, 담당자가 실제 저장·처리를 확정합니다. "
+        "(본문의 처리 설명과 분리해 개발 상세만 모았습니다.)", body))
+    story.append(Paragraph("<b>A-1. 처리흐름 상세 (항목별)</b>", note_style))
+    story.append(table if rows else Paragraph("흐름표가 비어 있습니다 — 스캔에서 개인정보가 발견되지 않았거나 행이 미작성 상태입니다.", body))
+    ci_map = build_column_item_map(rows)
+    if ci_map:
+        story.append(Spacer(1, 6))
+        story.append(Paragraph("<b>A-2. DB 컬럼 ↔ 개인정보 항목 매칭</b> (어느 컬럼에 어떤 개인정보가 담기는지)", note_style))
+        ci_head = ["DB 테이블", "컬럼", "개인정보 항목"]
+        ci_data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in ci_head]]
+        for m in ci_map:
+            ci_data.append([Paragraph(esc(m["table"]), cell), Paragraph(esc(m["column"]), cell),
+                            Paragraph(esc(m["item"]), cell)])
+        ci_table = Table(ci_data, colWidths=[60 * mm, 110 * mm, 70 * mm], repeatRows=1)
+        ci_table.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("BACKGROUND", (0, 0), (-1, 0), BLACK), ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
+            ("GRID", (0, 0), (-1, -1), 0.4, NEUTRAL), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        story.append(ci_table)
+
     docp.build(story)
     return buf.getvalue()
 
