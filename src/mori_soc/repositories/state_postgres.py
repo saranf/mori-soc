@@ -643,6 +643,46 @@ class PostgresStateRepository(StateRepository):
                 (key, value, updated_by or None),
             )
 
+    # ── ui_sessions (로그인 세션 영속, M10 Phase A) ─────────────────────────────
+    def load_sessions(self) -> dict[str, Any]:
+        """미만료 세션 전체 {token: record}. 테이블이 아직 없으면 상위(관대 로드)가 처리."""
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT token, record FROM ui_sessions "
+                "WHERE expires_at IS NULL OR expires_at > now()"
+            )
+            return {r[0]: (dict(r[1]) if r[1] else {}) for r in cur.fetchall()}
+
+    def save_session(self, token: str, record: dict[str, Any]) -> None:
+        """세션 upsert. record 원형을 JSONB 로 보존, 조회/정리용 컬럼을 파생.
+
+        expires_at 은 정리(cleanup) 상한(30일)일 뿐 — 실제 만료 판정은 미들웨어가 한다.
+        """
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO ui_sessions (token, username, role, created_at, last_seen, expires_at, record)
+                VALUES (%s, %s, %s, COALESCE(%s::timestamptz, now()), %s::timestamptz,
+                        now() + interval '30 days', %s)
+                ON CONFLICT (token) DO UPDATE SET
+                    username = EXCLUDED.username, role = EXCLUDED.role,
+                    last_seen = EXCLUDED.last_seen, expires_at = EXCLUDED.expires_at,
+                    record = EXCLUDED.record
+                """,
+                (token, str(record.get("username", "")), record.get("role"),
+                 record.get("created_at"), record.get("last_seen"),
+                 Jsonb(record) if Jsonb is not None else record),
+            )
+
+    def delete_session(self, token: str) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM ui_sessions WHERE token = %s", (token,))
+
+    def delete_expired_sessions(self, now_iso: str) -> int:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM ui_sessions WHERE expires_at IS NOT NULL AND expires_at <= now()")
+            return cur.rowcount or 0
+
     # ── control_status (M2-7 통제 이행 상태) ────────────────────────────────────
     def load_control_status(self) -> dict[str, dict[str, Any]]:
         with self._connect() as conn, conn.cursor() as cur:

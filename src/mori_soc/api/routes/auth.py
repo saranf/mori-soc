@@ -147,8 +147,13 @@ def register_auth(ctx: RouteContext) -> None:
         return resp
 
     @app.get("/auth/logout", include_in_schema=False)
-    def auth_logout(request: Any = None) -> Any:
-        """로그아웃: 세션 쿠키 삭제 후 /login 리디렉션."""
+    def auth_logout(request: Request = None) -> Any:
+        """로그아웃: 세션 쿠키 삭제 후 /login 리디렉션.
+
+        request 를 ``Request`` 로 주입받아야 쿠키의 토큰을 읽어 서버 세션도 제거한다
+        (``Any`` 이면 FastAPI 가 Request 를 주입하지 않아 서버 세션이 남는다 — 영속 백엔드에선
+        DB 세션이 만료까지 잔존). login/me 와 동일한 주입 패턴.
+        """
         token = ""
         if hasattr(request, "cookies"):
             token = request.cookies.get("mori_session", "")

@@ -459,7 +459,10 @@ def create_app(
     )
 
     # Sessions: token -> {username, role, created_at}
-    sessions: dict[str, dict[str, Any]] = {}
+    # M10 Phase A: MORI_SESSION_BACKEND=postgres 면 영속 래퍼(재기동/다중 인스턴스 대비),
+    # 기본(memory)은 평범한 dict 로 현행 동작 유지. login/logout/미들웨어는 무변경.
+    from mori_soc.api.session_store import build_session_store
+    sessions: dict[str, dict[str, Any]] = build_session_store(state_repo)
     # Signup requests: [{id, name, email, department, reason, status, created_at}]
     signup_requests: list[dict[str, Any]] = []
     # User action audit log: [{seq, ts, username, action, detail, prev_hash, hash}]

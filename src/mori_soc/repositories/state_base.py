@@ -257,5 +257,24 @@ class StateRepository(ABC):
         """Remove one personal-data-flow row."""
         raise NotImplementedError
 
+    # ── ui_sessions: 로그인 세션 영속(M10 Phase A) ────────────────────────────
+    # 비추상 기본 구현 = 프로세스 인메모리(백엔드가 세션을 영속하지 않을 때 무해).
+    # Postgres 백엔드만 오버라이드해 실제 DB 영속을 제공한다(옵트인).
+    def load_sessions(self) -> "dict[str, dict[str, Any]]":
+        """저장된(미만료) 세션 전체 {token: record}. 기본은 인메모리."""
+        return dict(getattr(self, "_mem_sessions", {}))
+
+    def save_session(self, token: str, record: "dict[str, Any]") -> None:
+        """세션 upsert(idempotent on token). 기본은 인메모리."""
+        self.__dict__.setdefault("_mem_sessions", {})[token] = dict(record)
+
+    def delete_session(self, token: str) -> None:
+        """세션 1건 삭제(로그아웃/만료). 기본은 인메모리."""
+        getattr(self, "_mem_sessions", {}).pop(token, None)
+
+    def delete_expired_sessions(self, now_iso: str) -> int:
+        """만료 세션 정리(삭제 건수 반환). 기본은 no-op(0)."""
+        return 0
+
 
 __all__ = ["StateRepository"]
