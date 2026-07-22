@@ -3238,7 +3238,7 @@
           const st = smap[c.id];
           const stBadge = (st && st.status && st.status !== '미정') ? _ctlStatusBadge(st.status) : '';
           const draftBadge = (c.status && c.status !== 'reviewed') ? `<span title="${tt('dash.ctl.draft_tip','초안 — 공식 고시 대비 검토 전')}" style="background:#fef3d6;color:#f5a623;border:1px solid #f5a62333;padding:0 5px;border-radius:5px;font-size:9px;margin-left:4px;vertical-align:middle">${tt('dash.ctl.draft','draft')}</span>` : '';
-          const pdf = c.mapped ? `<a href="/controls/detail/${enc}/evidence.pdf" target="_blank" title="${tt('dash.ctl.pdf','증적 팩 PDF')}" style="margin-left:6px;text-decoration:none;font-size:11px"></a>` : '';
+          const pdf = c.mapped ? `<a href="/controls/detail/${enc}/evidence.pdf?lang=${window.lang||"ko"}" target="_blank" title="${tt('dash.ctl.pdf','증적 팩 PDF')}" style="margin-left:6px;text-decoration:none;font-size:11px"></a>` : '';
           const editBtns = _ctlCanEdit ? `<span onclick="openControlEditor('${enc}')" title="${tt('dash.ctl.edit','수정')}" style="cursor:pointer;margin-left:6px;font-size:11px"></span><span onclick="deleteControl('${enc}')" title="${tt('dash.ctl.del','삭제')}" style="cursor:pointer;margin-left:3px;font-size:11px"></span>` : '';
           return `<div style="padding:3px 0;${dim}"><span onclick="toggleControlDetail('${enc}', this)" style="${clickable}"><span style="color:#191f28;font-size:11px">${escapeHtml(c.id)}</span> ${escapeHtml(title)}${draftBadge}${stBadge}${srcs}</span>${pdf}${editBtns}<div class="ctl-detail" style="display:none;margin:4px 0 8px 16px;padding:6px 10px;background:#f7f8fa;border:1px solid #e5e8eb;border-radius:8px;font-size:12px"></div></div>`;
         };
@@ -3308,7 +3308,7 @@
         h += `<div style="margin-top:8px;padding-top:6px;border-top:1px solid #e5e8eb;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
           <span style="color:#191f28">${tt('dash.ctl.download','증적 팩 다운로드')}:</span>
           <a href="/controls/detail/${enc}/evidence.csv" style="color:#3182f6;text-decoration:none">CSV</a>
-          <a href="/controls/detail/${enc}/evidence.pdf" target="_blank" style="color:#3182f6;text-decoration:none">PDF</a>
+          <a href="/controls/detail/${enc}/evidence.pdf?lang=${window.lang||"ko"}" target="_blank" style="color:#3182f6;text-decoration:none">PDF</a>
         </div>`;
         box.innerHTML = h || `<span class="empty"></span>`;
       } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.ctl.err','통제 카탈로그를 불러오지 못했습니다.')}</span>`; }

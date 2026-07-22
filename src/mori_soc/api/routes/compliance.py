@@ -927,8 +927,9 @@ def register_compliance(ctx: RouteContext) -> None:
         doc = _evidence_document(control_id, user or "")
         if doc is None:
             raise HTTPException(status_code=404, detail=f"control '{control_id}' not found")
+        from mori_soc.util import request_lang
         try:
-            pdf = evidence_document_pdf(doc)
+            pdf = evidence_document_pdf(doc, lang=request_lang(request))
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         safe = control_id.replace("/", "_")
@@ -975,6 +976,8 @@ def register_compliance(ctx: RouteContext) -> None:
             signing_config_from_env,
         )
         user = ctx.get_session_username(request) if ctx.get_session_username else ""
+        from mori_soc.util import request_lang
+        bundle_lang = request_lang(request)
         catalog = _merged_catalog()
         host_lists = _evidence_host_lists()
         metrics = _source_metrics(limit=200)
@@ -1004,7 +1007,7 @@ def register_compliance(ctx: RouteContext) -> None:
                     continue
                 folder = f"{_safe_name(_fw_label(c.get('framework')), 20)}/{_safe_name(cid, 24)}_{_safe_name(c.get('title_ko') or c.get('title_en'), 40)}"
                 try:
-                    writer.add(f"{folder}/evidence.pdf", evidence_document_pdf(doc))
+                    writer.add(f"{folder}/evidence.pdf", evidence_document_pdf(doc, lang=bundle_lang))
                 except RuntimeError:
                     pass  # reportlab 미설치 시 PDF 생략(CSV는 유지)
                 writer.add(f"{folder}/evidence.csv", to_utf8_bom(evidence_document_csv(doc)))

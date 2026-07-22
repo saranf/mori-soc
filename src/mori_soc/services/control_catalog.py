@@ -271,8 +271,9 @@ def build_control_detail(control_id: str, gaps: dict[str, Any] | None = None,
 def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
                          metrics: dict[str, Any] | None = None,
                          catalog: dict[str, Any] | None = None,
-                         evidence_records: list[dict[str, Any]] | None = None) -> bytes | None:
-    """통제 증적 팩 PDF (reportlab). 통제 미존재 시 None."""
+                         evidence_records: list[dict[str, Any]] | None = None,
+                         lang: str = "ko") -> bytes | None:
+    """통제 증적 팩 PDF (reportlab). 통제 미존재 시 None. lang(ko/en)으로 UI 언어를 따른다."""
     detail = build_control_detail(control_id, gaps=gaps, metrics=metrics,
                                   catalog=catalog, evidence_records=evidence_records)
     if detail is None:
@@ -294,6 +295,22 @@ def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
     from mori_soc.services.pdf import get_pdf_font as _get_pdf_font
 
     c = detail["control"]
+    # UI 언어(ko/en)를 따라 단일 언어로 렌더 — 라벨은 맵, 콘텐츠는 pick 로 선택.
+    _en = str(lang).lower() == "en"
+
+    def pick(ko: Any, en: Any) -> str:
+        return str((en or ko) if _en else (ko or en) or "")
+    LB = {
+        "intent": "Intent" if _en else "취지",
+        "sources": "Evidence sources" if _en else "증적 소스",
+        "not_wired": "not wired" if _en else "미연결",
+        "live": "Live evidence (current)" if _en else "실증적 (현재)",
+        "no_data": "no collected data" if _en else "수집 데이터 없음",
+        "documented": "Documented evidence" if _en else "수기 증적",
+        "xmap": "Cross-mapping" if _en else "크로스매핑",
+        "defects": "Related defects" if _en else "관련 심사 결함",
+        "fix": "Fix" if _en else "시정",
+    }
     font = _get_pdf_font()
     styles = getSampleStyleSheet()
     h1 = ParagraphStyle("h1", parent=styles["Title"], fontName=font, fontSize=16, leading=20, spaceAfter=4)
@@ -309,30 +326,25 @@ def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
                             topMargin=16 * mm, bottomMargin=14 * mm, title=f"MORI Evidence Pack {c.get('id')}")
     story: list[Any] = []
     fw = "ISMS-P 2023" if c.get("framework") == "isms-p" else "ISO 27001:2022"
-    story.append(Paragraph(f"[{esc(c.get('id'))}] {esc(c.get('title_ko'))}", h1))
-    story.append(Paragraph(f"{esc(c.get('title_en'))} · {fw}", small))
+    story.append(Paragraph(f"[{esc(c.get('id'))}] {esc(pick(c.get('title_ko'), c.get('title_en')))}", h1))
+    story.append(Paragraph(f"{esc(pick(c.get('title_en'), c.get('title_ko')))} · {fw}", small))
     meta = " · ".join(x for x in [esc(c.get("domain")), esc(c.get("section")), f"status: {esc(c.get('status'))}"] if x)
     story.append(Paragraph(meta, small))
 
     if c.get("intent_ko") or c.get("intent_en"):
-        story.append(Paragraph("취지 / Intent", h2))
-        if c.get("intent_ko"):
-            story.append(Paragraph(esc(c.get("intent_ko")), body))
-        if c.get("intent_en"):
-            story.append(Paragraph(esc(c.get("intent_en")), small))
+        story.append(Paragraph(LB["intent"], h2))
+        story.append(Paragraph(esc(pick(c.get("intent_ko"), c.get("intent_en"))), body))
 
-    story.append(Paragraph("증적 소스 / Evidence sources", h2))
-    srcs = ", ".join(c.get("evidence_sources") or []) or "— (미연결 / not wired)"
+    story.append(Paragraph(LB["sources"], h2))
+    srcs = ", ".join(c.get("evidence_sources") or []) or f"— ({LB['not_wired']})"
     story.append(Paragraph(esc(srcs), body))
-    if c.get("evidence_hint_ko"):
-        story.append(Paragraph(esc(c.get("evidence_hint_ko")), body))
-    if c.get("evidence_hint_en"):
-        story.append(Paragraph(esc(c.get("evidence_hint_en")), small))
+    if c.get("evidence_hint_ko") or c.get("evidence_hint_en"):
+        story.append(Paragraph(esc(pick(c.get("evidence_hint_ko"), c.get("evidence_hint_en"))), body))
 
     if detail.get("evidence_live"):
-        story.append(Paragraph("실증적 (현재) / Live evidence", h2))
+        story.append(Paragraph(LB["live"], h2))
         for e in detail["evidence_live"]:
-            s = e.get("summary_ko") or "— (수집 데이터 없음)"
+            s = e.get("summary_ko") or f"— ({LB['no_data']})"
             story.append(Paragraph(f"• {esc(e.get('label_ko'))}: {esc(s)}", body))
             for row in (e.get("breakdown") or [])[:8]:
                 story.append(Paragraph(f"&nbsp;&nbsp;&nbsp;&nbsp;- {esc(row.get('label'))}: {esc(row.get('value'))}", small))
@@ -340,7 +352,7 @@ def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
                 story.append(Paragraph(f"&nbsp;&nbsp;&nbsp;&nbsp;… +{esc(e.get('more'))}", small))
 
     if detail.get("evidence_records"):
-        story.append(Paragraph("수기 증적 / Documented evidence", h2))
+        story.append(Paragraph(LB["documented"], h2))
         for r in detail["evidence_records"]:
             head = " · ".join(x for x in [esc(r.get("title")), esc(r.get("collected_at")),
                                           esc(r.get("collected_by"))] if x)
@@ -351,10 +363,10 @@ def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
                 story.append(Paragraph(f"↳ {esc(r.get('reference'))}", small))
 
     if detail["mapped_to"]:
-        story.append(Paragraph("크로스매핑 / Cross-mapping", h2))
+        story.append(Paragraph(LB["xmap"], h2))
         rows = [["ID", "Title", "Relation"]]
         for m in detail["mapped_to"]:
-            rows.append([esc(m["id"]), esc(m.get("title_ko") or m.get("title_en")), esc(m["relation"])])
+            rows.append([esc(m["id"]), esc(pick(m.get("title_ko"), m.get("title_en"))), esc(m["relation"])])
         t = Table(rows, colWidths=[30 * mm, 110 * mm, 30 * mm])
         t.setStyle(TableStyle([
             ("FONTNAME", (0, 0), (-1, -1), font), ("FONTSIZE", (0, 0), (-1, -1), 8.5),
@@ -366,16 +378,24 @@ def control_evidence_pdf(control_id: str, gaps: dict[str, Any] | None = None,
         story.append(t)
 
     if detail["defects"]:
-        story.append(Paragraph("관련 심사 결함 / Related defects", h2))
+        story.append(Paragraph(LB["defects"], h2))
         for d in detail["defects"]:
             gc = d.get("gap_count")
-            gc_txt = f"  · 현재 증적 공백: {gc}건" if isinstance(gc, int) else ""
-            story.append(Paragraph(f"• [{esc(d.get('severity'))}] {esc(d.get('title_ko'))}{esc(gc_txt)}", body))
-            if d.get("fix_ko"):
-                story.append(Paragraph(f"↳ 시정: {esc(d.get('fix_ko'))}", small))
+            if isinstance(gc, int):
+                gc_txt = f"  · current evidence gap: {gc}" if _en else f"  · 현재 증적 공백: {gc}건"
+            else:
+                gc_txt = ""
+            story.append(Paragraph(f"• [{esc(d.get('severity'))}] {esc(pick(d.get('title_ko'), d.get('title_en')))}{esc(gc_txt)}", body))
+            fix = pick(d.get("fix_ko"), d.get("fix_en"))
+            if fix:
+                story.append(Paragraph(f"↳ {LB['fix']}: {esc(fix)}", small))
 
     story.append(Spacer(1, 10 * mm))
-    story.append(Paragraph(f"생성 {esc(detail['generated_at'][:19])} · MORI SOC 통제 증적 팩 (draft catalog v1 — 공식 고시 대비 검증 필요)", small))
+    _foot = (f"Generated {esc(detail['generated_at'][:19])} · MORI SOC control evidence pack "
+             "(draft catalog v1 — verify against official notice)") if _en else (
+             f"생성 {esc(detail['generated_at'][:19])} · MORI SOC 통제 증적 팩 "
+             "(draft catalog v1 — 공식 고시 대비 검증 필요)")
+    story.append(Paragraph(_foot, small))
     doc.build(story)
     return buf.getvalue()
 
@@ -449,8 +469,8 @@ def evidence_document_csv(doc: dict[str, Any]) -> str:
     return buf.getvalue()
 
 
-def evidence_document_pdf(doc: dict[str, Any]) -> bytes:
-    """증적 문서 PDF — 자산 인벤토리·문서화 증적을 표로 깔끔하게. reportlab 필요."""
+def evidence_document_pdf(doc: dict[str, Any], lang: str = "ko") -> bytes:
+    """증적 문서 PDF — 자산 인벤토리·문서화 증적을 표로. lang(ko/en)으로 UI 언어를 따른다."""
     try:
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4
@@ -468,6 +488,25 @@ def evidence_document_pdf(doc: dict[str, Any]) -> bytes:
     from mori_soc.services.pdf import get_pdf_font as _get_pdf_font
 
     c = doc.get("control", {})
+    _en = str(lang).lower() == "en"
+
+    def pick(ko: Any, en: Any) -> str:
+        return str((en or ko) if _en else (ko or en) or "")
+    T = {
+        "doc": "Evidence document" if _en else "증적 문서",
+        "inv": "Asset inventory (live)" if _en else "자산 인벤토리 (실증적)",
+        "inv_none": "(no collected asset inventory)" if _en else "(수집된 자산 인벤토리 없음)",
+        "live": "Other live evidence" if _en else "기타 실증적",
+        "docd": "Documented evidence" if _en else "문서화된 증적",
+        "docd_none": "(no documented evidence)" if _en else "(문서화된 증적 없음)",
+        "hn": "Hostname" if _en else "호스트명", "status": "Status" if _en else "상태",
+        "source": "Source" if _en else "소스",
+        "date": "Date" if _en else "일자", "kind": "Type" if _en else "유형",
+        "title": "Title" if _en else "제목", "by": "Collector" if _en else "수집자",
+        "ref": "Reference" if _en else "참조",
+        "gen": "Generated" if _en else "생성",
+        "footer": "MORI SOC evidence document — audit evidence" if _en else "MORI SOC 증적 문서 — 감사 대응 증적",
+    }
     font = _get_pdf_font()
     styles = getSampleStyleSheet()
     h1 = ParagraphStyle("h1", parent=styles["Title"], fontName=font, fontSize=15, leading=19, spaceAfter=2)
@@ -490,44 +529,47 @@ def evidence_document_pdf(doc: dict[str, Any]) -> bytes:
                              title=f"MORI Evidence {c.get('id')}")
     fw = "ISMS-P 2023" if c.get("framework") == "isms-p" else ("ISO 27001:2022" if c.get("framework") == "iso27001" else str(c.get("framework", "")))
     story: list[Any] = []
-    story.append(Paragraph(f"증적 문서 · [{esc(c.get('id'))}] {esc(c.get('title_ko'))}", h1))
-    sub = " · ".join(x for x in [esc(c.get("title_en")), fw] if x)
+    story.append(Paragraph(f"{T['doc']} · [{esc(c.get('id'))}] {esc(pick(c.get('title_ko'), c.get('title_en')))}", h1))
+    sub = " · ".join(x for x in [esc(pick(c.get("title_en"), c.get("title_ko"))), fw] if x)
     story.append(Paragraph(sub, small))
-    meta = " · ".join(x for x in [f"생성 {esc((doc.get('generated_at') or '')[:19])}",
-             f"수집자 {esc(doc.get('collector'))}" if doc.get("collector") else "",
-             f"이행상태 {esc(doc.get('status'))}"] if x)
+    _status_lbl = "Status" if _en else "이행상태"
+    _by_lbl = "Collector" if _en else "수집자"
+    meta = " · ".join(x for x in [f"{T['gen']} {esc((doc.get('generated_at') or '')[:19])}",
+             f"{_by_lbl} {esc(doc.get('collector'))}" if doc.get("collector") else "",
+             f"{_status_lbl} {esc(doc.get('status'))}"] if x)
     story.append(Paragraph(meta, small))
-    if c.get("intent_ko"):
+    if c.get("intent_ko") or c.get("intent_en"):
         story.append(Spacer(1, 3 * mm))
-        story.append(Paragraph(esc(c.get("intent_ko")), body))
+        story.append(Paragraph(esc(pick(c.get("intent_ko"), c.get("intent_en"))), body))
 
-    story.append(Paragraph("자산 인벤토리 (실증적)", h2))
+    story.append(Paragraph(T["inv"], h2))
     inv = doc.get("inventory", [])
     if inv:
         rows = [[h.get("hostname", ""), h.get("ip", ""), h.get("status", ""), h.get("source", "")] for h in inv]
-        story.append(_table(["호스트명", "IP", "상태", "소스"], rows,
+        story.append(_table([T["hn"], "IP", T["status"], T["source"], ], rows,
                             [70 * mm, 40 * mm, 30 * mm, 28 * mm]))
-        story.append(Paragraph(f"총 {len(inv)}건 · 수집 시점 자동 현행화 자산", small))
+        _tot = f"{len(inv)} rows · live-refreshed assets at collection time" if _en else f"총 {len(inv)}건 · 수집 시점 자동 현행화 자산"
+        story.append(Paragraph(_tot, small))
     else:
-        story.append(Paragraph("(수집된 자산 인벤토리 없음)", small))
+        story.append(Paragraph(T["inv_none"], small))
 
     if doc.get("live"):
-        story.append(Paragraph("기타 실증적", h2))
+        story.append(Paragraph(T["live"], h2))
         for e in doc["live"]:
             story.append(Paragraph(f"• [{esc(e.get('label'))}] {esc(e.get('summary'))}", body))
 
-    story.append(Paragraph("문서화된 증적", h2))
+    story.append(Paragraph(T["docd"], h2))
     recs = doc.get("records", [])
     if recs:
         rows = [[r.get("collected_at", ""), r.get("kind", ""), r.get("title", ""),
                  r.get("collected_by", ""), r.get("reference", "")] for r in recs]
-        story.append(_table(["일자", "유형", "제목", "수집자", "참조"], rows,
+        story.append(_table([T["date"], T["kind"], T["title"], T["by"], T["ref"]], rows,
                             [22 * mm, 16 * mm, 66 * mm, 24 * mm, 40 * mm]))
     else:
-        story.append(Paragraph("(문서화된 증적 없음)", small))
+        story.append(Paragraph(T["docd_none"], small))
 
     story.append(Spacer(1, 8 * mm))
-    story.append(Paragraph("MORI SOC 증적 문서 — 감사 대응 증적", small))
+    story.append(Paragraph(T["footer"], small))
     docp.build(story)
     return buf.getvalue()
 

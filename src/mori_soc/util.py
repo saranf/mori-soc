@@ -21,4 +21,24 @@ def to_utf8_bom(text: str) -> bytes:
     return (_UTF8_BOM + text).encode("utf-8")
 
 
-__all__ = ["now_iso", "to_utf8_bom"]
+def request_lang(request: object) -> str:
+    """요청 언어 결정(ko/en): ?lang= 우선 → mori_lang 쿠키 → 기본 ko.
+
+    PDF/CSV 등 산출물이 **UI 언어를 따라가도록** 하는 공용 헬퍼(공통화). fastapi 의존 없이
+    덕타이핑으로 query_params·cookies 를 읽는다. 알 수 없는 값은 ko 로 수렴한다.
+    """
+    q = None
+    try:
+        q = request.query_params.get("lang")  # type: ignore[attr-defined]
+    except Exception:
+        q = None
+    c = None
+    try:
+        c = request.cookies.get("mori_lang")  # type: ignore[attr-defined]
+    except Exception:
+        c = None
+    lang = str(q or c or "ko").strip().lower()
+    return "en" if lang == "en" else "ko"
+
+
+__all__ = ["now_iso", "to_utf8_bom", "request_lang"]
