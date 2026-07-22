@@ -481,17 +481,19 @@
     async function renderOnboarding() {
       const card = document.getElementById('onboarding_card');
       if (!card) return;
-      let status, connectors, scan, golive;
+      let status, connectors, scan, golive, ctodo;
       try {
-        const [sr, cr, xr, gr] = await Promise.all([
+        const [sr, cr, xr, gr, tr] = await Promise.all([
           fetch('/onboarding/status'), fetch('/onboarding/connectors'),
           fetch('/onboarding/scan-setup'), fetch('/onboarding/go-live'),
+          fetch('/onboarding/control-todo'),
         ]);
         if (!sr.ok || !cr.ok) { card.style.display = 'none'; return; }
         status = await sr.json();
         connectors = (await cr.json()).connectors || [];
         scan = xr.ok ? await xr.json() : null;
         golive = gr.ok ? await gr.json() : null;
+        ctodo = tr.ok ? await tr.json() : null;
       } catch (e) { card.style.display = 'none'; return; }
 
       const cl = status.checklist || { steps: [], done_count: 0, total: 0 };
@@ -588,6 +590,22 @@
           + `<div class="status-line" style="margin-top:8px">${escapeHtml(tt('onboarding.golive.clear_hint', golive.clear_demo_hint_ko || ''))}</div></div></details>`;
       }
 
+      // 오늘 채울 통제 top-N + 진행률(통제 카탈로그 성숙도 재활용).
+      let ctodoHtml = '';
+      if (ctodo && (ctodo.total || 0) > 0) {
+        const rows = (ctodo.todos || []).map((t) =>
+          `<div class="metric-sub"><code>${escapeHtml(t.id)}</code> ${escapeHtml(t.title_ko || t.title_en || '')}`
+          + ` <span class="badge unknown">${escapeHtml(t.framework || '')}</span></div>`).join('');
+        ctodoHtml =
+          `<details class="card" style="padding:0;margin-top:10px"><summary style="cursor:pointer;padding:12px 14px;font-weight:800;font-size:14px">`
+          + `${escapeHtml(tt('onboarding.ctodo.title','오늘 채울 통제'))} `
+          + `<span class="badge online">${ctodo.percent}%</span> `
+          + `<span class="metric-sub">(${ctodo.done}/${ctodo.total})</span></summary>`
+          + `<div style="padding:0 14px 14px"><div class="metric-sub" style="margin-bottom:6px">`
+          + `${escapeHtml(tt('onboarding.ctodo.hint','증적 소스가 있어 완료에 가장 가까운 통제부터 추천합니다.'))}</div>`
+          + `${rows}</div></details>`;
+      }
+
       card.innerHTML =
         `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">`
         + `<h2 style="margin:0">${escapeHtml(tt('onboarding.title','실사용 시작 · 온보딩'))}</h2>`
@@ -596,6 +614,7 @@
         + httpsHint
         + `<h2 style="margin:10px 0 8px;font-size:15px">${escapeHtml(tt('onboarding.connectors','커넥터 연결 상태'))}</h2>`
         + `<div class="coverage">${connRows}</div>`
+        + ctodoHtml
         + scanHtml
         + goLiveHtml;
       card.style.display = '';

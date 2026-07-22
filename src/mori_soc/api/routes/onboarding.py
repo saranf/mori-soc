@@ -29,6 +29,7 @@ from mori_soc.services.onboarding import (
     build_go_live,
     build_scan_setup,
     is_testable,
+    rank_control_todos,
 )
 
 _log = logging.getLogger("mori_soc.onboarding")
@@ -81,6 +82,38 @@ def register_onboarding(ctx: RouteContext) -> None:
             "connectors_connected": sum(1 for c in connectors if c.get("state") == "connected"),
             "connectors_total": len(connectors),
         }
+
+    @app.get("/onboarding/control-todo", tags=["Onboarding"])
+    def onboarding_control_todo(request: Request, limit: int = 3) -> dict[str, Any]:
+        """"오늘 채울 통제 top-N" + 통제 진행률. admin·security 전용.
+
+        기존 통제 카탈로그·성숙도(maturity_summary)를 재활용해 완료에 가까운 통제를 추천한다.
+        """
+        ctx.require_admin_or_security(request, detail="control todo requires admin or security role")
+        try:
+            from mori_soc.api.routes.privacy import PRIVACY_FLOW_CONTROL_IDS
+            from mori_soc.services.code_review_dispatch import CODE_REVIEW_CONTROL_IDS
+            from mori_soc.services.control_catalog import maturity_summary
+            # 병합 카탈로그(admin 오버레이 포함)를 compliance 라우터와 동일하게 얻는다.
+            from mori_soc.services.control_catalog import load_catalog
+            catalog = load_catalog()
+            auto_ids = set(CODE_REVIEW_CONTROL_IDS) | set(PRIVACY_FLOW_CONTROL_IDS)
+            summary = maturity_summary(auto_ids=auto_ids, catalog=catalog)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"control todo unavailable: {exc}") from exc
+        maturity_by_id = {str(p.get("id")): str(p.get("maturity")) for p in summary.get("controls", [])}
+        items: list[dict[str, Any]] = []
+        for c in catalog.get("controls", []) or []:
+            cid = str(c.get("id") or "")
+            items.append({
+                "id": cid,
+                "title_ko": c.get("title_ko", ""), "title_en": c.get("title_en", ""),
+                "framework": c.get("framework", ""),
+                "maturity": maturity_by_id.get(cid, "draft"),
+                "mapped": bool(c.get("evidence_sources")),
+            })
+        capped = max(1, min(int(limit or 3), 10))
+        return rank_control_todos(items, order=summary.get("order", []), limit=capped)
 
     @app.get("/onboarding/go-live", tags=["Onboarding"])
     def onboarding_go_live(request: Request) -> dict[str, Any]:

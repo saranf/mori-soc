@@ -256,7 +256,42 @@ def build_go_live(
     }
 
 
+# ── 통제 채우기 가이드(M7) ────────────────────────────────────────────────────
+# "194개 중 어디부터?"에 답한다 — 완료에 가장 가까운(증적 소스가 있는) 통제를 먼저 추천.
+def rank_control_todos(
+    items: Sequence[Mapping[str, Any]],
+    order: Sequence[str],
+    limit: int = 3,
+) -> dict[str, Any]:
+    """오늘 채울 통제 top-N + 진행률. 완료 레벨(order 마지막)이 아닌 것 중 성숙도 높은 순.
+
+    items: [{id, title_ko, framework, maturity, mapped}]. order: 성숙도 낮은→높은.
+    성숙도가 높을수록 완료에 가까워 '빠른 승리'라 먼저 추천한다(증적 소스 있는 것 우선).
+    """
+    order = list(order)
+    done_level = order[-1] if order else ""
+    rank = {lvl: i for i, lvl in enumerate(order)}
+
+    def _key(it: Mapping[str, Any]):
+        # 성숙도 높은(완료 임박) 먼저 → 그 안에서 mapped 먼저 → id 안정 정렬.
+        return (-rank.get(str(it.get("maturity")), -1),
+                0 if it.get("mapped") else 1,
+                str(it.get("id") or ""))
+
+    candidates = [dict(i) for i in items if str(i.get("maturity")) != done_level]
+    candidates.sort(key=_key)
+    total = len(items)
+    done = total - len(candidates)
+    return {
+        "todos": candidates[: max(0, int(limit))],
+        "remaining": len(candidates),
+        "done": done,
+        "total": total,
+        "percent": round(100.0 * done / total, 1) if total else 0.0,
+    }
+
+
 __all__ = [
     "connector_catalog", "is_testable", "build_connectors", "build_checklist",
-    "build_scan_setup", "build_go_live",
+    "build_scan_setup", "build_go_live", "rank_control_todos",
 ]

@@ -13,7 +13,10 @@ from mori_soc.services.onboarding import (
     build_scan_setup,
     connector_catalog,
     is_testable,
+    rank_control_todos,
 )
+
+_ORDER = ("draft", "reviewed", "mapped", "auto_evidence")
 
 
 class ConnectorCatalogTest(unittest.TestCase):
@@ -154,6 +157,39 @@ class GoLiveTest(unittest.TestCase):
         # 파괴적 삭제가 아니라 env 재기동 안내여야 한다(모리다움 안전).
         g = build_go_live(True, False, False, False, False)
         self.assertIn("MORI_DEMO_SEED=0", g["clear_demo_hint_ko"])
+
+
+class ControlTodoTest(unittest.TestCase):
+    def _items(self):
+        return [
+            {"id": "1.1", "title_ko": "a", "framework": "ISMS-P", "maturity": "draft", "mapped": False},
+            {"id": "2.8.1", "title_ko": "b", "framework": "ISMS-P", "maturity": "mapped", "mapped": True},
+            {"id": "A.8.1", "title_ko": "c", "framework": "ISO", "maturity": "reviewed", "mapped": False},
+            {"id": "3.1", "title_ko": "d", "framework": "ISMS-P", "maturity": "auto_evidence", "mapped": True},
+        ]
+
+    def test_done_excludes_top_level(self) -> None:
+        r = rank_control_todos(self._items(), _ORDER, limit=3)
+        self.assertEqual(r["total"], 4)
+        self.assertEqual(r["done"], 1)            # auto_evidence 1건 = 완료
+        self.assertEqual(r["remaining"], 3)
+        self.assertEqual(r["percent"], 25.0)
+
+    def test_recommends_closest_to_done_first(self) -> None:
+        r = rank_control_todos(self._items(), _ORDER, limit=3)
+        # mapped(완료 임박) → reviewed → draft 순.
+        self.assertEqual([t["id"] for t in r["todos"]], ["2.8.1", "A.8.1", "1.1"])
+
+    def test_limit_caps_todos(self) -> None:
+        r = rank_control_todos(self._items(), _ORDER, limit=1)
+        self.assertEqual(len(r["todos"]), 1)
+        self.assertEqual(r["todos"][0]["id"], "2.8.1")
+
+    def test_empty(self) -> None:
+        r = rank_control_todos([], _ORDER, limit=3)
+        self.assertEqual(r["total"], 0)
+        self.assertEqual(r["percent"], 0.0)
+        self.assertEqual(r["todos"], [])
 
 
 if __name__ == "__main__":
