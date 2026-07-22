@@ -523,6 +523,21 @@
     }
     window.renderMoriHeader = renderMoriHeader;
 
+    /* 빈 상태 CTA 공용: 통제 카탈로그(통제 상태 편집)를 열고 스크롤 — '통제 상태 채우기' 이동처.
+       심사 준비 게이지·SoA 등 '통제 상태를 채우면…' 안내가 실제 동작으로 이어지게 한다. */
+    function openControlCatalog() {
+      try {
+        if (typeof switchTab === 'function') switchTab('compliance');
+        const card = document.getElementById('control_tree_card');
+        if (card) {
+          const det = card.closest('details');
+          if (det) det.open = true;
+          card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      } catch (e) {}
+    }
+    window.openControlCatalog = openControlCatalog;
+
     /* 인프라 현황 위젯 24h/12h 전환 + Zabbix/Wazuh 딥링크 (대시보드=인프라 뷰) */
     let _infraWindow = '24h';
     function setInfraWindow(w) {
@@ -1370,7 +1385,7 @@
       const total = fleetHosts.length + zabbixHosts.length;
       if (countEl) countEl.textContent = total ? `${total}` : '';
       if (!total) {
-        containerEl.innerHTML = `<span class="empty">${tt('dash.assets.mine.empty', '담당 자산이 없습니다. 계정 메뉴 → 프로필 편집에서 담당 서버를 등록하세요.')}</span>`;
+        containerEl.innerHTML = `<span class="empty">${escapeHtml(tt('dash.assets.mine.empty_pre', '담당 자산이 없습니다. '))}<a href="#" onclick="openProfileModal();return false;" style="color:#3182f6;font-weight:700">${escapeHtml(tt('dash.assets.mine.empty_cta', '프로필 편집에서 담당 서버 등록 →'))}</a></span>`;
         return;
       }
       const vulnBanner = _myServersVulnBanner();
@@ -2614,7 +2629,10 @@
               if (le) le.textContent = tt('dash.pdca.ready_empty', '데이터 없음');
               ringEl.style.display = '';
             }
-            if (headEl) headEl.textContent = tt('dash.pdca.hero_empty', '아직 통제 점검 데이터가 없어요. 통제 상태를 채우면 준비율이 바로 나와요.');
+            // 빈 상태를 '이동 가능한' 안내로 — 통제 카탈로그를 여는 CTA 를 붙인다.
+            if (headEl) headEl.innerHTML = escapeHtml(tt('dash.pdca.hero_empty', '아직 통제 점검 데이터가 없어요. 통제 상태를 채우면 준비율이 바로 나와요.'))
+              + ' <a href="#" onclick="openControlCatalog();return false;" style="color:#3182f6;font-weight:700;white-space:nowrap">'
+              + escapeHtml(tt('dash.pdca.fill_cta', '통제 상태 채우기 →')) + '</a>';
             if (cntEl) cntEl.style.display = 'none';
           }
         } catch (e) {}
