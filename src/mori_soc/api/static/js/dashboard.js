@@ -4110,7 +4110,24 @@
         const d = await res.json();
         const evs = d.events || [];
         if (!evs.length) { box.innerHTML = `<span class="empty">${tt('dash.ctl.scan_hist_empty','아직 스캔 이력이 없어요. 스캔을 요청하면 여기에 떠요 (0건 클린 스캔도 기록돼요).')}</span>`; return; }
-        box.innerHTML = evs.map(e => {
+        // findings 수 추출(레코드 우선, 없으면 요약에서 파싱).
+        const _fc = (e) => {
+          if (e.findings_count != null) return Number(e.findings_count);
+          const m = String(e.summary || '').match(/findings\s+(\d+)/);
+          return m ? Number(m[1]) : null;
+        };
+        // 같은 입력(input_signature)인데 findings 수가 다른 = 비결정(주로 AI/Claude). 정직 표기용.
+        const _sigFc = {};
+        evs.forEach(e => {
+          const sig = (e.envelope || {}).input_signature;
+          const fc = _fc(e);
+          if (sig && fc != null) (_sigFc[sig] = _sigFc[sig] || new Set()).add(fc);
+        });
+        const _nondet = evs.some(e => { const s = (e.envelope||{}).input_signature; return s && _sigFc[s] && _sigFc[s].size > 1; });
+        const noteEl = _nondet
+          ? `<div style="font-size:10px;color:#f5a623;margin-bottom:4px">${tt('dash.ctl.scan_nondet_note','※ AI(Claude) 스캔은 같은 커밋이어도 실행마다 findings 가 달라질 수 있어요(LLM 비결정성). 무료(Semgrep)는 결정적이에요. 무엇이 달라졌는지는 "변경 비교"로 확인하세요.')}</div>`
+          : '';
+        box.innerHTML = noteEl + evs.map(e => {
           const env = e.envelope || {};
           const repo = env.repo || e.host_id || '?';
           const commit = (env.commit || '').slice(0,8);
@@ -4127,8 +4144,12 @@
           // 재현성 입력(#2): scanner·model·signature — 같은 입력 식별/추적용.
           const repro = [env.scanner && ('scanner ' + env.scanner), env.model && ('model ' + env.model),
                          env.input_signature && ('sig ' + env.input_signature)].filter(Boolean).join(' · ');
-          const reproEl = repro ? ` <span style="color:#191f28;font-size:10px" title="${tt('dash.ctl.scan_repro','재현성 입력 — 같은 commit·scanner·ruleset·model 이면 같은 결과여야 함')}">(${escapeHtml(repro)})</span>` : '';
-          return `<div style="padding:5px 0;border-bottom:1px solid #eef1f4">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style="color:#191f28">${escapeHtml(when)}</span> ${verified}${toolBadge}${prov}${reproEl}${link}${dl}${diffLink}${del}</div>`;
+          const reproEl = repro ? ` <span style="color:#191f28;font-size:10px" title="${tt('dash.ctl.scan_repro','재현성 입력 — 결정적 도구(Semgrep)는 같은 입력이면 같은 결과. AI(Claude)는 같은 입력이어도 실행마다 달라질 수 있음(비결정).')}">(${escapeHtml(repro)})</span>` : '';
+          // 같은 sig 인데 findings 가 다른 행 = 비결정(정직 표기, 버그 아님).
+          const sig = env.input_signature;
+          const nondetEl = (sig && _sigFc[sig] && _sigFc[sig].size > 1)
+            ? ` <span style="color:#f5a623;font-size:10px;font-weight:700" title="${tt('dash.ctl.scan_nondet_row_t','같은 입력(sig)인데 findings 수가 달라요 — AI 비결정성. 데이터 오류가 아니라 LLM 특성입니다.')}">${tt('dash.ctl.scan_nondet_row','결과 변동(AI)')}</span>` : '';
+          return `<div style="padding:5px 0;border-bottom:1px solid #eef1f4">✓ <b>${escapeHtml(repo)}</b>${commit?('@'+escapeHtml(commit)):''} — ${escapeHtml(e.summary||'')} <span style="color:#191f28">${escapeHtml(when)}</span> ${verified}${toolBadge}${nondetEl}${prov}${reproEl}${link}${dl}${diffLink}${del}</div>`;
         }).join('');
       } catch(e) { box.innerHTML = `<span class="empty">${tt('dash.ctl.scan_hist_err','이력을 불러오지 못했어요')}</span>`; }
     }
