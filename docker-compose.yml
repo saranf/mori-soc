@@ -79,6 +79,8 @@ services:
       MORI_DEMO_MODE: ${MORI_DEMO_MODE:-true}
       # 세션 영속(M10 Phase A): postgres 면 재기동/다중 인스턴스에도 로그인 유지. 기본 memory(현행).
       MORI_SESSION_BACKEND: ${MORI_SESSION_BACKEND:-memory}
+      # 쿼리 스냅샷 캐시(F1): >0 초면 대시보드 버스트의 풀스냅샷을 흡수. 기본 0=현행(매 호출).
+      MORI_QUERY_CACHE_TTL: ${MORI_QUERY_CACHE_TTL:-0}
       # Trivy 원격 인제스트 토큰 — 설정 시 에이전트/CSOP가 세션 없이 Bearer/X-MORI-Token 로 push
       MORI_INGEST_TOKEN: ${MORI_INGEST_TOKEN:-}
       # 데모 임팩트용 인메모리 시드(triage/asset owners/user profiles) — 운영에선 0으로 비활성화

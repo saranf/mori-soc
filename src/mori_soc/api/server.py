@@ -2077,12 +2077,9 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
 
     ctx.zabbix_writeback_suppress = _zabbix_writeback_suppress
 
-    def get_query_service() -> QueryService:
-        if service is not None:
-            return service
-        if service_factory is not None:
-            return service_factory()
-        return create_query_service()
+    # F1: 옵트인 TTL 스냅샷 캐시(MORI_QUERY_CACHE_TTL>0). 기본 0=현행(매 호출 스냅샷).
+    from mori_soc.api.query_cache import make_service_getter
+    get_query_service = make_service_getter(service, service_factory, create_query_service)
 
     ctx.get_query_service = get_query_service
 
