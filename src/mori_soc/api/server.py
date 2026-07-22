@@ -2135,6 +2135,9 @@ The 3×3 methodology (Impact × Likelihood) is the general risk assessment appro
     from mori_soc.api.routes.privacy import register_privacy
     register_privacy(ctx)
 
+    from mori_soc.api.routes.onboarding import register_onboarding
+    register_onboarding(ctx)
+
     return app
 
 

@@ -85,6 +85,19 @@ services:
       MORI_ZABBIX_UI_URL: ${MORI_ZABBIX_UI_URL:-http://localhost:18081}
       MORI_FLEET_UI_URL: ${MORI_FLEET_UI_URL:-http://localhost:1337}
       MORI_WAZUH_UI_URL: ${MORI_WAZUH_UI_URL:-}
+      # 온보딩 [연결 테스트](pull 커넥터)용 — api 가 poller 와 '같은' 연결 설정을 읽어야
+      # 화면에서 즉시 검증된다. api 는 폴링 루프가 없으므로 값만 참조할 뿐 수집하지 않는다.
+      MORI_ENABLE_ZABBIX: ${MORI_ENABLE_ZABBIX:-true}
+      MORI_ZABBIX_API_URL: ${MORI_ZABBIX_API_URL:-http://zabbix-web:8080/api_jsonrpc.php}
+      MORI_ZABBIX_API_TOKEN: ${MORI_ZABBIX_API_TOKEN:-}
+      MORI_ZABBIX_USER: ${MORI_ZABBIX_USER:-Admin}
+      MORI_ZABBIX_PASSWORD: ${MORI_ZABBIX_PASSWORD:-zabbix}
+      MORI_ZABBIX_TIMEOUT_SECONDS: ${MORI_ZABBIX_TIMEOUT_SECONDS:-10}
+      MORI_ENABLE_FLEET: ${MORI_ENABLE_FLEET:-false}
+      MORI_FLEET_API_URL: ${MORI_FLEET_API_URL:-}
+      MORI_FLEET_API_TOKEN: ${MORI_FLEET_API_TOKEN:-}
+      MORI_FLEET_TIMEOUT_SECONDS: ${MORI_FLEET_TIMEOUT_SECONDS:-10}
+      MORI_FLEET_INSECURE_TLS: ${MORI_FLEET_INSECURE_TLS:-false}
       # LDAP 인증 (활성화하려면 MORI_LDAP_ENABLED=true 설정)
       MORI_LDAP_ENABLED: ${MORI_LDAP_ENABLED:-false}
       MORI_LDAP_URL: ${MORI_LDAP_URL:-ldap://openldap:389}

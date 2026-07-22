@@ -1018,6 +1018,14 @@ def register_compliance(ctx: RouteContext) -> None:
                             extra={"bundle": "evidence-bundle", "scope": str(scope), "controls": n})
         if ctx.log_action:
             ctx.log_action(user or "system", "EVIDENCE_BUNDLE_ZIP", f"{scope}: {n}건")
+        # 온보딩 체크리스트 마지막 스텝(감사 패키지 내보내기) 완료 신호 — 최초 1회만 기록.
+        if str(ctx.settings.get("onboarding_bundle_exported", "")).strip().lower() not in ("1", "true", "yes"):
+            ctx.settings["onboarding_bundle_exported"] = "true"
+            if ctx.persist_setting:
+                try:
+                    ctx.persist_setting("onboarding_bundle_exported", user or "system")
+                except Exception:
+                    pass  # 온보딩 진행 표기는 부가 기능 — 저장 실패로 번들 다운로드를 막지 않는다
         ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d")
         return StreamingResponse(iter([buf.getvalue()]), media_type="application/zip",
                                  headers={"Content-Disposition": f'attachment; filename="mori-evidence-bundle-{ts}.zip"'})

@@ -4,6 +4,8 @@ __PAYLOAD_JSON__·__DOCS_PORTAL_URL__ placeholder는 console.py 치환 체인에
 """
 _ATAB_OVERVIEW_HTML = """    <!-- ── Tab: Overview ──────────────────────────────────────────────────── -->
     <div class="atab-panel active" id="atab_overview">
+      <!-- 온보딩(실사용 시작) 카드: 첫 실행 체크리스트 + 커넥터 연결 상태. renderOnboarding 가 실데이터로 채운다. -->
+      <section class="card" id="onboarding_card" style="display:none;padding:20px 22px;margin-bottom:16px"></section>
       <!-- 요약 스트립: 수집 소스/연결 호스트/응답 없음 (renderOverview 가 실데이터로 채움) -->
       <section class="card" id="admin_state_strip" style="display:none;padding:20px 22px;margin-bottom:16px">
         <div class="mori-strip" id="admin_state_strip_body"></div>

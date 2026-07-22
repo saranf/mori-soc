@@ -476,6 +476,99 @@
       });
     }
 
+    // ── 온보딩(실사용 시작) 카드 — 첫 실행 체크리스트 + 커넥터 연결 상태 ──────────
+    // admin·security 전용 엔드포인트라 403 이면 카드를 조용히 숨긴다(다른 롤엔 노출 안 함).
+    async function renderOnboarding() {
+      const card = document.getElementById('onboarding_card');
+      if (!card) return;
+      let status, connectors;
+      try {
+        const [sr, cr] = await Promise.all([
+          fetch('/onboarding/status'), fetch('/onboarding/connectors'),
+        ]);
+        if (!sr.ok || !cr.ok) { card.style.display = 'none'; return; }
+        status = await sr.json();
+        connectors = (await cr.json()).connectors || [];
+      } catch (e) { card.style.display = 'none'; return; }
+
+      const cl = status.checklist || { steps: [], done_count: 0, total: 0 };
+      // 진행바 + 스텝 칩(완료=초록/대기=흐림/다음할일=파랑). 장식 이모지 없이 텍스트 배지.
+      const stepChips = (cl.steps || []).map((s) => {
+        const isNext = cl.next_step === s.id;
+        const label = escapeHtml(tt('onboarding.step.' + s.id, s.label_ko));
+        const badge = s.done
+          ? `<span class="badge online">${escapeHtml(tt('onboarding.done','완료'))}</span>`
+          : (isNext
+              ? `<span class="badge" style="background:#1f6feb;color:#fff">${escapeHtml(tt('onboarding.next','지금 할 일'))}</span>`
+              : `<span class="badge unknown">${escapeHtml(tt('onboarding.pending','대기'))}</span>`);
+        return `<div class="coverage-item" style="min-width:140px"><div class="metric-sub">${label}</div>${badge}</div>`;
+      }).join('');
+
+      // 보안 태세 배지(hardened=초록 / insecure=빨강) — 실배포 안전 신호.
+      const posture = status.security_posture || 'unknown';
+      const postureBadge = posture === 'hardened'
+        ? `<span class="badge online">${escapeHtml(tt('onboarding.posture.hardened','보안 강화됨'))}</span>`
+        : `<span class="badge offline">${escapeHtml(tt('onboarding.posture.insecure','보안 취약(기본값 점검)'))}</span>`;
+
+      // 커넥터 성숙도 배지: verified=초록 / partial=노랑 / scaffold=중립(정직한 표기).
+      const matBadge = (m) => {
+        if (m === 'verified') return `<span class="badge online">${escapeHtml(tt('onboarding.mat.verified','실검증'))}</span>`;
+        if (m === 'partial') return `<span class="badge" style="background:#f5a623;color:#000">${escapeHtml(tt('onboarding.mat.partial','부분(수신형)'))}</span>`;
+        return `<span class="badge unknown">${escapeHtml(tt('onboarding.mat.scaffold','준비중'))}</span>`;
+      };
+      const stateLabel = (st) => tt('onboarding.state.' + st, {
+        connected: '연결됨', configured: '설정됨(수집 대기)', waiting: '수신 대기', not_configured: '미설정',
+      }[st] || st);
+      const connRows = connectors.map((c) => {
+        const testBtn = c.testable
+          ? `<button class="secondary" style="width:auto;padding:4px 12px;font-size:12px" data-conn-test="${escapeHtml(c.id)}">${escapeHtml(tt('onboarding.test','연결 테스트'))}</button>`
+          : '';
+        const miss = (c.missing_env && c.missing_env.length)
+          ? `<div class="status-line" style="color:#b93838">${escapeHtml(tt('onboarding.missing','미설정 env'))}: ${escapeHtml(c.missing_env.join(', '))}</div>` : '';
+        const sync = c.last_success_at
+          ? `<div class="metric-sub">last sync: ${escapeHtml(formatTime(c.last_success_at))} · records ${escapeHtml(c.records_collected)}</div>` : '';
+        return `
+        <div class="coverage-item" style="min-width:220px">
+          <div class="metric-label">${escapeHtml(c.label_ko)}</div>
+          <div class="metric-sub">${matBadge(c.maturity)} <span class="badge unknown">${escapeHtml(stateLabel(c.state))}</span></div>
+          ${sync}${miss}
+          <div class="actions" style="margin-top:6px">${testBtn}<span class="status-line" data-conn-result="${escapeHtml(c.id)}"></span></div>
+        </div>`;
+      }).join('');
+
+      card.innerHTML =
+        `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">`
+        + `<h2 style="margin:0">${escapeHtml(tt('onboarding.title','실사용 시작 · 온보딩'))}</h2>`
+        + `<div>${escapeHtml(tt('onboarding.progress','진행'))} <strong>${cl.done_count}/${cl.total}</strong> &nbsp; ${postureBadge}</div></div>`
+        + `<div class="coverage" style="margin-bottom:14px">${stepChips}</div>`
+        + `<h2 style="margin:0 0 8px;font-size:15px">${escapeHtml(tt('onboarding.connectors','커넥터 연결 상태'))}</h2>`
+        + `<div class="coverage">${connRows}</div>`;
+      card.style.display = '';
+
+      // 연결 테스트 버튼 — 현재 서버 env 로 라이브 시도, 성공/실패를 그 자리에 정직 표기.
+      card.querySelectorAll('[data-conn-test]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.connTest;
+          const out = card.querySelector(`[data-conn-result="${id}"]`);
+          const orig = btn.textContent;
+          btn.disabled = true; btn.textContent = tt('onboarding.testing','테스트 중...');
+          if (out) { out.textContent = ''; out.style.color = ''; }
+          try {
+            const r = await fetch(`/onboarding/connectors/${encodeURIComponent(id)}/test`, { method: 'POST' });
+            const d = await r.json();
+            if (out) {
+              if (d.ok) { out.style.color = '#2f7d32'; out.textContent = `${tt('onboarding.test.ok','연결 성공')} · ${tt('onboarding.test.sample','표본')} ${d.sample_count} (${d.elapsed_ms}ms)`; }
+              else { out.style.color = '#b93838'; out.textContent = `${tt('onboarding.test.fail','연결 실패')}: ${escapeHtml(d.error || d.detail || '')}`.slice(0, 200); }
+            }
+          } catch (e) {
+            if (out) { out.style.color = '#b93838'; out.textContent = `${tt('onboarding.test.fail','연결 실패')}: ${e.message}`; }
+          } finally {
+            btn.disabled = false; btn.textContent = orig;
+          }
+        });
+      });
+    }
+
     function renderSourceCoverage(items) {
       if (!items.length) {
         sourceCoverageEl.innerHTML = `<div class="empty">${tt('admin.dyn.none_source_alias','아직 연결된 source alias가 없습니다.')}</div>`;
@@ -604,6 +697,7 @@
           return;
         }
         dashboardDetails = data.overview_details || {};
+        renderOnboarding();   // 온보딩 카드(실사용 시작) — 실패해도 대시보드 로드를 막지 않음
         renderOverview(data.overview || {});
         renderSourceCoverage(data.source_coverage || []);
         renderLatestStatus(data.latest_status || []);
