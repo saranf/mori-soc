@@ -510,6 +510,10 @@
       const postureBadge = posture === 'hardened'
         ? `<span class="badge online">${escapeHtml(tt('onboarding.posture.hardened','보안 강화됨'))}</span>`
         : `<span class="badge offline">${escapeHtml(tt('onboarding.posture.insecure','보안 취약(기본값 점검)'))}</span>`;
+      // 운영 모드인데 HTTPS 미구성이면 명시적 사유 힌트(하드거부 아닌 개선 유도).
+      const httpsHint = (status.production_mode && status.https_ok === false)
+        ? `<div class="status-line" style="color:#b93838">${escapeHtml(tt('onboarding.https_hint','운영 모드이나 HTTPS 미구성 — MORI_PUBLIC_URL 을 https 로 하거나 MORI_BEHIND_TLS_PROXY=true'))}</div>`
+        : '';
 
       // 커넥터 성숙도 배지: verified=초록 / partial=노랑 / scaffold=중립(정직한 표기).
       const matBadge = (m) => {
@@ -567,8 +571,9 @@
         `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">`
         + `<h2 style="margin:0">${escapeHtml(tt('onboarding.title','실사용 시작 · 온보딩'))}</h2>`
         + `<div>${escapeHtml(tt('onboarding.progress','진행'))} <strong>${cl.done_count}/${cl.total}</strong> &nbsp; ${postureBadge}</div></div>`
-        + `<div class="coverage" style="margin-bottom:14px">${stepChips}</div>`
-        + `<h2 style="margin:0 0 8px;font-size:15px">${escapeHtml(tt('onboarding.connectors','커넥터 연결 상태'))}</h2>`
+        + `<div class="coverage" style="margin-bottom:8px">${stepChips}</div>`
+        + httpsHint
+        + `<h2 style="margin:10px 0 8px;font-size:15px">${escapeHtml(tt('onboarding.connectors','커넥터 연결 상태'))}</h2>`
         + `<div class="coverage">${connRows}</div>`
         + scanHtml;
       card.style.display = '';

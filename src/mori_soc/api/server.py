@@ -136,9 +136,34 @@ def create_state_repository_from_env() -> StateRepository:
 # :func:`_i18n_script`.
 
 
+def _strict_profile() -> bool:
+    """엄격 운영 프로파일 — ``MORI_PROFILE=production`` 한 줄로 켠다.
+
+    켜지면 (1) 운영 모드로 간주(데모 관대함 해제) (2) HTTPS 미구성도 부팅 게이트에 포함.
+    기존 ``MORI_DEMO_MODE=false`` 만 쓰던 배포는 영향 없음(HTTPS 하드거부는 이 프로파일 전용).
+    """
+    return os.getenv("MORI_PROFILE", "").strip().lower() == "production"
+
+
 def _production_mode() -> bool:
-    """운영 모드 = MORI_DEMO_MODE 가 명시적으로 거짓. 미설정/참이면 데모(관대)."""
-    return os.getenv("MORI_DEMO_MODE", "").strip().lower() in ("false", "0", "no", "off")
+    """운영 모드 = MORI_DEMO_MODE 가 명시적으로 거짓, 또는 MORI_PROFILE=production."""
+    return (os.getenv("MORI_DEMO_MODE", "").strip().lower() in ("false", "0", "no", "off")
+            or _strict_profile())
+
+
+def _https_ok() -> bool:
+    """HTTPS 로 노출되는가(또는 TLS 종단 프록시 뒤인가).
+
+    MORI_PUBLIC_URL 이 https · MORI_COOKIE_SECURE=true · MORI_BEHIND_TLS_PROXY=true 중
+    하나면 참(리버스 프록시가 TLS 를 종단하는 정상 배포를 잘못 막지 않기 위함).
+    """
+    if os.getenv("MORI_PUBLIC_URL", "").strip().lower().startswith("https://"):
+        return True
+    if os.getenv("MORI_COOKIE_SECURE", "").strip().lower() in ("1", "true", "yes", "on"):
+        return True
+    if os.getenv("MORI_BEHIND_TLS_PROXY", "").strip().lower() in ("1", "true", "yes", "on"):
+        return True
+    return False
 
 
 def _enforce_secure_boot(auth_enabled: bool, insecure_defaults: list[str] | None = None) -> None:
@@ -158,6 +183,10 @@ def _enforce_secure_boot(auth_enabled: bool, insecure_defaults: list[str] | None
         problems.append("세션 인증 비활성화(MORI_AUTH_ENABLED)")
     for name in insecure_defaults or []:
         problems.append(f"안전하지 않은 기본값/시크릿({name})")
+    # 엄격 프로파일(MORI_PROFILE=production)에서만 HTTPS 미구성도 부팅 게이트에 포함.
+    # 리버스 프록시 종단은 MORI_BEHIND_TLS_PROXY=true 로 정상 인정된다(잘못된 차단 방지).
+    if _strict_profile() and not _https_ok():
+        problems.append("HTTPS 미구성(MORI_PUBLIC_URL https/MORI_BEHIND_TLS_PROXY)")
     if not problems:
         return
     if override:
@@ -173,8 +202,16 @@ def _enforce_secure_boot(auth_enabled: bool, insecure_defaults: list[str] | None
 
 
 def _compute_security_posture(auth_enabled: bool, insecure_defaults: list[str]) -> str:
-    """/health 노출용 — 인증 꺼짐 또는 약한 기본값이 있으면 'insecure'."""
-    return "insecure" if (not auth_enabled or insecure_defaults) else "hardened"
+    """/health 노출용 — 인증 꺼짐·약한 기본값·(운영 모드의)HTTPS 미구성이면 'insecure'.
+
+    HTTPS 는 부팅을 (엄격 프로파일 외엔) 막지 않지만, 운영 모드에서 평문 노출이면
+    태세 배지를 insecure 로 낮춰 온보딩 카드가 개선을 유도하게 한다(하드거부 아닌 신호).
+    """
+    if not auth_enabled or insecure_defaults:
+        return "insecure"
+    if _production_mode() and not _https_ok():
+        return "insecure"
+    return "hardened"
 
 
 def _audit_entry_hash(prev_hash: str, entry: dict[str, Any]) -> str:

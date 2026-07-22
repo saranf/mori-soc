@@ -11,7 +11,9 @@ FASTAPI_AVAILABLE = importlib.util.find_spec("fastapi") is not None
 from mori_soc.api.server import (  # noqa: E402
     _compute_security_posture,
     _enforce_secure_boot,
+    _https_ok,
     _production_mode,
+    _strict_profile,
 )
 
 
@@ -42,9 +44,47 @@ class SecureBootUnitTests(unittest.TestCase):
             _enforce_secure_boot(auth_enabled=True, insecure_defaults=[])  # 문제 없으면 통과
 
     def test_security_posture(self) -> None:
-        self.assertEqual(_compute_security_posture(True, []), "hardened")
+        # 운영 모드가 아닌 기본(데모)에서는 auth+시크릿만 본다.
+        with patch.dict(os.environ, {"MORI_DEMO_MODE": "", "MORI_PROFILE": ""}, clear=False):
+            self.assertEqual(_compute_security_posture(True, []), "hardened")
         self.assertEqual(_compute_security_posture(False, []), "insecure")   # 인증 꺼짐
         self.assertEqual(_compute_security_posture(True, ["MORI_ADMIN_PASSWORD"]), "insecure")  # 약한 기본값
+
+    # ── M5: MORI_PROFILE=production 한 줄 프로파일 + HTTPS 게이트/태세 ─────────────
+    def test_strict_profile_implies_production(self) -> None:
+        with patch.dict(os.environ, {"MORI_PROFILE": "production", "MORI_DEMO_MODE": ""}, clear=False):
+            self.assertTrue(_strict_profile())
+            self.assertTrue(_production_mode())
+
+    def test_https_ok_sources(self) -> None:
+        with patch.dict(os.environ, {"MORI_PUBLIC_URL": "https://m", "MORI_COOKIE_SECURE": "",
+                                     "MORI_BEHIND_TLS_PROXY": ""}, clear=False):
+            self.assertTrue(_https_ok())
+        with patch.dict(os.environ, {"MORI_PUBLIC_URL": "http://m", "MORI_COOKIE_SECURE": "",
+                                     "MORI_BEHIND_TLS_PROXY": "true"}, clear=False):
+            self.assertTrue(_https_ok())
+        with patch.dict(os.environ, {"MORI_PUBLIC_URL": "http://m", "MORI_COOKIE_SECURE": "",
+                                     "MORI_BEHIND_TLS_PROXY": ""}, clear=False):
+            self.assertFalse(_https_ok())
+
+    def test_strict_profile_refuses_plain_http(self) -> None:
+        with patch.dict(os.environ, {"MORI_PROFILE": "production", "MORI_PUBLIC_URL": "http://x",
+                                     "MORI_COOKIE_SECURE": "", "MORI_BEHIND_TLS_PROXY": "",
+                                     "MORI_ALLOW_INSECURE_AUTH": ""}, clear=False):
+            with self.assertRaises(RuntimeError):
+                _enforce_secure_boot(auth_enabled=True, insecure_defaults=[])
+
+    def test_strict_profile_ok_behind_tls_proxy(self) -> None:
+        with patch.dict(os.environ, {"MORI_PROFILE": "production", "MORI_BEHIND_TLS_PROXY": "true",
+                                     "MORI_ALLOW_INSECURE_AUTH": ""}, clear=False):
+            _enforce_secure_boot(auth_enabled=True, insecure_defaults=[])  # 통과
+
+    def test_demo_off_alone_does_not_https_refuse(self) -> None:
+        # 엄격 프로파일이 아니면 HTTPS 미구성만으로 부팅을 막지 않는다(기존 배포 호환).
+        with patch.dict(os.environ, {"MORI_PROFILE": "", "MORI_DEMO_MODE": "false",
+                                     "MORI_PUBLIC_URL": "http://x", "MORI_BEHIND_TLS_PROXY": "",
+                                     "MORI_ALLOW_INSECURE_AUTH": ""}, clear=False):
+            _enforce_secure_boot(auth_enabled=True, insecure_defaults=[])  # 통과
 
 
 @unittest.skipUnless(FASTAPI_AVAILABLE, "requires fastapi")
