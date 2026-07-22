@@ -606,6 +606,24 @@
           + `${rows}</div></details>`;
       }
 
+      // 용어·배지 뜻(M8) — 비개발자도 카드를 읽을 수 있게(결과 읽는 법까지). 정적 글로서리.
+      const glossaryRows = [
+        ['onboarding.gloss.evidence', '증적 층: MORI 는 도구를 대체하지 않고, 도구가 만든 신호를 인증 심사용 증적으로 남깁니다.'],
+        ['onboarding.gloss.maturity', '성숙도: 실검증=라이브 API로 검증된 커넥터 · 부분(수신형)=고객 CI가 결과를 보냄 · 준비중=미검증.'],
+        ['onboarding.gloss.state', '연결 상태: 연결됨=데이터 수집됨 · 설정됨=env 완료·수집 대기 · 수신 대기=push 대기 · 미설정=env 부족.'],
+        ['onboarding.gloss.provenance', 'provenance(출처): 어떤 레포·커밋·실행에서 나온 증적인지. OIDC 로 서명 검증되면 위조 불가.'],
+      ].map(([k, ko]) => `<div class="metric-sub">• ${escapeHtml(tt(k, ko))}</div>`).join('');
+      const glossaryHtml =
+        `<details class="card" style="padding:0;margin-top:10px"><summary style="cursor:pointer;padding:12px 14px;font-weight:800;font-size:14px">`
+        + `${escapeHtml(tt('onboarding.gloss.title','용어 · 배지 뜻 (처음이면 열어보세요)'))}</summary>`
+        + `<div style="padding:0 14px 14px">${glossaryRows}</div></details>`;
+
+      // 버전 + 업데이트 안내(M9) — 어떤 버전을 쓰는지·어떻게 올리는지 한눈에.
+      const verLine = status.version
+        ? `<div class="status-line" style="margin-top:10px;border-top:1px solid rgba(0,0,0,0.08);padding-top:8px">`
+          + `MORI v${escapeHtml(status.version)} · ${escapeHtml(tt('onboarding.update_hint','업데이트: git pull 후 docker compose up -d --build'))}</div>`
+        : '';
+
       card.innerHTML =
         `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">`
         + `<h2 style="margin:0">${escapeHtml(tt('onboarding.title','실사용 시작 · 온보딩'))}</h2>`
@@ -616,7 +634,9 @@
         + `<div class="coverage">${connRows}</div>`
         + ctodoHtml
         + scanHtml
-        + goLiveHtml;
+        + goLiveHtml
+        + glossaryHtml
+        + verLine;
       card.style.display = '';
 
       // 워크플로 복사 — 클립보드에 워크플로 YAML 을 담아 고객 레포에 붙여넣게 한다.

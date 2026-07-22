@@ -73,12 +73,14 @@ def register_onboarding(ctx: RouteContext) -> None:
         checklist = build_checklist(signals)
         # HTTPS/운영모드 신호(M5) — server 헬퍼는 순환참조 피해 지연 임포트.
         from mori_soc.api.server import _https_ok, _production_mode
+        from mori_soc.version import __version__
         return {
             "checklist": checklist,
             "security_posture": ctx.security_posture,
             "insecure_defaults": list(ctx.insecure_defaults or []),
             "production_mode": _production_mode(),
             "https_ok": _https_ok(),
+            "version": __version__,
             "connectors_connected": sum(1 for c in connectors if c.get("state") == "connected"),
             "connectors_total": len(connectors),
         }
