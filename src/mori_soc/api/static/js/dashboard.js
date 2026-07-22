@@ -2286,6 +2286,16 @@
     }
     function closeOwnerModal() { document.getElementById('owner_modal').style.display = 'none'; }
 
+    // 해시 딥링크(/ui#compliance 등) — 콘솔 온보딩 등 외부 화면에서 특정 탭으로 바로 이동.
+    document.addEventListener('DOMContentLoaded', () => {
+      const VALID = ['dashboard', 'triage', 'incidents', 'assets', 'compliance', 'guides'];
+      const goHash = () => {
+        const h = (location.hash || '').replace('#', '').trim();
+        if (VALID.includes(h) && typeof switchTab === 'function') switchTab(h);
+      };
+      try { goHash(); window.addEventListener('hashchange', goHash); } catch (e) {}
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
       const ownerSaveBtn = document.getElementById('owner_modal_save');
       if (ownerSaveBtn) ownerSaveBtn.addEventListener('click', async () => {

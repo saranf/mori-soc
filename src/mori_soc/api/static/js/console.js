@@ -478,6 +478,20 @@
 
     // ── 온보딩(실사용 시작) 카드 — 첫 실행 체크리스트 + 커넥터 연결 상태 ──────────
     // admin·security 전용 엔드포인트라 403 이면 카드를 조용히 숨긴다(다른 롤엔 노출 안 함).
+    // 온보딩 체크리스트 스텝 → 해당 화면으로 이동. 커넥터는 같은 카드 내 스크롤,
+    // 나머지(경보/통제/개인정보/증적)는 사용자 대시보드 해시 딥링크로 이동.
+    window.onbStepGo = function (action) {
+      if (action === 'connectors') {
+        const el = document.getElementById('onboarding_connectors_h');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      const map = { triage: '/ui#triage', controls: '/ui#compliance',
+                    privacy: '/ui#compliance', evidence: '/ui#compliance' };
+      const url = map[action];
+      if (url) window.location.href = url;
+    };
+
     async function renderOnboarding() {
       const card = document.getElementById('onboarding_card');
       if (!card) return;
@@ -497,7 +511,8 @@
       } catch (e) { card.style.display = 'none'; return; }
 
       const cl = status.checklist || { steps: [], done_count: 0, total: 0 };
-      // 진행바 + 스텝 칩(완료=초록/대기=흐림/다음할일=파랑). 장식 이모지 없이 텍스트 배지.
+      // 진행바 + 스텝 칩(완료=초록/대기=흐림/다음할일=파랑). 각 스텝 클릭 시 해당 화면으로 이동.
+      const goHint = tt('onboarding.step.go', '클릭하면 이동');
       const stepChips = (cl.steps || []).map((s) => {
         const isNext = cl.next_step === s.id;
         const label = escapeHtml(tt('onboarding.step.' + s.id, s.label_ko));
@@ -506,7 +521,7 @@
           : (isNext
               ? `<span class="badge" style="background:#1f6feb;color:#fff">${escapeHtml(tt('onboarding.next','지금 할 일'))}</span>`
               : `<span class="badge unknown">${escapeHtml(tt('onboarding.pending','대기'))}</span>`);
-        return `<div class="coverage-item" style="min-width:140px"><div class="metric-sub">${label}</div>${badge}</div>`;
+        return `<div class="coverage-item" style="min-width:140px;cursor:pointer" role="button" tabindex="0" title="${label} — ${escapeHtml(goHint)}" onclick="onbStepGo('${escapeHtml(s.action || '')}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();onbStepGo('${escapeHtml(s.action || '')}');}"><div class="metric-sub">${label}</div>${badge}</div>`;
       }).join('');
 
       // 보안 태세 배지(hardened=초록 / insecure=빨강) — 실배포 안전 신호.
@@ -630,7 +645,7 @@
         + `<div>${escapeHtml(tt('onboarding.progress','진행'))} <strong>${cl.done_count}/${cl.total}</strong> &nbsp; ${postureBadge}</div></div>`
         + `<div class="coverage" style="margin-bottom:8px">${stepChips}</div>`
         + httpsHint
-        + `<h2 style="margin:10px 0 8px;font-size:15px">${escapeHtml(tt('onboarding.connectors','커넥터 연결 상태'))}</h2>`
+        + `<h2 id="onboarding_connectors_h" style="margin:10px 0 8px;font-size:15px">${escapeHtml(tt('onboarding.connectors','커넥터 연결 상태'))}</h2>`
         + `<div class="coverage">${connRows}</div>`
         + ctodoHtml
         + scanHtml
