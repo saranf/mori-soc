@@ -9,7 +9,7 @@ _TAB_COMPLIANCE_HTML = """    <!-- ── Tab: 심사 준비 (Compliance PDCA) �
       <section class=\"card\" id=\"pdca_hero\">
         <div style=\"display:flex;align-items:center;gap:24px;flex-wrap:wrap\">
           <div class=\"mori-ring\" id=\"pdca_readiness_ring\" style=\"--p:0\" title=\"통제 점검 Pass / 전체 비율\">
-            <div class=\"inner\"><b id=\"pdca_readiness_pct\">–</b><span data-i18n=\"dash.pdca.ready_label\">준비됨</span></div>
+            <div class=\"inner\"><b id=\"pdca_readiness_pct\">–</b><span id=\"pdca_readiness_label\" data-i18n=\"dash.pdca.ready_label\">준비됨</span></div>
           </div>
           <div style=\"flex:1;min-width:240px\">
             <h2 style=\"margin:0\" data-i18n=\"dash.card.compliance\">심사 준비</h2>

@@ -498,20 +498,21 @@
       document.getElementById('mori_state_strip_body').innerHTML = strip;
       stripSec.style.display = '';
 
-      // ── 셋업 진행 레일 (실데이터 판정) ──
+      // ── 셋업 진행 레일 (실데이터 판정) — 각 스텝 클릭 시 해당 화면으로 이동 ──
       const steps = [
-        { t: tt('dash.setup.s1','소스 연결'), done: srcReporting > 0, s: srcReporting > 0 ? tt('dash.setup.s1d','소스 {n}개 연결').replace('{n}', srcReporting) : tt('dash.setup.s1t','수집 소스 연결 필요') },
-        { t: tt('dash.setup.s2','담당자 지정'), done: hosts > 0 && unmapped === 0, s: unmapped > 0 ? tt('dash.setup.s2t','미매핑 {n}건').replace('{n}', unmapped) : tt('dash.setup.s2d','자산 매핑 완료') },
-        { t: tt('dash.setup.s3','통제 확인'), done: totalChecks > 0, s: totalChecks > 0 ? tt('dash.setup.s3d','{n}개 점검').replace('{n}', totalChecks) : tt('dash.setup.s3t','통제 카탈로그 확인') },
-        { t: tt('dash.setup.s4','공백 조치'), done: gapTotal === 0, s: gapTotal > 0 ? tt('dash.setup.s4t','{n}건 남음').replace('{n}', gapTotal) : tt('dash.setup.s4d','증적 공백 없음') },
-        { t: tt('dash.setup.s5','심사 리포트'), done: gapTotal === 0 && weak === 0, s: (gapTotal === 0 && weak === 0) ? tt('dash.setup.s5d','내려받기 가능') : tt('dash.setup.s5t','공백 0건에 열림') },
+        { t: tt('dash.setup.s1','소스 연결'), tab: 'assets', done: srcReporting > 0, s: srcReporting > 0 ? tt('dash.setup.s1d','소스 {n}개 연결').replace('{n}', srcReporting) : tt('dash.setup.s1t','수집 소스 연결 필요') },
+        { t: tt('dash.setup.s2','담당자 지정'), tab: 'assets', done: hosts > 0 && unmapped === 0, s: unmapped > 0 ? tt('dash.setup.s2t','미매핑 {n}건').replace('{n}', unmapped) : tt('dash.setup.s2d','자산 매핑 완료') },
+        { t: tt('dash.setup.s3','통제 확인'), tab: 'compliance', done: totalChecks > 0, s: totalChecks > 0 ? tt('dash.setup.s3d','{n}개 점검').replace('{n}', totalChecks) : tt('dash.setup.s3t','통제 카탈로그 확인') },
+        { t: tt('dash.setup.s4','공백 조치'), tab: 'compliance', done: gapTotal === 0, s: gapTotal > 0 ? tt('dash.setup.s4t','{n}건 남음').replace('{n}', gapTotal) : tt('dash.setup.s4d','증적 공백 없음') },
+        { t: tt('dash.setup.s5','심사 리포트'), tab: 'compliance', done: gapTotal === 0 && weak === 0, s: (gapTotal === 0 && weak === 0) ? tt('dash.setup.s5d','내려받기 가능') : tt('dash.setup.s5t','공백 0건에 열림') },
       ];
       let nowSet = false;
       const doneCount = steps.filter((s) => s.done).length;
+      const goHint = tt('dash.setup.go','클릭하면 이동');
       document.getElementById('mori_setup_rail_body').innerHTML = steps.map((st, i) => {
         let cls = 'todo';
         if (st.done) cls = 'done'; else if (!nowSet) { cls = 'now'; nowSet = true; }
-        return `<div class="mori-step ${cls}"><div class="num">${st.done ? '✓' : (i + 1)}</div><div class="t">${escapeHtml(st.t)}</div><div class="s">${escapeHtml(st.s)}</div></div>`;
+        return `<div class="mori-step ${cls}" role="button" tabindex="0" style="cursor:pointer" title="${escapeHtml(st.t)} — ${escapeHtml(goHint)}" onclick="switchTab('${st.tab}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchTab('${st.tab}');}"><div class="num">${st.done ? '✓' : (i + 1)}</div><div class="t">${escapeHtml(st.t)}</div><div class="s">${escapeHtml(st.s)}</div></div>`;
       }).join('');
       document.getElementById('mori_setup_pct').textContent = `${doneCount} / 5 · ${Math.round(doneCount / 5 * 100)}%`;
       const nowStep = steps.find((s) => !s.done);
@@ -2590,6 +2591,8 @@
               ringEl.style.setProperty('--p', rp);
               const pe = document.getElementById('pdca_readiness_pct');
               if (pe) pe.textContent = rp + '%';
+              const le = document.getElementById('pdca_readiness_label');
+              if (le) le.textContent = tt('dash.pdca.ready_label', '준비됨');
               ringEl.style.display = '';
             }
             if (headEl) headEl.textContent = tt('dash.pdca.hero_headline', '통제 {t}개 중 {p}개 Pass · 준비율 {r}%').replace('{t}', _tc).replace('{p}', _sc.pass || 0).replace('{r}', rp);
@@ -2606,6 +2609,9 @@
               ringEl.style.setProperty('--p', 0);
               const pe = document.getElementById('pdca_readiness_pct');
               if (pe) pe.textContent = '–';
+              // 빈 상태에선 '준비됨' 대신 '데이터 없음' — '–'와 라벨이 모순돼 보이지 않게.
+              const le = document.getElementById('pdca_readiness_label');
+              if (le) le.textContent = tt('dash.pdca.ready_empty', '데이터 없음');
               ringEl.style.display = '';
             }
             if (headEl) headEl.textContent = tt('dash.pdca.hero_empty', '아직 통제 점검 데이터가 없어요. 통제 상태를 채우면 준비율이 바로 나와요.');
