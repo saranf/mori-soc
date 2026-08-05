@@ -792,6 +792,19 @@ _SOURCE_STALE_THRESHOLDS: dict[str, int] = {
 _DEFAULT_STALE_THRESHOLD = 600  # 기준표에 없는 소스는 10분
 
 
+def is_scan_artifact(hostname: str) -> bool:
+    """호스트명이 '실제 호스트'가 아니라 **스캔 대상 아티팩트**(예: Trivy 이미지 alpine:3.19)인가.
+
+    휴리스틱: 'name:tag' 형태(콜론 뒤가 포트 숫자가 아님). 'host:8080' 같은 host:port 는 아티팩트 아님.
+    R8 — 호스트 카운트에 이미지 스캔 대상이 섞여 보이는 혼선을 표기용으로 식별(카운트는 안 바꿈).
+    """
+    name = str(hostname or "").strip()
+    if ":" not in name:
+        return False
+    tail = name.rsplit(":", 1)[1]
+    return not tail.isdigit()
+
+
 def _source_coverage(store: InMemoryQueryStore) -> list[dict[str, Any]]:
     now = datetime.now(tz=timezone.utc)
     all_host_ids = {h.host_id for h in store.hosts}
@@ -820,6 +833,8 @@ def _source_coverage(store: InMemoryQueryStore) -> list[dict[str, Any]]:
             {
                 "source": source,
                 "host_count": len(host_ids),
+                # R8: host_count 중 이미지 스캔 대상(아티팩트) 수 — 부가 필드(카운트 불변, 파급 없음).
+                "scan_artifacts": sum(1 for h in host_ids if is_scan_artifact(h)),
                 "status": sync.status if sync else "unknown",
                 "is_stale": is_stale,
                 "stale_threshold_seconds": stale_threshold,

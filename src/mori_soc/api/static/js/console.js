@@ -704,7 +704,7 @@
         <div class="coverage-item">
           <div class="metric-label">${escapeHtml(item.source.toUpperCase())}</div>
           <strong>${escapeHtml(item.host_count)}</strong>
-          <div class="metric-sub">${tt('admin.dyn.host_word','호스트')} · <span class="badge ${escapeHtml(statusToBadge[item.status] || 'unknown')}">${escapeHtml(item.status)}</span>${staleBadge}</div>
+          <div class="metric-sub">${tt('admin.dyn.host_word','호스트')}${item.scan_artifacts ? (' <span style="color:#191f28">(' + tt('admin.dyn.scan_artifacts','이미지 대상') + ' ' + escapeHtml(item.scan_artifacts) + ')</span>') : ''} · <span class="badge ${escapeHtml(statusToBadge[item.status] || 'unknown')}">${escapeHtml(item.status)}</span>${staleBadge}</div>
           <div class="metric-sub">last sync: ${escapeHtml(formatTime(item.last_sync_at))}</div>
           <div class="metric-sub">records ${escapeHtml(item.records_collected)} / entities ${escapeHtml(item.entities_saved)}</div>
           <div class="status-line">${escapeHtml(item.message || tt('admin.dyn.no_sync_record','아직 sync 기록 없음'))}</div>
