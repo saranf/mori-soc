@@ -1110,7 +1110,8 @@ def distinct_stores(rows: list[dict[str, Any]]) -> list[str]:
 
 
 def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
-                         gaps: list[Any] | None = None, summary: dict[str, Any] | None = None) -> bytes:
+                         gaps: list[Any] | None = None, summary: dict[str, Any] | None = None,
+                         lang: str = "ko") -> bytes:
     """개인정보 처리흐름표 PDF(감사관 제출용). reportlab 필요. 팔레트 6색만.
 
     가로 A4에 항목별 구분·수집→저장→이용→파기 + 제3자/국외 표 + 파기 개선 갭.
@@ -1160,11 +1161,22 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         # 다중라인(\n)을 <br/>로 — AI 결과의 여러 위치·경로가 줄바꿈으로 보이게.
         return esc(s).replace("\n", "<br/>") if str(s or "").strip() else "—"
 
+    # ── UI 언어(ko/en) — 구조 라벨은 t(), 데이터는 pick(). (사용자 입력값은 그대로) ──
+    _en = str(lang).lower() == "en"
+
+    def t(ko: str, en: str) -> str:
+        return en if _en else ko
+
+    _STG_EN = {"수집": "Collect", "저장": "Store", "이용": "Use", "파기": "Dispose"}
+
+    def stg(k: str) -> str:
+        return _STG_EN[k] if _en else k
+
     # ── 총괄 스윔레인 흐름도 — 출발점=정보주체(고객). 팔레트 테두리 박스 + 화살표 ────────
     # (reportlab 은 y축이 아래→위. 한 행=개인정보 파일. 6개까지 그리고 초과분은 상세표로.)
-    def _clip(t: str, n: int) -> str:
-        t = str(t or "")
-        return (t[:n] + "…") if len(t) > n + 1 else t
+    def _clip(s: str, n: int) -> str:
+        s = str(s or "")
+        return (s[:n] + "…") if len(s) > n + 1 else s
 
     def _flow_drawing(width: float) -> "Drawing":
         groups = _swimlane_groups(rows)[:6]
@@ -1178,16 +1190,16 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
 
         def lab(x: float, w: float, t: str, col: Any) -> None:
             d.add(String(x + w / 2, height - 9, t, fontName=font, fontSize=7.5, fillColor=col, textAnchor="middle"))
-        lab(0, subj_w, "정보주체(고객)", BLUE)
+        lab(0, subj_w, t("정보주체(고객)", "Data subject"), BLUE)
         hx = subj_w + gx
         for st in STG:
-            lab(hx, col_w, st, STAGE_COLOR[st]); hx += col_w + gx
-        lab(hx, link_w, "연계기관", BLACK)
+            lab(hx, col_w, stg(st), STAGE_COLOR[st]); hx += col_w + gx
+        lab(hx, link_w, t("연계기관", "Recipient"), BLACK)
 
         subj_h = n * (row_h + rgap) - rgap
         subj_y = top - subj_h
         d.add(Rect(0, subj_y, subj_w, subj_h, rx=6, ry=6, strokeColor=BLUE, strokeWidth=1.4, fillColor=WHITE))
-        d.add(String(subj_w / 2, subj_y + subj_h / 2, "정보주체", fontName=font, fontSize=9, fillColor=BLACK, textAnchor="middle"))
+        d.add(String(subj_w / 2, subj_y + subj_h / 2, t("정보주체", "Subject"), fontName=font, fontSize=9, fillColor=BLACK, textAnchor="middle"))
 
         for ri, g in enumerate(groups):
             y = top - (ri + 1) * row_h - ri * rgap
@@ -1222,7 +1234,7 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
                     if v and v not in dst:
                         dst.append(v)
         # 저장 노드는 테이블명만(컬럼 상세는 별도 '테이블·컬럼 매핑' 표 페이지).
-        db_tables = [t for t, _ in tcols] or ["(테이블 미확인)"]
+        db_tables = [tb for tb, _ in tcols] or [t("(테이블 미확인)", "(table unknown)")]
         db_node_lines = db_tables[:3] + (["…"] if len(db_tables) > 3 else [])
 
         nw = 150
@@ -1273,32 +1285,34 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
             if label:
                 d.add(String(cx + 6, (y1 + y2) / 2, label, fontName=font, fontSize=6, fillColor=color, textAnchor="start"))
 
-        ellipsen(xl + 20, y_start, nw - 40, 40, "정보주체 (고객)")   # 흐름 시작 = 고객
-        paran(xl, y_in, nw, 40, BLUE, "수집 (개인정보 입력)", collect[:2] or ["개인정보 제공"])
-        rectn(xl, y_store, nw, db_h, GREEN, "저장 (DB)", db_node_lines)
-        diamondn(xl, y_d1, nw, 46, "제3자 제공?")
-        rectn(xl, y_use, nw, 40, YELLOW, "이용", use[:2] or ["처리 목적"])
-        diamondn(xl, y_d2, nw, 46, "보유기간 경과·파기?")
-        rectn(xl, y_disp, nw, 40, RED, "파기", dispose[:1] or ["처리방침 파기"])
-        ellipsen(xl + 25, y_end, nw - 50, 40, "파기 완료")
+        ellipsen(xl + 20, y_start, nw - 40, 40, t("정보주체 (고객)", "Data subject"))   # 흐름 시작 = 고객
+        paran(xl, y_in, nw, 40, BLUE, t("수집 (개인정보 입력)", "Collect (input)"), collect[:2] or [t("개인정보 제공", "personal data")])
+        rectn(xl, y_store, nw, db_h, GREEN, t("저장 (DB)", "Store (DB)"), db_node_lines)
+        diamondn(xl, y_d1, nw, 46, t("제3자 제공?", "3rd-party?"))
+        rectn(xl, y_use, nw, 40, YELLOW, t("이용", "Use"), use[:2] or [t("처리 목적", "purpose")])
+        diamondn(xl, y_d2, nw, 46, t("보유기간 경과·파기?", "Retention over?"))
+        rectn(xl, y_disp, nw, 40, RED, t("파기", "Dispose"), dispose[:1] or [t("처리방침 파기", "policy disposal")])
+        ellipsen(xl + 25, y_end, nw - 50, 40, t("파기 완료", "Disposed"))
         # 스파인 화살표
         vdown(y_start, y_in + 40)
-        vdown(y_in, y_store + db_h, "수집")
-        vdown(y_store, y_d1 + 46, "저장")
+        vdown(y_in, y_store + db_h, stg("수집"))
+        vdown(y_store, y_d1 + 46, stg("저장"))
         vdown(y_d1, y_use + 40, "No")
-        vdown(y_use, y_d2 + 46, "이용")
+        vdown(y_use, y_d2 + 46, stg("이용"))
         vdown(y_d2, y_disp + 40, "Yes", RED)
         vdown(y_disp, y_end + 40)
         # 분기: 제3자 제공? →Yes→ 연계기관
         if linked:
-            paran(bx, y_d1 + 3, 150, 42, RED, "연계기관 제공(제3자)", linked[:2])
+            paran(bx, y_d1 + 3, 150, 42, RED, t("연계기관 제공(제3자)", "3rd-party recipient"), linked[:2])
             d.add(Line(xl + nw, y_d1 + 23, bx - 2, y_d1 + 23, strokeColor=RED, strokeWidth=1.3))
             d.add(Polygon([bx, y_d1 + 23, bx - 5, y_d1 + 20.5, bx - 5, y_d1 + 25.5], fillColor=RED, strokeColor=RED))
             d.add(String((xl + nw + bx) / 2, y_d1 + 26, "Yes", fontName=font, fontSize=6, fillColor=RED, textAnchor="middle"))
         return d
 
     # ── 상세 표(헤더 흰 글자) ──────────────────────────────────────────────────
-    headers = ["개인정보 항목", "구분", "수집", "저장(테이블·컬럼)", "이용", "파기", "제3자·국외"]
+    headers = ([t("개인정보 항목", "PII item"), t("구분", "Category"), stg("수집"),
+                t("저장(테이블·컬럼)", "Store (table·column)"), stg("이용"), stg("파기"),
+                t("제3자·국외", "3rd-party·overseas")])
     data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in headers]]
     for r in rows:
         store = val(r.get("storage_location"))
@@ -1308,8 +1322,8 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         ret = val(r.get("retention"))
         dispose_cell = keep if keep != "—" else ret
         share = " / ".join(x for x in [
-            ("제3자: " + esc(r.get("third_party")).replace("\n", " ")) if str(r.get("third_party") or "").strip() else "",
-            ("국외: " + esc(r.get("overseas")).replace("\n", " ")) if str(r.get("overseas") or "").strip() else "",
+            (t("제3자: ", "3rd-party: ") + esc(r.get("third_party")).replace("\n", " ")) if str(r.get("third_party") or "").strip() else "",
+            (t("국외: ", "overseas: ") + esc(r.get("overseas")).replace("\n", " ")) if str(r.get("overseas") or "").strip() else "",
         ] if x) or "—"
         data.append([Paragraph(v, cell) for v in (
             val(r.get("item")), val(r.get("category")), val(r.get("collection_source")),
@@ -1343,7 +1357,7 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
     def _join(lst: list[str], n: int = 8) -> str:
         if not lst:
             return "—"
-        return ", ".join(lst[:n]) + (f" 외 {len(lst) - n}종" if len(lst) > n else "")
+        return ", ".join(lst[:n]) + ((f" +{len(lst) - n} more" if _en else f" 외 {len(lst) - n}종") if len(lst) > n else "")
 
     collect_srcs = _distinct("collection_source")
     purposes = _distinct("purpose")
@@ -1353,43 +1367,58 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
 
     buf = io.BytesIO()
     docp = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=12 * mm, rightMargin=12 * mm,
-                             topMargin=13 * mm, bottomMargin=12 * mm, title="MORI 개인정보 처리흐름표")
+                             topMargin=13 * mm, bottomMargin=12 * mm, title=("MORI Personal Data Flow" if _en else "MORI 개인정보 처리흐름표"))
     content_w = landscape(A4)[0] - 24 * mm
     note_style = ParagraphStyle("pdf_note", parent=cell, textColor=BLACK)
 
     # ══ 본문(감사관용): 처리 흐름을 '어떻게 처리되는가'로 설명. 개발 상세는 부록 A ══
-    story: list[Any] = [Paragraph("개인정보 처리흐름표 (ISMS-P 3.1 수집 · 3.2 이용/제공 · 3.4 파기)", h1)]
-    sub = f"항목 {len(rows)}건" + (f" · 생성 {esc(generated_at)}" if generated_at else "") + " · MORI 코드 리뷰 파이프라인"
+    story: list[Any] = [Paragraph(t("개인정보 처리흐름표 (ISMS-P 3.1 수집 · 3.2 이용/제공 · 3.4 파기)",
+                                    "Personal Data Flow (ISMS-P 3.1 Collect · 3.2 Use/Provide · 3.4 Dispose)"), h1)]
+    sub = (f"{len(rows)} " + t("항목", "items")) + (f" · {t('생성','generated')} {esc(generated_at)}" if generated_at else "") + t(" · MORI 코드 리뷰 파이프라인", " · MORI code-review pipeline")
     story.append(Paragraph(sub, meta))
-    story.append(Paragraph(
+    story.append(Paragraph(t(
         "이 문서는 개인정보가 <b>수집 → 저장 → 이용 → 파기</b> 각 단계에서 어떻게 처리되는지를 설명하는 "
         "ISMS-P 개인정보 처리단계 증적입니다. 개발 상세(DB 테이블·컬럼·코드 위치)는 <b>부록 A</b>에 별도로 수록했습니다. "
-        "MORI 는 고객 코드를 저장하지 않고 스캔 결과만 받으며, 저장위치·이용목적·보관/파기는 담당자가 확정합니다.", body))
-    # 총괄 흐름도(정보주체→수집→저장→이용→파기, 표준 플로우차트)
-    story.append(Paragraph("총괄 개인정보 흐름도", h2))
+        "MORI 는 고객 코드를 저장하지 않고 스캔 결과만 받으며, 저장위치·이용목적·보관/파기는 담당자가 확정합니다.",
+        "This document explains how personal data is processed at each stage — <b>Collect → Store → Use → Dispose</b> "
+        "(ISMS-P processing-stage evidence). Development details (DB table·column·code location) are in <b>Appendix A</b>. "
+        "MORI does not store customer code — only scan results; storage/purpose/retention are confirmed by the data officer."), body))
+    story.append(Paragraph(t("총괄 개인정보 흐름도", "Overall data-flow"), h2))
     story += [_overview_drawing(content_w), Spacer(1, 6)]
-    # 상세 흐름도(파일별 수집→저장→이용→파기)
-    story.append(Paragraph("상세 흐름도 (파일별)", h2))
+    story.append(Paragraph(t("상세 흐름도 (파일별)", "Detailed flow (per file)"), h2))
     story += [_flow_drawing(content_w), Spacer(1, 4)]
 
     # ── 처리 단계 설명(서술) — 개발 상세 없이 '어떻게 처리되는가' ──────────────────
-    story.append(Paragraph("처리 단계 설명", h2))
-    story.append(Paragraph(
-        f"· <b>수집(3.1)</b> — {len(items)}종의 개인정보를 {_join(collect_srcs)} 지점에서 수집합니다. 수집 항목: {_join(items)}.<br/>"
-        f"· <b>저장(3.2)</b> — 수집한 개인정보는 {len(stores)}개 저장 위치에 보관됩니다"
-        + (f" (저장 암호화: {esc(enc)})" if enc else "") + ". 구체적 DB 테이블·컬럼·코드 위치는 <b>부록 A</b> 참고.<br/>"
-        f"· <b>이용/제공(3.2)</b> — 주요 처리 목적: {_join(purposes)}. 제3자 제공 {n_third}건 · 국외 이전 {n_over}건.<br/>"
-        f"· <b>파기(3.4)</b> — 전체 {len(rows)}개 항목 중 {n_ret}개에 보유기간·파기 방식이 정의되어 있습니다"
-        + (f" (개선 지점 {len(gaps)}건 — 아래 우려사항 참고)" if gaps else "") + ".", body))
+    story.append(Paragraph(t("처리 단계 설명", "Processing stages"), h2))
+    if _en:
+        steps_txt = (
+            f"· <b>Collect (3.1)</b> — {len(items)} PII item(s) collected at {_join(collect_srcs)}. Items: {_join(items)}.<br/>"
+            f"· <b>Store (3.2)</b> — stored across {len(stores)} location(s)"
+            + (f" (encryption: {esc(enc)})" if enc else "") + ". See <b>Appendix A</b> for DB table·column·code location.<br/>"
+            f"· <b>Use/Provide (3.2)</b> — purposes: {_join(purposes)}. 3rd-party {n_third} · overseas {n_over}.<br/>"
+            f"· <b>Dispose (3.4)</b> — {n_ret}/{len(rows)} item(s) have retention·disposal defined"
+            + (f" ({len(gaps)} gap(s) — see concerns below)" if gaps else "") + ".")
+    else:
+        steps_txt = (
+            f"· <b>수집(3.1)</b> — {len(items)}종의 개인정보를 {_join(collect_srcs)} 지점에서 수집합니다. 수집 항목: {_join(items)}.<br/>"
+            f"· <b>저장(3.2)</b> — 수집한 개인정보는 {len(stores)}개 저장 위치에 보관됩니다"
+            + (f" (저장 암호화: {esc(enc)})" if enc else "") + ". 구체적 DB 테이블·컬럼·코드 위치는 <b>부록 A</b> 참고.<br/>"
+            f"· <b>이용/제공(3.2)</b> — 주요 처리 목적: {_join(purposes)}. 제3자 제공 {n_third}건 · 국외 이전 {n_over}건.<br/>"
+            f"· <b>파기(3.4)</b> — 전체 {len(rows)}개 항목 중 {n_ret}개에 보유기간·파기 방식이 정의되어 있습니다"
+            + (f" (개선 지점 {len(gaps)}건 — 아래 우려사항 참고)" if gaps else "") + ".")
+    story.append(Paragraph(steps_txt, body))
     story.append(Spacer(1, 6))
 
     # ── 외부 수신자 구분(위탁·제3자 제공·국외이전 후보) — #7 ─────────────────────
     if recipients:
-        story.append(Paragraph("외부 수신자 구분 (위탁 · 제3자 제공 · 국외이전 후보)", h2))
-        story.append(Paragraph(
+        story.append(Paragraph(t("외부 수신자 구분 (위탁 · 제3자 제공 · 국외이전 후보)",
+                                 "External recipients (processor · 3rd-party · overseas candidates)"), h2))
+        story.append(Paragraph(t(
             "코드·설정상 외부로 개인정보가 전송되는 수신자를 후보 유형으로 구분한 표입니다. "
-            "<b>법적 구분(위탁/제3자/국외)은 개인정보 담당자가 확정</b>하며, MORI 는 검토 대상만 제시합니다.", body))
-        rc_head = ["수신자", "후보 유형", "항목", "처리 목적", "국외"]
+            "<b>법적 구분(위탁/제3자/국외)은 개인정보 담당자가 확정</b>하며, MORI 는 검토 대상만 제시합니다.",
+            "Recipients that code/config send personal data to, grouped by candidate type. "
+            "<b>Legal classification (processor/3rd-party/overseas) is confirmed by the data officer</b>; MORI only surfaces candidates."), body))
+        rc_head = [t("수신자","Recipient"), t("후보 유형","Candidate type"), t("항목","Items"), t("처리 목적","Purpose"), t("국외","Overseas")]
         rc_data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in rc_head]]
         for rc in recipients:
             rc_data.append([Paragraph(esc(rc["recipient"]) or "—", cell),
@@ -1407,16 +1436,17 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         story += [rc_table, Spacer(1, 6)]
     # ── 개인정보 파일 개요(파일=테이블/업무 단위) — 레퍼런스 ③ ─────────────────────
     if overview:
-        story.append(Paragraph("개인정보 파일 개요", h2))
-        ov_head = ["파일명", "정보주체 수", "개인정보 항목(필수/선택)", "제3자 제공", "처리 목적"]
+        story.append(Paragraph(t("개인정보 파일 개요", "Personal data file overview"), h2))
+        ov_head = [t("파일명","File"), t("정보주체 수","Subjects"), t("개인정보 항목(필수/선택)","Items (required/optional)"), t("제3자 제공","3rd-party"), t("처리 목적","Purpose")]
         ov_data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in ov_head]]
+        _req_l, _opt_l = t("[필수]","[required]"), t("[선택]","[optional]")
         for o in overview:
             req = esc(o["required_items"]) or "—"
             opt = esc(o["optional_items"])
-            items_cell = f"[필수] {req}" + (f"<br/>[선택] {opt}" if opt else "")
+            items_cell = f"{_req_l} {req}" + (f"<br/>{_opt_l} {opt}" if opt else "")
             ov_data.append([Paragraph(v, cell) for v in (
-                esc(o["file_name"]) or "—", esc(o["subject_count"]) or "미기재",
-                items_cell, esc(o["third_party"]) or "없음", esc(o["purpose"]) or "—")])
+                esc(o["file_name"]) or "—", esc(o["subject_count"]) or t("미기재","n/a"),
+                items_cell, esc(o["third_party"]) or t("없음","none"), esc(o["purpose"]) or "—")])
         ov_widths = [40 * mm, 24 * mm, 96 * mm, 40 * mm, 50 * mm]
         ov_table = Table(ov_data, colWidths=ov_widths, repeatRows=1)
         ov_table.setStyle(TableStyle([
@@ -1429,7 +1459,7 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
 
     # ── 우려사항 및 통제 매핑(레퍼런스 ② 붉은 우려사항) ─────────────────────────────
     if concerns or gaps:
-        story.append(Paragraph("우려사항 및 통제 매핑", h2))
+        story.append(Paragraph(t("우려사항 및 통제 매핑", "Concerns & control mapping"), h2))
         red = ParagraphStyle("pdf_gap", parent=body, textColor=RED)
         lines = [f"· {esc(c['text'])} <b>[{esc(', '.join(c['controls']))}]</b>" for c in concerns]
         lines += ["· " + esc(g) for g in gaps]
@@ -1437,35 +1467,53 @@ def render_data_flow_pdf(rows: list[dict[str, Any]], *, generated_at: str = "",
         story.append(Spacer(1, 6))
 
     # ── 요약(통제 정합) — ISMS-P 3.x 통제별로 정리 ────────────────────────────────
-    story.append(Paragraph("요약 (통제 정합)", h2))
-    story.append(Paragraph(
-        f"· <b>[3.1 개인정보 수집·이용]</b> 수집 항목 {len(items)}종 · 수집 출처 {len(collect_srcs)}곳<br/>"
-        f"· <b>[3.2 개인정보 이용·제공]</b> 이용 목적 {len(purposes)}종 · 제3자 제공 {n_third}건 · 국외 이전 {n_over}건<br/>"
-        f"· <b>[3.3 개인정보 위탁]</b> 외부 수신자 후보 {len(recipients)}건 (법적 구분은 담당자 확정)<br/>"
-        f"· <b>[3.4 개인정보 파기]</b> 보유기간·파기 정의 {n_ret}/{len(rows)} 항목"
-        + (f" · 개선 지점 {len(gaps)}건" if gaps else "") + "<br/>"
-        f"· <b>[2.7/3.2 개인정보 보호]</b> 저장 암호화: {esc(enc) if enc else '미기재(담당자 확인 필요)'}", body))
+    story.append(Paragraph(t("요약 (통제 정합)", "Summary (control-aligned)"), h2))
+    if _en:
+        summ_txt = (
+            f"· <b>[3.1 Collection·Use]</b> {len(items)} item(s) · {len(collect_srcs)} source(s)<br/>"
+            f"· <b>[3.2 Use·Provide]</b> {len(purposes)} purpose(s) · 3rd-party {n_third} · overseas {n_over}<br/>"
+            f"· <b>[3.3 Outsourcing]</b> {len(recipients)} external recipient candidate(s) (officer confirms legal type)<br/>"
+            f"· <b>[3.4 Disposal]</b> retention·disposal defined {n_ret}/{len(rows)}"
+            + (f" · {len(gaps)} gap(s)" if gaps else "") + "<br/>"
+            f"· <b>[2.7/3.2 Protection]</b> storage encryption: {esc(enc) if enc else 'not stated (officer to confirm)'}")
+    else:
+        summ_txt = (
+            f"· <b>[3.1 개인정보 수집·이용]</b> 수집 항목 {len(items)}종 · 수집 출처 {len(collect_srcs)}곳<br/>"
+            f"· <b>[3.2 개인정보 이용·제공]</b> 이용 목적 {len(purposes)}종 · 제3자 제공 {n_third}건 · 국외 이전 {n_over}건<br/>"
+            f"· <b>[3.3 개인정보 위탁]</b> 외부 수신자 후보 {len(recipients)}건 (법적 구분은 담당자 확정)<br/>"
+            f"· <b>[3.4 개인정보 파기]</b> 보유기간·파기 정의 {n_ret}/{len(rows)} 항목"
+            + (f" · 개선 지점 {len(gaps)}건" if gaps else "") + "<br/>"
+            f"· <b>[2.7/3.2 개인정보 보호]</b> 저장 암호화: {esc(enc) if enc else '미기재(담당자 확인 필요)'}")
+    story.append(Paragraph(summ_txt, body))
     story.append(Spacer(1, 6))
-    story.append(Paragraph(
+    story.append(Paragraph(t(
         "용어 · '구분' = 민감도(일반/고유식별/비밀/금융). 단계: 수집(3.1)=개인정보를 받는 지점 / 저장(3.2)=보관 위치 / "
         "이용(3.2)=사용·마스킹·제공 / 파기(3.4)=삭제·익명화. '—' 는 미기재. 무료 스캔은 후보, 유료 Claude 는 암호화·마스킹·파기 갭까지 채운다.",
+        "Terms · 'Category' = sensitivity (general/unique-id/secret/financial). Stages: Collect(3.1)=intake / Store(3.2)=location / "
+        "Use(3.2)=use·mask·provide / Dispose(3.4)=delete·anonymize. '—' = not stated. Free scan = candidates; paid Claude fills encryption·masking·disposal gaps."),
         note_style))
 
     # ══ 부록 A (별도 페이지): 개발 상세 — DB 테이블·컬럼·코드 위치 ═══════════════════
     from reportlab.platypus import PageBreak
     story.append(PageBreak())
-    story.append(Paragraph("부록 A. 개발 상세 — DB 테이블·컬럼·코드 위치", h2))
-    story.append(Paragraph(
+    story.append(Paragraph(t("부록 A. 개발 상세 — DB 테이블·컬럼·코드 위치",
+                             "Appendix A. Development detail — DB table·column·code location"), h2))
+    story.append(Paragraph(t(
         "코드 스캔(Semgrep, 고객 CI)에서 자동 발견된 개인정보 처리 지점의 <b>기술 매핑</b>입니다. "
         "'저장(테이블·컬럼)' 열의 <b>src/…:라인</b> 은 코드 위치이며, 담당자가 실제 저장·처리를 확정합니다. "
-        "(본문의 처리 설명과 분리해 개발 상세만 모았습니다.)", body))
-    story.append(Paragraph("<b>A-1. 처리흐름 상세 (항목별)</b>", note_style))
-    story.append(table if rows else Paragraph("흐름표가 비어 있습니다 — 스캔에서 개인정보가 발견되지 않았거나 행이 미작성 상태입니다.", body))
+        "(본문의 처리 설명과 분리해 개발 상세만 모았습니다.)",
+        "Technical mapping of personal-data processing points auto-found by code scan (Semgrep, customer CI). "
+        "In the 'Store (table·column)' column, <b>src/…:line</b> is a code location; the data officer confirms actual storage. "
+        "(Development detail is separated from the processing narrative in the body.)"), body))
+    story.append(Paragraph(t("<b>A-1. 처리흐름 상세 (항목별)</b>", "<b>A-1. Processing detail (per item)</b>"), note_style))
+    story.append(table if rows else Paragraph(t("흐름표가 비어 있습니다 — 스캔에서 개인정보가 발견되지 않았거나 행이 미작성 상태입니다.",
+                                                "Flow table is empty — no PII found in scan, or rows not yet filled."), body))
     ci_map = build_column_item_map(rows)
     if ci_map:
         story.append(Spacer(1, 6))
-        story.append(Paragraph("<b>A-2. DB 컬럼 ↔ 개인정보 항목 매칭</b> (어느 컬럼에 어떤 개인정보가 담기는지)", note_style))
-        ci_head = ["DB 테이블", "컬럼", "개인정보 항목"]
+        story.append(Paragraph(t("<b>A-2. DB 컬럼 ↔ 개인정보 항목 매칭</b> (어느 컬럼에 어떤 개인정보가 담기는지)",
+                                 "<b>A-2. DB column ↔ PII item mapping</b> (which column holds which PII)"), note_style))
+        ci_head = [t("DB 테이블","DB table"), t("컬럼","Column"), t("개인정보 항목","PII item")]
         ci_data = [[Paragraph(f"<b>{esc(h)}</b>", hcell) for h in ci_head]]
         for m in ci_map:
             ci_data.append([Paragraph(esc(m["table"]), cell), Paragraph(esc(m["column"]), cell),

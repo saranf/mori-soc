@@ -490,10 +490,12 @@ def register_privacy(ctx: RouteContext) -> None:
     def data_flow_pdf(request: Request) -> Response:
         _require_privacy_role(request)
         meta = _flow_meta()
+        from mori_soc.util import request_lang
         try:
             pdf = render_data_flow_pdf(_sorted_rows(),
                                        generated_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
-                                       gaps=meta.get("gaps") or [], summary=meta.get("summary") or {})
+                                       gaps=meta.get("gaps") or [], summary=meta.get("summary") or {},
+                                       lang=request_lang(request))
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return pdf_response(pdf, "mori-personal-data-flow")
