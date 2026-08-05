@@ -149,3 +149,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install ".[dev]"
           pip-audit --progress-spinner off || true
+
+  headless:
+    # 프론트 런타임 가드(R1) — 렌더된 dashboard/console JS 를 chromium(headless)으로 로드해
+    # uncaught JS 예외(pageerror)가 0인지 확인. 문법 검사가 못 잡는 런타임 붕괴를 차단한다.
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright/python:v1.47.0-jammy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install app + playwright bindings
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install playwright==1.47.0
+
+      - name: Headless render guard (dashboard + console · pageerror==0)
+        run: |
+          PYTHONPATH=src python scripts/dashboard_headless_check.py
+          PYTHONPATH=src python scripts/console_headless_check.py

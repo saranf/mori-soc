@@ -54,6 +54,15 @@ with sync_playwright() as p:
                 page.evaluate(f"typeof switchAdminTab==='function' && switchAdminTab('{tab}')")
             except Exception as exc:  # noqa: BLE001
                 page_errors.append(f"switchAdminTab({tab},{lang}): {exc}")
+    # 신규 상호작용도 실행(R1) — 온보딩 스텝 이동 헬퍼(스크롤 경로만, 네비게이션 제외).
+    for expr in (
+        "typeof onbStepGo==='function' && onbStepGo('connectors')",
+        "typeof renderOnboarding==='function'",
+    ):
+        try:
+            page.evaluate(expr)
+        except Exception as exc:  # noqa: BLE001
+            page_errors.append(f"{expr}: {exc}")
     page.wait_for_timeout(300)
     browser.close()
 

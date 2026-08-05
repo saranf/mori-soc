@@ -53,6 +53,16 @@ with sync_playwright() as p:
                 page.evaluate(f"typeof switchTab==='function' && switchTab('{tab}')")
             except Exception as exc:  # noqa: BLE001
                 page_errors.append(f"switchTab({tab},{lang}): {exc}")
+    # 신규 상호작용도 실행(R1) — 빈 상태 CTA·해시 딥링크. 정의·구문 붕괴 시 여기서 예외.
+    for expr in (
+        "typeof openControlCatalog==='function' && openControlCatalog()",
+        "location.hash='#compliance'",
+        "typeof renderMoriHeader==='function'",
+    ):
+        try:
+            page.evaluate(expr)
+        except Exception as exc:  # noqa: BLE001
+            page_errors.append(f"{expr}: {exc}")
     page.wait_for_timeout(300)
     browser.close()
 
