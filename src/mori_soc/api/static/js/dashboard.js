@@ -4143,7 +4143,8 @@
           const prov = provenanceBadges(e.provenance);
           // 재현성 입력(#2): scanner·model·signature — 같은 입력 식별/추적용.
           const repro = [env.scanner && ('scanner ' + env.scanner), env.model && ('model ' + env.model),
-                         env.input_signature && ('sig ' + env.input_signature)].filter(Boolean).join(' · ');
+                         env.input_signature && ('sig ' + env.input_signature),
+                         env.findings_hash && (tt('dash.ctl.scan_result_hash','결과해시') + ' ' + String(env.findings_hash).replace('sha256:','').slice(0,12))].filter(Boolean).join(' · ');
           const reproEl = repro ? ` <span style="color:#191f28;font-size:10px" title="${tt('dash.ctl.scan_repro','재현성 입력 — 결정적 도구(Semgrep)는 같은 입력이면 같은 결과. AI(Claude)는 같은 입력이어도 실행마다 달라질 수 있음(비결정).')}">(${escapeHtml(repro)})</span>` : '';
           // 같은 sig 인데 findings 가 다른 행 = 비결정(정직 표기, 버그 아님).
           const sig = env.input_signature;

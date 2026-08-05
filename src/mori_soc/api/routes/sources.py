@@ -451,16 +451,22 @@ def register_sources(ctx: RouteContext) -> None:
             tool_label = "Claude(유료)"
         # 재현성 입력(#2): 같은 입력을 다시 돌리면 같은 결과여야 한다. commit·scanner·ruleset·
         # model 을 캡처하고 input_signature 로 '동일 입력'을 식별한다(#3 스캔 diff 의 기준).
-        from mori_soc.services.provenance import scan_input_signature
+        from mori_soc.services.provenance import (
+            findings_content_hash,
+            scan_input_signature,
+        )
         scanner_ver = (scanner or "").strip() or str(payload.get("scanner") or payload.get("scanner_version") or "").strip()
         ruleset_ver = (ruleset or "").strip() or str(payload.get("ruleset") or "").strip()
         model_id = (model or "").strip() or str(payload.get("model") or "").strip()
         input_signature = scan_input_signature(resolved_repo, commit, tool_label, scanner_ver, ruleset_ver, model_id)
+        # R4: 이 스캔이 낸 결과(findings) 자체의 내용 해시 — 그 시점 결과를 불변으로 고정(입력서명과 별개).
+        findings_hash = findings_content_hash(findings)
         provenance = {"repo": resolved_repo, "commit": commit or None, "pr": pr or None,
                       "run_id": run_id or None, "run_url": run_url or None,
                       "scan_time": now_iso, "verified": verified, "tool": tool_label,
                       "scanner": scanner_ver or None, "ruleset": ruleset_ver or None,
-                      "model": model_id or None, "input_signature": input_signature}
+                      "model": model_id or None, "input_signature": input_signature,
+                      "findings_hash": findings_hash}
         for _f in findings:
             if isinstance(_f, dict):
                 _f.setdefault("_provenance", provenance)

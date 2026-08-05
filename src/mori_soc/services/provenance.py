@@ -65,6 +65,30 @@ def scan_input_signature(repo: str | None, commit: str | None, tool: str | None,
     return short_id(repo, commit, tool, scanner, ruleset, model)
 
 
+def findings_content_hash(findings: "list[dict[str, Any]] | None") -> str:
+    """이 스캔이 산출한 findings **집합의 내용 해시**(R4 — 그 시점 결과의 tamper-evident 앵커).
+
+    scan_input_signature 가 '입력 동일'을 식별한다면, 이 값은 '출력(결과) 동일'을 식별한다.
+    AI 비결정으로 같은 입력이어도 결과가 다르면 이 해시가 달라져, **각 실행 결과가 불변으로 고정**된다
+    (감사관은 '이 스캔이 이 시점에 정확히 이 findings 를 냈다'를 위·변조 없이 확인).
+    순서 무관(정렬 후 해시)·핵심 필드만(rule·file·line·severity·message) 정규화.
+    """
+    from mori_soc.services.hashing import canonical_json, sha256_hex
+    norm: list[dict[str, Any]] = []
+    for f in findings or []:
+        if not isinstance(f, dict):
+            continue
+        norm.append({
+            "rule": str(f.get("rule_id") or f.get("ruleId") or f.get("category") or ""),
+            "file": str(f.get("file") or f.get("path") or ""),
+            "line": str(f.get("line") if f.get("line") is not None else ""),
+            "severity": str(f.get("severity") or f.get("level") or ""),
+            "msg": str(f.get("message") or f.get("title") or ""),
+        })
+    norm.sort(key=lambda d: (d["file"], d["line"], d["rule"], d["msg"]))
+    return "sha256:" + sha256_hex(canonical_json({"count": len(norm), "items": norm}, compact=True))
+
+
 def build_provenance_detail(rec: dict[str, Any], tags: list[str]) -> dict[str, Any]:
     """provenance 를 **배지가 아니라 근거 객체**로(리뷰 #16).
 
