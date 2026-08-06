@@ -64,6 +64,16 @@ with sync_playwright() as p:
         except Exception as exc:  # noqa: BLE001
             page_errors.append(f"{expr}: {exc}")
     page.wait_for_timeout(300)
+    # i18n 가드(개선①): EN 적용 후 [data-i18n] 요소에 한글이 남으면 = 사전 en 누락/키 없는 라벨.
+    page.evaluate("window.lang='en'; window.applyI18n && window.applyI18n(document);")
+    page.wait_for_timeout(150)
+    i18n_leftover = page.evaluate(
+        r"""() => { const H=/[가-힣]/; const out=[];
+        document.querySelectorAll('[data-i18n],[data-i18n-html],[data-i18n-doctitle]').forEach(el=>{
+          const t=(el.textContent||'').trim();
+          if(t && H.test(t)) out.push((el.getAttribute('data-i18n')||el.getAttribute('data-i18n-html')||'?')+' :: '+t.slice(0,50)); });
+        return [...new Set(out)]; }"""
+    )
     browser.close()
 
 # 백엔드 없음 → fetch/네트워크성 console.error 는 예상된 것이라 분리
@@ -79,5 +89,8 @@ for e in page_errors[:15]:
 print(f"[headless] 비-네트워크 console.error: {len(non_net_console)} (참고)")
 for c in non_net_console[:15]:
     print("  CONSOLE:", c)
+print(f"[headless] EN 렌더 [data-i18n] 한글 잔존: {len(i18n_leftover)}")
+for k in i18n_leftover[:20]:
+    print("  I18N-LEFTOVER:", k)
 
-sys.exit(1 if page_errors else 0)
+sys.exit(1 if (page_errors or i18n_leftover) else 0)
