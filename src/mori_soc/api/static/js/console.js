@@ -533,6 +533,12 @@
       const httpsHint = (status.production_mode && status.https_ok === false)
         ? `<div class="status-line" style="color:#f04452">${escapeHtml(tt('onboarding.https_hint','운영 모드이나 HTTPS 미구성 — MORI_PUBLIC_URL 을 https 로 하거나 MORI_BEHIND_TLS_PROXY=true'))}</div>`
         : '';
+      // 서버 개편/도메인 이관 점검: 브라우저 딥링크가 localhost 를 가리키면 원격서 깨짐.
+      const dw = status.deployment_warnings || [];
+      const deployHint = dw.length
+        ? `<div class="status-line" style="color:#f5a623">${escapeHtml(tt('onboarding.deploy_hint','배포 점검 — 아래 env 가 localhost 를 가리키거나 미설정이라 원격 접속 시 링크가 깨질 수 있어요:'))} `
+          + dw.map(w => `<code>${escapeHtml(w.var)}</code>(${escapeHtml(w.issue === 'unset' ? tt('onboarding.deploy_unset','미설정') : 'localhost')})`).join(', ') + '</div>'
+        : '';
 
       // 커넥터 성숙도 배지: verified=초록 / partial=노랑 / scaffold=중립(정직한 표기).
       const matBadge = (m) => {
@@ -645,6 +651,7 @@
         + `<div>${escapeHtml(tt('onboarding.progress','진행'))} <strong>${cl.done_count}/${cl.total}</strong> &nbsp; ${postureBadge}</div></div>`
         + `<div class="coverage" style="margin-bottom:8px">${stepChips}</div>`
         + httpsHint
+        + deployHint
         + `<h2 id="onboarding_connectors_h" style="margin:10px 0 8px;font-size:15px">${escapeHtml(tt('onboarding.connectors','커넥터 연결 상태'))}</h2>`
         + `<div class="coverage">${connRows}</div>`
         + ctodoHtml

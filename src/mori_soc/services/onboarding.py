@@ -291,7 +291,42 @@ def rank_control_todos(
     }
 
 
+# ── 배포 URL 점검(서버 개편/도메인 이관 시) ───────────────────────────────────
+# 브라우저로 나가는 딥링크·공개주소가 운영 모드에서 localhost 를 가리키면 원격 사용자에게
+# 깨진 링크가 된다. 값을 억지로 유추하지 않고(모리다움: 그럴듯하지만 틀린 값 금지) 감지만 한다.
+_BROWSER_URL_ENVS = (
+    ("MORI_PUBLIC_URL", "공개 접속 주소(딥링크·쿠키 Secure·스캔 수신 URL)"),
+    ("MORI_GRAFANA_URL", "Grafana 딥링크"),
+    ("MORI_ZABBIX_UI_URL", "Zabbix UI 딥링크"),
+    ("MORI_FLEET_UI_URL", "Fleet UI 딥링크"),
+    ("MORI_WAZUH_UI_URL", "Wazuh UI 딥링크"),
+    ("MORI_DOCS_PORTAL_URL", "운영 문서 포털 링크"),
+)
+
+
+def browser_url_warnings(env: "Mapping[str, str]", production: bool) -> list[dict[str, Any]]:
+    """운영 모드에서 브라우저용 URL 이 localhost 를 가리키거나 공개주소가 비면 경고 목록.
+
+    개발(비운영)에선 빈 목록(localhost 정상). production 에서만:
+      - MORI_PUBLIC_URL 미설정 → 'unset'(공개주소 없이는 쿠키/딥링크/수신 URL 부정확)
+      - 그 외 딥링크가 localhost/127.0.0.1 값 → 'localhost'(원격서 깨짐)
+    빈 딥링크는 경고하지 않는다(화면이 '미설정'으로 정직하게 표기하므로).
+    """
+    if not production:
+        return []
+    out: list[dict[str, Any]] = []
+    for var, desc in _BROWSER_URL_ENVS:
+        v = str(env.get(var, "") or "").strip()
+        if var == "MORI_PUBLIC_URL":
+            if not v:
+                out.append({"var": var, "issue": "unset", "desc": desc})
+            continue
+        if v and ("localhost" in v or "127.0.0.1" in v):
+            out.append({"var": var, "issue": "localhost", "desc": desc, "value": v})
+    return out
+
+
 __all__ = [
     "connector_catalog", "is_testable", "build_connectors", "build_checklist",
-    "build_scan_setup", "build_go_live", "rank_control_todos",
+    "build_scan_setup", "build_go_live", "rank_control_todos", "browser_url_warnings",
 ]

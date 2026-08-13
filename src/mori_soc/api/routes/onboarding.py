@@ -24,6 +24,7 @@ from fastapi import HTTPException, Request
 from mori_soc.api.payloads import _source_coverage
 from mori_soc.api.routes.context import RouteContext
 from mori_soc.services.onboarding import (
+    browser_url_warnings,
     build_checklist,
     build_connectors,
     build_go_live,
@@ -74,12 +75,15 @@ def register_onboarding(ctx: RouteContext) -> None:
         # HTTPS/운영모드 신호(M5) — server 헬퍼는 순환참조 피해 지연 임포트.
         from mori_soc.api.server import _https_ok, _production_mode
         from mori_soc.version import __version__
+        _prod = _production_mode()
         return {
             "checklist": checklist,
             "security_posture": ctx.security_posture,
             "insecure_defaults": list(ctx.insecure_defaults or []),
-            "production_mode": _production_mode(),
+            "production_mode": _prod,
             "https_ok": _https_ok(),
+            # 서버 개편/도메인 이관 점검(브라우저 딥링크가 localhost 를 가리키면 원격서 깨짐).
+            "deployment_warnings": browser_url_warnings(os.environ, _prod),
             "version": __version__,
             "connectors_connected": sum(1 for c in connectors if c.get("state") == "connected"),
             "connectors_total": len(connectors),

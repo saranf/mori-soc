@@ -194,3 +194,30 @@ class ControlTodoTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BrowserUrlWarningsTest(unittest.TestCase):
+    def test_dev_no_warnings(self) -> None:
+        from mori_soc.services.onboarding import browser_url_warnings
+        self.assertEqual(browser_url_warnings({"MORI_GRAFANA_URL": "http://localhost:13000"}, production=False), [])
+
+    def test_prod_localhost_flagged(self) -> None:
+        from mori_soc.services.onboarding import browser_url_warnings
+        w = browser_url_warnings({"MORI_PUBLIC_URL": "https://m.example",
+                                  "MORI_GRAFANA_URL": "http://localhost:13000",
+                                  "MORI_DOCS_PORTAL_URL": "http://127.0.0.1:37854/"}, production=True)
+        vars_ = {x["var"]: x["issue"] for x in w}
+        self.assertEqual(vars_.get("MORI_GRAFANA_URL"), "localhost")
+        self.assertEqual(vars_.get("MORI_DOCS_PORTAL_URL"), "localhost")
+        self.assertNotIn("MORI_PUBLIC_URL", vars_)   # 설정됨 → 경고 없음
+
+    def test_prod_public_unset_flagged(self) -> None:
+        from mori_soc.services.onboarding import browser_url_warnings
+        w = browser_url_warnings({}, production=True)
+        self.assertTrue(any(x["var"] == "MORI_PUBLIC_URL" and x["issue"] == "unset" for x in w))
+
+    def test_prod_empty_deeplink_not_flagged(self) -> None:
+        # 빈 딥링크는 '미설정' 화면 표기라 경고 안 함(깨진 링크 아님).
+        from mori_soc.services.onboarding import browser_url_warnings
+        w = browser_url_warnings({"MORI_PUBLIC_URL": "https://m", "MORI_ZABBIX_UI_URL": ""}, production=True)
+        self.assertFalse(any(x["var"] == "MORI_ZABBIX_UI_URL" for x in w))
